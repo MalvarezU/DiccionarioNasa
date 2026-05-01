@@ -334,3 +334,38 @@ Stage Summary:
 - HU1.4.2 fully implemented: offline listing from IndexedDB, word detail opens with all text fields offline, download-in-progress message when local DB not ready
 - Files created: src/components/explore-section.tsx
 - Files modified: src/lib/local-db.ts, src/app/page.tsx
+
+---
+Task ID: 7
+Agent: Main
+Task: HU1.4.3 + HU1.4.4 — Category filter + Pagination in Explore section
+
+Work Log:
+- Rewrote ExploreSection component with category filtering and pagination
+- Added parseCategories() helper — parses comma-separated category strings into lowercase trimmed array
+- Added extractCategories() — extracts unique sorted categories from all words
+- Added getCategoryDisplay() — maps category keys to display labels (Sustantivo, Verbo, etc.)
+- Added flattenGroups() — flattens letter groups back to a flat word list for pagination
+- HU1.4.3 — Category filter:
+  - "Filtrar por categoría" button with dropdown menu
+  - Shows all available categories extracted from the data
+  - Selected category shown as a dismissable Badge pill with X button
+  - "Todas las categorías" option to clear filter
+  - "Mostrar todas" link in header to clear filter
+  - Multi-category support: words with "sustantivo, verbo" appear in both filters
+  - "No hay palabras en esta categoría" message with "Limpiar filtro" button when filter yields no results
+  - Works offline — filters local data from IndexedDB
+- HU1.4.4 — Pagination:
+  - PAGE_SIZE = 30 words per page
+  - "Cargar más palabras" button at the bottom of visible words
+  - Progress indicator: "Mostrando 30 de 69 palabras"
+  - "Se han cargado todas las 69 palabras" indicator when complete
+  - Pagination resets to PAGE_SIZE when category filter changes
+  - Filtering + pagination work together: filter the full list, then paginate the filtered results
+  - Re-groups visible words by letter for proper alphabetical rendering
+- All lint checks pass, dev server compiles without errors
+
+Stage Summary:
+- HU1.4.3 fully implemented: category filter dropdown, multi-category support, clear filter, empty state message, offline support
+- HU1.4.4 fully implemented: load-more pagination with PAGE_SIZE=30, progress indicator, reset on filter change, all words eventually loadable
+- Files modified: src/components/explore-section.tsx (complete rewrite with both features)
