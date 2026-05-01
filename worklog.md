@@ -271,3 +271,33 @@ Stage Summary:
 - F1.3 HU1.3.2 completed: graceful audio fallback message when offline
 - F1.3 HU1.3.2 completed: suggest word disabled offline with helpful message
 - F1.3 HU1.3.2 completed: context-aware offline banner in search dropdown
+
+---
+Task ID: 5
+Agent: Main
+Task: HU1.3.5 + HU1.3.6 — Settings screen with manual sync button and last sync timestamp
+
+Work Log:
+- Extended useLocalDB hook: added forceResync() (clears + re-downloads full dictionary), refreshStats() (re-reads wordCount + lastSync from IndexedDB), lastSync state, exposed getLastSync/clearLocalDB imports
+- Refactored useLocalDB: extracted downloadAllPages() shared logic between startDownload and forceResync, added lastSync state tracking throughout
+- Created SettingsDialog component with:
+  - Connection status card (online/offline with contextual message)
+  - Local database status card (downloaded state, word count)
+  - Last sync timestamp display ("Última sincronización: DD/MM/YYYY HH:MM" or "Nunca sincronizado")
+  - Sync progress bar during download
+  - Success message after sync completes: "Sincronización completada. Última actualización: [fecha/hora]"
+  - Offline message when user tries to sync: "Sin conexión a internet. Conéctate para sincronizar."
+  - Error message after failed sync
+  - "Buscar actualizaciones" / "Sincronizar ahora" button (label depends on isReady state)
+  - Button disabled during active download, shows spinner + progress %
+  - Hydration-safe via useMounted() + useSyncExternalStore pattern
+  - All setState called only from event handlers (never from effects) — passes strict lint
+- Updated NavBar: added Settings gear icon button with Tooltip, opens SettingsDialog
+- NavBar now includes SettingsDialog instance
+
+Stage Summary:
+- HU1.3.5 fully implemented: "Sincronizar ahora" / "Buscar actualizaciones" button in settings dialog, loading indicator during sync, success message with timestamp, offline error message
+- HU1.3.6 fully implemented: last sync timestamp displayed in settings, "Nunca sincronizado" when never synced, updates after manual sync, reflects automatic sync timestamps
+- All lint checks pass, dev server compiles without errors
+- Files modified: src/hooks/use-local-db.ts, src/components/navbar.tsx
+- Files created: src/components/settings-dialog.tsx
