@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useSyncExternalStore, useMemo } from "react"
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore, useMemo } from "react"
 import {
   BookOpen,
   FileText,
@@ -19,6 +19,12 @@ import {
   AlertTriangle,
   Pencil,
   User,
+  Plus,
+  Upload,
+  ScrollText,
+  Download,
+  FileUp,
+  X,
 } from "lucide-react"
 import {
   Card,
@@ -29,7 +35,25 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -149,14 +173,710 @@ function getEntityLabel(entity: string): string {
   return labels[entity] || entity
 }
 
-/** MVP: fixed admin label. Will be dynamic when auth is implemented. */
 function getResponsible(userId: string | null): string {
   if (!userId) return "admin"
-  // In MVP, always show "admin" since there's no real auth yet
   return "admin"
 }
 
-// ─── Component ──────────────────────────────────────────────────────────────
+// ─── Categories for word creation ───────────────────────────────────────────
+
+const WORD_CATEGORIES = [
+  { value: "sustantivo", label: "Sustantivo" },
+  { value: "verbo", label: "Verbo" },
+  { value: "adjetivo", label: "Adjetivo" },
+  { value: "adverbio", label: "Adverbio" },
+  { value: "pronombre", label: "Pronombre" },
+  { value: "interjección", label: "Interjección" },
+  { value: "conjunción", label: "Conjunción" },
+  { value: "preposición", label: "Preposición" },
+  { value: "numeral", label: "Numeral" },
+  { value: "frase", label: "Frase / Expresión" },
+]
+
+const WORD_STATUSES = [
+  { value: "DRAFT", label: "Borrador" },
+  { value: "PUBLISHED", label: "Publicada" },
+  { value: "ARCHIVED", label: "Archivada" },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CreateWordModal (HU3.5.5 → HU3.3.1)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function CreateWordModal({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onCreated: () => void
+}) {
+  const [form, setForm] = useState({
+    spanish: "",
+    nasaYuwe: "",
+    pronunciation: "",
+    culturalContext: "",
+    category: "",
+    status: "DRAFT",
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const handleChange = useCallback(
+    (field: string, value: string) => {
+      setForm((prev) => ({ ...prev, [field]: value }))
+      setSubmitError(null)
+    },
+    []
+  )
+
+  const handleSubmit = useCallback(async () => {
+    if (!form.spanish.trim() || !form.nasaYuwe.trim()) {
+      setSubmitError("Los campos «Español» y «Nasa Yuwe» son obligatorios")
+      return
+    }
+
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      const res = await fetch("/api/admin/words", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      })
+
+      if (res.ok) {
+        // Reset form and close
+        setForm({
+          spanish: "",
+          nasaYuwe: "",
+          pronunciation: "",
+          culturalContext: "",
+          category: "",
+          status: "DRAFT",
+        })
+        onOpenChange(false)
+        onCreated()
+      } else {
+        const data = await res.json()
+        setSubmitError(data.message || "Error al crear la ficha")
+      }
+    } catch {
+      setSubmitError("Error de conexión al servidor")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }, [form, onOpenChange, onCreated])
+
+  const handleClose = useCallback(() => {
+    if (!isSubmitting) {
+      setSubmitError(null)
+      onOpenChange(false)
+    }
+  }, [isSubmitting, onOpenChange])
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-primary" />
+            Nueva ficha
+          </DialogTitle>
+          <DialogDescription>
+            Crea una nueva entrada en el diccionario bilingüe
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Spanish */}
+          <div className="space-y-2">
+            <Label htmlFor="spanish">Español *</Label>
+            <Input
+              id="spanish"
+              placeholder="palabra en español"
+              value={form.spanish}
+              onChange={(e) => handleChange("spanish", e.target.value)}
+            />
+          </div>
+
+          {/* Nasa Yuwe */}
+          <div className="space-y-2">
+            <Label htmlFor="nasaYuwe">Nasa Yuwe *</Label>
+            <Input
+              id="nasaYuwe"
+              placeholder="palabra en nasa yuwe"
+              value={form.nasaYuwe}
+              onChange={(e) => handleChange("nasaYuwe", e.target.value)}
+            />
+          </div>
+
+          {/* Pronunciation */}
+          <div className="space-y-2">
+            <Label htmlFor="pronunciation">Pronunciación</Label>
+            <Input
+              id="pronunciation"
+              placeholder="guía de pronunciación (ej. wah-lah)"
+              value={form.pronunciation}
+              onChange={(e) => handleChange("pronunciation", e.target.value)}
+            />
+          </div>
+
+          {/* Category + Status row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Categoría</Label>
+              <Select
+                value={form.category}
+                onValueChange={(v) => handleChange("category", v)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {WORD_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Estado</Label>
+              <Select
+                value={form.status}
+                onValueChange={(v) => handleChange("status", v)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {WORD_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Cultural Context */}
+          <div className="space-y-2">
+            <Label htmlFor="culturalContext">Contexto cultural</Label>
+            <Textarea
+              id="culturalContext"
+              placeholder="Significado cultural, uso tradicional, etc."
+              rows={3}
+              value={form.culturalContext}
+              onChange={(e) => handleChange("culturalContext", e.target.value)}
+            />
+          </div>
+
+          {submitError && (
+            <p className="text-sm text-destructive">{submitError}</p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="gap-2"
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {isSubmitting ? "Creando..." : "Crear ficha"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ImportCorpusModal (HU3.5.5 → F3.2)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function ImportCorpusModal({
+  open,
+  onOpenChange,
+  onImported,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onImported: () => void
+}) {
+  const [csvText, setCsvText] = useState("")
+  const [isImporting, setIsImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{
+    total: number
+    created: number
+    skipped: number
+    errors: number
+    errorRows: Array<{ row: number; reason: string }>
+  } | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+
+  const parseCSV = useCallback((text: string): Array<Record<string, string>> => {
+    const lines = text.trim().split("\n")
+    if (lines.length < 2) return []
+
+    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase())
+    const rows: Array<Record<string, string>> = []
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(",").map((v) => v.trim())
+      if (values.length === headers.length) {
+        const row: Record<string, string> = {}
+        headers.forEach((h, idx) => {
+          row[h] = values[idx]
+        })
+        rows.push(row)
+      }
+    }
+    return rows
+  }, [])
+
+  const handleFileUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const text = event.target?.result as string
+        setCsvText(text)
+        setImportResult(null)
+        setImportError(null)
+      }
+      reader.readAsText(file)
+    },
+    []
+  )
+
+  const handleImport = useCallback(async () => {
+    if (!csvText.trim()) {
+      setImportError("Pega un CSV o sube un archivo")
+      return
+    }
+
+    const words = parseCSV(csvText)
+    if (words.length === 0) {
+      setImportError("No se encontraron filas válidas. Asegúrate de incluir encabezados (spanish, nasaYuwe, ...)")
+      return
+    }
+
+    setIsImporting(true)
+    setImportError(null)
+    setImportResult(null)
+
+    try {
+      const res = await fetch("/api/admin/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ words }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        setImportResult(data)
+        onImported()
+      } else {
+        setImportError(data.message || "Error al importar")
+      }
+    } catch {
+      setImportError("Error de conexión al servidor")
+    } finally {
+      setIsImporting(false)
+    }
+  }, [csvText, parseCSV, onImported])
+
+  const handleClose = useCallback(() => {
+    if (!isImporting) {
+      setCsvText("")
+      setImportResult(null)
+      setImportError(null)
+      onOpenChange(false)
+    }
+  }, [isImporting, onOpenChange])
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-primary" />
+            Importar corpus
+          </DialogTitle>
+          <DialogDescription>
+            Importa palabras desde un archivo CSV o pega los datos directamente
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Format info */}
+          <Card className="bg-muted/40">
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <strong>Formato CSV:</strong> Primera fila con encabezados. Columnas requeridas: <code className="bg-muted px-1 rounded">spanish</code>, <code className="bg-muted px-1 rounded">nasaYuwe</code>.
+                Opcionales: <code className="bg-muted px-1 rounded">pronunciation</code>, <code className="bg-muted px-1 rounded">category</code>, <code className="bg-muted px-1 rounded">culturalContext</code>, <code className="bg-muted px-1 rounded">status</code>.
+                Máximo 500 filas por importación.
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-2 font-mono">
+                spanish,nasaYuwe,pronunciation,category,culturalContext,status<br />
+                casa,kxãwã,kshah-wah,sustantivo,Vivienda tradicional,PUBLISHED
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* File upload */}
+          <div className="space-y-2">
+            <Label>Subir archivo CSV</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                type="file"
+                accept=".csv,.txt"
+                onChange={handleFileUpload}
+                className="max-w-xs"
+              />
+              {csvText && (
+                <Badge variant="secondary" className="gap-1">
+                  <FileUp className="h-3 w-3" />
+                  {csvText.split("\n").length - 1} filas
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Textarea for paste */}
+          <div className="space-y-2">
+            <Label>O pega el CSV aquí</Label>
+            <Textarea
+              placeholder="spanish,nasaYuwe,pronunciation,category..."
+              rows={6}
+              value={csvText}
+              onChange={(e) => {
+                setCsvText(e.target.value)
+                setImportResult(null)
+                setImportError(null)
+              }}
+              className="font-mono text-xs"
+            />
+          </div>
+
+          {/* Import result */}
+          {importResult && (
+            <Card className="border-emerald-200 dark:border-emerald-800/40">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      Importación completada
+                    </p>
+                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      <span>Total: <strong className="text-foreground">{importResult.total}</strong></span>
+                      <span className="text-emerald-600">Creadas: <strong>{importResult.created}</strong></span>
+                      {importResult.skipped > 0 && (
+                        <span className="text-amber-600">Duplicadas: <strong>{importResult.skipped}</strong></span>
+                      )}
+                      {importResult.errors > 0 && (
+                        <span className="text-red-600">Errores: <strong>{importResult.errors}</strong></span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {importError && (
+            <p className="text-sm text-destructive">{importError}</p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={isImporting}>
+            {importResult ? "Cerrar" : "Cancelar"}
+          </Button>
+          {!importResult && (
+            <Button
+              onClick={handleImport}
+              disabled={isImporting || !csvText.trim()}
+              className="gap-2"
+            >
+              {isImporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {isImporting ? "Importando..." : "Importar"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FullAuditLogModal (HU3.5.5 → F3.4)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function FullAuditLogModal({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const [logs, setLogs] = useState<AuditLogEntry[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [actionFilter, setActionFilter] = useState<string>("all")
+
+  const fetchLogs = useCallback(async (p: number, action?: string) => {
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page: String(p),
+        pageSize: "20",
+      })
+      if (action && action !== "all") {
+        params.set("action", action)
+      }
+      const res = await fetch(`/api/admin/audit-logs?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setLogs(data.logs)
+        setTotalPages(data.totalPages)
+        setTotal(data.total)
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      setPage(1)
+      fetchLogs(1, actionFilter)
+    }
+  }, [open, fetchLogs, actionFilter])
+
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      setPage(newPage)
+      fetchLogs(newPage, actionFilter)
+    },
+    [fetchLogs, actionFilter]
+  )
+
+  const handleActionFilterChange = useCallback(
+    (value: string) => {
+      setActionFilter(value)
+      setPage(1)
+      fetchLogs(1, value)
+    },
+    [fetchLogs]
+  )
+
+  const handleExportCSV = useCallback(() => {
+    // Build CSV from current logs
+    const headers = "Fecha/Hora,Acción,Entidad,Entidad ID,Responsable,Cambios"
+    const rows = logs.map((log) =>
+      [
+        formatDate(log.createdAt),
+        getActionLabel(log.action),
+        getEntityLabel(log.entity),
+        log.entityId || "",
+        getResponsible(log.userId),
+        (log.changes || "").replace(/"/g, '""'),
+      ]
+        .map((v) => `"${v}"`)
+        .join(",")
+    )
+    const csv = [headers, ...rows].join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [logs])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ScrollText className="h-5 w-5 text-primary" />
+            Log de auditoría completo
+          </DialogTitle>
+          <DialogDescription>
+            Historial completo de acciones — {formatNumber(total)} entradas
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Filters row */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Filtrar:</Label>
+              <Select value={actionFilter} onValueChange={handleActionFilterChange}>
+                <SelectTrigger className="w-[160px] h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las acciones</SelectItem>
+                  <SelectItem value="CREATE">Creación</SelectItem>
+                  <SelectItem value="UPDATE">Edición</SelectItem>
+                  <SelectItem value="DELETE">Eliminación</SelectItem>
+                  <SelectItem value="IMPORT">Importación</SelectItem>
+                  <SelectItem value="SUGGEST">Sugerencia</SelectItem>
+                  <SelectItem value="STATUS_CHANGE">Cambio estado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              disabled={logs.length === 0}
+              className="gap-1.5 ml-auto text-xs h-8"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Exportar CSV
+            </Button>
+          </div>
+
+          {/* Table */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 text-primary animate-spin" />
+              <span className="ml-2 text-sm text-muted-foreground">Cargando...</span>
+            </div>
+          ) : logs.length > 0 ? (
+            <>
+              <div className="max-h-[50vh] overflow-y-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[140px]">Fecha/Hora</TableHead>
+                      <TableHead className="w-[110px]">Acción</TableHead>
+                      <TableHead>Entidad</TableHead>
+                      <TableHead className="w-[80px]">Responsable</TableHead>
+                      <TableHead>Cambios</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-[11px] text-muted-foreground whitespace-nowrap">
+                          {formatDate(log.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-1.5 py-0.5 h-5 shrink-0 ${getActionColor(log.action)}`}
+                          >
+                            {getActionLabel(log.action)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <span className="text-foreground font-medium">
+                            {getEntityLabel(log.entity)}
+                          </span>
+                          {log.entityId && (
+                            <span className="text-muted-foreground ml-1">
+                              #{log.entityId.slice(0, 8)}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-[11px]">
+                          <span className="inline-flex items-center gap-1 text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            {getResponsible(log.userId)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-[11px] text-muted-foreground max-w-[200px] truncate">
+                          {log.changes || "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    Página {page} de {totalPages}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => handlePageChange(page - 1)}
+                      className="h-7 text-xs"
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= totalPages}
+                      onClick={() => handlePageChange(page + 1)}
+                      className="h-7 text-xs"
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <Clock className="h-8 w-8 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground">
+                Sin entradas en el log
+              </p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Main AdminDashboard component
+// ═══════════════════════════════════════════════════════════════════════════
+
+const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000 // 5 minutes (HU3.5.6)
 
 export function AdminDashboard() {
   const mounted = useMounted()
@@ -165,27 +885,41 @@ export function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
+
+  // Modal states (HU3.5.5)
+  const [createWordOpen, setCreateWordOpen] = useState(false)
+  const [importCorpusOpen, setImportCorpusOpen] = useState(false)
+  const [fullAuditLogOpen, setFullAuditLogOpen] = useState(false)
+
+  // Auto-refresh ref (HU3.5.6)
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // ─── Fetch stats ────────────────────────────────────────────────────────
 
-  const fetchStats = useCallback(async (showRefresh = false) => {
-    if (showRefresh) {
+  const fetchStats = useCallback(async (showRefresh = false, silent = false) => {
+    if (showRefresh && !silent) {
       setIsRefreshing(true)
-    } else {
+    } else if (!silent) {
       setIsLoading(true)
     }
-    setError(null)
+    if (!silent) setError(null)
 
     try {
       const res = await fetch("/api/admin/stats")
       if (res.ok) {
         const data = await res.json()
         setStats(data)
-      } else {
+        setLastRefreshed(new Date())
+      } else if (!silent) {
         setError("Error al cargar las estadísticas")
       }
+      // HU3.5.6: on silent auto-refresh error, do nothing — retry next cycle
     } catch {
-      setError("Error de conexión al servidor")
+      if (!silent) {
+        setError("Error de conexión al servidor")
+      }
+      // HU3.5.6: silent errors ignored
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)
@@ -196,7 +930,28 @@ export function AdminDashboard() {
     fetchStats()
   }, [fetchStats])
 
+  // HU3.5.6 — Auto-refresh every 5 minutes
+  useEffect(() => {
+    autoRefreshRef.current = setInterval(() => {
+      fetchStats(true, true) // silent refresh
+    }, AUTO_REFRESH_INTERVAL)
+
+    return () => {
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current)
+      }
+    }
+  }, [fetchStats])
+
   const handleRefresh = useCallback(() => {
+    fetchStats(true)
+  }, [fetchStats])
+
+  const handleWordCreated = useCallback(() => {
+    fetchStats(true)
+  }, [fetchStats])
+
+  const handleImported = useCallback(() => {
     fetchStats(true)
   }, [fetchStats])
 
@@ -278,7 +1033,7 @@ export function AdminDashboard() {
         <p className="mt-2 text-sm sm:text-base text-muted-foreground">
           Estadísticas y estado del diccionario
         </p>
-        <div className="mt-3 flex items-center justify-center">
+        <div className="mt-3 flex items-center justify-center gap-3">
           <Button
             variant="outline"
             size="sm"
@@ -289,8 +1044,49 @@ export function AdminDashboard() {
             <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
             {isRefreshing ? "Actualizando..." : "Actualizar"}
           </Button>
+          {lastRefreshed && (
+            <span className="text-[10px] text-muted-foreground">
+              Última actualización: {lastRefreshed.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
         </div>
       </div>
+
+      {/* ─── HU3.5.5: Quick Actions ──────────────────────────────────────────── */}
+      <Card className="mb-6 border-primary/15 bg-gradient-to-r from-primary/5 via-background to-accent/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Acciones rápidas
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex flex-wrap gap-3">
+            <Button
+              onClick={() => setCreateWordOpen(true)}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Nueva ficha
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setImportCorpusOpen(true)}
+              className="gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              Importar corpus
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setFullAuditLogOpen(true)}
+              className="gap-2"
+            >
+              <ScrollText className="h-4 w-4" />
+              Ver log completo
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ─── Row 1: Total Words (hero card) ──────────────────────────────── */}
       <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
@@ -471,9 +1267,7 @@ export function AdminDashboard() {
 
       {/* ─── Row 3: Audio completeness (HU3.5.3) + secondary stats ──────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-
-        {/* HU3.5.3 — Sin audio cargado (published, no audio) */}
-        <Card className={`border-rose-200 dark:border-rose-800/40 bg-gradient-to-br from-rose-50/50 via-background to-rose-50/30 dark:from-rose-950/20 dark:to-rose-950/10`}>
+        <Card className="border-rose-200 dark:border-rose-800/40 bg-gradient-to-br from-rose-50/50 via-background to-rose-50/30 dark:from-rose-950/20 dark:to-rose-950/10">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription>Sin audio cargado</CardDescription>
@@ -505,7 +1299,6 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Con audio (published) */}
         <Card className="border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/50 via-background to-emerald-50/30 dark:from-emerald-950/20 dark:to-emerald-950/10">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -538,7 +1331,6 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent words (7 days) */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -556,7 +1348,6 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Total Favorites */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -587,7 +1378,6 @@ export function AdminDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Stacked bar */}
           <div className="w-full h-4 rounded-full overflow-hidden flex bg-muted">
             {stats.publishedCount > 0 && (
               <>
@@ -604,7 +1394,6 @@ export function AdminDashboard() {
               </>
             )}
           </div>
-          {/* Legend */}
           <div className="mt-3 flex items-center justify-center gap-6 text-xs">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
@@ -637,7 +1426,6 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* Published */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
@@ -660,7 +1448,6 @@ export function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Draft */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
@@ -683,7 +1470,6 @@ export function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Archived */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
@@ -707,7 +1493,6 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            {/* Visual formula */}
             <div className="mt-5 pt-4 border-t">
               <p className="text-xs text-muted-foreground text-center">
                 <span className="inline-flex items-center gap-1">
@@ -734,13 +1519,26 @@ export function AdminDashboard() {
         {/* HU3.5.4 — Recent Audit Log (table format) */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" />
-              Actividad reciente
-            </CardTitle>
-            <CardDescription>
-              Últimas {stats.recentAuditLogs.length > 0 ? Math.min(stats.recentAuditLogs.length, 10) : 10} acciones registradas
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Actividad reciente
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Últimas {stats.recentAuditLogs.length > 0 ? Math.min(stats.recentAuditLogs.length, 10) : 10} acciones
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFullAuditLogOpen(true)}
+                className="text-xs text-primary gap-1 h-7"
+              >
+                Ver todo
+                <ScrollText className="h-3 w-3" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {stats.recentAuditLogs.length > 0 ? (
@@ -802,6 +1600,22 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ─── HU3.5.5: Modals ──────────────────────────────────────────────────── */}
+      <CreateWordModal
+        open={createWordOpen}
+        onOpenChange={setCreateWordOpen}
+        onCreated={handleWordCreated}
+      />
+      <ImportCorpusModal
+        open={importCorpusOpen}
+        onOpenChange={setImportCorpusOpen}
+        onImported={handleImported}
+      />
+      <FullAuditLogModal
+        open={fullAuditLogOpen}
+        onOpenChange={setFullAuditLogOpen}
+      />
     </div>
   )
 }

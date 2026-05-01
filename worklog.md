@@ -542,3 +542,64 @@ Stage Summary:
 - HU3.5.3 fully implemented: "Sin audio cargado" indicator for published words without audio, with rose-themed card, progress bar, and audio completeness stacked bar
 - HU3.5.4 fully implemented: audit log table with 4 columns (Fecha/Hora, Acción, Entidad, Responsable), relative timestamps, action badges, entity labels, admin responsible
 - Files modified: src/app/api/admin/stats/route.ts, src/components/admin-dashboard.tsx
+
+---
+Task ID: 12
+Agent: Main
+Task: HU3.5.5 + HU3.5.6 — Quick action buttons + Auto-refresh
+
+Work Log:
+- Created 3 new API endpoints:
+  - POST /api/admin/words — Create new dictionary word with validation, auto-creates AuditLog entry
+  - POST /api/admin/import — Import words from JSON array (CSV parsed client-side), handles duplicates, max 500 per batch, creates IMPORT audit log
+  - GET /api/admin/audit-logs — Full audit log with pagination (page, pageSize), action filter, entity filter, returns total + totalPages
+
+- Created CreateWordModal component (HU3.5.5 → HU3.3.1):
+  - Form fields: Español*, Nasa Yuwe*, Pronunciación, Categoría (Select), Estado (Select), Contexto cultural (Textarea)
+  - Category selector with 10 options (Sustantivo, Verbo, Adjetivo, etc.)
+  - Status selector: Borrador, Publicada, Archivada (default: Borrador)
+  - Validates required fields, shows error messages
+  - On success: resets form, closes modal, triggers dashboard refresh
+  - Creates CREATE audit log entry automatically via API
+
+- Created ImportCorpusModal component (HU3.5.5 → F3.2):
+  - File upload input (.csv, .txt) with FileReader
+  - Textarea for pasting CSV data directly
+  - CSV parser: first row as headers, maps to word fields
+  - Shows row count badge after loading
+  - Import result card: Total, Creadas (emerald), Duplicadas (amber), Errores (red)
+  - Duplicate detection: skips words with same spanish + nasaYuwe
+  - Max 500 rows per import
+  - Creates IMPORT audit log entry
+
+- Created FullAuditLogModal component (HU3.5.5 → F3.4):
+  - Full audit log table with 5 columns: Fecha/Hora, Acción, Entidad, Responsable, Cambios
+  - Action filter (Select): Todas, Creación, Edición, Eliminación, Importación, Sugerencia, Cambio estado
+  - Pagination: 20 items per page with Anterior/Siguiente buttons
+  - CSV export button: downloads current view as CSV file
+  - Shows total count in header
+  - Empty state when no logs
+
+- Added "Acciones rápidas" section to dashboard (HU3.5.5):
+  - Three prominent buttons: "Nueva ficha" (Plus icon, primary), "Importar corpus" (Upload icon, outline), "Ver log completo" (ScrollText icon, outline)
+  - Gradient card with subtle border
+  - Each button opens its corresponding modal
+  - "Ver todo" link added to recent activity card header for quick access to full log
+
+- HU3.5.6 — Auto-refresh every 5 minutes:
+  - Added AUTO_REFRESH_INTERVAL = 5 * 60 * 1000 (5 minutes)
+  - useRef-based interval with cleanup on unmount
+  - Silent refresh: fetchStats(true, true) — no loading spinners, no error messages
+  - Only manual refresh shows loading state and error messages
+  - Added "Última actualización: HH:MM" timestamp next to refresh button
+  - Silent error handling: on auto-refresh failure, simply retries next cycle with no intrusive messages
+
+- All lint checks pass, dev server compiles without errors
+- Tested all 3 API endpoints: Create Word (201), Import (200), Audit Logs (200)
+- Verified workflow: Create word → stats update → audit log shows CREATE action
+
+Stage Summary:
+- HU3.5.5 fully implemented: "Nueva ficha" opens creation form modal, "Importar corpus" opens CSV import modal, "Ver log completo" opens full audit log modal with filters + pagination + CSV export
+- HU3.5.6 fully implemented: auto-refresh every 5 min (silent), manual "Actualizar" button, last refresh timestamp, silent error handling on auto-refresh
+- Files created: src/app/api/admin/words/route.ts, src/app/api/admin/import/route.ts, src/app/api/admin/audit-logs/route.ts
+- Files modified: src/components/admin-dashboard.tsx (added 3 modal components + quick actions section + auto-refresh)
