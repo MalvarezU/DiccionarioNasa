@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react"
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore, useRef } from "react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import {
   BookOpen,
   Volume2,
@@ -43,6 +44,8 @@ interface ExploreWord {
 interface LetterGroup {
   letter: string
   words: ExploreWord[]
+  /** Starting index of this group in the flat list */
+  startIndex: number
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -51,9 +54,6 @@ const SPANISH_ALPHABET = [
   "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
   "N", "Ñ", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
 ]
-
-/** Number of words to show per "page" (HU1.4.4) */
-const PAGE_SIZE = 30
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -102,7 +102,8 @@ function getCategoryDisplay(cat: string): string {
 }
 
 /**
- * Group words by their normalized initial letter.
+ * Group words by their normalized initial letter, with startIndex tracking
+ * for virtualizer scroll-to-letter functionality.
  */
 function groupByLetter(words: ExploreWord[]): LetterGroup[] {
   const map = new Map<string, ExploreWord[]>()
@@ -117,9 +118,14 @@ function groupByLetter(words: ExploreWord[]): LetterGroup[] {
     }
   }
 
+  let runningIndex = 0
   return Array.from(map.entries())
     .sort(([a], [b]) => a.localeCompare(b, "es"))
-    .map(([letter, words]) => ({ letter, words }))
+    .map(([letter, groupWords]) => {
+      const startIndex = runningIndex
+      runningIndex += groupWords.length
+      return { letter, words: groupWords, startIndex }
+    })
 }
 
 /**
@@ -129,15 +135,54 @@ function getActiveLetters(groups: LetterGroup[]): Set<string> {
   return new Set(groups.map((g) => g.letter))
 }
 
+// ─── Virtual list row types ─────────────────────────────────────────────────
+
+interface HeaderRow {
+  type: "header"
+  letter: string
+  count: number
+  id: string
+}
+
+interface WordRow {
+  type: "word"
+  word: ExploreWord
+  id: string
+}
+
+type VirtualRow = HeaderRow | WordRow
+
 /**
- * Flatten letter groups back into a flat word list.
+ * Build virtual rows from letter groups: interleaves letter headers and word items.
  */
-function flattenGroups(groups: LetterGroup[]): ExploreWord[] {
-  const result: ExploreWord[] = []
+function buildVirtualRows(groups: LetterGroup[]): VirtualRow[] {
+  const rows: VirtualRow[] = []
   for (const group of groups) {
-    result.push(...group.words)
+    rows.push({
+      type: "header",
+      letter: group.letter,
+      count: group.words.length,
+      id: `header-${group.letter}`,
+    })
+    for (const word of group.words) {
+      rows.push({ type: "word", word, id: `word-${word.id}` })
+    }
   }
-  return result
+  return rows
+}
+
+/**
+ * Build a lookup map from letter → virtual row index (for scroll-to-letter).
+ */
+function buildLetterIndexMap(rows: VirtualRow[]): Map<string, number> {
+  const map = new Map<string, number>()
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    if (row.type === "header") {
+      map.set(row.letter, i)
+    }
+  }
+  return map
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -159,8 +204,8 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
 
-  // Pagination state
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  // Ref for the scrollable container used by the virtualizer
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // ─── Load words ──────────────────────────────────────────────────────────
 
@@ -250,10 +295,8 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
 
   // ─── Derived data ────────────────────────────────────────────────────────
 
-  // Extract available categories from all words
   const categories = useMemo(() => extractCategories(allWords), [allWords])
 
-  // Filter words by selected category
   const filteredWords = useMemo(() => {
     if (!selectedCategory) return allWords
     return allWords.filter((word) =>
@@ -261,33 +304,36 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
     )
   }, [allWords, selectedCategory])
 
-  // Group filtered words by letter
   const letterGroups = useMemo(() => groupByLetter(filteredWords), [filteredWords])
   const activeLetters = useMemo(() => getActiveLetters(letterGroups), [letterGroups])
 
-  // Flatten groups for pagination — we paginate the flat list, then re-group
-  const flatFiltered = useMemo(() => flattenGroups(letterGroups), [letterGroups])
+  // Virtual rows for the virtualizer
+  const virtualRows = useMemo(() => buildVirtualRows(letterGroups), [letterGroups])
+  const letterIndexMap = useMemo(() => buildLetterIndexMap(virtualRows), [virtualRows])
 
-  // Paginated words (the visible subset)
-  const visibleWords = useMemo(
-    () => flatFiltered.slice(0, visibleCount),
-    [flatFiltered, visibleCount]
-  )
+  const totalFiltered = filteredWords.length
 
-  // Re-group only the visible words for rendering
-  const visibleLetterGroups = useMemo(() => groupByLetter(visibleWords), [visibleWords])
+  // ─── Virtualizer ─────────────────────────────────────────────────────────
 
-  const hasMore = visibleCount < flatFiltered.length
-  const totalFiltered = flatFiltered.length
+  const virtualizer = useVirtualizer({
+    count: virtualRows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (index) => {
+      const row = virtualRows[index]
+      if (!row) return 48
+      return row.type === "header" ? 52 : 56
+    },
+    overscan: 20,
+  })
 
   // ─── Handlers ────────────────────────────────────────────────────────────
 
   const scrollToLetter = useCallback((letter: string) => {
-    const element = document.getElementById(`letter-${letter}`)
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" })
+    const index = letterIndexMap.get(letter)
+    if (index !== undefined) {
+      virtualizer.scrollToIndex(index, { align: "start", behavior: "smooth" })
     }
-  }, [])
+  }, [letterIndexMap, virtualizer])
 
   const handleWordClick = useCallback((wordId: string) => {
     onWordSelect?.(wordId)
@@ -296,12 +342,6 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
   const handleCategorySelect = useCallback((category: string | null) => {
     setSelectedCategory(category)
     setFilterDropdownOpen(false)
-    // Reset pagination when filter changes (HU1.4.4)
-    setVisibleCount(PAGE_SIZE)
-  }, [])
-
-  const handleLoadMore = useCallback(() => {
-    setVisibleCount((prev) => prev + PAGE_SIZE)
   }, [])
 
   // ─── Don't render during SSR ────────────────────────────────────────────
@@ -406,9 +446,8 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
         </p>
       </div>
 
-      {/* ─── Category Filter Bar (HU1.4.3) ──────────────────────────────── */}
+      {/* ─── Category Filter Bar ──────────────────────────────────────────── */}
       <div className="flex items-center justify-center gap-3 mb-6">
-        {/* Filter dropdown */}
         <div className="relative">
           <Button
             variant="outline"
@@ -426,17 +465,14 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
             <ChevronDown className={`h-3 w-3 transition-transform ${filterDropdownOpen ? "rotate-180" : ""}`} />
           </Button>
 
-          {/* Dropdown */}
           {filterDropdownOpen && (
             <>
-              {/* Backdrop to close dropdown */}
               <div
                 className="fixed inset-0 z-40"
                 onClick={() => setFilterDropdownOpen(false)}
               />
               <div className="absolute top-full left-0 mt-1 w-56 rounded-lg border border-border bg-popover shadow-lg z-50 overflow-hidden">
                 <div className="p-1 max-h-72 overflow-y-auto">
-                  {/* "Todas" option */}
                   <button
                     onClick={() => handleCategorySelect(null)}
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
@@ -450,7 +486,6 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
 
                   <Separator className="my-1" />
 
-                  {/* Category options */}
                   {categories.map((cat) => (
                     <button
                       key={cat}
@@ -470,7 +505,6 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
           )}
         </div>
 
-        {/* Active filter pill with clear button */}
         {selectedCategory && (
           <Badge
             variant="secondary"
@@ -501,9 +535,10 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
         </div>
       )}
 
-      {/* ─── Letter Index — horizontal on mobile, sticky sidebar on desktop ─ */}
+      {/* ─── Virtualized A-Z List ─────────────────────────────────────────── */}
       {filteredWords.length > 0 && (
         <>
+          {/* Letter index — horizontal on mobile */}
           <div className="lg:hidden mb-4">
             <div className="flex flex-wrap justify-center gap-1">
               {SPANISH_ALPHABET.map((letter) => {
@@ -527,7 +562,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
             </div>
           </div>
 
-          {/* Content area with optional sidebar */}
+          {/* Content area with sidebar + virtualized list */}
           <div className="flex gap-6">
             {/* Letter sidebar — desktop only */}
             <nav
@@ -554,92 +589,111 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
               })}
             </nav>
 
-            {/* Word list grouped by letter */}
+            {/* Virtualized word list */}
             <div className="flex-1 min-w-0">
-              {visibleLetterGroups.map((group) => (
-                <div key={group.letter} className="mb-6">
-                  {/* Letter header */}
-                  <div
-                    id={`letter-${group.letter}`}
-                    className="scroll-mt-20 sticky top-14 z-10 bg-background/95 backdrop-blur-sm border-b border-border/50 pb-2 mb-3"
-                  >
-                    <h3 className="text-2xl font-bold text-primary">
-                      {group.letter}
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      {group.words.length} palabra{group.words.length !== 1 ? "s" : ""}
-                    </p>
-                  </div>
+              <div
+                ref={scrollRef}
+                className="h-[600px] lg:h-[700px] overflow-y-auto rounded-lg"
+              >
+                <div
+                  style={{
+                    height: `${virtualizer.getTotalSize()}px`,
+                    width: "100%",
+                    position: "relative",
+                  }}
+                >
+                  {virtualizer.getVirtualItems().map((virtualItem) => {
+                    const row = virtualRows[virtualItem.index]
+                    if (!row) return null
 
-                  {/* Words in this letter group */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                    {group.words.map((word) => (
-                      <button
-                        key={word.id}
-                        onClick={() => handleWordClick(word.id)}
-                        className="flex items-center gap-3 p-3 rounded-lg text-left transition-all hover:bg-primary/5 hover:border-primary/20 border border-transparent hover:shadow-sm group"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors truncate">
-                              {word.spanish}
-                            </span>
-                            <span className="text-xs text-muted-foreground truncate">
-                              —
-                            </span>
-                            <span className="text-sm text-primary font-medium truncate">
-                              {word.nasaYuwe}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {word.pronunciation && (
-                              <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
-                                <Volume2 className="h-2.5 w-2.5" />
-                                [{word.pronunciation}]
-                              </span>
-                            )}
-                            {word.category && (
-                              <Badge
-                                variant="secondary"
-                                className="text-[9px] px-1 py-0 h-3.5"
-                              >
-                                {word.category}
-                              </Badge>
-                            )}
-                          </div>
+                    if (row.type === "header") {
+                      return (
+                        <div
+                          key={virtualItem.key}
+                          id={`letter-${row.letter}`}
+                          data-index={virtualItem.index}
+                          ref={virtualizer.measureElement}
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            transform: `translateY(${virtualItem.start}px)`,
+                          }}
+                          className="bg-primary/5 border-b border-primary/15 py-2 px-3 rounded-t-md"
+                        >
+                          <h3 className="text-2xl font-bold text-primary">
+                            {row.letter}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {row.count} palabra{row.count !== 1 ? "s" : ""}
+                          </p>
                         </div>
-                        <BookOpen className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 transition-colors shrink-0" />
-                      </button>
-                    ))}
-                  </div>
+                      )
+                    }
 
-                  <Separator className="mt-4" />
+                    // Word row
+                    const word = row.word
+                    return (
+                      <div
+                        key={virtualItem.key}
+                        data-index={virtualItem.index}
+                        ref={virtualizer.measureElement}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualItem.start}px)`,
+                        }}
+                      >
+                        <button
+                          onClick={() => handleWordClick(word.id)}
+                          className="flex items-center gap-3 p-3 rounded-lg text-left transition-all hover:bg-primary/5 hover:border-primary/20 border border-transparent hover:shadow-sm group w-full"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                                {word.spanish}
+                              </span>
+                              <span className="text-xs text-muted-foreground truncate">
+                                —
+                              </span>
+                              <span className="text-sm text-primary font-medium truncate">
+                                {word.nasaYuwe}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {word.pronunciation && (
+                                <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
+                                  <Volume2 className="h-2.5 w-2.5" />
+                                  [{word.pronunciation}]
+                                </span>
+                              )}
+                              {word.category && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[9px] px-1 py-0 h-3.5"
+                                >
+                                  {word.category}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <BookOpen className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 transition-colors shrink-0" />
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
-              ))}
+              </div>
 
-              {/* ─── Load More Button (HU1.4.4) ─────────────────────────────── */}
-              {hasMore && (
-                <div className="flex flex-col items-center gap-2 py-8">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={handleLoadMore}
-                    className="gap-2 min-w-[200px]"
-                  >
-                    <List className="h-4 w-4" />
-                    Cargar más palabras
-                  </Button>
+              {/* Total count footer */}
+              {totalFiltered > 0 && (
+                <div className="text-center py-4">
                   <p className="text-xs text-muted-foreground">
-                    Mostrando {visibleCount} de {totalFiltered} palabras
-                  </p>
-                </div>
-              )}
-
-              {/* All loaded indicator */}
-              {!hasMore && totalFiltered > PAGE_SIZE && (
-                <div className="text-center py-6">
-                  <p className="text-xs text-muted-foreground">
-                    Se han cargado todas las {totalFiltered} palabras
+                    {totalFiltered} palabra{totalFiltered !== 1 ? "s" : ""} en total
+                    {!isOnline && localReady && " · Sin conexión"}
                   </p>
                 </div>
               )}

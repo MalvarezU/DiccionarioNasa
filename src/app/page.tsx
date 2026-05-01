@@ -17,6 +17,7 @@ import { SearchBar } from "@/components/search-bar";
 import { WordDetailCard } from "@/components/word-detail-card";
 import { DownloadBanner } from "@/components/download-banner";
 import { ExploreSection } from "@/components/explore-section";
+import { WordOfDayCard } from "@/components/word-of-day-card";
 import {
   Card,
   CardContent,
@@ -58,6 +59,11 @@ export default function Home() {
 
   const handleWordClick = (word: FeaturedWord) => {
     setSelectedWordId(word.id);
+    setDetailOpen(true);
+  };
+
+  const handleWordSelect = (wordId: string) => {
+    setSelectedWordId(wordId);
     setDetailOpen(true);
   };
 
@@ -121,6 +127,13 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </section>
+
+        <Separator className="mx-auto max-w-7xl" />
+
+        {/* ─── Palabra del Día (HU1.4.6 + HU1.4.7) ─────────────────────────── */}
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
+          <WordOfDayCard onWordSelect={handleWordSelect} />
         </section>
 
         <Separator className="mx-auto max-w-7xl" />
@@ -219,7 +232,7 @@ export default function Home() {
 
           {/* Explore Tab — renders the ExploreSection inline */}
           {activeTab === "explore" && (
-            <ExploreSection onWordSelect={(wordId) => { setSelectedWordId(wordId); setDetailOpen(true); }} />
+            <ExploreSection onWordSelect={handleWordSelect} />
           )}
         </section>
 

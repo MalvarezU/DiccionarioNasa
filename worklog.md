@@ -369,3 +369,55 @@ Stage Summary:
 - HU1.4.3 fully implemented: category filter dropdown, multi-category support, clear filter, empty state message, offline support
 - HU1.4.4 fully implemented: load-more pagination with PAGE_SIZE=30, progress indicator, reset on filter change, all words eventually loadable
 - Files modified: src/components/explore-section.tsx (complete rewrite with both features)
+
+---
+Task ID: 8
+Agent: Main
+Task: HU1.4.5 + HU1.4.6 + HU1.4.7 — Virtualized list + Word of the Day + Offline caching
+
+Work Log:
+- Installed @tanstack/react-virtual for list virtualization
+- HU1.4.5 — Replaced pagination with virtualized infinite scroll:
+  - Removed PAGE_SIZE, visibleCount, handleLoadMore pagination logic
+  - Added useVirtualizer from @tanstack/react-virtual with dynamic row sizing
+  - Built VirtualRow type system: HeaderRow (letter section) + WordRow (individual word)
+  - Created buildVirtualRows() to interleave headers and words from letter groups
+  - Created buildLetterIndexMap() for scroll-to-letter via virtualizer.scrollToIndex()
+  - Scroll container has fixed height (600px mobile / 700px desktop) with virtualized content
+  - All words shown at once (no "Cargar más" button) — complete listing
+  - Category filter also shows full filtered results (no pagination)
+  - Letter headers styled with bg-primary/5 for visual separation
+  - Scroll-to-letter uses virtualizer.scrollToIndex() with smooth behavior
+  - Offline: all data comes from local IndexedDB
+- HU1.4.6 — Palabra del Día:
+  - Created /api/dictionary/word-of-day API endpoint
+    - Deterministic word selection: day-of-year % totalWords (same word for all users on same date)
+    - Returns full word data + date string
+    - Optional ?date= param for testing
+  - Created WordOfDayCard component
+    - Featured card with gradient background, Sparkles icon, "Palabra del Día" title
+    - Shows: spanish, nasaYuwe, pronunciation, category, cultural context preview
+    - Click opens WordDetailCard (same as any word)
+    - If server word not in local DB, WordDetailCard fetches it from API (online users)
+    - "Ver ficha completa" link at bottom
+    - Date displayed next to title (e.g., "5 mar.")
+    - Hydration-safe via useMounted() pattern
+- HU1.4.7 — Local caching of Word of the Day:
+  - Added CachedWordOfDay interface to local-db.ts
+  - Added setCachedWordOfDay() / getCachedWordOfDay() to IndexedDB meta store
+  - WordOfDayCard caching logic:
+    - Online: fetches from server → displays → caches in IndexedDB
+    - Offline: reads from IndexedDB cache → shows with "sin conexión" badge
+    - Never connected (clean install): shows "Conéctate para descubrir la palabra del día"
+    - After 24h + reconnect: useEffect with [isOnline] re-fetches new word from server
+  - Badge indicator: WifiOff icon + "sin conexión" text in amber color
+  - Updated page.tsx: added WordOfDayCard section between hero and tabbed content
+- All lint checks pass, dev server compiles without errors
+
+Stage Summary:
+- HU1.4.5 fully implemented: virtualized list with @tanstack/react-virtual, all words shown at once, no pagination, smooth scrolling, category filter also complete, works offline
+- HU1.4.6 fully implemented: server-determined Word of the Day, featured card on home screen, clickable to full detail, same word for all users on same date
+- HU1.4.7 fully implemented: local caching in IndexedDB after first view, offline display with "sin conexión" badge, auto-refresh on reconnect, "Conéctate" message for never-connected users
+- Files created: src/components/word-of-day-card.tsx, src/app/api/dictionary/word-of-day/route.ts
+- Files modified: src/components/explore-section.tsx, src/lib/local-db.ts, src/app/page.tsx
+- Package added: @tanstack/react-virtual
