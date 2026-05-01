@@ -112,3 +112,35 @@ Stage Summary:
 - HU1.2.4: Favorite button with offline download notice (infrastructure ready for auth) ✅
 - 8 demo audio files generated via TTS for key dictionary words
 - WordDetailCard shows: category badge, spanish title, nasaYuwe, pronunciation, audio player, cultural context, usage examples, favorite button
+
+---
+Task ID: 6
+Agent: Main
+Task: F1.2 — Ficha de Palabra (HU1.2.5-HU1.2.8)
+
+Work Log:
+- Updated WordDetailCard: cultural context section always visible ("Sin información contextual disponible" fallback)
+- Updated WordDetailCard: examples section always visible ("No hay ejemplos de uso disponibles" fallback)
+- Updated WordDetailCard: category display with Tag icon and display labels (Sustantivo, Verbo, etc.)
+- Added parseCategories() to support multiple categories separated by commas
+- Added "Categoría desconocida" fallback badge when no category
+- Configured NextAuth.js with Credentials provider at /api/auth/[...nextauth]
+- Added password field to User model in Prisma schema
+- Created /api/auth/register endpoint for new user registration with bcrypt password hashing
+- Created /api/auth/demo endpoint to create demo user (demo@nasayuwe.com / demo123)
+- Created /api/dictionary/favorites endpoint (GET to check/list, POST to toggle)
+- Created AuthModal component with login/register modes, form validation, auto-login after register
+- Created SessionProvider wrapper for next-auth/react SessionProvider
+- Updated RootLayout with SessionProvider wrapping all children
+- Updated WordDetailCard to use useSession() for auth detection
+- Updated favorite button: authenticated users get server-side toggle, non-authenticated see login modal
+- Added "Inicia sesión para guardar favoritos" link below favorite button for non-auth users
+- Demo user created successfully in database
+
+Stage Summary:
+- HU1.2.5: Cultural context always shown + fallback text; examples always shown + fallback ✅
+- HU1.2.6: Category with Tag icon badge, supports multiple categories (comma-separated), "Desconocida" fallback ✅
+- HU1.2.7: Authenticated favorite toggle with server persistence, state synced across sessions ✅
+- HU1.2.8: Non-auth users see AuthModal with login/register on favorite click ✅
+- NextAuth.js configured with JWT strategy
+- Demo user: demo@nasayuwe.com / demo123
