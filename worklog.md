@@ -498,3 +498,47 @@ Stage Summary:
 - When a draft is published: Borrador -1, Publicadas +1, total unchanged
 - When a published word is archived: Publicadas -1, Archivadas +1, total unchanged
 - Files modified: src/components/admin-dashboard.tsx
+
+---
+Task ID: 11
+Agent: Main
+Task: HU3.5.3 + HU3.5.4 — Sin audio cargado indicator + Audit log table
+
+Work Log:
+- Updated /api/admin/stats/route.ts:
+  - Added `publishedWithoutAudio` count: PUBLISHED words where audioUrl is null (HU3.5.3)
+  - Added `userId` to audit log select for responsible column (HU3.5.4)
+- Rewrote AdminDashboard component with two major additions:
+
+  HU3.5.3 — "Sin audio cargado" indicator:
+  - Prominent rose/red-themed "Sin audio cargado" card in secondary stats row
+  - Shows count of PUBLISHED words with null audioUrl
+  - VolumeX icon + "Publicadas sin grabación" subtitle
+  - Progress bar showing % of published words without audio
+  - "Tienen audio" message when count is 0
+  - Corresponding "Con audio" card (emerald-themed) showing published words WITH audio
+  - Derived `publishedWithAudio` = publishedCount - publishedWithoutAudio
+  - Audio completeness detail bar: stacked emerald/rose bar showing coverage
+  - Legend: "Con audio: X | Sin audio: Y | Z% completado"
+  - When admin uploads audio to a word: publishedWithoutAudio decreases by 1 on refresh
+
+  HU3.5.4 — Audit log table (last 10 entries):
+  - Replaced simple badge-based list with proper shadcn/ui Table component
+  - 4 columns: Fecha/Hora, Acción, Entidad, Responsable
+  - Fecha/Hora: relative time ("hace 5 min", "hace 2h", "hace 3d") with full date tooltip
+  - Acción: colored Badge with action label (Creación, Edición, Eliminación, etc.)
+  - Entidad: entity display label (Palabra, Usuario, etc.) + truncated entity ID (#abcdefgh)
+  - Responsable: "admin" fixed for MVP with User icon
+  - Helper functions: formatTimeAgo(), getEntityLabel(), getResponsible()
+  - Added action labels: PUBLISH → "Publicación", ARCHIVE → "Archivación"
+  - Scrollable container (max-h-96) for overflow
+  - Empty state with Clock icon + "Sin actividad registrada"
+  - CardDescription shows actual count: "Últimas N acciones registradas"
+
+- All lint checks pass, dev server compiles without errors
+- API verified: publishedWithoutAudio = 60 (69 published - 9 with audio), userId included in audit logs
+
+Stage Summary:
+- HU3.5.3 fully implemented: "Sin audio cargado" indicator for published words without audio, with rose-themed card, progress bar, and audio completeness stacked bar
+- HU3.5.4 fully implemented: audit log table with 4 columns (Fecha/Hora, Acción, Entidad, Responsable), relative timestamps, action badges, entity labels, admin responsible
+- Files modified: src/app/api/admin/stats/route.ts, src/components/admin-dashboard.tsx

@@ -19,9 +19,17 @@ export async function GET() {
       db.dictionaryWord.count({ where: { status: "ARCHIVED" } }),
     ])
 
-    // Words with audio
+    // Words with audio (all statuses)
     const wordsWithAudio = await db.dictionaryWord.count({
       where: { audioUrl: { not: null } },
+    })
+
+    // Published words WITHOUT audio (HU3.5.3)
+    const publishedWithoutAudio = await db.dictionaryWord.count({
+      where: {
+        status: "PUBLISHED",
+        audioUrl: null,
+      },
     })
 
     // Total users
@@ -37,7 +45,7 @@ export async function GET() {
       where: { createdAt: { gte: sevenDaysAgo } },
     })
 
-    // Recent audit log entries (last 10)
+    // Recent audit log entries (last 10) (HU3.5.4)
     const recentAuditLogs = await db.auditLog.findMany({
       take: 10,
       orderBy: { createdAt: "desc" },
@@ -47,6 +55,7 @@ export async function GET() {
         entity: true,
         entityId: true,
         changes: true,
+        userId: true,
         createdAt: true,
       },
     })
@@ -57,6 +66,7 @@ export async function GET() {
       publishedCount,
       archivedCount,
       wordsWithAudio,
+      publishedWithoutAudio,
       totalUsers,
       totalFavorites,
       recentWords,

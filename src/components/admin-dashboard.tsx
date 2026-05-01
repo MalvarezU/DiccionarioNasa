@@ -7,6 +7,7 @@ import {
   Archive,
   Eye,
   Volume2,
+  VolumeX,
   Users,
   Heart,
   Clock,
@@ -17,6 +18,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Pencil,
+  User,
 } from "lucide-react"
 import {
   Card,
@@ -28,6 +30,14 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 // ─── Hydration-safe mount guard ─────────────────────────────────────────────
 
@@ -38,23 +48,27 @@ function useMounted(): boolean {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+interface AuditLogEntry {
+  id: string
+  action: string
+  entity: string
+  entityId: string | null
+  changes: string | null
+  userId: string | null
+  createdAt: string
+}
+
 interface AdminStats {
   totalWords: number
   draftCount: number
   publishedCount: number
   archivedCount: number
   wordsWithAudio: number
+  publishedWithoutAudio: number
   totalUsers: number
   totalFavorites: number
   recentWords: number
-  recentAuditLogs: Array<{
-    id: string
-    action: string
-    entity: string
-    entityId: string | null
-    changes: string | null
-    createdAt: string
-  }>
+  recentAuditLogs: AuditLogEntry[]
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -73,14 +87,40 @@ function formatDate(iso: string): string {
   })
 }
 
+function formatDateShort(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-CO", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function formatTimeAgo(iso: string): string {
+  const now = Date.now()
+  const then = new Date(iso).getTime()
+  const diffMs = now - then
+  const diffMin = Math.floor(diffMs / 60000)
+  const diffHr = Math.floor(diffMs / 3600000)
+  const diffDay = Math.floor(diffMs / 86400000)
+
+  if (diffMin < 1) return "ahora"
+  if (diffMin < 60) return `hace ${diffMin} min`
+  if (diffHr < 24) return `hace ${diffHr}h`
+  if (diffDay < 7) return `hace ${diffDay}d`
+  return formatDateShort(iso)
+}
+
 function getActionLabel(action: string): string {
   const labels: Record<string, string> = {
     CREATE: "Creación",
-    UPDATE: "Actualización",
+    UPDATE: "Edición",
     DELETE: "Eliminación",
     IMPORT: "Importación",
     SUGGEST: "Sugerencia",
     STATUS_CHANGE: "Cambio estado",
+    PUBLISH: "Publicación",
+    ARCHIVE: "Archivación",
   }
   return labels[action] || action
 }
@@ -88,13 +128,32 @@ function getActionLabel(action: string): string {
 function getActionColor(action: string): string {
   const colors: Record<string, string> = {
     CREATE: "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30",
-    UPDATE: "text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30",
+    UPDATE: "text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/30",
     DELETE: "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30",
     IMPORT: "text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30",
     SUGGEST: "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30",
     STATUS_CHANGE: "text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
+    PUBLISH: "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30",
+    ARCHIVE: "text-gray-700 dark:text-gray-400 bg-gray-50 dark:bg-gray-950/30",
   }
   return colors[action] || "text-muted-foreground bg-muted/50"
+}
+
+function getEntityLabel(entity: string): string {
+  const labels: Record<string, string> = {
+    DictionaryWord: "Palabra",
+    User: "Usuario",
+    Favorite: "Favorito",
+    AuditLog: "Log",
+  }
+  return labels[entity] || entity
+}
+
+/** MVP: fixed admin label. Will be dynamic when auth is implemented. */
+function getResponsible(userId: string | null): string {
+  if (!userId) return "admin"
+  // In MVP, always show "admin" since there's no real auth yet
+  return "admin"
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -141,7 +200,7 @@ export function AdminDashboard() {
     fetchStats(true)
   }, [fetchStats])
 
-  // ─── Derived: Sum verification ───────────────────────────────────────────
+  // ─── Derived values ─────────────────────────────────────────────────────
 
   const statusSum = useMemo(() => {
     if (!stats) return 0
@@ -152,6 +211,11 @@ export function AdminDashboard() {
     if (!stats) return true
     return statusSum === stats.totalWords
   }, [stats, statusSum])
+
+  const publishedWithAudio = useMemo(() => {
+    if (!stats) return 0
+    return stats.publishedCount - stats.publishedWithoutAudio
+  }, [stats])
 
   // ─── Don't render during SSR ────────────────────────────────────────────
 
@@ -250,7 +314,7 @@ export function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* ─── Row 2: Three status indicator cards (HU3.5.2) ─────────────────── */}
+      {/* ─── Row 2: Three status indicator cards ──────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {/* Publicadas */}
         <Card className="border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/50 via-background to-emerald-50/30 dark:from-emerald-950/20 dark:to-emerald-950/10">
@@ -362,7 +426,7 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* ─── Sum Verification (HU3.5.2) ──────────────────────────────────── */}
+      {/* ─── Sum Verification ────────────────────────────────────────────── */}
       <Card className="mb-6 border-dashed">
         <CardContent className="pt-5 pb-5">
           <div className="flex items-center justify-between">
@@ -405,25 +469,72 @@ export function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* ─── Row 3: Secondary stat cards ─────────────────────────────────── */}
+      {/* ─── Row 3: Audio completeness (HU3.5.3) + secondary stats ──────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Words with Audio */}
-        <Card>
+
+        {/* HU3.5.3 — Sin audio cargado (published, no audio) */}
+        <Card className={`border-rose-200 dark:border-rose-800/40 bg-gradient-to-br from-rose-50/50 via-background to-rose-50/30 dark:from-rose-950/20 dark:to-rose-950/10`}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription>Con audio</CardDescription>
-              <Volume2 className="h-4 w-4 text-muted-foreground" />
+              <CardDescription>Sin audio cargado</CardDescription>
+              <VolumeX className="h-4 w-4 text-rose-500 dark:text-rose-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">
-              {formatNumber(stats.wordsWithAudio)}
+            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+              {formatNumber(stats.publishedWithoutAudio)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.totalWords > 0
-                ? `${((stats.wordsWithAudio / stats.totalWords) * 100).toFixed(0)}% del total`
-                : "Sin palabras"}
+              Publicadas sin grabación
             </p>
+            {stats.publishedCount > 0 && (
+              <div className="mt-2">
+                <div className="w-full h-1.5 rounded-full bg-rose-100 dark:bg-rose-900/40">
+                  <div
+                    className="h-full rounded-full bg-rose-400 transition-all duration-500"
+                    style={{ width: `${(stats.publishedWithoutAudio / stats.publishedCount) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {stats.publishedWithoutAudio === 0
+                    ? "Tienen audio"
+                    : `${((stats.publishedWithoutAudio / stats.publishedCount) * 100).toFixed(0)}% de publicadas`}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Con audio (published) */}
+        <Card className="border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/50 via-background to-emerald-50/30 dark:from-emerald-950/20 dark:to-emerald-950/10">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardDescription>Con audio</CardDescription>
+              <Volume2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              {formatNumber(publishedWithAudio)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Publicadas con grabación
+            </p>
+            {stats.publishedCount > 0 && (
+              <div className="mt-2">
+                <div className="w-full h-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    style={{ width: `${(publishedWithAudio / stats.publishedCount) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {stats.publishedCount > 0
+                    ? `${((publishedWithAudio / stats.publishedCount) * 100).toFixed(0)}% de publicadas`
+                    : "Sin publicadas"}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -441,24 +552,6 @@ export function AdminDashboard() {
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Creadas en la última semana
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Total Users */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardDescription>Usuarios</CardDescription>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-foreground">
-              {formatNumber(stats.totalUsers)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Registrados en el sistema
             </p>
           </CardContent>
         </Card>
@@ -482,7 +575,57 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* ─── Row 4: Status distribution detail + Recent activity ────────────── */}
+      {/* ─── Audio completeness detail bar (HU3.5.3) ──────────────────────── */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Volume2 className="h-4 w-4 text-primary" />
+            Cobertura de audio — Publicadas
+          </CardTitle>
+          <CardDescription>
+            Fichas publicadas con y sin grabación de audio
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Stacked bar */}
+          <div className="w-full h-4 rounded-full overflow-hidden flex bg-muted">
+            {stats.publishedCount > 0 && (
+              <>
+                <div
+                  className="h-full bg-emerald-500 transition-all duration-500"
+                  style={{ width: `${(publishedWithAudio / stats.publishedCount) * 100}%` }}
+                  title={`Con audio: ${publishedWithAudio}`}
+                />
+                <div
+                  className="h-full bg-rose-400 transition-all duration-500"
+                  style={{ width: `${(stats.publishedWithoutAudio / stats.publishedCount) * 100}%` }}
+                  title={`Sin audio: ${stats.publishedWithoutAudio}`}
+                />
+              </>
+            )}
+          </div>
+          {/* Legend */}
+          <div className="mt-3 flex items-center justify-center gap-6 text-xs">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+              <span className="text-muted-foreground">Con audio:</span>
+              <span className="font-semibold text-foreground">{formatNumber(publishedWithAudio)}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" />
+              <span className="text-muted-foreground">Sin audio:</span>
+              <span className="font-semibold text-rose-600 dark:text-rose-400">{formatNumber(stats.publishedWithoutAudio)}</span>
+            </span>
+            <span className="text-muted-foreground">
+              ({stats.publishedCount > 0
+                ? `${((publishedWithAudio / stats.publishedCount) * 100).toFixed(0)}% completado`
+                : "Sin publicadas"})
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ─── Row 4: Status distribution + Recent audit log (HU3.5.4) ──────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Distribution */}
         <Card>
@@ -588,41 +731,65 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
+        {/* HU3.5.4 — Recent Audit Log (table format) */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Clock className="h-4 w-4 text-primary" />
               Actividad reciente
             </CardTitle>
+            <CardDescription>
+              Últimas {stats.recentAuditLogs.length > 0 ? Math.min(stats.recentAuditLogs.length, 10) : 10} acciones registradas
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {stats.recentAuditLogs.length > 0 ? (
-              <div className="space-y-3 max-h-80 overflow-y-auto">
-                {stats.recentAuditLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-start gap-3 py-2"
-                  >
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] px-1.5 py-0.5 h-5 shrink-0 ${getActionColor(log.action)}`}
-                    >
-                      {getActionLabel(log.action)}
-                    </Badge>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-foreground truncate">
-                        {log.entity}
-                        {log.entityId && (
-                          <span className="text-muted-foreground"> #{log.entityId.slice(0, 8)}</span>
-                        )}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {formatDate(log.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-96 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[120px]">Fecha/Hora</TableHead>
+                      <TableHead className="w-[100px]">Acción</TableHead>
+                      <TableHead>Entidad</TableHead>
+                      <TableHead className="w-[80px]">Responsable</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {stats.recentAuditLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-[11px] text-muted-foreground whitespace-nowrap">
+                          <span title={formatDate(log.createdAt)}>
+                            {formatTimeAgo(log.createdAt)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-1.5 py-0.5 h-5 shrink-0 ${getActionColor(log.action)}`}
+                          >
+                            {getActionLabel(log.action)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <span className="text-foreground font-medium">
+                            {getEntityLabel(log.entity)}
+                          </span>
+                          {log.entityId && (
+                            <span className="text-muted-foreground ml-1">
+                              #{log.entityId.slice(0, 8)}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-[11px]">
+                          <span className="inline-flex items-center gap-1 text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            {getResponsible(log.userId)}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 gap-2">
