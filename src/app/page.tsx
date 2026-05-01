@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { NavBar } from "@/components/navbar";
 import { SearchBar } from "@/components/search-bar";
+import { WordDetailCard } from "@/components/word-detail-card";
 import {
   Card,
   CardContent,
@@ -20,7 +21,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
 
 interface FeaturedWord {
   id: string;
@@ -33,7 +33,8 @@ interface FeaturedWord {
 
 export default function Home() {
   const [featuredWords, setFeaturedWords] = useState<FeaturedWord[]>([]);
-  const { toast } = useToast();
+  const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   useEffect(() => {
     const fetchFeatured = async () => {
@@ -51,10 +52,8 @@ export default function Home() {
   }, []);
 
   const handleWordClick = (word: FeaturedWord) => {
-    toast({
-      title: word.nasaYuwe,
-      description: `${word.spanish}${word.pronunciation ? ` — [${word.pronunciation}]` : ""}`,
-    });
+    setSelectedWordId(word.id);
+    setDetailOpen(true);
   };
 
   return (
@@ -241,6 +240,13 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Word detail card for featured words */}
+      <WordDetailCard
+        wordId={selectedWordId}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
     </div>
   );
 }

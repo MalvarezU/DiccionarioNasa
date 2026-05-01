@@ -69,3 +69,46 @@ Stage Summary:
 - Earth-tone theme with forest green and terracotta ✅
 - Responsive design (mobile-first) ✅
 - Keyboard navigation in search results ✅
+
+---
+Task ID: 4
+Agent: Main
+Task: HU1.1.5-HU1.1.8 — Search ranking, normalization, no results UI, offline indicator
+
+Work Log:
+- Rewrote /api/dictionary/search with raw SQL for accent-insensitive search (NFD normalization)
+- Implemented 3-tier ranking: exact match → prefix match → partial match, alphabetical tiebreak
+- Created SuggestWordModal component with term pre-filled, optional comment, POST to /api/dictionary/suggest
+- Created /api/dictionary/suggest endpoint storing suggestions in AuditLog
+- Added visible offline/online indicator below search input (CloudOff/Cloud icons)
+- Updated no-results message to "No encontramos «término»" with "💡 Sugerir esta palabra" button
+
+Stage Summary:
+- HU1.1.5: Search results ranked by relevance (exact → prefix → partial) ✅
+- HU1.1.6: Accent/case normalization (pajaro→pájaro, AGUA→agua, corazon→corazón) ✅
+- HU1.1.7: Friendly no-results message + suggest word modal ✅
+- HU1.1.8: Visible offline/online indicator below search bar ✅
+
+---
+Task ID: 5
+Agent: Main
+Task: F1.2 — Ficha de Palabra (HU1.2.1-HU1.2.4)
+
+Work Log:
+- Created AudioPlayer component with play/pause, progress slider, restart, loading state
+- Used key={src} pattern to reset player state on src change (lint-compliant)
+- Created WordDetailCard component (Sheet/panel) with full word details
+- Generated 8 TTS audio files for key words using z-ai CLI
+- Updated database with audioUrl for 9 words (agua, persona, sol, luna, tierra, fuego, lengua, corazón, montaña)
+- Created /api/dictionary/update-audio endpoint for batch audio URL updates
+- Updated SearchBar to open WordDetailCard on result selection instead of toast
+- Updated homepage featured word cards to open WordDetailCard
+- Added favorite button with local toggle (prepares for Epic 2 auth)
+
+Stage Summary:
+- HU1.2.1: Spanish title as main heading + "Nasa Yuwe: [word]" prominently displayed ✅
+- HU1.2.2: Phonetic pronunciation in readable format (e.g., "wah-lah") with label ✅
+- HU1.2.3: Audio player with play/pause, progress bar, restart, time display ✅
+- HU1.2.4: Favorite button with offline download notice (infrastructure ready for auth) ✅
+- 8 demo audio files generated via TTS for key dictionary words
+- WordDetailCard shows: category badge, spanish title, nasaYuwe, pronunciation, audio player, cultural context, usage examples, favorite button

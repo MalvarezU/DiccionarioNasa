@@ -9,6 +9,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useToast } from "@/hooks/use-toast";
 import { SuggestWordModal } from "@/components/suggest-word-modal";
+import { WordDetailCard } from "@/components/word-detail-card";
 
 interface SearchResult {
   id: string;
@@ -21,15 +22,19 @@ interface SearchResult {
 interface SearchBarProps {
   /** "hero" = large centered bar for main area, "inline" = compact for headers */
   variant?: "hero" | "inline";
+  /** Callback when a word is selected — used by parent components */
+  onWordSelect?: (wordId: string) => void;
 }
 
-export function SearchBar({ variant = "inline" }: SearchBarProps) {
+export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [suggestOpen, setSuggestOpen] = useState(false);
+  const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const isOnline = useOnlineStatus();
   const { toast } = useToast();
   const debouncedQuery = useDebounce(query, 300);
@@ -100,12 +105,13 @@ export function SearchBar({ variant = "inline" }: SearchBarProps) {
     (result: SearchResult) => {
       setQuery("");
       setIsOpen(false);
-      toast({
-        title: result.nasaYuwe,
-        description: `${result.spanish}${result.pronunciation ? ` — [${result.pronunciation}]` : ""}`,
-      });
+      // Open the word detail card
+      setSelectedWordId(result.id);
+      setDetailOpen(true);
+      // Also notify parent if callback provided
+      onWordSelect?.(result.id);
     },
-    [toast]
+    [onWordSelect]
   );
 
   const handleKeyDown = useCallback(
@@ -185,7 +191,7 @@ export function SearchBar({ variant = "inline" }: SearchBarProps) {
           )}
         </div>
 
-        {/* HU1.1.8 — Offline indicator BELOW the input, always visible when offline */}
+        {/* HU1.1.8 — Offline indicator BELOW the input */}
         {!isOnline && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <CloudOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
@@ -195,7 +201,7 @@ export function SearchBar({ variant = "inline" }: SearchBarProps) {
           </div>
         )}
 
-        {/* Online indicator — subtle cloud icon */}
+        {/* Online indicator */}
         {isOnline && isHero && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <Cloud className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -212,7 +218,7 @@ export function SearchBar({ variant = "inline" }: SearchBarProps) {
               isHero ? "mt-2 rounded-xl" : "mt-1"
             }`}
           >
-            {/* Offline banner inside dropdown (backup notice) */}
+            {/* Offline banner */}
             {!isOnline && (
               <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 dark:text-amber-400 dark:bg-amber-950/30 dark:border-amber-900 flex items-center gap-1.5">
                 <CloudOff className="h-3 w-3" />
@@ -220,7 +226,7 @@ export function SearchBar({ variant = "inline" }: SearchBarProps) {
               </div>
             )}
 
-            {/* HU1.1.7 — Friendly no results message with suggest button */}
+            {/* HU1.1.7 — No results with suggest button */}
             {hasNoResults ? (
               <div className="px-4 py-6 text-center">
                 <p className="text-sm text-muted-foreground mb-1">
@@ -302,7 +308,14 @@ export function SearchBar({ variant = "inline" }: SearchBarProps) {
         )}
       </div>
 
-      {/* HU1.1.7 — Suggest word modal */}
+      {/* Word detail card (Sheet) */}
+      <WordDetailCard
+        wordId={selectedWordId}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
+
+      {/* Suggest word modal */}
       <SuggestWordModal
         open={suggestOpen}
         onOpenChange={setSuggestOpen}
