@@ -25,6 +25,9 @@ import {
   Download,
   FileUp,
   X,
+  Search,
+  Tag,
+  Trash2,
 } from "lucide-react"
 import {
   Card,
@@ -200,7 +203,7 @@ const WORD_STATUSES = [
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CreateWordModal (HU3.3.1 + HU3.3.2)
+// CreateWordModal (HU3.3.1 + HU3.3.2 + HU3.3.3)
 // ═══════════════════════════════════════════════════════════════════════════
 
 const VALID_AUDIO_TYPES = ["audio/mpeg", "audio/wav", "audio/wave", "audio/x-wav", "audio/ogg", "audio/vorbis"]
@@ -228,6 +231,7 @@ function CreateWordModal({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false) // HU3.3.3
 
   // Audio upload state (HU3.3.2)
   const [audioFile, setAudioFile] = useState<File | null>(null)
@@ -678,7 +682,17 @@ function CreateWordModal({
           >
             Cancelar
           </Button>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {/* HU3.3.3: Vista previa button */}
+            <Button
+              variant="outline"
+              onClick={() => setPreviewOpen(true)}
+              disabled={isSubmitting || isUploadingAudio || (!form.spanish.trim() && !form.nasaYuwe.trim())}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              Vista previa
+            </Button>
             {/* HU3.3.1: Guardar como borrador */}
             <Button
               variant="secondary"
@@ -707,6 +721,706 @@ function CreateWordModal({
               {isSubmitting ? "Publicando..." : "Guardar y publicar"}
             </Button>
           </div>
+        </DialogFooter>
+
+        {/* HU3.3.3: Preview modal — preserves unsaved form data */}
+        <WordPreviewModal
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          word={{
+            spanish: form.spanish,
+            nasaYuwe: form.nasaYuwe,
+            pronunciation: form.pronunciation || null,
+            culturalContext: form.culturalContext || null,
+            category: form.category || null,
+            audioUrl: audioUrl || audioPreview || null,
+            status: form.status,
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WordPreviewModal (HU3.3.3)
+// Shows word card exactly as a user would see it. Preserves unsaved form data.
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface PreviewWordData {
+  spanish: string
+  nasaYuwe: string
+  pronunciation: string | null
+  culturalContext: string | null
+  category: string | null
+  audioUrl: string | null
+  status: string
+}
+
+function WordPreviewModal({
+  open,
+  onOpenChange,
+  word,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  word: PreviewWordData
+}) {
+  const categories = word.category
+    ? word.category.split(",").map((c) => c.trim().toLowerCase()).filter(Boolean)
+    : []
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5 text-primary" />
+            Vista previa
+          </DialogTitle>
+          <DialogDescription>
+            Así verá el usuario esta ficha en la aplicación pública
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="mt-2 flex flex-col gap-5">
+          {/* Status badge */}
+          <div className="flex items-center gap-2">
+            {word.status === "DRAFT" && (
+              <Badge variant="outline" className="text-amber-700 bg-amber-50 dark:bg-amber-950/30 text-xs">
+                <Pencil className="h-3 w-3 mr-1" />
+                Borrador — no visible al público
+              </Badge>
+            )}
+            {word.status === "PUBLISHED" && (
+              <Badge variant="outline" className="text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 text-xs">
+                <Eye className="h-3 w-3 mr-1" />
+                Publicada
+              </Badge>
+            )}
+            {word.status === "ARCHIVED" && (
+              <Badge variant="outline" className="text-gray-700 bg-gray-50 dark:bg-gray-950/30 text-xs">
+                <Archive className="h-3 w-3 mr-1" />
+                Archivada
+              </Badge>
+            )}
+          </div>
+
+          {/* Category badges */}
+          {categories.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {categories.map((cat) => (
+                <Badge key={cat} variant="secondary" className="text-xs gap-1">
+                  <Tag className="h-3 w-3" />
+                  {WORD_CATEGORIES.find((c) => c.value === cat)?.label || cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <Badge variant="outline" className="w-fit text-xs text-muted-foreground">
+              Categoría desconocida
+            </Badge>
+          )}
+
+          {/* Spanish title */}
+          <h3 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+            {word.spanish || "—"}
+          </h3>
+
+          {/* Nasa Yuwe translation */}
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-sm text-muted-foreground">Nasa Yuwe:</span>
+            <span className="text-xl font-semibold text-primary">
+              {word.nasaYuwe || "—"}
+            </span>
+          </div>
+
+          {/* Pronunciation */}
+          {word.pronunciation ? (
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
+              <Volume2 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Pronunciación fonética</p>
+                <p className="text-lg font-medium text-foreground tracking-wide">
+                  [{word.pronunciation}]
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+              <Volume2 className="h-5 w-5 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Pronunciación no disponible</p>
+            </div>
+          )}
+
+          {/* Audio player */}
+          {word.audioUrl && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-sm font-semibold">
+                <Volume2 className="h-4 w-4 text-primary" />
+                Audio
+              </Label>
+              <audio
+                controls
+                src={word.audioUrl}
+                className="w-full h-10"
+                preload="metadata"
+              />
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Cultural context */}
+          <div className="flex flex-col gap-2">
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              Contexto cultural
+            </h4>
+            {word.culturalContext ? (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {word.culturalContext}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                Sin información contextual disponible
+              </p>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cerrar vista previa
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EditWordModal (HU3.3.4)
+// Edit existing word with pre-populated data + change detection + audit log
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface WordForEdit {
+  id: string
+  spanish: string
+  nasaYuwe: string
+  pronunciation: string | null
+  audioUrl: string | null
+  culturalContext: string | null
+  category: string | null
+  status: string
+}
+
+function EditWordModal({
+  open,
+  onOpenChange,
+  word,
+  onSaved,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  word: WordForEdit | null
+  onSaved: () => void
+}) {
+  const [form, setForm] = useState({
+    spanish: "",
+    nasaYuwe: "",
+    pronunciation: "",
+    culturalContext: "",
+    category: "",
+    status: "DRAFT",
+  })
+  const [originalForm, setOriginalForm] = useState(form)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+
+  // Audio state (HU3.3.4: replace audio)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [audioFile, setAudioFile] = useState<File | null>(null)
+  const [audioPreview, setAudioPreview] = useState<string | null>(null)
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false)
+  const [audioError, setAudioError] = useState<string | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [audioChanged, setAudioChanged] = useState(false) // Track if audio was replaced
+  const [originalAudioUrl, setOriginalAudioUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Load word data when modal opens
+  useEffect(() => {
+    if (open && word) {
+      const formData = {
+        spanish: word.spanish,
+        nasaYuwe: word.nasaYuwe,
+        pronunciation: word.pronunciation || "",
+        culturalContext: word.culturalContext || "",
+        category: word.category || "",
+        status: word.status,
+      }
+      setForm(formData)
+      setOriginalForm(formData)
+      setAudioUrl(word.audioUrl)
+      setOriginalAudioUrl(word.audioUrl)
+      setAudioChanged(false)
+      setAudioFile(null)
+      setAudioPreview(null)
+      setAudioError(null)
+      setFieldErrors({})
+      setSubmitError(null)
+      setSuccessMessage(null)
+    }
+  }, [open, word])
+
+  const handleChange = useCallback(
+    (field: string, value: string) => {
+      setForm((prev) => ({ ...prev, [field]: value }))
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      })
+      setSubmitError(null)
+    },
+    []
+  )
+
+  // Audio validation & upload (same as CreateWordModal)
+  const validateAudioFile = useCallback((file: File): string | null => {
+    const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase()
+    const isValidMime = VALID_AUDIO_TYPES.includes(file.type)
+    const isValidExt = VALID_AUDIO_EXTENSIONS.includes(ext)
+    if (!isValidMime && !isValidExt) return "Formato no soportado. Usa MP3, WAV u OGG"
+    if (file.size > MAX_AUDIO_SIZE) return "El audio no puede superar los 10 MB"
+    return null
+  }, [])
+
+  const handleAudioSelect = useCallback(
+    async (file: File) => {
+      const error = validateAudioFile(file)
+      if (error) { setAudioError(error); return }
+      setAudioError(null)
+      setAudioFile(file)
+      if (audioPreview) URL.revokeObjectURL(audioPreview)
+      const previewUrl = URL.createObjectURL(file)
+      setAudioPreview(previewUrl)
+
+      setIsUploadingAudio(true)
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
+        const res = await fetch("/api/admin/upload-audio", { method: "POST", body: formData })
+        const data = await res.json()
+        if (res.ok) {
+          setAudioUrl(data.audioUrl)
+          setAudioChanged(true)
+          setAudioError(null)
+        } else {
+          setAudioError(data.message || "Error al subir el audio")
+          setAudioUrl(originalAudioUrl)
+        }
+      } catch {
+        setAudioError("Error de conexión al subir el audio")
+        setAudioUrl(originalAudioUrl)
+      } finally {
+        setIsUploadingAudio(false)
+      }
+    },
+    [validateAudioFile, audioPreview, originalAudioUrl]
+  )
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleAudioSelect(file)
+  }, [handleAudioSelect])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true) }, [])
+  const handleDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragOver(false) }, [])
+
+  const handleFileInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (file) handleAudioSelect(file)
+    },
+    [handleAudioSelect]
+  )
+
+  const removeAudio = useCallback(() => {
+    if (audioPreview) URL.revokeObjectURL(audioPreview)
+    setAudioFile(null)
+    setAudioUrl(originalAudioUrl)
+    setAudioPreview(null)
+    setAudioError(null)
+    setAudioChanged(false)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }, [audioPreview, originalAudioUrl])
+
+  // Validate form
+  const validateForm = useCallback((): boolean => {
+    const errors: Record<string, string> = {}
+    if (!form.spanish.trim()) errors.spanish = "El campo «Español» es obligatorio"
+    if (!form.nasaYuwe.trim()) errors.nasaYuwe = "El campo «Nasa Yuwe» es obligatorio"
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }, [form])
+
+  // Detect if form has changes
+  const hasChanges = useMemo(() => {
+    if (audioChanged) return true
+    return (
+      form.spanish !== originalForm.spanish ||
+      form.nasaYuwe !== originalForm.nasaYuwe ||
+      form.pronunciation !== originalForm.pronunciation ||
+      form.culturalContext !== originalForm.culturalContext ||
+      form.category !== originalForm.category ||
+      form.status !== originalForm.status
+    )
+  }, [form, originalForm, audioChanged])
+
+  // Submit update (HU3.3.4)
+  const handleSubmit = useCallback(async () => {
+    if (!validateForm() || !word) return
+
+    // HU3.3.4: No changes detected
+    if (!hasChanges) {
+      setSubmitError("No se detectaron cambios")
+      return
+    }
+
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      const payload: Record<string, unknown> = {
+        spanish: form.spanish.trim(),
+        nasaYuwe: form.nasaYuwe.trim(),
+        pronunciation: form.pronunciation.trim() || null,
+        culturalContext: form.culturalContext.trim() || null,
+        category: form.category.trim() || null,
+        status: form.status,
+        audioUrl: audioUrl || null,
+      }
+
+      const res = await fetch(`/api/admin/words/${word.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        // Delete old audio file if replaced
+        if (audioChanged && originalAudioUrl && data.previousAudioUrl) {
+          try {
+            await fetch("/api/admin/delete-audio", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ audioUrl: data.previousAudioUrl }),
+            })
+          } catch {
+            // Silently fail — old file deletion is best-effort
+          }
+        }
+
+        setSuccessMessage("Ficha actualizada correctamente")
+        setTimeout(() => {
+          setSuccessMessage(null)
+          onOpenChange(false)
+          onSaved()
+        }, 1500)
+      } else {
+        setSubmitError(data.error || data.message || "Error al actualizar la ficha")
+      }
+    } catch {
+      setSubmitError("Error de conexión al servidor")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }, [form, word, hasChanges, audioUrl, audioChanged, originalAudioUrl, validateForm, onOpenChange, onSaved])
+
+  const handleClose = useCallback(() => {
+    if (!isSubmitting) {
+      setFieldErrors({})
+      setSubmitError(null)
+      setSuccessMessage(null)
+      onOpenChange(false)
+    }
+  }, [isSubmitting, onOpenChange])
+
+  if (!word) return null
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5 text-primary" />
+            Editar ficha
+          </DialogTitle>
+          <DialogDescription>
+            Modifica los campos y guarda los cambios
+          </DialogDescription>
+        </DialogHeader>
+
+        {successMessage && (
+          <Card className="border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/20">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{successMessage}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="space-y-4 py-2">
+          {/* Spanish */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-spanish">Español <span className="text-destructive">*</span></Label>
+            <Input
+              id="edit-spanish"
+              placeholder="palabra en español"
+              value={form.spanish}
+              onChange={(e) => handleChange("spanish", e.target.value)}
+              aria-invalid={!!fieldErrors.spanish}
+              className={fieldErrors.spanish ? "border-destructive" : ""}
+            />
+            {fieldErrors.spanish && <p className="text-xs text-destructive">{fieldErrors.spanish}</p>}
+          </div>
+
+          {/* Nasa Yuwe */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-nasaYuwe">Nasa Yuwe <span className="text-destructive">*</span></Label>
+            <Input
+              id="edit-nasaYuwe"
+              placeholder="palabra en nasa yuwe"
+              value={form.nasaYuwe}
+              onChange={(e) => handleChange("nasaYuwe", e.target.value)}
+              aria-invalid={!!fieldErrors.nasaYuwe}
+              className={fieldErrors.nasaYuwe ? "border-destructive" : ""}
+            />
+            {fieldErrors.nasaYuwe && <p className="text-xs text-destructive">{fieldErrors.nasaYuwe}</p>}
+          </div>
+
+          {/* Pronunciation */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-pronunciation">Pronunciación fonética</Label>
+            <Input
+              id="edit-pronunciation"
+              placeholder="guía de pronunciación (ej. wah-lah)"
+              value={form.pronunciation}
+              onChange={(e) => handleChange("pronunciation", e.target.value)}
+            />
+          </div>
+
+          {/* Category */}
+          <div className="space-y-2">
+            <Label>Categoría gramatical</Label>
+            <Select value={form.category || "__none__"} onValueChange={(v) => handleChange("category", v === "__none__" ? "" : v)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar categoría..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Sin categoría</SelectItem>
+                {WORD_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status */}
+          <div className="space-y-2">
+            <Label>Estado</Label>
+            <Select value={form.status} onValueChange={(v) => handleChange("status", v)}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WORD_STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Cultural Context */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-culturalContext">Descripción contextual</Label>
+            <Textarea
+              id="edit-culturalContext"
+              placeholder="Significado cultural, uso tradicional, etc."
+              rows={3}
+              value={form.culturalContext}
+              onChange={(e) => handleChange("culturalContext", e.target.value)}
+            />
+          </div>
+
+          {/* Audio Section (HU3.3.4: replace audio) */}
+          <Separator />
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4 text-primary" />
+              Audio
+              {originalAudioUrl && !audioChanged && (
+                <Badge variant="secondary" className="text-[10px] ml-1">Archivo actual</Badge>
+              )}
+              {audioChanged && (
+                <Badge variant="outline" className="text-[10px] ml-1 text-amber-700 bg-amber-50">Reemplazado</Badge>
+              )}
+            </Label>
+
+            {/* Existing audio or new audio preview */}
+            {(audioUrl || audioFile) && (
+              <Card className="border-primary/20 bg-primary/[0.02]">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 shrink-0">
+                      <Volume2 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {audioFile ? audioFile.name : "Audio actual"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {audioFile ? `${(audioFile.size / 1024 / 1024).toFixed(2)} MB` : audioUrl?.split("/").pop()}
+                        {isUploadingAudio && " — Subiendo..."}
+                        {audioUrl && !isUploadingAudio && " — Listo"}
+                      </p>
+                    </div>
+                    {(audioChanged || originalAudioUrl) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={removeAudio}
+                        disabled={isUploadingAudio}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        title={audioChanged ? "Restaurar audio original" : "Quitar audio"}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {/* Audio playback */}
+                  {((audioPreview && !isUploadingAudio) || (audioUrl && !audioFile)) && (
+                    <audio
+                      controls
+                      src={audioPreview || audioUrl || undefined}
+                      className="mt-3 w-full h-8"
+                      preload="metadata"
+                    />
+                  )}
+                  {isUploadingAudio && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                      <span className="text-xs text-muted-foreground">Subiendo audio...</span>
+                    </div>
+                  )}
+                  {audioUrl && !isUploadingAudio && audioChanged && (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-xs text-emerald-600">Audio subido correctamente</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Drop zone for new audio */}
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={() => fileInputRef.current?.click()}
+              className={`
+                relative cursor-pointer rounded-lg border-2 border-dashed p-4 text-center transition-colors
+                ${isDragOver
+                  ? "border-primary bg-primary/5"
+                  : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30"
+                }
+              `}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".mp3,.wav,.ogg"
+                onChange={handleFileInputChange}
+                className="sr-only"
+              />
+              <Upload className="mx-auto h-6 w-6 text-muted-foreground/50" />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {audioUrl ? "Reemplazar audio" : "Subir audio"} — MP3, WAV, OGG (máx. 10 MB)
+              </p>
+            </div>
+
+            {audioError && (
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                <p className="text-xs text-destructive">{audioError}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Submit error / no changes message */}
+          {submitError && (
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{submitError}</p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+          <div className="flex gap-2 flex-wrap">
+            {/* Preview */}
+            <Button
+              variant="outline"
+              onClick={() => setPreviewOpen(true)}
+              disabled={isSubmitting || isUploadingAudio}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              Vista previa
+            </Button>
+            {/* Save changes */}
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || isUploadingAudio}
+              className="gap-2"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              {isSubmitting ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </div>
+
+          {/* Preview modal */}
+          <WordPreviewModal
+            open={previewOpen}
+            onOpenChange={setPreviewOpen}
+            word={{
+              spanish: form.spanish,
+              nasaYuwe: form.nasaYuwe,
+              pronunciation: form.pronunciation || null,
+              culturalContext: form.culturalContext || null,
+              category: form.category || null,
+              audioUrl: audioUrl || audioPreview || null,
+              status: form.status,
+            }}
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1179,6 +1893,219 @@ function FullAuditLogModal({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WordListModal (HU3.3.4) — Browse & edit words
+// ═══════════════════════════════════════════════════════════════════════════
+
+function WordListModal({
+  open,
+  onOpenChange,
+  onEditWord,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onEditWord: (word: WordForEdit) => void
+}) {
+  const [words, setWords] = useState<WordForEdit[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+
+  const fetchWords = useCallback(async (p: number, search?: string, status?: string) => {
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams({ page: String(p), pageSize: "15" })
+      if (search && search.trim()) params.set("search", search.trim())
+      if (status && status !== "all") params.set("status", status)
+      const res = await fetch(`/api/admin/words?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setWords(data.words)
+        setTotalPages(data.totalPages)
+        setTotal(data.total)
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      setPage(1)
+      fetchWords(1, searchQuery, statusFilter)
+    }
+  }, [open, fetchWords, searchQuery, statusFilter])
+
+  const handleSearch = useCallback(() => {
+    setPage(1)
+    fetchWords(1, searchQuery, statusFilter)
+  }, [fetchWords, searchQuery, statusFilter])
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage)
+    fetchWords(newPage, searchQuery, statusFilter)
+  }, [fetchWords, searchQuery, statusFilter])
+
+  const getStatusBadge = useCallback((status: string) => {
+    switch (status) {
+      case "PUBLISHED":
+        return <Badge variant="outline" className="text-[10px] text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30">Publicada</Badge>
+      case "DRAFT":
+        return <Badge variant="outline" className="text-[10px] text-amber-700 bg-amber-50 dark:bg-amber-950/30">Borrador</Badge>
+      case "ARCHIVED":
+        return <Badge variant="outline" className="text-[10px] text-gray-700 bg-gray-50 dark:bg-gray-950/30">Archivada</Badge>
+      default:
+        return <Badge variant="outline" className="text-[10px]">{status}</Badge>
+    }
+  }, [])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-primary" />
+            Gestión de fichas
+          </DialogTitle>
+          <DialogDescription>
+            {formatNumber(total)} palabras en el diccionario
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Search & filter row */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar palabra..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSearch() }}
+                  className="pl-9 h-9"
+                />
+              </div>
+              <Button variant="outline" size="sm" onClick={handleSearch} className="h-9 gap-1.5">
+                <Search className="h-3.5 w-3.5" />
+                Buscar
+              </Button>
+            </div>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); fetchWords(1, searchQuery, v) }}>
+              <SelectTrigger className="w-[140px] h-9 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="PUBLISHED">Publicadas</SelectItem>
+                <SelectItem value="DRAFT">Borradores</SelectItem>
+                <SelectItem value="ARCHIVED">Archivadas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Table */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 text-primary animate-spin" />
+              <span className="ml-2 text-sm text-muted-foreground">Cargando...</span>
+            </div>
+          ) : words.length > 0 ? (
+            <>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Español</TableHead>
+                      <TableHead>Nasa Yuwe</TableHead>
+                      <TableHead className="hidden sm:table-cell">Categoría</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="hidden md:table-cell">Audio</TableHead>
+                      <TableHead className="w-[80px]">Acción</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {words.map((w) => (
+                      <TableRow key={w.id}>
+                        <TableCell className="font-medium text-sm">{w.spanish}</TableCell>
+                        <TableCell className="text-sm text-primary">{w.nasaYuwe}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
+                          {w.category ? (WORD_CATEGORIES.find((c) => c.value === w.category)?.label || w.category) : "—"}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(w.status)}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {w.audioUrl ? (
+                            <Volume2 className="h-4 w-4 text-primary" />
+                          ) : (
+                            <VolumeX className="h-4 w-4 text-muted-foreground/30" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              onEditWord(w)
+                              onOpenChange(false)
+                            }}
+                            className="h-8 gap-1.5 text-xs"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Editar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    Página {page} de {totalPages} ({formatNumber(total)} total)
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => handlePageChange(page - 1)}
+                      className="h-7 text-xs"
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= totalPages}
+                      onClick={() => handlePageChange(page + 1)}
+                      className="h-7 text-xs"
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <BookOpen className="h-8 w-8 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground">No se encontraron palabras</p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Main AdminDashboard component
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1197,6 +2124,11 @@ export function AdminDashboard() {
   const [createWordOpen, setCreateWordOpen] = useState(false)
   const [importCorpusOpen, setImportCorpusOpen] = useState(false)
   const [fullAuditLogOpen, setFullAuditLogOpen] = useState(false)
+
+  // Word list + edit modal states (HU3.3.4)
+  const [wordListOpen, setWordListOpen] = useState(false)
+  const [editWordOpen, setEditWordOpen] = useState(false)
+  const [editingWord, setEditingWord] = useState<WordForEdit | null>(null)
 
   // Auto-refresh ref (HU3.5.6)
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -1373,6 +2305,14 @@ export function AdminDashboard() {
             >
               <Plus className="h-4 w-4" />
               Nueva ficha
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setWordListOpen(true)}
+              className="gap-2"
+            >
+              <BookOpen className="h-4 w-4" />
+              Gestionar fichas
             </Button>
             <Button
               variant="outline"
