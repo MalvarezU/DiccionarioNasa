@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react"
 import { Download, CheckCircle2, AlertCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -12,14 +12,58 @@ const BANNER_DISMISSED_KEY = "nasa-yuwe-banner-dismissed"
 type BannerState = "idle" | "downloading" | "complete" | "error"
 
 /**
- * Read dismissed flag from localStorage (safe for SSR).
+ * Hydration-safe "mounted" flag using useSyncExternalStore.
+ * Returns false during SSR, true on client after hydration.
  */
-function getInitialDismissed(): boolean {
-  if (typeof window === "undefined") return false
+const emptySubscribe = () => () => {}
+function useMounted(): boolean {
+  return useSyncExternalStore(emptySubscribe, () => true, () => false)
+}
+
+/**
+ * Read a boolean flag from localStorage, hydration-safe.
+ * Uses useSyncExternalStore with custom events for same-tab updates.
+ */
+function useLocalStorageFlag(key: string): boolean {
+  const subscribe = useCallback(
+    (callback: () => void) => {
+      // Cross-tab storage events
+      const onStorage = (e: StorageEvent) => {
+        if (e.key === key) callback()
+      }
+      window.addEventListener("storage", onStorage)
+      // Same-tab custom event (storage event doesn't fire for same-tab writes)
+      window.addEventListener(`ls:${key}`, callback)
+      return () => {
+        window.removeEventListener("storage", onStorage)
+        window.removeEventListener(`ls:${key}`, callback)
+      }
+    },
+    [key]
+  )
+
+  const getSnapshot = useCallback(() => {
+    try {
+      return localStorage.getItem(key) === "true"
+    } catch {
+      return false
+    }
+  }, [key])
+
+  const getServerSnapshot = useCallback(() => false, [])
+
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+}
+
+/**
+ * Write a boolean flag to localStorage and notify same-tab subscribers.
+ */
+function setLocalStorageFlag(key: string, value: boolean): void {
   try {
-    return localStorage.getItem(BANNER_DISMISSED_KEY) === "true"
+    localStorage.setItem(key, String(value))
+    window.dispatchEvent(new CustomEvent(`ls:${key}`))
   } catch {
-    return false
+    // localStorage not available
   }
 }
 
@@ -32,10 +76,10 @@ export function DownloadBanner() {
     startDownload,
   } = useLocalDB()
   const isOnline = useOnlineStatus()
+  const mounted = useMounted()
+  const dismissed = useLocalStorageFlag(BANNER_DISMISSED_KEY)
 
-  const [dismissed, setDismissed] = useState(getInitialDismissed)
-
-  // Derive banner state from hook values (no useEffect + setState needed)
+  // Derive banner state from hook values
   const bannerState: BannerState = useMemo(() => {
     if (isReady) return "complete"
     if (isDownloading) return "downloading"
@@ -43,7 +87,7 @@ export function DownloadBanner() {
     return "idle"
   }, [isReady, isDownloading, error])
 
-  // Derive visibility from state (no useEffect + setState needed)
+  // Derive visibility from state
   const isVisible = useMemo(() => {
     // Dismissed and not actively downloading → hidden
     if (dismissed && bannerState !== "downloading") return false
@@ -67,12 +111,7 @@ export function DownloadBanner() {
   }, [dismissed, bannerState, isOnline, isReady])
 
   const handleDismiss = useCallback(() => {
-    setDismissed(true)
-    try {
-      localStorage.setItem(BANNER_DISMISSED_KEY, "true")
-    } catch {
-      // localStorage not available
-    }
+    setLocalStorageFlag(BANNER_DISMISSED_KEY, true)
   }, [])
 
   const handleDownload = useCallback(() => {
@@ -92,6 +131,10 @@ export function DownloadBanner() {
       return () => clearTimeout(timer)
     }
   }, [bannerState, isVisible, handleDismiss])
+
+  // Wait for client mount before rendering to avoid hydration mismatch
+  // (localStorage, navigator.onLine, IndexedDB state differ between server and client)
+  if (!mounted) return null
 
   // Don't render anything if not visible
   if (!isVisible) return null

@@ -250,3 +250,24 @@ Work Log:
 Stage Summary:
 - HU1.3.1 + HU1.3.2 fully implemented
 - All lint checks pass
+---
+Task ID: 4
+Agent: Main
+Task: Fix hydration mismatch and complete F1.3 Offline First gaps
+
+Work Log:
+- Diagnosed hydration error: DownloadBanner rendered differently on server vs client (localStorage, navigator.onLine, IndexedDB state differ)
+- Refactored DownloadBanner: replaced useState+useEffect mount guard with useSyncExternalStore for hydration-safe "mounted" flag
+- Created useLocalStorageFlag hook using useSyncExternalStore for dismissed state (eliminates setState in effect)
+- Created setLocalStorageFlag helper with CustomEvent dispatch for same-tab updates
+- Updated WordDetailCard: offline audio message now context-aware ("Audio disponible solo en línea o guardando como favorita cuando tengas conexión" when offline, "Audio no almacenado — marca como favorito para descargar" when online)
+- Updated SearchBar: suggest word button disabled when offline with "Se necesita conexión para sugerir palabras" message
+- Updated SearchBar: offline banner in dropdown is context-aware (shows "descarga el diccionario para buscar sin internet" when local DB not ready)
+- Added localDBReady state tracking to SearchBar for context-aware offline messaging
+- All lint checks pass, dev server compiles without errors
+
+Stage Summary:
+- Hydration error fixed: DownloadBanner uses useSyncExternalStore for mounted + dismissed state (no setState in effects)
+- F1.3 HU1.3.2 completed: graceful audio fallback message when offline
+- F1.3 HU1.3.2 completed: suggest word disabled offline with helpful message
+- F1.3 HU1.3.2 completed: context-aware offline banner in search dropdown

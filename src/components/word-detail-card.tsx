@@ -394,7 +394,9 @@ export function WordDetailCard({
                       <div className="flex items-center gap-2">
                         <CloudOff className="h-4 w-4 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">
-                          Audio no almacenado — marca como favorito para descargar
+                          {!isOnline
+                            ? "Audio disponible solo en línea o guardando como favorita cuando tengas conexión"
+                            : "Audio no almacenado — marca como favorito para descargar"}
                         </span>
                       </div>
                     )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Loader2, Volume2, CloudOff, Cloud, Database } from "lucide-react";
+import { Search, Loader2, Volume2, CloudOff, Cloud, Database, WifiOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,20 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   const isHero = variant === "hero";
   const showDropdown = isOpen && debouncedQuery.length >= 2;
   const hasNoResults = showDropdown && !isLoading && results.length === 0;
+  const [localDBReady, setLocalDBReady] = useState<boolean | null>(null);
+
+  // Check local DB readiness on mount and when going offline
+  useEffect(() => {
+    const checkReady = async () => {
+      try {
+        const ready = await isLocalDBReady();
+        setLocalDBReady(ready);
+      } catch {
+        setLocalDBReady(false);
+      }
+    };
+    checkReady();
+  }, [isOnline]);
 
   // Fetch search results — uses local IndexedDB when offline, API when online
   useEffect(() => {
@@ -61,6 +75,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         // HU1.3.2: When offline, search from local IndexedDB
         if (!isOnline) {
           const localReady = await isLocalDBReady();
+          setLocalDBReady(localReady);
           if (localReady) {
             const localResults = await searchLocalWords(debouncedQuery, 50);
             setResults(localResults);
@@ -237,11 +252,13 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               isHero ? "mt-2 rounded-xl" : "mt-1"
             }`}
           >
-            {/* Offline banner */}
+            {/* Offline banner — context-aware for local DB readiness */}
             {!isOnline && (
               <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 dark:text-amber-400 dark:bg-amber-950/30 dark:border-amber-900 flex items-center gap-1.5">
                 <CloudOff className="h-3 w-3" />
-                Sin conexión — mostrando resultados locales
+                {localDBReady
+                  ? "Sin conexión — mostrando resultados locales"
+                  : "Sin conexión — descarga el diccionario para buscar sin internet"}
               </div>
             )}
 
@@ -261,6 +278,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                   variant="outline"
                   size="sm"
                   className="gap-1.5"
+                  disabled={!isOnline}
                   onClick={() => {
                     setSuggestOpen(true);
                     setIsOpen(false);
@@ -268,6 +286,12 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                 >
                   💡 Sugerir esta palabra
                 </Button>
+                {!isOnline && (
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 justify-center">
+                    <WifiOff className="h-3 w-3" />
+                    Se necesita conexión para sugerir palabras
+                  </p>
+                )}
               </div>
             ) : (
               <ul
