@@ -1,16 +1,19 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Play, Pause, RotateCcw, Loader2, VolumeX } from "lucide-react";
+import { Play, Pause, RotateCcw, Loader2, VolumeX, CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
 
 interface AudioPlayerProps {
   src: string | null;
   wordLabel: string;
+  /** Whether the audio is available in offline cache */
+  isCached?: boolean;
 }
 
-function AudioPlayerInner({ src, wordLabel }: { src: string; wordLabel: string }) {
+function AudioPlayerInner({ src, wordLabel, isCached }: { src: string; wordLabel: string; isCached?: boolean }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -157,15 +160,23 @@ function AudioPlayerInner({ src, wordLabel }: { src: string; wordLabel: string }
         </span>
       </div>
 
-      {/* Label */}
-      <p className="text-xs text-muted-foreground pl-1">
-        Pronunciación en Nasa Yuwe: <span className="font-medium text-foreground">{wordLabel}</span>
-      </p>
+      {/* Label + Offline indicator */}
+      <div className="flex items-center gap-2 pl-1">
+        <p className="text-xs text-muted-foreground">
+          Pronunciación en Nasa Yuwe: <span className="font-medium text-foreground">{wordLabel}</span>
+        </p>
+        {isCached && (
+          <Badge variant="secondary" className="h-5 gap-1 text-[10px] px-1.5 bg-primary/10 text-primary border-primary/20">
+            <CloudOff className="h-3 w-3" />
+            Offline
+          </Badge>
+        )}
+      </div>
     </div>
   );
 }
 
-export function AudioPlayer({ src, wordLabel }: AudioPlayerProps) {
+export function AudioPlayer({ src, wordLabel, isCached }: AudioPlayerProps) {
   // No audio available
   if (!src) {
     return (
@@ -177,5 +188,5 @@ export function AudioPlayer({ src, wordLabel }: AudioPlayerProps) {
   }
 
   // Key={src} ensures inner component remounts and resets all state when src changes
-  return <AudioPlayerInner key={src} src={src} wordLabel={wordLabel} />;
+  return <AudioPlayerInner key={src} src={src} wordLabel={wordLabel} isCached={isCached} />;
 }

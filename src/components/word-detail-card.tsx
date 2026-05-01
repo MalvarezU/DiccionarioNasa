@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import {
   Sheet,
@@ -16,13 +16,19 @@ import {
   MessageCircle,
   Tag,
   LogIn,
+  Download,
+  CloudOff,
+  HardDrive,
+  CheckCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import { AudioPlayer } from "@/components/audio-player";
 import { AuthModal } from "@/components/auth-modal";
 import { useToast } from "@/hooks/use-toast";
+import { useOfflineAudio } from "@/hooks/use-offline-audio";
 
 interface WordDetail {
   id: string;
@@ -86,7 +92,22 @@ export function WordDetailCard({
   const { data: session, status } = useSession();
   const { toast } = useToast();
 
+  // Track whether the favorite change was triggered by user action
+  // so we can auto-download/remove offline audio
+  const pendingOfflineAction = useRef<"download" | "remove" | null>(null);
+
   const isAuthenticated = !!session?.user;
+
+  // Use offline audio hook — manages cache state for this word's audio
+  const {
+    audioSrc,
+    isCached,
+    isDownloading,
+    downloadProgress,
+    downloadForOffline,
+    removeFromCache,
+    storageInfo,
+  } = useOfflineAudio(word?.audioUrl ?? null);
 
   // Fetch word details when opened
   useEffect(() => {
@@ -139,6 +160,38 @@ export function WordDetailCard({
     checkFavorite();
   }, [wordId, open, isAuthenticated]);
 
+  // Handle auto-download/remove of offline audio when favorite status changes
+  useEffect(() => {
+    const action = pendingOfflineAction.current;
+    if (!action) return;
+    pendingOfflineAction.current = null;
+
+    if (action === "download" && word?.audioUrl) {
+      downloadForOffline().then(() => {
+        toast({
+          title: "Audio descargado",
+          description: "Audio descargado para uso sin conexión",
+        });
+
+        // Warn if storage is running low
+        if (storageInfo && storageInfo.percentUsed > 80) {
+          toast({
+            title: "Almacenamiento limitado",
+            description: `Has usado ${storageInfo.percentUsed.toFixed(0)}% del almacenamiento disponible. Considera eliminar audios antiguos.`,
+            variant: "destructive",
+          });
+        }
+      });
+    } else if (action === "remove" && isCached) {
+      removeFromCache().then(() => {
+        toast({
+          title: "Audio eliminado",
+          description: "Audio eliminado del almacenamiento offline",
+        });
+      });
+    }
+  }, [isFavorite, word?.audioUrl, isCached, downloadForOffline, removeFromCache, toast, storageInfo]);
+
   const handleToggleFavorite = useCallback(async () => {
     // HU1.2.8 — If not authenticated, show login modal
     if (!isAuthenticated) {
@@ -164,6 +217,13 @@ export function WordDetailCard({
       if (response.ok) {
         const data = await response.json();
         setIsFavorite(data.isFavorite);
+
+        // Set pending offline action so the useEffect triggers
+        if (data.isFavorite) {
+          pendingOfflineAction.current = "download";
+        } else {
+          pendingOfflineAction.current = "remove";
+        }
 
         if (data.isFavorite) {
           toast({
@@ -262,11 +322,53 @@ export function WordDetailCard({
                   </div>
                 )}
 
-                {/* HU1.2.3 — Audio player */}
+                {/* HU1.2.3 — Audio player (uses offline audio src if cached) */}
                 <AudioPlayer
-                  src={word.audioUrl}
+                  src={audioSrc}
                   wordLabel={word.nasaYuwe}
+                  isCached={isCached}
                 />
+
+                {/* HU1.2.4 — Offline audio cache status */}
+                {word.audioUrl && (
+                  <div className="flex flex-col gap-2 p-3 rounded-lg bg-muted/30 border border-border/30">
+                    {isDownloading ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Download className="h-4 w-4 text-primary animate-bounce" />
+                          <span className="text-xs text-muted-foreground">
+                            Descargando audio para uso sin conexión...
+                          </span>
+                        </div>
+                        <Progress value={downloadProgress} className="h-1.5" />
+                      </>
+                    ) : isCached ? (
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                        <span className="text-xs text-muted-foreground">
+                          Audio disponible sin conexión
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <CloudOff className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          Audio no almacenado — marca como favorito para descargar
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Storage warning when > 50% used */}
+                    {storageInfo && storageInfo.percentUsed > 50 && (
+                      <div className="flex items-center gap-2 mt-1 pt-1 border-t border-border/30">
+                        <HardDrive className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className={`text-[10px] ${storageInfo.percentUsed > 80 ? "text-destructive" : "text-muted-foreground"}`}>
+                          Almacenamiento: {storageInfo.usedMB.toFixed(1)} MB / {storageInfo.quotaMB.toFixed(0)} MB ({storageInfo.percentUsed.toFixed(0)}%)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <Separator />
 
@@ -324,7 +426,7 @@ export function WordDetailCard({
                     variant={isFavorite ? "default" : "outline"}
                     className="w-full gap-2"
                     onClick={handleToggleFavorite}
-                    disabled={isTogglingFav}
+                    disabled={isTogglingFav || isDownloading}
                   >
                     {isTogglingFav ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -348,13 +450,6 @@ export function WordDetailCard({
                       <LogIn className="h-3 w-3" />
                       Inicia sesión para guardar favoritos
                     </button>
-                  )}
-
-                  {/* Offline download notice */}
-                  {isFavorite && word.audioUrl && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      💾 El audio se descargará para uso sin conexión
-                    </p>
                   )}
                 </div>
               </div>

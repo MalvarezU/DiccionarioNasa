@@ -144,3 +144,27 @@ Stage Summary:
 - HU1.2.8: Non-auth users see AuthModal with login/register on favorite click ✅
 - NextAuth.js configured with JWT strategy
 - Demo user: demo@nasayuwe.com / demo123
+
+---
+Task ID: 1
+Agent: full-stack-developer
+Task: Implement HU1.2.4 — Auto-download favorite audio for offline use
+
+Work Log:
+- Updated prisma/seed.ts to assign audioUrl to 9 words matching available audio files (wala.wav→agua, nasa.wav→persona, te.wav→fuego, mheka.wav→sol, ya.wav→luna, cxaha.wav→tierra, kxawa.wav→montaña, kasawa.wav→corazón, nasa-yuwe.wav→lengua)
+- Ran `bun run db:seed` to re-seed the database with updated audioUrl values; verified 9 words now have audio URLs
+- Created /src/lib/offline-audio-cache.ts — Cache API service with functions: cacheAudio, isAudioCached, getCachedAudioBlobUrl, removeCachedAudio, getCacheStorageUsage; uses 'nasa-yuwe-audio-v1' cache name; handles SSR and old browsers gracefully
+- Created /src/hooks/use-offline-audio.ts — React hook returning audioSrc (blob URL or original), isCached, isDownloading, downloadProgress, downloadForOffline, removeFromCache, storageInfo; manages blob URL lifecycle with proper cleanup on unmount
+- Updated /src/components/audio-player.tsx — Added optional isCached prop; shows CloudOff badge with "Offline" text next to word label when audio is available offline
+- Updated /src/components/word-detail-card.tsx — Integrated useOfflineAudio hook; auto-downloads audio when favoriting (with toast "Audio descargado para uso sin conexión"); auto-removes from cache when unfavoriting (with toast "Audio eliminado del almacenamiento offline"); shows storage warning if >80% used; replaced static emoji message with dynamic offline status indicator (downloading progress bar / cached checkmark / not-cached cloud-off); passes isCached and audioSrc to AudioPlayer; shows storage info when >50% used
+- Ran `bun run lint` — passes cleanly with no errors
+- Verified dev server log — no compilation errors
+
+Stage Summary:
+- HU1.2.4 fully implemented: favorite audio auto-downloads for offline use
+- 9 words now have audioUrl assigned in database matching actual audio files in /public/audio/
+- Offline audio cache service uses browser Cache API ('nasa-yuwe-audio-v1') with blob URL playback
+- AudioPlayer shows "Offline" badge when audio is cached
+- WordDetailCard shows dynamic cache status: downloading (progress bar), cached (checkmark), not cached (cloud-off icon)
+- Storage warnings appear at >50% (info) and >80% (destructive) usage thresholds
+- All lint checks pass, dev server compiles without errors

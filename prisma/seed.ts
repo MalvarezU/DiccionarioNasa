@@ -32,7 +32,7 @@ const words: WordData[] = [
     pronunciation: 'wah-lah',
     culturalContext: 'El agua es sagrada para el pueblo nasa. Los ríos y fuentes son considerados seres vivos que protegen la comunidad.',
     category: 'sustantivo',
-    audioUrl: null,
+    audioUrl: '/audio/wala.wav',
     examples: JSON.stringify([
       { spanish: 'El agua está fría', nasaYuwe: 'Wãla pxika te' },
       { spanish: 'Quiero agua', nasaYuwe: 'Wãla kãwẽ' },
@@ -44,7 +44,7 @@ const words: WordData[] = [
     pronunciation: 'meh-kah',
     culturalContext: 'El sol es una deidad principal en la cosmogonía nasa. Mheka guía los ciclos agrícolas y marca el tiempo ritual.',
     category: 'sustantivo',
-    audioUrl: null,
+    audioUrl: '/audio/mheka.wav',
     examples: JSON.stringify([
       { spanish: 'El sol brilla', nasaYuwe: 'Mheka mhxãte' },
       { spanish: 'El sol sale temprano', nasaYuwe: 'Mheka peyate wejhx' },
@@ -56,7 +56,7 @@ const words: WordData[] = [
     pronunciation: 'yah',
     culturalContext: 'La luna rige los ciclos de siembra y cosecha. Las fases lunares determinan las actividades agrícolas y ceremoniales.',
     category: 'sustantivo',
-    audioUrl: null,
+    audioUrl: '/audio/ya.wav',
     examples: JSON.stringify([
       { spanish: 'La luna está llena', nasaYuwe: 'Yã thẽ' },
       { spanish: 'La luna nueva', nasaYuwe: 'Yã mẽ' },
@@ -68,7 +68,7 @@ const words: WordData[] = [
     pronunciation: 'kshah-hah',
     culturalContext: 'La tierra es la madre de todo. El territorio nasa es sagrado y su defensa es el principio fundamental de la comunidad.',
     category: 'sustantivo',
-    audioUrl: null,
+    audioUrl: '/audio/cxaha.wav',
     examples: JSON.stringify([
       { spanish: 'La tierra es nuestra', nasaYuwe: 'Cxãhã nasa we' },
       { spanish: 'Caminar sobre la tierra', nasaYuwe: 'Cxãhã theg' },
@@ -80,7 +80,7 @@ const words: WordData[] = [
     pronunciation: 'teh',
     culturalContext: 'El fuego es un elemento purificador en las ceremonias nasa. El tulpá (fogón) es el corazón espiritual del hogar.',
     category: 'sustantivo',
-    audioUrl: null,
+    audioUrl: '/audio/te.wav',
     examples: JSON.stringify([
       { spanish: 'El fuego quema', nasaYuwe: 'Te pxika' },
       { spanish: 'Encender el fuego', nasaYuwe: 'Te yãte' },
@@ -92,7 +92,7 @@ const words: WordData[] = [
     pronunciation: 'kshah-wah',
     culturalContext: 'Las montañas son los guardianes del territorio nasa. Cada cerro tiene un espíritu protector llamado "dueño del cerro".',
     category: 'sustantivo',
-    audioUrl: null,
+    audioUrl: '/audio/kxawa.wav',
     examples: JSON.stringify([
       { spanish: 'La montaña es alta', nasaYuwe: 'Kxãwã thẽ' },
       { spanish: 'Subir la montaña', nasaYuwe: 'Kxãwã theg' },
@@ -141,7 +141,7 @@ const words: WordData[] = [
     pronunciation: 'nah-sah',
     culturalContext: 'Nasa significa "ser humano" o "gente". Es el nombre que el pueblo se da a sí mismo, refiriéndose a los descendientes del gran cacique.',
     category: 'sustantivo',
-    audioUrl: null,
+    audioUrl: '/audio/nasa.wav',
     examples: JSON.stringify([
       { spanish: 'La persona es buena', nasaYuwe: 'Nasa mẽhẽ' },
       { spanish: 'Muchas personas', nasaYuwe: 'Nasa thẽ' },
@@ -242,7 +242,7 @@ const words: WordData[] = [
     pronunciation: 'kah-sah-wah',
     culturalContext: 'El corazón es el centro del pensamiento y la emoción en la cosmovisión nasa, no solo un órgano físico.',
     category: 'sustantivo',
-    audioUrl: null,
+    audioUrl: '/audio/kasawa.wav',
     examples: JSON.stringify([
       { spanish: 'El corazón late', nasaYuwe: 'Kãsãwã theg' },
       { spanish: 'Buen corazón', nasaYuwe: 'Kãsãwã mẽhẽ' },
@@ -771,7 +771,7 @@ const words: WordData[] = [
     pronunciation: 'nah-sah yoo-weh',
     culturalContext: 'Nasa yuwe significa "lengua del pueblo". Es la lengua materna del pueblo nasa y está en peligro de extinción. Su preservación es vital para la identidad cultural.',
     category: 'sustantivo',
-    audioUrl: null,
+    audioUrl: '/audio/nasa-yuwe.wav',
     examples: JSON.stringify([
       { spanish: 'Hablar la lengua nasa', nasaYuwe: 'Nasa yuwe yãte' },
       { spanish: 'La lengua es nuestra', nasaYuwe: 'Nasa yuwe nasa we' },
