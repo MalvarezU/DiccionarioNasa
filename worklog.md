@@ -603,3 +603,72 @@ Stage Summary:
 - HU3.5.6 fully implemented: auto-refresh every 5 min (silent), manual "Actualizar" button, last refresh timestamp, silent error handling on auto-refresh
 - Files created: src/app/api/admin/words/route.ts, src/app/api/admin/import/route.ts, src/app/api/admin/audit-logs/route.ts
 - Files modified: src/components/admin-dashboard.tsx (added 3 modal components + quick actions section + auto-refresh)
+
+---
+Task ID: 13
+Agent: Main
+Task: HU3.3.1 + HU3.3.2 — Gestión de Fichas de Palabras (CRUD) — Create form + Audio upload
+
+Work Log:
+- Enhanced CreateWordModal in admin-dashboard.tsx for HU3.3.1:
+  - Replaced generic "Crear ficha" button with explicit "Guardar como borrador" (Pencil icon, secondary) and "Guardar y publicar" (Eye icon, primary) buttons
+  - Added per-field validation: fieldErrors state object with inline error messages below each required field
+  - Required fields marked with red asterisk (*): Español, Nasa Yuwe
+  - Red border on invalid fields (className conditional with border-destructive)
+  - aria-invalid attribute for accessibility
+  - validateForm() checks each required field and returns specific error messages
+  - Changed label "Contexto cultural" → "Descripción contextual" per HU wording
+  - Changed label "Pronunciación" → "Pronunciación fonética" per HU wording
+  - Changed label "Categoría" → "Categoría gramatical" per HU wording
+  - Removed status selector from form — status now determined by which submit button is clicked
+  - Added success message card (emerald, CheckCircle2) shown for 1.5s before closing: "Ficha guardada como borrador" / "Ficha guardada y publicada"
+  - AlertTriangle icon for submit errors
+
+- Updated getResponsible() to return "admin (MVP)" for HU3.3.1 audit requirement
+  - Previously returned "admin", now returns "admin (MVP)" for both null and non-null userId
+
+- Updated POST /api/admin/words audit log:
+  - Added category and audioUrl to changes JSON
+  - Added "responsable": "admin (MVP)" in changes JSON
+  - Comment updated to reference HU3.3.1
+
+- Created POST /api/admin/upload-audio endpoint for HU3.3.2:
+  - Accepts FormData with "file" field
+  - Validates file format: MP3 (audio/mpeg), WAV (audio/wav, audio/wave, audio/x-wav), OGG (audio/ogg, audio/vorbis)
+  - Validates file extension: .mp3, .wav, .ogg
+  - Returns 400 with "Formato no soportado. Usa MP3, WAV u OGG" for invalid formats
+  - Validates file size: max 10 MB (10 * 1024 * 1024 bytes)
+  - Returns 400 with "El audio no puede superar los 10 MB" for oversized files
+  - Generates unique filename with timestamp prefix to avoid collisions
+  - Creates /public/audio/ directory if not exists (mkdir recursive)
+  - Saves file to /public/audio/{timestamp}-{sanitized-name}
+  - Returns { audioUrl, fileName, size, message: "Audio subido correctamente" }
+
+- Added audio upload section to CreateWordModal (HU3.3.2):
+  - Drag-and-drop zone with dashed border, Upload icon, "Arrastra un archivo aquí o selecciona" text
+  - Hidden file input (.mp3, .wav, .ogg) triggered by click on drop zone
+  - Client-side validation: format check (VALID_AUDIO_TYPES + VALID_AUDIO_EXTENSIONS) and size check (MAX_AUDIO_SIZE = 10 MB)
+  - Immediate upload on file selection (not deferred to form submit)
+  - Audio preview card: shows file name, size, play/pause audio element, "Audio subido correctamente" success message
+  - Remove audio button (X icon) clears audio state
+  - Loading state with "Subiendo audio..." spinner during upload
+  - Audio error display with AlertTriangle icon
+  - Separator before audio section for visual clarity
+  - Volume2 icon + "Audio" label
+
+- Verified all acceptance criteria:
+  - ✅ Form opens with all fields (español, Nasa Yuwe, pronunciación fonética, descripción contextual, categoría gramatical dropdown)
+  - ✅ "Guardar como borrador" saves as DRAFT with success message
+  - ✅ Missing required fields shows specific error per field
+  - ✅ Audit log entry created with "admin (MVP)" as responsable
+  - ✅ Audio upload accepts .mp3, .wav, .ogg
+  - ✅ Valid file uploads successfully with "Audio subido correctamente"
+  - ✅ Files >10MB rejected with "El audio no puede superar los 10 MB"
+  - ✅ Unsupported formats rejected with "Formato no soportado. Usa MP3, WAV u OGG"
+  - ✅ Audio linked to word via audioUrl field
+
+Stage Summary:
+- HU3.3.1 fully implemented: complete word creation form with per-field validation, "Guardar como borrador" + "Guardar y publicar" buttons, success message, audit log with "admin (MVP)"
+- HU3.3.2 fully implemented: audio upload with drag-and-drop, format validation (MP3/WAV/OGG), size validation (10MB max), immediate upload, preview playback, error messages
+- Files created: src/app/api/admin/upload-audio/route.ts
+- Files modified: src/components/admin-dashboard.tsx (CreateWordModal enhanced), src/app/api/admin/words/route.ts (audit log updated)

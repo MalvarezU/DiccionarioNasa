@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       },
     })
 
-    // Log the action in audit log
+    // Log the action in audit log (HU3.3.1: "admin (MVP)" as responsable)
     await db.auditLog.create({
       data: {
         action: "CREATE",
@@ -52,9 +52,12 @@ export async function POST(request: Request) {
         changes: JSON.stringify({
           spanish: word.spanish,
           nasaYuwe: word.nasaYuwe,
+          category: word.category,
           status: word.status,
+          audioUrl: word.audioUrl || null,
+          responsable: "admin (MVP)",
         }),
-        userId: null, // MVP: no auth
+        userId: null, // MVP: no auth — getResponsible() returns "admin (MVP)"
         wordId: word.id,
       },
     })

@@ -174,8 +174,8 @@ function getEntityLabel(entity: string): string {
 }
 
 function getResponsible(userId: string | null): string {
-  if (!userId) return "admin"
-  return "admin"
+  // HU3.3.1: sin usuario autenticado, se registra "admin (MVP)"
+  return "admin (MVP)"
 }
 
 // ─── Categories for word creation ───────────────────────────────────────────
@@ -200,8 +200,12 @@ const WORD_STATUSES = [
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CreateWordModal (HU3.5.5 → HU3.3.1)
+// CreateWordModal (HU3.3.1 + HU3.3.2)
 // ═══════════════════════════════════════════════════════════════════════════
+
+const VALID_AUDIO_TYPES = ["audio/mpeg", "audio/wav", "audio/wave", "audio/x-wav", "audio/ogg", "audio/vorbis"]
+const VALID_AUDIO_EXTENSIONS = [".mp3", ".wav", ".ogg"]
+const MAX_AUDIO_SIZE = 10 * 1024 * 1024 // 10 MB
 
 function CreateWordModal({
   open,
@@ -221,61 +225,233 @@ function CreateWordModal({
     status: "DRAFT",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  // Audio upload state (HU3.3.2)
+  const [audioFile, setAudioFile] = useState<File | null>(null)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [audioPreview, setAudioPreview] = useState<string | null>(null)
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false)
+  const [audioError, setAudioError] = useState<string | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleChange = useCallback(
     (field: string, value: string) => {
       setForm((prev) => ({ ...prev, [field]: value }))
+      // Clear field-specific error on change
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      })
       setSubmitError(null)
     },
     []
   )
 
-  const handleSubmit = useCallback(async () => {
-    if (!form.spanish.trim() || !form.nasaYuwe.trim()) {
-      setSubmitError("Los campos «Español» y «Nasa Yuwe» son obligatorios")
-      return
+  // ─── Audio validation & upload (HU3.3.2) ───────────────────────────────
+
+  const validateAudioFile = useCallback((file: File): string | null => {
+    const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase()
+    const isValidMime = VALID_AUDIO_TYPES.includes(file.type)
+    const isValidExt = VALID_AUDIO_EXTENSIONS.includes(ext)
+
+    if (!isValidMime && !isValidExt) {
+      return "Formato no soportado. Usa MP3, WAV u OGG"
     }
 
-    setIsSubmitting(true)
-    setSubmitError(null)
+    if (file.size > MAX_AUDIO_SIZE) {
+      return "El audio no puede superar los 10 MB"
+    }
 
-    try {
-      const res = await fetch("/api/admin/words", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      })
+    return null
+  }, [])
 
-      if (res.ok) {
-        // Reset form and close
-        setForm({
-          spanish: "",
-          nasaYuwe: "",
-          pronunciation: "",
-          culturalContext: "",
-          category: "",
-          status: "DRAFT",
-        })
-        onOpenChange(false)
-        onCreated()
-      } else {
-        const data = await res.json()
-        setSubmitError(data.message || "Error al crear la ficha")
+  const handleAudioSelect = useCallback(
+    async (file: File) => {
+      const error = validateAudioFile(file)
+      if (error) {
+        setAudioError(error)
+        return
       }
-    } catch {
-      setSubmitError("Error de conexión al servidor")
-    } finally {
-      setIsSubmitting(false)
+
+      setAudioError(null)
+      setAudioFile(file)
+
+      // Create preview URL
+      if (audioPreview) {
+        URL.revokeObjectURL(audioPreview)
+      }
+      const previewUrl = URL.createObjectURL(file)
+      setAudioPreview(previewUrl)
+
+      // Upload immediately
+      setIsUploadingAudio(true)
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        const res = await fetch("/api/admin/upload-audio", {
+          method: "POST",
+          body: formData,
+        })
+
+        const data = await res.json()
+        if (res.ok) {
+          setAudioUrl(data.audioUrl)
+          setAudioError(null)
+        } else {
+          setAudioError(data.message || "Error al subir el audio")
+          setAudioUrl(null)
+        }
+      } catch {
+        setAudioError("Error de conexión al subir el audio")
+        setAudioUrl(null)
+      } finally {
+        setIsUploadingAudio(false)
+      }
+    },
+    [validateAudioFile, audioPreview]
+  )
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      setIsDragOver(false)
+      const file = e.dataTransfer.files[0]
+      if (file) {
+        handleAudioSelect(file)
+      }
+    },
+    [handleAudioSelect]
+  )
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+  }, [])
+
+  const handleFileInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (file) {
+        handleAudioSelect(file)
+      }
+    },
+    [handleAudioSelect]
+  )
+
+  const removeAudio = useCallback(() => {
+    if (audioPreview) {
+      URL.revokeObjectURL(audioPreview)
     }
-  }, [form, onOpenChange, onCreated])
+    setAudioFile(null)
+    setAudioUrl(null)
+    setAudioPreview(null)
+    setAudioError(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }, [audioPreview])
+
+  // ─── Form validation (HU3.3.1) ───────────────────────────────────────
+
+  const validateForm = useCallback((): boolean => {
+    const errors: Record<string, string> = {}
+
+    if (!form.spanish.trim()) {
+      errors.spanish = "El campo «Español» es obligatorio"
+    }
+    if (!form.nasaYuwe.trim()) {
+      errors.nasaYuwe = "El campo «Nasa Yuwe» es obligatorio"
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }, [form])
+
+  // ─── Submit (HU3.3.1 + HU3.3.2) ──────────────────────────────────────
+
+  const handleSubmit = useCallback(
+    async (targetStatus: "DRAFT" | "PUBLISHED") => {
+      if (!validateForm()) return
+
+      setIsSubmitting(true)
+      setSubmitError(null)
+
+      try {
+        const payload = {
+          ...form,
+          status: targetStatus,
+          audioUrl: audioUrl || undefined,
+        }
+
+        const res = await fetch("/api/admin/words", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+
+        if (res.ok) {
+          // Reset form and close
+          setForm({
+            spanish: "",
+            nasaYuwe: "",
+            pronunciation: "",
+            culturalContext: "",
+            category: "",
+            status: "DRAFT",
+          })
+          removeAudio()
+          setSuccessMessage(
+            targetStatus === "DRAFT"
+              ? "Ficha guardada como borrador"
+              : "Ficha guardada y publicada"
+          )
+          // Show success briefly then close
+          setTimeout(() => {
+            setSuccessMessage(null)
+            onOpenChange(false)
+            onCreated()
+          }, 1500)
+        } else {
+          const data = await res.json()
+          setSubmitError(data.message || "Error al crear la ficha")
+        }
+      } catch {
+        setSubmitError("Error de conexión al servidor")
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [form, audioUrl, validateForm, removeAudio, onOpenChange, onCreated]
+  )
 
   const handleClose = useCallback(() => {
     if (!isSubmitting) {
+      setFieldErrors({})
       setSubmitError(null)
+      setSuccessMessage(null)
+      removeAudio()
+      setForm({
+        spanish: "",
+        nasaYuwe: "",
+        pronunciation: "",
+        culturalContext: "",
+        category: "",
+        status: "DRAFT",
+      })
       onOpenChange(false)
     }
-  }, [isSubmitting, onOpenChange])
+  }, [isSubmitting, onOpenChange, removeAudio])
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -290,32 +466,60 @@ function CreateWordModal({
           </DialogDescription>
         </DialogHeader>
 
+        {/* Success message (HU3.3.1) */}
+        {successMessage && (
+          <Card className="border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/20">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                  {successMessage}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-4 py-2">
           {/* Spanish */}
           <div className="space-y-2">
-            <Label htmlFor="spanish">Español *</Label>
+            <Label htmlFor="spanish">
+              Español <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="spanish"
               placeholder="palabra en español"
               value={form.spanish}
               onChange={(e) => handleChange("spanish", e.target.value)}
+              aria-invalid={!!fieldErrors.spanish}
+              className={fieldErrors.spanish ? "border-destructive" : ""}
             />
+            {fieldErrors.spanish && (
+              <p className="text-xs text-destructive">{fieldErrors.spanish}</p>
+            )}
           </div>
 
           {/* Nasa Yuwe */}
           <div className="space-y-2">
-            <Label htmlFor="nasaYuwe">Nasa Yuwe *</Label>
+            <Label htmlFor="nasaYuwe">
+              Nasa Yuwe <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="nasaYuwe"
               placeholder="palabra en nasa yuwe"
               value={form.nasaYuwe}
               onChange={(e) => handleChange("nasaYuwe", e.target.value)}
+              aria-invalid={!!fieldErrors.nasaYuwe}
+              className={fieldErrors.nasaYuwe ? "border-destructive" : ""}
             />
+            {fieldErrors.nasaYuwe && (
+              <p className="text-xs text-destructive">{fieldErrors.nasaYuwe}</p>
+            )}
           </div>
 
           {/* Pronunciation */}
           <div className="space-y-2">
-            <Label htmlFor="pronunciation">Pronunciación</Label>
+            <Label htmlFor="pronunciation">Pronunciación fonética</Label>
             <Input
               id="pronunciation"
               placeholder="guía de pronunciación (ej. wah-lah)"
@@ -324,64 +528,149 @@ function CreateWordModal({
             />
           </div>
 
-          {/* Category + Status row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Categoría</Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) => handleChange("category", v)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Seleccionar..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {WORD_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Estado</Label>
-              <Select
-                value={form.status}
-                onValueChange={(v) => handleChange("status", v)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {WORD_STATUSES.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Category */}
+          <div className="space-y-2">
+            <Label>Categoría gramatical</Label>
+            <Select
+              value={form.category}
+              onValueChange={(v) => handleChange("category", v)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar categoría..." />
+              </SelectTrigger>
+              <SelectContent>
+                {WORD_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Cultural Context */}
           <div className="space-y-2">
-            <Label htmlFor="culturalContext">Contexto cultural</Label>
+            <Label htmlFor="culturalContext">Descripción contextual</Label>
             <Textarea
               id="culturalContext"
-              placeholder="Significado cultural, uso tradicional, etc."
+              placeholder="Significado cultural, uso tradicional, contexto de uso, etc."
               rows={3}
               value={form.culturalContext}
               onChange={(e) => handleChange("culturalContext", e.target.value)}
             />
           </div>
 
+          {/* ─── Audio Section (HU3.3.2) ──────────────────────────────── */}
+          <Separator />
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4 text-primary" />
+              Audio
+            </Label>
+
+            {/* Drop zone */}
+            {!audioFile && !audioUrl && (
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+                className={`
+                  relative cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors
+                  ${isDragOver
+                    ? "border-primary bg-primary/5"
+                    : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30"
+                  }
+                `}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".mp3,.wav,.ogg"
+                  onChange={handleFileInputChange}
+                  className="sr-only"
+                />
+                <Upload className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Arrastra un archivo aquí o <span className="text-primary underline">selecciona</span>
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground/60">
+                  MP3, WAV u OGG — Máximo 10 MB
+                </p>
+              </div>
+            )}
+
+            {/* Audio uploaded — preview */}
+            {audioFile && (
+              <Card className="border-primary/20 bg-primary/[0.02]">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 shrink-0">
+                      <Volume2 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {audioFile.name}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {(audioFile.size / 1024 / 1024).toFixed(2)} MB
+                        {isUploadingAudio && " — Subiendo..."}
+                        {audioUrl && !isUploadingAudio && " — Subido"}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={removeAudio}
+                      disabled={isUploadingAudio}
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {audioPreview && !isUploadingAudio && (
+                    <audio
+                      controls
+                      src={audioPreview}
+                      className="mt-3 w-full h-8"
+                      preload="metadata"
+                    />
+                  )}
+                  {isUploadingAudio && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                      <span className="text-xs text-muted-foreground">Subiendo audio...</span>
+                    </div>
+                  )}
+                  {audioUrl && !isUploadingAudio && (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-xs text-emerald-600">Audio subido correctamente</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Audio error */}
+            {audioError && (
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                <p className="text-xs text-destructive">{audioError}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Submit error */}
           {submitError && (
-            <p className="text-sm text-destructive">{submitError}</p>
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{submitError}</p>
+            </div>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button
             variant="outline"
             onClick={handleClose}
@@ -389,18 +678,35 @@ function CreateWordModal({
           >
             Cancelar
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="gap-2"
-          >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-            {isSubmitting ? "Creando..." : "Crear ficha"}
-          </Button>
+          <div className="flex gap-2">
+            {/* HU3.3.1: Guardar como borrador */}
+            <Button
+              variant="secondary"
+              onClick={() => handleSubmit("DRAFT")}
+              disabled={isSubmitting || isUploadingAudio}
+              className="gap-2"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Pencil className="h-4 w-4" />
+              )}
+              {isSubmitting ? "Guardando..." : "Guardar como borrador"}
+            </Button>
+            {/* HU3.3.1: Guardar y publicar */}
+            <Button
+              onClick={() => handleSubmit("PUBLISHED")}
+              disabled={isSubmitting || isUploadingAudio}
+              className="gap-2"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+              {isSubmitting ? "Publicando..." : "Guardar y publicar"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
