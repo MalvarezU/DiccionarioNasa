@@ -469,3 +469,32 @@ Stage Summary:
 - Files created: src/components/admin-dashboard.tsx, src/app/api/admin/stats/route.ts
 - Files modified: prisma/schema.prisma, prisma/seed.ts, src/lib/local-db.ts, src/app/page.tsx
 - Files modified (API status filtering): src/app/api/dictionary/featured/route.ts, src/app/api/dictionary/search/route.ts, src/app/api/dictionary/word-of-day/route.ts, src/app/api/dictionary/export/route.ts
+
+---
+Task ID: 10
+Agent: Main
+Task: HU3.5.2 — Estadísticas desglosadas por estado
+
+Work Log:
+- Enhanced AdminDashboard with three prominent status indicator cards:
+  - "Publicadas" card: emerald-themed, Eye icon, large number, "Visibles al público" subtitle, progress bar with % of total
+  - "Borrador" card: amber-themed, Pencil icon, large number, "Pendientes de publicación" subtitle, progress bar with % of total
+  - "Archivadas" card: gray-themed, Archive icon, large number, "Retiradas del público" subtitle, progress bar with % of total
+- Added sum verification section (dashed border card):
+  - Shows formula: Publicadas (X) + Borrador (Y) + Archivadas (Z) = Total
+  - Green CheckCircle2 + "Coincide con el total (N)" badge when sum matches
+  - Amber AlertTriangle + "No coincide (total: N)" badge when sum doesn't match (defensive)
+  - Computed via useMemo: statusSum and sumMatchesTotal
+- Added visual formula in status distribution section:
+  - Colored dots + numbers + "= Total" equation
+- Changed FileText icon to Pencil icon for "Borrador" to better represent draft/pending state
+- Added STATUS_CHANGE action to audit log action labels and colors
+- All lint checks pass, dev server compiles without errors
+
+Stage Summary:
+- HU3.5.2 fully implemented: three distinct status indicators (Publicadas, Borrador, Archivadas) with large numbers and descriptions
+- Sum verification proves: Published + Draft + Archived = Total (matches HU3.5.1)
+- Each card shows percentage of total with progress bar
+- When a draft is published: Borrador -1, Publicadas +1, total unchanged
+- When a published word is archived: Publicadas -1, Archivadas +1, total unchanged
+- Files modified: src/components/admin-dashboard.tsx

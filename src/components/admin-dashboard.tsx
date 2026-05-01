@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react"
+import { useState, useEffect, useCallback, useSyncExternalStore, useMemo } from "react"
 import {
   BookOpen,
   FileText,
@@ -14,6 +14,9 @@ import {
   Loader2,
   TrendingUp,
   Shield,
+  CheckCircle2,
+  AlertTriangle,
+  Pencil,
 } from "lucide-react"
 import {
   Card,
@@ -77,6 +80,7 @@ function getActionLabel(action: string): string {
     DELETE: "Eliminación",
     IMPORT: "Importación",
     SUGGEST: "Sugerencia",
+    STATUS_CHANGE: "Cambio estado",
   }
   return labels[action] || action
 }
@@ -88,6 +92,7 @@ function getActionColor(action: string): string {
     DELETE: "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30",
     IMPORT: "text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30",
     SUGGEST: "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30",
+    STATUS_CHANGE: "text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
   }
   return colors[action] || "text-muted-foreground bg-muted/50"
 }
@@ -135,6 +140,18 @@ export function AdminDashboard() {
   const handleRefresh = useCallback(() => {
     fetchStats(true)
   }, [fetchStats])
+
+  // ─── Derived: Sum verification ───────────────────────────────────────────
+
+  const statusSum = useMemo(() => {
+    if (!stats) return 0
+    return stats.publishedCount + stats.draftCount + stats.archivedCount
+  }, [stats])
+
+  const sumMatchesTotal = useMemo(() => {
+    if (!stats) return true
+    return statusSum === stats.totalWords
+  }, [stats, statusSum])
 
   // ─── Don't render during SSR ────────────────────────────────────────────
 
@@ -211,9 +228,7 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* ─── Stat Cards ──────────────────────────────────────────────────── */}
-
-      {/* Row 1: Total Words (hero card) */}
+      {/* ─── Row 1: Total Words (hero card) ──────────────────────────────── */}
       <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
@@ -232,32 +247,165 @@ export function AdminDashboard() {
               <BookOpen className="h-8 w-8 text-primary" />
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Status breakdown */}
-          <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-primary/10">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              <span className="text-xs text-muted-foreground">
-                Publicadas: <span className="font-semibold text-foreground">{formatNumber(stats.publishedCount)}</span>
-              </span>
+      {/* ─── Row 2: Three status indicator cards (HU3.5.2) ─────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        {/* Publicadas */}
+        <Card className="border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/50 via-background to-emerald-50/30 dark:from-emerald-950/20 dark:to-emerald-950/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Publicadas
+                </p>
+                <p className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 tracking-tight">
+                  {formatNumber(stats.publishedCount)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Visibles al público
+                </p>
+              </div>
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
+                <Eye className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-              <span className="text-xs text-muted-foreground">
-                Borradores: <span className="font-semibold text-foreground">{formatNumber(stats.draftCount)}</span>
-              </span>
+            {stats.totalWords > 0 && (
+              <div className="mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/30">
+                <div className="w-full h-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    style={{ width: `${(stats.publishedCount / stats.totalWords) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {((stats.publishedCount / stats.totalWords) * 100).toFixed(0)}% del total
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Borrador */}
+        <Card className="border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/50 via-background to-amber-50/30 dark:from-amber-950/20 dark:to-amber-950/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Borrador
+                </p>
+                <p className="text-4xl font-bold text-amber-600 dark:text-amber-400 mt-1 tracking-tight">
+                  {formatNumber(stats.draftCount)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Pendientes de publicación
+                </p>
+              </div>
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 shrink-0">
+                <Pencil className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
-              <span className="text-xs text-muted-foreground">
-                Archivadas: <span className="font-semibold text-foreground">{formatNumber(stats.archivedCount)}</span>
-              </span>
+            {stats.totalWords > 0 && (
+              <div className="mt-3 pt-3 border-t border-amber-200/50 dark:border-amber-800/30">
+                <div className="w-full h-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40">
+                  <div
+                    className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                    style={{ width: `${(stats.draftCount / stats.totalWords) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {stats.draftCount > 0
+                    ? `${((stats.draftCount / stats.totalWords) * 100).toFixed(0)}% del total`
+                    : "Sin borradores"}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Archivadas */}
+        <Card className="border-gray-200 dark:border-gray-700/40 bg-gradient-to-br from-gray-50/50 via-background to-gray-50/30 dark:from-gray-900/20 dark:to-gray-900/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Archivadas
+                </p>
+                <p className="text-4xl font-bold text-gray-500 dark:text-gray-400 mt-1 tracking-tight">
+                  {formatNumber(stats.archivedCount)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Retiradas del público
+                </p>
+              </div>
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800/40 shrink-0">
+                <Archive className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+              </div>
             </div>
+            {stats.totalWords > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-200/50 dark:border-gray-700/30">
+                <div className="w-full h-1.5 rounded-full bg-gray-100 dark:bg-gray-800/40">
+                  <div
+                    className="h-full rounded-full bg-gray-400 transition-all duration-500"
+                    style={{ width: `${(stats.archivedCount / stats.totalWords) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {stats.archivedCount > 0
+                    ? `${((stats.archivedCount / stats.totalWords) * 100).toFixed(0)}% del total`
+                    : "Sin archivadas"}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ─── Sum Verification (HU3.5.2) ──────────────────────────────────── */}
+      <Card className="mb-6 border-dashed">
+        <CardContent className="pt-5 pb-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {sumMatchesTotal ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              )}
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Verificación de consistencia
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Publicadas ({formatNumber(stats.publishedCount)}) + Borrador ({formatNumber(stats.draftCount)}) + Archivadas ({formatNumber(stats.archivedCount)}) = <span className="font-semibold text-foreground">{formatNumber(statusSum)}</span>
+                </p>
+              </div>
+            </div>
+            <Badge
+              variant={sumMatchesTotal ? "outline" : "destructive"}
+              className={`text-xs gap-1 ${
+                sumMatchesTotal
+                  ? "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400"
+                  : ""
+              }`}
+            >
+              {sumMatchesTotal ? (
+                <>
+                  <CheckCircle2 className="h-3 w-3" />
+                  Coincide con el total ({formatNumber(stats.totalWords)})
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-3 w-3" />
+                  No coincide (total: {formatNumber(stats.totalWords)})
+                </>
+              )}
+            </Badge>
           </div>
         </CardContent>
       </Card>
 
-      {/* Row 2: Secondary stat cards */}
+      {/* ─── Row 3: Secondary stat cards ─────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {/* Words with Audio */}
         <Card>
@@ -334,7 +482,7 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Row 3: Status distribution + Recent activity */}
+      {/* ─── Row 4: Status distribution detail + Recent activity ────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Distribution */}
         <Card>
@@ -373,7 +521,7 @@ export function AdminDashboard() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5 text-amber-600" />
+                    <Pencil className="h-3.5 w-3.5 text-amber-600" />
                     <span className="text-sm font-medium text-foreground">Borradores</span>
                   </div>
                   <span className="text-sm font-semibold text-foreground">
@@ -414,6 +562,28 @@ export function AdminDashboard() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Visual formula */}
+            <div className="mt-5 pt-4 border-t">
+              <p className="text-xs text-muted-foreground text-center">
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  {formatNumber(stats.publishedCount)}
+                </span>
+                {" + "}
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                  {formatNumber(stats.draftCount)}
+                </span>
+                {" + "}
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+                  {formatNumber(stats.archivedCount)}
+                </span>
+                {" = "}
+                <span className="font-semibold text-foreground">{formatNumber(statusSum)}</span>
+              </p>
             </div>
           </CardContent>
         </Card>
