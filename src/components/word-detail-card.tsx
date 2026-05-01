@@ -255,9 +255,14 @@ export function WordDetailCard({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
-            </div>
+            <>
+              <SheetHeader>
+                <SheetTitle className="sr-only">Cargando palabra</SheetTitle>
+              </SheetHeader>
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              </div>
+            </>
           ) : word ? (
             <>
               <SheetHeader className="pb-0">
@@ -455,9 +460,14 @@ export function WordDetailCard({
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center py-20">
-              <p className="text-muted-foreground">No se encontró la palabra</p>
-            </div>
+            <>
+              <SheetHeader>
+                <SheetTitle className="sr-only">Palabra no encontrada</SheetTitle>
+              </SheetHeader>
+              <div className="flex items-center justify-center py-20">
+                <p className="text-muted-foreground">No se encontró la palabra</p>
+              </div>
+            </>
           )}
         </SheetContent>
       </Sheet>
