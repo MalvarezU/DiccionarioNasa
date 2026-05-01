@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("user") // "user" | "admin"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  favorites   Favorite[]
+  searchHistory SearchHistory[]
+}
+
+model DictionaryWord {
+  id              String   @id @default(cuid())
+  spanish         String   // Word in Spanish
+  nasaYuwe        String   // Word in Nasa Yuwe
+  pronunciation   String?  // Written pronunciation guide
+  audioUrl        String?  // URL to native speaker audio
+  culturalContext String?  // Cultural context of use
+  category        String?  // Grammatical category (noun, verb, adj, etc.)
+  examples        String?  // Usage examples (JSON string)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  favorites Favorite[]
+  auditLogs AuditLog[]
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  wordId    String
+  createdAt DateTime @default(now())
+
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word DictionaryWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
+}
+
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  query     String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // "CREATE" | "UPDATE" | "DELETE" | "IMPORT"
+  entity    String   // "DictionaryWord" | etc.
+  entityId  String?
+  changes   String?  // JSON string with before/after
+  userId    String?
+  wordId    String?
+  createdAt DateTime @default(now())
+
+  word DictionaryWord? @relation(fields: [wordId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
