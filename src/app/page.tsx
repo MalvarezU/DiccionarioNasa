@@ -13,6 +13,7 @@ import {
 import { NavBar } from "@/components/navbar";
 import { SearchBar } from "@/components/search-bar";
 import { WordDetailCard } from "@/components/word-detail-card";
+import { DownloadBanner } from "@/components/download-banner";
 import {
   Card,
   CardContent,
@@ -61,6 +62,9 @@ export default function Home() {
       <NavBar />
 
       <main className="flex-1">
+        {/* HU1.3.1 — Download Banner for offline dictionary */}
+        <DownloadBanner />
+
         {/* Hero Section with Search Bar */}
         <section className="relative overflow-hidden pb-8">
           {/* Subtle decorative background */}

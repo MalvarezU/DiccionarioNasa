@@ -168,3 +168,85 @@ Stage Summary:
 - WordDetailCard shows dynamic cache status: downloading (progress bar), cached (checkmark), not cached (cloud-off icon)
 - Storage warnings appear at >50% (info) and >80% (destructive) usage thresholds
 - All lint checks pass, dev server compiles without errors
+
+---
+Task ID: 2-a
+Agent: full-stack-developer
+Task: Create export API + IndexedDB local database service
+
+Work Log:
+- Explored existing project structure: Prisma schema (DictionaryWord model), API routes, search/word-detail patterns
+- Created /src/app/api/dictionary/export/route.ts — GET endpoint with pagination (page, pageSize), since filter for incremental sync, parses examples JSON, returns { words, total, page, pageSize, hasMore }
+- Created /src/lib/local-db.ts — IndexedDB service with full offline-first support:
+  - openDB() with schema: 'nasa-yuwe-dict' v1, 'words' store (keyPath 'id') + indexes (spanish, nasaYuwe, category), 'meta' store for sync timestamps
+  - isLocalDBReady() — checks if DB has ≥1 word
+  - getLocalDBStats() — returns wordCount + lastSync
+  - storeWords() — bulk upsert via single IDB transaction with put()
+  - searchLocalWords() — cursor-based full scan with NFD normalization + 3-tier relevance ranking (exact → prefix → partial), alphabetical tiebreak
+  - getLocalWord() — single word fetch by ID
+  - getLocalCategories() — extracts unique categories (supports comma-separated), sorted alphabetically
+  - clearLocalDB() — clears both words and meta stores
+  - setLastSync()/getLastSync() — sync timestamp management in meta store
+  - All functions guard against SSR (typeof indexedDB check), handle errors gracefully (never throw)
+- Tested export API: pagination works, since filter works, examples parsed correctly
+- Ran `bun run lint` — passes with zero errors
+- Verified dev server log — no compilation errors
+
+Stage Summary:
+- Export API at /api/dictionary/export supports bulk download with pagination and incremental sync (since param)
+- IndexedDB local database service provides full offline dictionary: search with accent-insensitive matching, word detail lookup, category listing, sync tracking
+- Both files pass lint and compile without errors
+
+---
+Task ID: 2-b
+Agent: full-stack-developer
+Task: Create useLocalDB hook + DownloadBanner component
+
+Work Log:
+- Explored existing project structure: confirmed local-db.ts already exists with isLocalDBReady, storeWords, getLocalDBStats, setLastSync; confirmed /api/dictionary/export route exists with pagination and hasMore support
+- Created /src/app/api/dictionary/words/route.ts — supplementary paginated word listing endpoint (page, pageSize, total, totalPages); complements the export endpoint
+- Created /src/hooks/use-local-db.ts — React hook for local IndexedDB dictionary management:
+  - isReady, isDownloading, downloadProgress, localWordCount, error state tracking
+  - startDownload() with resume capability: checks getLocalDBStats() for already-stored words, calculates startPage, fetches from /api/dictionary/export with pagination, stores each page via storeWords(), updates progress, sets lastSync on completion
+  - checkAndResume() called on mount: checks isLocalDBReady(), auto-starts download if online, waits if offline
+  - Auto-resume on reconnect: listens for isOnline change via useOnlineStatus hook, calls startDownload() when going online and DB not ready
+  - Concurrent download prevention via downloadInProgressRef
+  - Error handling preserves progress for resume
+- Created /src/components/download-banner.tsx — Dismissible banner for dictionary download status:
+  - Four states: idle (download prompt + button), downloading (progress bar + percentage), complete (success message + auto-dismiss 4s), error (error message + retry button)
+  - Banner state derived via useMemo (no setState in effects) to avoid cascading renders
+  - Visibility derived via useMemo: hidden if offline+not ready, hidden if dismissed (except active download), shown otherwise
+  - Dismiss stores flag in localStorage (nasa-yuwe-banner-dismissed) for session persistence
+  - Earth-tone themed: primary green for success, destructive for errors, secondary for default
+  - Responsive: full width on mobile, rounded container on desktop
+  - Icons: Download (idle/downloading), CheckCircle2 (complete), AlertCircle (error), X (dismiss)
+  - Not dismissible during active download
+  - Auto-dismiss after completion with 4-second timeout
+  - Uses shadcn/ui Button and Progress components
+- Ran `bun run lint` — passes with zero errors
+- Verified dev server log — no compilation errors
+
+Stage Summary:
+- useLocalDB hook manages full download lifecycle: initial check, paginated download with resume, auto-resume on reconnect, progress tracking
+- DownloadBanner provides user-facing download UI with 4 states (idle, downloading, complete, error), dismissible with localStorage persistence
+- Both files use proper React patterns (useMemo for derived state, useCallback for stable functions, useRef for concurrency guard)
+- All lint checks pass, dev server compiles without errors
+
+---
+Task ID: 3
+Agent: Main
+Task: F1.3 — Offline First en App Móvil y Escritorio (HU1.3.1 + HU1.3.2)
+
+Work Log:
+- Created /api/dictionary/export API endpoint with pagination, total count, hasMore, and ?since= for incremental sync
+- Created /src/lib/local-db.ts — IndexedDB service with full CRUD + search
+- Created /src/hooks/use-local-db.ts — useLocalDB hook with auto-download, resume, reconnect
+- Created /src/components/download-banner.tsx — 4-state banner
+- Updated SearchBar, WordDetailCard, AudioPlayer for offline support
+- Created /public/sw.js — Service Worker
+- Updated layout.tsx with SW registration
+- Updated page.tsx with DownloadBanner
+
+Stage Summary:
+- HU1.3.1 + HU1.3.2 fully implemented
+- All lint checks pass

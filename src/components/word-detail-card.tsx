@@ -29,6 +29,8 @@ import { AudioPlayer } from "@/components/audio-player";
 import { AuthModal } from "@/components/auth-modal";
 import { useToast } from "@/hooks/use-toast";
 import { useOfflineAudio } from "@/hooks/use-offline-audio";
+import { getLocalWord, isLocalDBReady } from "@/lib/local-db";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 
 interface WordDetail {
   id: string;
@@ -91,6 +93,7 @@ export function WordDetailCard({
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { data: session, status } = useSession();
   const { toast } = useToast();
+  const isOnline = useOnlineStatus();
 
   // Track whether the favorite change was triggered by user action
   // so we can auto-download/remove offline audio
@@ -109,7 +112,7 @@ export function WordDetailCard({
     storageInfo,
   } = useOfflineAudio(word?.audioUrl ?? null);
 
-  // Fetch word details when opened
+  // Fetch word details when opened — uses local IndexedDB when offline (HU1.3.2)
   useEffect(() => {
     if (!wordId || !open) {
       setWord(null);
@@ -119,22 +122,55 @@ export function WordDetailCard({
     const fetchWord = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/dictionary/words/${wordId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setWord(data);
+        if (!isOnline) {
+          // Offline: try to get word from local IndexedDB
+          const localReady = await isLocalDBReady();
+          if (localReady) {
+            const localWord = await getLocalWord(wordId);
+            if (localWord) {
+              // Parse examples JSON like the API does
+              setWord({
+                ...localWord,
+                examples: localWord.examples ? JSON.parse(localWord.examples) : null,
+              });
+            } else {
+              setWord(null);
+            }
+          } else {
+            setWord(null);
+          }
         } else {
-          setWord(null);
+          // Online: use the API
+          const response = await fetch(`/api/dictionary/words/${wordId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setWord(data);
+          } else {
+            setWord(null);
+          }
         }
       } catch {
-        setWord(null);
+        // Fallback: try local DB if API fails
+        try {
+          const localWord = await getLocalWord(wordId);
+          if (localWord) {
+            setWord({
+              ...localWord,
+              examples: localWord.examples ? JSON.parse(localWord.examples) : null,
+            });
+          } else {
+            setWord(null);
+          }
+        } catch {
+          setWord(null);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchWord();
-  }, [wordId, open]);
+  }, [wordId, open, isOnline]);
 
   // Check favorite status when word loads and user is authenticated
   useEffect(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Loader2, Volume2, CloudOff, Cloud } from "lucide-react";
+import { Search, Loader2, Volume2, CloudOff, Cloud, Database } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useToast } from "@/hooks/use-toast";
 import { SuggestWordModal } from "@/components/suggest-word-modal";
 import { WordDetailCard } from "@/components/word-detail-card";
+import { searchLocalWords, isLocalDBReady } from "@/lib/local-db";
 
 interface SearchResult {
   id: string;
@@ -46,7 +47,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   const showDropdown = isOpen && debouncedQuery.length >= 2;
   const hasNoResults = showDropdown && !isLoading && results.length === 0;
 
-  // Fetch search results
+  // Fetch search results — uses local IndexedDB when offline, API when online
   useEffect(() => {
     if (debouncedQuery.length < 2) {
       setResults([]);
@@ -57,17 +58,35 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
     const fetchResults = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(
-          `/api/dictionary/search?q=${encodeURIComponent(debouncedQuery)}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setResults(data.results ?? []);
+        // HU1.3.2: When offline, search from local IndexedDB
+        if (!isOnline) {
+          const localReady = await isLocalDBReady();
+          if (localReady) {
+            const localResults = await searchLocalWords(debouncedQuery, 50);
+            setResults(localResults);
+          } else {
+            setResults([]);
+          }
         } else {
-          setResults([]);
+          // Online: use the API as before
+          const response = await fetch(
+            `/api/dictionary/search?q=${encodeURIComponent(debouncedQuery)}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setResults(data.results ?? []);
+          } else {
+            setResults([]);
+          }
         }
       } catch {
-        setResults([]);
+        // Fallback: try local search if API fails
+        try {
+          const localResults = await searchLocalWords(debouncedQuery, 50);
+          setResults(localResults);
+        } catch {
+          setResults([]);
+        }
       } finally {
         setIsLoading(false);
         setIsOpen(true);
@@ -76,7 +95,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
     };
 
     fetchResults();
-  }, [debouncedQuery]);
+  }, [debouncedQuery, isOnline]);
 
   // Close dropdown on outside click
   useEffect(() => {
