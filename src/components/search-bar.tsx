@@ -16,7 +16,12 @@ interface SearchResult {
   category: string | null;
 }
 
-export function SearchBar() {
+interface SearchBarProps {
+  /** "hero" = large centered bar for main area, "inline" = compact for headers */
+  variant?: "hero" | "inline";
+}
+
+export function SearchBar({ variant = "inline" }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +33,8 @@ export function SearchBar() {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+
+  const isHero = variant === "hero";
 
   // Fetch search results
   useEffect(() => {
@@ -131,9 +138,14 @@ export function SearchBar() {
   const showDropdown = isOpen && debouncedQuery.length >= 2;
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-xl">
+    <div
+      ref={containerRef}
+      className={isHero ? "relative w-full max-w-2xl mx-auto" : "relative w-full max-w-xl"}
+    >
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search
+          className={`absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground ${isHero ? "h-5 w-5" : "h-4 w-4"}`}
+        />
         <Input
           ref={inputRef}
           type="text"
@@ -151,19 +163,29 @@ export function SearchBar() {
             }
           }}
           onKeyDown={handleKeyDown}
-          className="pl-9 pr-9 h-10 w-full bg-background/60 border-border/50 focus-visible:border-primary/50"
+          className={`pl-10 w-full bg-background/60 border-border/50 focus-visible:border-primary/50 ${
+            isHero
+              ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md transition-shadow"
+              : "h-10 pr-9"
+          }`}
           aria-label="Buscar palabras en el diccionario"
           aria-expanded={showDropdown}
           aria-autocomplete="list"
           role="combobox"
         />
         {isLoading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+          <Loader2
+            className={`absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin ${isHero ? "h-5 w-5" : "h-4 w-4"}`}
+          />
         )}
       </div>
 
       {showDropdown && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
+        <div
+          className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden ${
+            isHero ? "mt-2 rounded-xl" : "mt-1"
+          }`}
+        >
           {/* Offline notice */}
           {!isOnline && (
             <div className="px-3 py-2 text-xs text-amber-700 bg-amber-50 border-b border-amber-200 dark:text-amber-400 dark:bg-amber-950/30 dark:border-amber-900">
@@ -178,7 +200,7 @@ export function SearchBar() {
           ) : (
             <ul
               ref={listRef}
-              className="max-h-80 overflow-y-auto py-1"
+              className={isHero ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
               role="listbox"
             >
               {results.map((result, index) => (
@@ -188,7 +210,8 @@ export function SearchBar() {
                   role="option"
                   aria-selected={index === highlightedIndex}
                   className={`
-                    flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors
+                    flex items-center gap-3 cursor-pointer transition-colors
+                    ${isHero ? "px-4 py-3" : "px-3 py-2.5"}
                     ${
                       index === highlightedIndex
                         ? "bg-primary/10 text-foreground"
@@ -200,10 +223,10 @@ export function SearchBar() {
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">
+                      <span className={`font-medium ${isHero ? "text-base" : "text-sm"}`}>
                         {result.nasaYuwe}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className={`text-muted-foreground ${isHero ? "text-sm" : "text-xs"}`}>
                         — {result.spanish}
                       </span>
                     </div>

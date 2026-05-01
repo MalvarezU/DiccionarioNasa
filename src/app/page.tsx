@@ -9,9 +9,9 @@ import {
   Globe,
   Heart,
   Users,
-  Search,
 } from "lucide-react";
 import { NavBar } from "@/components/navbar";
+import { SearchBar } from "@/components/search-bar";
 import {
   Card,
   CardContent,
@@ -19,7 +19,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 
@@ -63,8 +62,8 @@ export default function Home() {
       <NavBar />
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden">
+        {/* Hero Section with Search Bar */}
+        <section className="relative overflow-hidden pb-8">
           {/* Subtle decorative background */}
           <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
           <div className="absolute inset-0 opacity-[0.06]">
@@ -77,36 +76,40 @@ export default function Home() {
             />
           </div>
 
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24 text-center">
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-20 pb-6 text-center">
             {/* Icon */}
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
-              <Leaf className="h-8 w-8 text-primary" />
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
+              <Leaf className="h-7 w-7 text-primary" />
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
               Nasa Yuwe
             </h1>
-            <p className="mt-3 text-lg sm:text-xl text-accent font-medium">
+            <p className="mt-2 text-base sm:text-lg text-accent font-medium">
               Diccionario Bilingüe
             </p>
-            <p className="mt-4 max-w-2xl mx-auto text-sm sm:text-base text-muted-foreground leading-relaxed">
+            <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base text-muted-foreground leading-relaxed">
               Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.
-              Explora palabras, pronunciaciones y el contexto cultural que da vida a esta
-              milenaria lengua indígena.
+              Busca palabras, pronunciaciones y contexto cultural.
             </p>
 
+            {/* Search Bar — prominent, centered in hero */}
+            <div className="mt-8">
+              <SearchBar variant="hero" />
+            </div>
+
             {/* Quick stats */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <BookOpen className="h-4 w-4 text-primary" />
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-6">
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
+                <BookOpen className="h-3.5 w-3.5 text-primary" />
                 <span>69 palabras</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Volume2 className="h-4 w-4 text-primary" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
+                <Volume2 className="h-3.5 w-3.5 text-primary" />
                 <span>Pronunciación guiada</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Globe className="h-4 w-4 text-primary" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
+                <Globe className="h-3.5 w-3.5 text-primary" />
                 <span>Español ↔ Nasa Yuwe</span>
               </div>
             </div>
@@ -217,29 +220,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16 text-center">
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground">
-            ¿Listo para explorar?
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Usa la barra de búsqueda en la parte superior para comenzar
-          </p>
-          <Button
-            className="mt-6"
-            size="lg"
-            onClick={() => {
-              const searchInput = document.querySelector(
-                'input[aria-label="Buscar palabras en el diccionario"]'
-              ) as HTMLInputElement;
-              searchInput?.focus();
-            }}
-          >
-            <Search className="mr-2 h-4 w-4" />
-            Buscar palabras
-          </Button>
         </section>
       </main>
 

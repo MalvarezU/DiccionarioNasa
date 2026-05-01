@@ -1,7 +1,6 @@
 "use client";
 
 import { BookOpen, Wifi, WifiOff } from "lucide-react";
-import { SearchBar } from "@/components/search-bar";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,18 +9,13 @@ export function NavBar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Logo / App Name */}
         <div className="flex items-center gap-2 shrink-0">
           <BookOpen className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-base tracking-tight text-foreground hidden sm:inline">
+          <span className="font-semibold text-base tracking-tight text-foreground">
             Nasa Yuwe
           </span>
-        </div>
-
-        {/* Search Bar — always visible, centered */}
-        <div className="flex-1 flex justify-center">
-          <SearchBar />
         </div>
 
         {/* Connection Status */}
