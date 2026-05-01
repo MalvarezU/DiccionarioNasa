@@ -301,3 +301,36 @@ Stage Summary:
 - All lint checks pass, dev server compiles without errors
 - Files modified: src/hooks/use-local-db.ts, src/components/navbar.tsx
 - Files created: src/components/settings-dialog.tsx
+
+---
+Task ID: 6
+Agent: Main
+Task: F1.4 — Navegación y Exploración (HU1.4.1 + HU1.4.2)
+
+Work Log:
+- Added getAllLocalWords() to local-db.ts — fetches all words from IndexedDB, sorted by spanish with localeCompare('es') for proper Spanish alphabetical order including accented characters
+- Added getNormalizedInitial() to local-db.ts — strips accents from first letter (Á→A, É→E) for letter grouping
+- Created ExploreSection component with:
+  - Alphabetical listing grouped by initial letter with sticky letter headers
+  - Spanish alphabet index (A-Z including Ñ) — horizontal scroll on mobile, sticky sidebar on desktop
+  - Active/inactive letter states (inactive letters greyed out when no words exist for that letter)
+  - Click-to-scroll: tapping a letter smoothly scrolls to that letter's section
+  - Each word shows: spanish, nasaYuwe, pronunciation, category badge
+  - Click on word opens WordDetailCard via onWordSelect callback
+  - Word count per letter group and total
+  - Online: fetches from /api/dictionary/export, Offline: reads from IndexedDB
+  - Loading state with spinner
+  - Offline + not downloaded: "El diccionario se está descargando. Podrás ver el listado completo cuando termine la descarga."
+  - Empty state when no words available
+  - Hydration-safe via useMounted() pattern
+- Updated page.tsx: added tabbed view with "Destacadas" (Star icon) and "Explorar A-Z" (List icon) tabs
+  - Featured words tab preserves existing functionality
+  - Explore tab renders ExploreSection with onWordSelect callback connecting to shared WordDetailCard
+  - Tab buttons styled with primary/foreground colors and pressed state
+- All lint checks pass, dev server compiles without errors
+
+Stage Summary:
+- HU1.4.1 fully implemented: alphabetical A-Z listing, accent normalization (Á→A grouping), complete word list, letter index for quick navigation
+- HU1.4.2 fully implemented: offline listing from IndexedDB, word detail opens with all text fields offline, download-in-progress message when local DB not ready
+- Files created: src/components/explore-section.tsx
+- Files modified: src/lib/local-db.ts, src/app/page.tsx

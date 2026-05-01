@@ -9,11 +9,14 @@ import {
   Globe,
   Heart,
   Users,
+  Star,
+  List,
 } from "lucide-react";
 import { NavBar } from "@/components/navbar";
 import { SearchBar } from "@/components/search-bar";
 import { WordDetailCard } from "@/components/word-detail-card";
 import { DownloadBanner } from "@/components/download-banner";
+import { ExploreSection } from "@/components/explore-section";
 import {
   Card,
   CardContent,
@@ -36,6 +39,7 @@ export default function Home() {
   const [featuredWords, setFeaturedWords] = useState<FeaturedWord[]>([]);
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"featured" | "explore">("featured");
 
   useEffect(() => {
     const fetchFeatured = async () => {
@@ -121,63 +125,101 @@ export default function Home() {
 
         <Separator className="mx-auto max-w-7xl" />
 
-        {/* Featured Words Section */}
+        {/* Tabbed Dictionary Section: Featured | Explore */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              Palabras Destacadas
-            </h2>
-            <p className="mt-2 text-sm sm:text-base text-muted-foreground">
-              Descubre algunas de las palabras fundamentales del Nasa Yuwe
-            </p>
+          {/* Tab buttons */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <button
+              onClick={() => setActiveTab("featured")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === "featured"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              }`}
+              aria-pressed={activeTab === "featured"}
+            >
+              <Star className="h-4 w-4" />
+              Destacadas
+            </button>
+            <button
+              onClick={() => setActiveTab("explore")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === "explore"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              }`}
+              aria-pressed={activeTab === "explore"}
+            >
+              <List className="h-4 w-4" />
+              Explorar A-Z
+            </button>
           </div>
 
-          {featuredWords.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {featuredWords.map((word) => (
-                <Card
-                  key={word.id}
-                  className="group cursor-pointer transition-all hover:shadow-md hover:border-primary/30"
-                  onClick={() => handleWordClick(word)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-lg text-primary group-hover:text-primary/80 transition-colors">
-                        {word.nasaYuwe}
-                      </CardTitle>
-                      {word.category && (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] shrink-0"
-                        >
-                          {word.category}
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="text-sm font-medium text-foreground">
-                      {word.spanish}
-                    </p>
-                    {word.pronunciation && (
-                      <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <Volume2 className="h-3 w-3" />
-                        [{word.pronunciation}]
-                      </p>
-                    )}
-                    {word.culturalContext && (
-                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        {word.culturalContext}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Cargando palabras...</p>
-            </div>
+          {/* Featured Words Tab */}
+          {activeTab === "featured" && (
+            <>
+              <div className="text-center mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                  Palabras Destacadas
+                </h2>
+                <p className="mt-2 text-sm sm:text-base text-muted-foreground">
+                  Descubre algunas de las palabras fundamentales del Nasa Yuwe
+                </p>
+              </div>
+
+              {featuredWords.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {featuredWords.map((word) => (
+                    <Card
+                      key={word.id}
+                      className="group cursor-pointer transition-all hover:shadow-md hover:border-primary/30"
+                      onClick={() => handleWordClick(word)}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-lg text-primary group-hover:text-primary/80 transition-colors">
+                            {word.nasaYuwe}
+                          </CardTitle>
+                          {word.category && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] shrink-0"
+                            >
+                              {word.category}
+                            </Badge>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {word.spanish}
+                        </p>
+                        {word.pronunciation && (
+                          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <Volume2 className="h-3 w-3" />
+                            [{word.pronunciation}]
+                          </p>
+                        )}
+                        {word.culturalContext && (
+                          <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                            {word.culturalContext}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Cargando palabras...</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Explore Tab — renders the ExploreSection inline */}
+          {activeTab === "explore" && (
+            <ExploreSection onWordSelect={(wordId) => { setSelectedWordId(wordId); setDetailOpen(true); }} />
           )}
         </section>
 
