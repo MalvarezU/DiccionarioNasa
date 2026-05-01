@@ -51,6 +51,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -148,6 +159,8 @@ function getActionLabel(action: string): string {
     STATUS_CHANGE: "Cambio estado",
     PUBLISH: "Publicación",
     ARCHIVE: "Archivación",
+    BATCH_PUBLISH: "Publicación lote",
+    BATCH_ARCHIVE: "Archivación lote",
   }
   return labels[action] || action
 }
@@ -162,6 +175,8 @@ function getActionColor(action: string): string {
     STATUS_CHANGE: "text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
     PUBLISH: "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30",
     ARCHIVE: "text-gray-700 dark:text-gray-400 bg-gray-50 dark:bg-gray-950/30",
+    BATCH_PUBLISH: "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30",
+    BATCH_ARCHIVE: "text-gray-700 dark:text-gray-400 bg-gray-50 dark:bg-gray-950/30",
   }
   return colors[action] || "text-muted-foreground bg-muted/50"
 }
@@ -952,6 +967,11 @@ function EditWordModal({
   const [originalAudioUrl, setOriginalAudioUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // HU3.3.5: Status transition state
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [showPublishNoAudioWarning, setShowPublishNoAudioWarning] = useState(false)
+  const [pendingStatusTransition, setPendingStatusTransition] = useState<string | null>(null)
+
   // Load word data when modal opens
   useEffect(() => {
     if (open && word) {
@@ -1146,13 +1166,64 @@ function EditWordModal({
   }, [form, word, hasChanges, audioUrl, audioChanged, originalAudioUrl, validateForm, onOpenChange, onSaved])
 
   const handleClose = useCallback(() => {
-    if (!isSubmitting) {
+    if (!isSubmitting && !isTransitioning) {
       setFieldErrors({})
       setSubmitError(null)
       setSuccessMessage(null)
       onOpenChange(false)
     }
-  }, [isSubmitting, onOpenChange])
+  }, [isSubmitting, isTransitioning, onOpenChange])
+
+  // HU3.3.5: Handle status transition via PATCH
+  const handleStatusTransition = useCallback(async (newStatus: string) => {
+    if (!word) return
+
+    // If publishing without audio, show warning (non-blocking)
+    if (newStatus === 'PUBLISHED' && !audioUrl) {
+      setPendingStatusTransition(newStatus)
+      setShowPublishNoAudioWarning(true)
+      return
+    }
+
+    await executeStatusTransition(newStatus)
+  }, [word, audioUrl])
+
+  const executeStatusTransition = useCallback(async (newStatus: string) => {
+    if (!word) return
+
+    setIsTransitioning(true)
+    setSubmitError(null)
+
+    try {
+      const res = await fetch(`/api/admin/words/${word.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        // Update local form state to reflect new status
+        setForm((prev) => ({ ...prev, status: newStatus }))
+        setOriginalForm((prev) => ({ ...prev, status: newStatus }))
+
+        const statusLabel = WORD_STATUSES.find((s) => s.value === newStatus)?.label || newStatus
+        setSuccessMessage(`Estado cambiado a "${statusLabel}"`)
+        setTimeout(() => {
+          setSuccessMessage(null)
+          onSaved()
+        }, 1500)
+      } else {
+        setSubmitError(data.error || 'Error al cambiar el estado')
+      }
+    } catch {
+      setSubmitError('Error de conexión al servidor')
+    } finally {
+      setIsTransitioning(false)
+      setShowPublishNoAudioWarning(false)
+      setPendingStatusTransition(null)
+    }
+  }, [word, onSaved])
 
   if (!word) return null
 
@@ -1378,7 +1449,7 @@ function EditWordModal({
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting || isTransitioning}>
             Cancelar
           </Button>
           <div className="flex gap-2 flex-wrap">
@@ -1386,7 +1457,7 @@ function EditWordModal({
             <Button
               variant="outline"
               onClick={() => setPreviewOpen(true)}
-              disabled={isSubmitting || isUploadingAudio}
+              disabled={isSubmitting || isUploadingAudio || isTransitioning}
               className="gap-2"
             >
               <Eye className="h-4 w-4" />
@@ -1395,7 +1466,7 @@ function EditWordModal({
             {/* Save changes */}
             <Button
               onClick={handleSubmit}
-              disabled={isSubmitting || isUploadingAudio}
+              disabled={isSubmitting || isUploadingAudio || isTransitioning}
               className="gap-2"
             >
               {isSubmitting ? (
@@ -1406,6 +1477,80 @@ function EditWordModal({
               {isSubmitting ? "Guardando..." : "Guardar cambios"}
             </Button>
           </div>
+
+          {/* HU3.3.5: Status transition buttons */}
+          {form.status === "DRAFT" && (
+            <Button
+              onClick={() => handleStatusTransition("PUBLISHED")}
+              disabled={isSubmitting || isTransitioning || isUploadingAudio}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isTransitioning ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+              {isTransitioning ? "Publicando..." : "Publicar"}
+            </Button>
+          )}
+          {form.status === "PUBLISHED" && (
+            <Button
+              onClick={() => handleStatusTransition("ARCHIVED")}
+              disabled={isSubmitting || isTransitioning || isUploadingAudio}
+              variant="secondary"
+              className="gap-2"
+            >
+              {isTransitioning ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Archive className="h-4 w-4" />
+              )}
+              {isTransitioning ? "Archivando..." : "Archivar"}
+            </Button>
+          )}
+          {form.status === "ARCHIVED" && (
+            <Button
+              onClick={() => handleStatusTransition("PUBLISHED")}
+              disabled={isSubmitting || isTransitioning || isUploadingAudio}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isTransitioning ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+              {isTransitioning ? "Publicando..." : "Volver a publicar"}
+            </Button>
+          )}
+
+          {/* HU3.3.5: Warning dialog when publishing without audio */}
+          <AlertDialog open={showPublishNoAudioWarning} onOpenChange={setShowPublishNoAudioWarning}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  Publicar sin audio
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ficha no tiene archivo de audio adjunto. Las palabras publicadas sin audio
+                  serán visibles para los usuarios, pero no tendrán pronunciación en audio disponible.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (pendingStatusTransition) {
+                      executeStatusTransition(pendingStatusTransition)
+                    }
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  Publicar de todas formas
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Preview modal */}
           <WordPreviewModal
@@ -1776,6 +1921,10 @@ function FullAuditLogModal({
                   <SelectItem value="IMPORT">Importación</SelectItem>
                   <SelectItem value="SUGGEST">Sugerencia</SelectItem>
                   <SelectItem value="STATUS_CHANGE">Cambio estado</SelectItem>
+                  <SelectItem value="PUBLISH">Publicación</SelectItem>
+                  <SelectItem value="ARCHIVE">Archivación</SelectItem>
+                  <SelectItem value="BATCH_PUBLISH">Publicación lote</SelectItem>
+                  <SelectItem value="BATCH_ARCHIVE">Archivación lote</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1893,17 +2042,19 @@ function FullAuditLogModal({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WordListModal (HU3.3.4) — Browse & edit words
+// WordListModal (HU3.3.4 + HU3.3.6 + HU3.3.7) — Browse, edit & bulk actions
 // ═══════════════════════════════════════════════════════════════════════════
 
 function WordListModal({
   open,
   onOpenChange,
   onEditWord,
+  onBulkActionDone,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onEditWord: (word: WordForEdit) => void
+  onBulkActionDone: () => void
 }) {
   const [words, setWords] = useState<WordForEdit[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -1912,6 +2063,16 @@ function WordListModal({
   const [total, setTotal] = useState(0)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+
+  // HU3.3.6: Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isBulkAction, setIsBulkAction] = useState(false)
+  const [bulkResult, setBulkResult] = useState<{
+    updated: number
+    skipped: number
+    total: number
+    action: string
+  } | null>(null)
 
   const fetchWords = useCallback(async (p: number, search?: string, status?: string) => {
     setIsLoading(true)
@@ -1936,17 +2097,21 @@ function WordListModal({
   useEffect(() => {
     if (open) {
       setPage(1)
+      setSelectedIds(new Set())
+      setBulkResult(null)
       fetchWords(1, searchQuery, statusFilter)
     }
   }, [open, fetchWords, searchQuery, statusFilter])
 
   const handleSearch = useCallback(() => {
     setPage(1)
+    setSelectedIds(new Set())
     fetchWords(1, searchQuery, statusFilter)
   }, [fetchWords, searchQuery, statusFilter])
 
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage)
+    setSelectedIds(new Set())
     fetchWords(newPage, searchQuery, statusFilter)
   }, [fetchWords, searchQuery, statusFilter])
 
@@ -1963,6 +2128,101 @@ function WordListModal({
     }
   }, [])
 
+  // HU3.3.6: Toggle selection for a single word
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  // HU3.3.6: Select/deselect all on current page
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const allCurrentIds = words.map((w) => w.id)
+      const allSelected = allCurrentIds.every((id) => prev.has(id))
+
+      if (allSelected) {
+        // Deselect all on current page
+        const next = new Set(prev)
+        for (const id of allCurrentIds) {
+          next.delete(id)
+        }
+        return next
+      } else {
+        // Select all on current page
+        const next = new Set(prev)
+        for (const id of allCurrentIds) {
+          next.add(id)
+        }
+        return next
+      }
+    })
+  }, [words])
+
+  // Whether all words on current page are selected
+  const allCurrentSelected = useMemo(() => {
+    if (words.length === 0) return false
+    return words.every((w) => selectedIds.has(w.id))
+  }, [words, selectedIds])
+
+  // Some but not all on current page are selected
+  const someCurrentSelected = useMemo(() => {
+    if (words.length === 0) return false
+    return !allCurrentSelected && words.some((w) => selectedIds.has(w.id))
+  }, [words, selectedIds, allCurrentSelected])
+
+  // HU3.3.6: Bulk status change
+  const handleBulkAction = useCallback(async (targetStatus: "PUBLISHED" | "ARCHIVED") => {
+    if (selectedIds.size === 0) return
+
+    setIsBulkAction(true)
+    setBulkResult(null)
+
+    try {
+      const res = await fetch("/api/admin/words/bulk-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wordIds: Array.from(selectedIds),
+          status: targetStatus,
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setBulkResult({
+          updated: data.updated,
+          skipped: data.skipped,
+          total: data.total,
+          action: targetStatus === "PUBLISHED" ? "publicadas" : "archivadas",
+        })
+        setSelectedIds(new Set())
+        fetchWords(page, searchQuery, statusFilter)
+        onBulkActionDone()
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setIsBulkAction(false)
+    }
+  }, [selectedIds, page, searchQuery, statusFilter, fetchWords, onBulkActionDone])
+
+  // HU3.3.7: Status filter label with count
+  const statusFilterLabel = useMemo(() => {
+    switch (statusFilter) {
+      case "PUBLISHED": return "Publicadas"
+      case "DRAFT": return "Borradores"
+      case "ARCHIVED": return "Archivadas"
+      default: return "Todos los estados"
+    }
+  }, [statusFilter])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1971,12 +2231,83 @@ function WordListModal({
             <BookOpen className="h-5 w-5 text-primary" />
             Gestión de fichas
           </DialogTitle>
-          <DialogDescription>
-            {formatNumber(total)} palabras en el diccionario
+          <DialogDescription className="flex items-center gap-2">
+            <span>{formatNumber(total)} palabras</span>
+            {statusFilter !== "all" && (
+              <>
+                <span className="text-muted-foreground">·</span>
+                <Badge variant="outline" className="text-[10px] gap-1">
+                  {statusFilterLabel}: {formatNumber(total)}
+                </Badge>
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* HU3.3.6: Bulk action bar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/15">
+              <span className="text-sm font-medium text-primary">
+                {selectedIds.size} seleccionada{selectedIds.size > 1 ? "s" : ""}
+              </span>
+              <div className="flex gap-2 ml-auto">
+                <Button
+                  size="sm"
+                  onClick={() => handleBulkAction("PUBLISHED")}
+                  disabled={isBulkAction}
+                  className="h-8 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {isBulkAction ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+                  Publicar seleccionadas
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleBulkAction("ARCHIVED")}
+                  disabled={isBulkAction}
+                  className="h-8 gap-1.5 text-xs"
+                >
+                  {isBulkAction ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                  Archivar seleccionadas
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="h-8 text-xs text-muted-foreground"
+                >
+                  Limpiar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* HU3.3.6: Bulk action result */}
+          {bulkResult && (
+            <Card className="border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/20">
+              <CardContent className="pt-3 pb-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                    {bulkResult.updated} palabra{bulkResult.updated !== 1 ? "s" : ""} {bulkResult.action}
+                    {bulkResult.skipped > 0 && (
+                      <span className="text-muted-foreground"> · {bulkResult.skipped} omitida{bulkResult.skipped !== 1 ? "s" : ""}</span>
+                    )}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setBulkResult(null)}
+                    className="h-6 w-6 p-0 ml-auto text-muted-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Search & filter row */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 flex-1 min-w-[200px]">
@@ -1995,7 +2326,7 @@ function WordListModal({
                 Buscar
               </Button>
             </div>
-            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); fetchWords(1, searchQuery, v) }}>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); setSelectedIds(new Set()); fetchWords(1, searchQuery, v) }}>
               <SelectTrigger className="w-[140px] h-9 text-xs">
                 <SelectValue />
               </SelectTrigger>
@@ -2020,6 +2351,14 @@ function WordListModal({
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {/* HU3.3.6: Checkbox column */}
+                      <TableHead className="w-[40px] pl-4">
+                        <Checkbox
+                          checked={allCurrentSelected ? true : someCurrentSelected ? "indeterminate" : false}
+                          onCheckedChange={toggleSelectAll}
+                          aria-label="Seleccionar todas"
+                        />
+                      </TableHead>
                       <TableHead>Español</TableHead>
                       <TableHead>Nasa Yuwe</TableHead>
                       <TableHead className="hidden sm:table-cell">Categoría</TableHead>
@@ -2030,7 +2369,15 @@ function WordListModal({
                   </TableHeader>
                   <TableBody>
                     {words.map((w) => (
-                      <TableRow key={w.id}>
+                      <TableRow key={w.id} className={selectedIds.has(w.id) ? "bg-primary/5" : ""}>
+                        {/* HU3.3.6: Row checkbox */}
+                        <TableCell className="pl-4">
+                          <Checkbox
+                            checked={selectedIds.has(w.id)}
+                            onCheckedChange={() => toggleSelect(w.id)}
+                            aria-label={`Seleccionar ${w.spanish}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium text-sm">{w.spanish}</TableCell>
                         <TableCell className="text-sm text-primary">{w.nasaYuwe}</TableCell>
                         <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
@@ -2873,11 +3220,12 @@ export function AdminDashboard() {
         onOpenChange={setFullAuditLogOpen}
       />
 
-      {/* HU3.3.4: Word list + edit modals */}
+      {/* HU3.3.4 + HU3.3.6: Word list + edit modals */}
       <WordListModal
         open={wordListOpen}
         onOpenChange={setWordListOpen}
         onEditWord={handleEditWord}
+        onBulkActionDone={handleWordSaved}
       />
       <EditWordModal
         open={editWordOpen}

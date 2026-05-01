@@ -696,3 +696,30 @@ Stage Summary:
 - HU3.3.4 ✅ EditWordModal fully working: "Gestionar fichas" button → WordListModal with search/filter/pagination → "Editar" button on each row → EditWordModal pre-loaded with current data → change detection → "No se detectaron cambios" message → audit log with before/after values → audio replacement with old file server deletion
 - The only missing piece was wiring up the already-implemented modals in the AdminDashboard component's JSX
 - Files modified: src/components/admin-dashboard.tsx (added handleEditWord, handleWordSaved callbacks + rendered WordListModal and EditWordModal)
+
+---
+Task ID: 2-3-4
+Agent: full-stack-developer
+Task: HU3.3.5, HU3.3.6, HU3.3.7 — Status management, bulk actions, and status filtering
+
+Work Log:
+- Enhanced PUT /api/admin/words/[id] with determineAuditAction() helper: uses "PUBLISH" when status→PUBLISHED, "ARCHIVE" when status→ARCHIVED, otherwise "UPDATE"; added responsable: "admin (MVP)" to changes JSON; added status validation
+- Created PATCH /api/admin/words/[id] endpoint for status-only changes: accepts { status }, creates audit log with specific action, returns { word, previousStatus }
+- Created POST /api/admin/words/bulk-status endpoint: accepts { wordIds, status }, updates each word, creates BATCH_PUBLISH/BATCH_ARCHIVE audit log per word, returns { updated, skipped, total }
+- Added status transition buttons to EditWordModal: "Publicar" (DRAFT→PUBLISHED, emerald), "Archivar" (PUBLISHED→ARCHIVED, secondary), "Volver a publicar" (ARCHIVED→PUBLISHED, emerald)
+- Added AlertDialog warning when publishing without audio (non-blocking — "Publicar de todas formas" option)
+- Added Checkbox column to WordListModal table with select-all (indeterminate state supported) and per-row checkboxes
+- Added bulk action bar: shows selected count + "Publicar seleccionadas" / "Archivar seleccionadas" / "Limpiar" buttons
+- Added bulk action result card with updated/skipped summary and dismiss button
+- Selected rows highlighted with bg-primary/5; selection cleared on page/search/filter change
+- Added BATCH_PUBLISH and BATCH_ARCHIVE action labels and colors to helper functions
+- Added status filter count badge in WordListModal dialog description (e.g., "Publicadas: 69")
+- Added onBulkActionDone prop to WordListModal to refresh dashboard stats after bulk action
+- All lint checks pass, dev server compiles without errors
+
+Stage Summary:
+- HU3.3.5 ✅ Status transitions: DRAFT→PUBLISHED (Publicar button), PUBLISHED→ARCHIVED (Archivar button), ARCHIVED→PUBLISHED (Volver a publicar button); warning when publishing without audio; audit log with PUBLISH/ARCHIVE actions; PATCH endpoint for status-only changes
+- HU3.3.6 ✅ Bulk actions: Checkbox column with select-all (indeterminate state), bulk action bar with "Publicar seleccionadas" and "Archivar seleccionadas", bulk-status API endpoint with BATCH_PUBLISH/BATCH_ARCHIVE audit logs, result summary
+- HU3.3.7 ✅ Status filter: existing filter verified working with bulk actions; count badge showing filtered results; selection cleared on filter change
+- Files created: src/app/api/admin/words/bulk-status/route.ts
+- Files modified: src/app/api/admin/words/[id]/route.ts, src/components/admin-dashboard.tsx
