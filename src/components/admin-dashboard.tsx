@@ -2193,6 +2193,16 @@ export function AdminDashboard() {
     fetchStats(true)
   }, [fetchStats])
 
+  // HU3.3.4: Edit word flow
+  const handleEditWord = useCallback((word: WordForEdit) => {
+    setEditingWord(word)
+    setEditWordOpen(true)
+  }, [])
+
+  const handleWordSaved = useCallback(() => {
+    fetchStats(true)
+  }, [fetchStats])
+
   // ─── Derived values ─────────────────────────────────────────────────────
 
   const statusSum = useMemo(() => {
@@ -2861,6 +2871,19 @@ export function AdminDashboard() {
       <FullAuditLogModal
         open={fullAuditLogOpen}
         onOpenChange={setFullAuditLogOpen}
+      />
+
+      {/* HU3.3.4: Word list + edit modals */}
+      <WordListModal
+        open={wordListOpen}
+        onOpenChange={setWordListOpen}
+        onEditWord={handleEditWord}
+      />
+      <EditWordModal
+        open={editWordOpen}
+        onOpenChange={setEditWordOpen}
+        word={editingWord}
+        onSaved={handleWordSaved}
       />
     </div>
   )
