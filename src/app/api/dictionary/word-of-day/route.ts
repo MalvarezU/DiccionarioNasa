@@ -25,8 +25,10 @@ export async function GET(request: Request) {
       )
     }
 
-    // Get total word count
-    const totalWords = await db.dictionaryWord.count()
+    // Get total word count (only PUBLISHED words)
+    const totalWords = await db.dictionaryWord.count({
+      where: { status: "PUBLISHED" },
+    })
 
     if (totalWords === 0) {
       return NextResponse.json(
@@ -41,8 +43,9 @@ export async function GET(request: Request) {
     const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24))
     const wordIndex = dayOfYear % totalWords
 
-    // Fetch the word at that index (alphabetically sorted for consistency)
+    // Fetch the word at that index (alphabetically sorted for consistency, PUBLISHED only)
     const words = await db.dictionaryWord.findMany({
+      where: { status: "PUBLISHED" },
       select: {
         id: true,
         spanish: true,

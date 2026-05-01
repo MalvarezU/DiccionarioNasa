@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
           culturalContext: true,
           category: true,
           examples: true,
+          status: true,
         },
         skip: (page - 1) * pageSize,
         take: pageSize,

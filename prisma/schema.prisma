@@ -32,6 +32,7 @@ model DictionaryWord {
   culturalContext String?  // Cultural context of use
   category        String?  // Grammatical category (noun, verb, adj, etc.)
   examples        String?  // Usage examples (JSON string)
+  status          String   @default("PUBLISHED") // "DRAFT" | "PUBLISHED" | "ARCHIVED"
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -421,3 +421,51 @@ Stage Summary:
 - Files created: src/components/word-of-day-card.tsx, src/app/api/dictionary/word-of-day/route.ts
 - Files modified: src/components/explore-section.tsx, src/lib/local-db.ts, src/app/page.tsx
 - Package added: @tanstack/react-virtual
+
+---
+Task ID: 9
+Agent: Main
+Task: HU3.5.1 — Dashboard del Panel Admin (Total de palabras)
+
+Work Log:
+- Added `status` field to DictionaryWord in Prisma schema (default: "PUBLISHED", values: "DRAFT" | "PUBLISHED" | "ARCHIVED")
+- Ran `db:push` to update database schema, `db:generate` to regenerate Prisma Client
+- Updated prisma/seed.ts: all seed words now explicitly set status: 'PUBLISHED'
+- Created /api/admin/stats API endpoint:
+  - totalWords (ALL statuses: DRAFT + PUBLISHED + ARCHIVED)
+  - draftCount, publishedCount, archivedCount (breakdown by status)
+  - wordsWithAudio (count of words with audioUrl)
+  - totalUsers, totalFavorites
+  - recentWords (created in last 7 days)
+  - recentAuditLogs (last 10 entries)
+  - No auth required (per HU3.5.1 note: "Por ahora deja el panel directo sin login")
+- Created AdminDashboard component:
+  - Hero card: "Total de palabras" with large number (69), status breakdown with colored dots
+  - 4 secondary stat cards: Con audio, Nuevas (7 días), Usuarios, Favoritos
+  - Status distribution section: progress bars for Published/Draft/Archived
+  - Recent activity section: audit log entries with action badges
+  - Refresh button to reload stats
+  - Loading/error states
+  - Hydration-safe via useMounted() pattern
+- Updated public-facing APIs to filter by PUBLISHED status:
+  - /api/dictionary/featured: where: { status: "PUBLISHED" }
+  - /api/dictionary/search: WHERE status = 'PUBLISHED' in raw SQL
+  - /api/dictionary/word-of-day: where: { status: "PUBLISHED" }
+  - /api/dictionary/export: includes status field in select
+- Updated local-db.ts:
+  - LocalWord interface now includes status field
+  - getAllLocalWords() filters only PUBLISHED words for public display
+  - searchLocalWords() filters only PUBLISHED words
+- Updated page.tsx: added "Admin" tab (Shield icon) to tabbed section
+- All lint checks pass, dev server compiles without errors
+
+Stage Summary:
+- HU3.5.1 fully implemented: "Total de palabras" hero card showing count of ALL words (DRAFT + PUBLISHED + ARCHIVED)
+- Status breakdown shows Published/Draft/Archived counts with colored indicators
+- Admin dashboard accessible via "Admin" tab (no login required per requirements)
+- When a new word is created, dashboard count increments on refresh
+- When a word is archived (soft delete), it still counts in total
+- Public-facing APIs properly filter PUBLISHED words only
+- Files created: src/components/admin-dashboard.tsx, src/app/api/admin/stats/route.ts
+- Files modified: prisma/schema.prisma, prisma/seed.ts, src/lib/local-db.ts, src/app/page.tsx
+- Files modified (API status filtering): src/app/api/dictionary/featured/route.ts, src/app/api/dictionary/search/route.ts, src/app/api/dictionary/word-of-day/route.ts, src/app/api/dictionary/export/route.ts

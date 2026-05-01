@@ -819,6 +819,7 @@ async function main() {
         category: word.category,
         audioUrl: word.audioUrl,
         examples: word.examples,
+        status: 'PUBLISHED',
       },
     })
   }

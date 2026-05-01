@@ -65,29 +65,31 @@ export async function GET(request: NextRequest) {
     >`
       SELECT id, spanish, nasaYuwe, pronunciation, category
       FROM DictionaryWord
-      WHERE
-        LOWER(spanish) LIKE '%' || ${query} || '%'
-        OR LOWER(nasaYuwe) LIKE '%' || ${query} || '%'
-        OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(spanish,
-            'á','a'), 'é','e'), 'í','i'), 'ó','o'), 'ú','u'),
-            'Á','a'), 'É','e'), 'Í','i'), 'Ó','o'), 'Ú','u'),
-            'ñ','n'), 'Ñ','n'), 'ü','u'), 'Ü','u'),
-            'ã','a'), 'Ã','a'), 'ĩ','i'), 'Ĩ','i'),
-            'ũ','u'), 'Ũ','u')
-          ) LIKE '%' || ${query.toLowerCase()} || '%'
-        OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(nasaYuwe,
-            'á','a'), 'é','e'), 'í','i'), 'ó','o'), 'ú','u'),
-            'Á','a'), 'É','e'), 'Í','i'), 'Ó','o'), 'Ú','u'),
-            'ñ','n'), 'Ñ','n'), 'ü','u'), 'Ü','u'),
-            'ã','a'), 'Ã','a'), 'ĩ','i'), 'Ĩ','i'),
-            'ũ','u'), 'Ũ','u')
-          ) LIKE '%' || ${query.toLowerCase()} || '%'
+      WHERE status = 'PUBLISHED'
+        AND (
+          LOWER(spanish) LIKE '%' || ${query} || '%'
+          OR LOWER(nasaYuwe) LIKE '%' || ${query} || '%'
+          OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(spanish,
+              'á','a'), 'é','e'), 'í','i'), 'ó','o'), 'ú','u'),
+              'Á','a'), 'É','e'), 'Í','i'), 'Ó','o'), 'Ú','u'),
+              'ñ','n'), 'Ñ','n'), 'ü','u'), 'Ü','u'),
+              'ã','a'), 'Ã','a'), 'ĩ','i'), 'Ĩ','i'),
+              'ũ','u'), 'Ũ','u')
+            ) LIKE '%' || ${query.toLowerCase()} || '%'
+          OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(nasaYuwe,
+              'á','a'), 'é','e'), 'í','i'), 'ó','o'), 'ú','u'),
+              'Á','a'), 'É','e'), 'Í','i'), 'Ó','o'), 'Ú','u'),
+              'ñ','n'), 'Ñ','n'), 'ü','u'), 'Ü','u'),
+              'ã','a'), 'Ã','a'), 'ĩ','i'), 'Ĩ','i'),
+              'ũ','u'), 'Ũ','u')
+            ) LIKE '%' || ${query.toLowerCase()} || '%'
+        )
       LIMIT 50
     `
 

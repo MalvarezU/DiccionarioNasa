@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 export async function GET() {
   try {
     const words = await db.dictionaryWord.findMany({
+      where: { status: "PUBLISHED" },
       select: {
         id: true,
         spanish: true,
