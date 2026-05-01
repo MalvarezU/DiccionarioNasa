@@ -1,6 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+
+/**
+ * Normalize a string for comparison:
+ * - Lowercase
+ * - Remove diacritics/accents (NFD decomposition + strip combining marks)
+ * - Trim whitespace
+ */
+function normalize(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip combining diacritical marks
+    .toLowerCase()
+    .trim()
+}
+
+/**
+ * Relevance rank:
+ *   0 = exact match (normalized field equals normalized query)
+ *   1 = prefix match (field starts with query, after normalization)
+ *   2 = partial/contains match (field contains query somewhere)
+ *   3 = no match
+ */
+function getRelevance(field: string, query: string): number {
+  const nField = normalize(field)
+  const nQuery = normalize(query)
+
+  if (nField === nQuery) return 0 // exact match
+  if (nField.startsWith(nQuery)) return 1 // prefix match
+  if (nField.includes(nQuery)) return 2 // partial match
+  return 3 // no match
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
@@ -15,15 +45,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Build the where clause: contains match on both fields
-    // Note: SQLite LIKE is case-insensitive for ASCII by default
-    const whereClause: Prisma.DictionaryWordWhereInput = {
-      OR: [
-        { spanish: { contains: query } },
-        { nasaYuwe: { contains: query } },
-      ],
-    }
-
     // Execute with a 2-second timeout by racing against a timeout promise
     const timeoutMs = 2000
 
@@ -31,23 +52,49 @@ export async function GET(request: NextRequest) {
       setTimeout(() => resolve(null), timeoutMs)
     )
 
-    const searchPromise = db.dictionaryWord.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        spanish: true,
-        nasaYuwe: true,
-        pronunciation: true,
-        category: true,
-      },
-      take: 10,
-      orderBy: { spanish: 'asc' },
-    })
+    // Fetch more candidates than needed so we can rank and trim
+    // We use raw SQL to do accent-insensitive search via Unicode normalization
+    const searchPromise = db.$queryRaw<
+      Array<{
+        id: string
+        spanish: string
+        nasaYuwe: string
+        pronunciation: string | null
+        category: string | null
+      }>
+    >`
+      SELECT id, spanish, nasaYuwe, pronunciation, category
+      FROM DictionaryWord
+      WHERE
+        LOWER(spanish) LIKE '%' || ${query} || '%'
+        OR LOWER(nasaYuwe) LIKE '%' || ${query} || '%'
+        OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(spanish,
+            'á','a'), 'é','e'), 'í','i'), 'ó','o'), 'ú','u'),
+            'Á','a'), 'É','e'), 'Í','i'), 'Ó','o'), 'Ú','u'),
+            'ñ','n'), 'Ñ','n'), 'ü','u'), 'Ü','u'),
+            'ã','a'), 'Ã','a'), 'ĩ','i'), 'Ĩ','i'),
+            'ũ','u'), 'Ũ','u')
+          ) LIKE '%' || ${query.toLowerCase()} || '%'
+        OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(nasaYuwe,
+            'á','a'), 'é','e'), 'í','i'), 'ó','o'), 'ú','u'),
+            'Á','a'), 'É','e'), 'Í','i'), 'Ó','o'), 'Ú','u'),
+            'ñ','n'), 'Ñ','n'), 'ü','u'), 'Ü','u'),
+            'ã','a'), 'Ã','a'), 'ĩ','i'), 'Ĩ','i'),
+            'ũ','u'), 'Ũ','u')
+          ) LIKE '%' || ${query.toLowerCase()} || '%'
+      LIMIT 50
+    `
 
-    const results = await Promise.race([searchPromise, timeoutPromise])
+    const rawResults = await Promise.race([searchPromise, timeoutPromise])
 
     // If timeout occurred, return empty results
-    if (results === null) {
+    if (rawResults === null) {
       return NextResponse.json({
         results: [],
         total: 0,
@@ -55,9 +102,27 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Rank results by relevance: exact → prefix → partial
+    const ranked = rawResults
+      .map((word) => {
+        // Best relevance across both fields (spanish and nasaYuwe)
+        const relSpanish = getRelevance(word.spanish, query)
+        const relNasa = getRelevance(word.nasaYuwe, query)
+        const bestRelevance = Math.min(relSpanish, relNasa)
+        return { ...word, relevance: bestRelevance }
+      })
+      .sort((a, b) => {
+        // Primary sort: relevance (0=exact, 1=prefix, 2=partial)
+        if (a.relevance !== b.relevance) return a.relevance - b.relevance
+        // Secondary sort: alphabetical by spanish
+        return a.spanish.localeCompare(b.spanish, 'es')
+      })
+      .slice(0, 10) // Return top 10 after ranking
+      .map(({ relevance: _relevance, ...word }) => word)
+
     return NextResponse.json({
-      results,
-      total: results.length,
+      results: ranked,
+      total: ranked.length,
     })
   } catch (error) {
     console.error('Dictionary search error:', error)

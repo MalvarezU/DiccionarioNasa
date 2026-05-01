@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Loader2, Volume2 } from "lucide-react";
+import { Search, Loader2, Volume2, CloudOff, Cloud } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useToast } from "@/hooks/use-toast";
+import { SuggestWordModal } from "@/components/suggest-word-modal";
 
 interface SearchResult {
   id: string;
@@ -27,6 +29,7 @@ export function SearchBar({ variant = "inline" }: SearchBarProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const isOnline = useOnlineStatus();
   const { toast } = useToast();
   const debouncedQuery = useDebounce(query, 300);
@@ -35,6 +38,8 @@ export function SearchBar({ variant = "inline" }: SearchBarProps) {
   const listRef = useRef<HTMLUListElement>(null);
 
   const isHero = variant === "hero";
+  const showDropdown = isOpen && debouncedQuery.length >= 2;
+  const hasNoResults = showDropdown && !isLoading && results.length === 0;
 
   // Fetch search results
   useEffect(() => {
@@ -135,124 +140,174 @@ export function SearchBar({ variant = "inline" }: SearchBarProps) {
     [isOpen, results, highlightedIndex, handleSelect]
   );
 
-  const showDropdown = isOpen && debouncedQuery.length >= 2;
-
   return (
-    <div
-      ref={containerRef}
-      className={isHero ? "relative w-full max-w-2xl mx-auto" : "relative w-full max-w-xl"}
-    >
-      <div className="relative">
-        <Search
-          className={`absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground ${isHero ? "h-5 w-5" : "h-4 w-4"}`}
-        />
-        <Input
-          ref={inputRef}
-          type="text"
-          placeholder="Buscar en Nasa Yuwe o Español..."
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            if (e.target.value.length >= 2) {
-              setIsOpen(true);
-            }
-          }}
-          onFocus={() => {
-            if (debouncedQuery.length >= 2) {
-              setIsOpen(true);
-            }
-          }}
-          onKeyDown={handleKeyDown}
-          className={`pl-10 w-full bg-background/60 border-border/50 focus-visible:border-primary/50 ${
-            isHero
-              ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md transition-shadow"
-              : "h-10 pr-9"
-          }`}
-          aria-label="Buscar palabras en el diccionario"
-          aria-expanded={showDropdown}
-          aria-autocomplete="list"
-          role="combobox"
-        />
-        {isLoading && (
-          <Loader2
-            className={`absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin ${isHero ? "h-5 w-5" : "h-4 w-4"}`}
+    <>
+      <div
+        ref={containerRef}
+        className={isHero ? "relative w-full max-w-2xl mx-auto" : "relative w-full max-w-xl"}
+      >
+        {/* Search Input */}
+        <div className="relative">
+          <Search
+            className={`absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground ${isHero ? "h-5 w-5" : "h-4 w-4"}`}
           />
+          <Input
+            ref={inputRef}
+            type="text"
+            placeholder="Buscar en Nasa Yuwe o Español..."
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (e.target.value.length >= 2) {
+                setIsOpen(true);
+              }
+            }}
+            onFocus={() => {
+              if (debouncedQuery.length >= 2) {
+                setIsOpen(true);
+              }
+            }}
+            onKeyDown={handleKeyDown}
+            className={`pl-10 w-full bg-background/60 border-border/50 focus-visible:border-primary/50 ${
+              isHero
+                ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md transition-shadow"
+                : "h-10 pr-9"
+            }`}
+            aria-label="Buscar palabras en el diccionario"
+            aria-expanded={showDropdown}
+            aria-autocomplete="list"
+            role="combobox"
+          />
+          {isLoading && (
+            <Loader2
+              className={`absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin ${isHero ? "h-5 w-5" : "h-4 w-4"}`}
+            />
+          )}
+        </div>
+
+        {/* HU1.1.8 — Offline indicator BELOW the input, always visible when offline */}
+        {!isOnline && (
+          <div className="mt-2 flex items-center gap-1.5 justify-center">
+            <CloudOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+              Búsqueda local (sin conexión)
+            </span>
+          </div>
+        )}
+
+        {/* Online indicator — subtle cloud icon */}
+        {isOnline && isHero && (
+          <div className="mt-2 flex items-center gap-1.5 justify-center">
+            <Cloud className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs text-muted-foreground">
+              Búsqueda en línea
+            </span>
+          </div>
+        )}
+
+        {/* Dropdown with results */}
+        {showDropdown && (
+          <div
+            className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden ${
+              isHero ? "mt-2 rounded-xl" : "mt-1"
+            }`}
+          >
+            {/* Offline banner inside dropdown (backup notice) */}
+            {!isOnline && (
+              <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 dark:text-amber-400 dark:bg-amber-950/30 dark:border-amber-900 flex items-center gap-1.5">
+                <CloudOff className="h-3 w-3" />
+                Sin conexión — mostrando resultados locales
+              </div>
+            )}
+
+            {/* HU1.1.7 — Friendly no results message with suggest button */}
+            {hasNoResults ? (
+              <div className="px-4 py-6 text-center">
+                <p className="text-sm text-muted-foreground mb-1">
+                  No encontramos
+                </p>
+                <p className="text-base font-semibold text-foreground mb-3">
+                  «{debouncedQuery}»
+                </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  en el diccionario.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setSuggestOpen(true);
+                    setIsOpen(false);
+                  }}
+                >
+                  💡 Sugerir esta palabra
+                </Button>
+              </div>
+            ) : (
+              <ul
+                ref={listRef}
+                className={isHero ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
+                role="listbox"
+              >
+                {results.map((result, index) => (
+                  <li
+                    key={result.id}
+                    data-search-item
+                    role="option"
+                    aria-selected={index === highlightedIndex}
+                    className={`
+                      flex items-center gap-3 cursor-pointer transition-colors
+                      ${isHero ? "px-4 py-3" : "px-3 py-2.5"}
+                      ${
+                        index === highlightedIndex
+                          ? "bg-primary/10 text-foreground"
+                          : "hover:bg-muted/60 text-foreground"
+                      }
+                    `}
+                    onClick={() => handleSelect(result)}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-medium ${isHero ? "text-base" : "text-sm"}`}>
+                          {result.nasaYuwe}
+                        </span>
+                        <span className={`text-muted-foreground ${isHero ? "text-sm" : "text-xs"}`}>
+                          — {result.spanish}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {result.pronunciation && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Volume2 className="h-3 w-3" />
+                            [{result.pronunciation}]
+                          </span>
+                        )}
+                        {result.category && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0 h-4"
+                          >
+                            {result.category}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </div>
 
-      {showDropdown && (
-        <div
-          className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden ${
-            isHero ? "mt-2 rounded-xl" : "mt-1"
-          }`}
-        >
-          {/* Offline notice */}
-          {!isOnline && (
-            <div className="px-3 py-2 text-xs text-amber-700 bg-amber-50 border-b border-amber-200 dark:text-amber-400 dark:bg-amber-950/30 dark:border-amber-900">
-              Sin conexión — mostrando resultados locales
-            </div>
-          )}
-
-          {results.length === 0 && !isLoading ? (
-            <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-              No se encontraron resultados para &quot;{debouncedQuery}&quot;
-            </div>
-          ) : (
-            <ul
-              ref={listRef}
-              className={isHero ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
-              role="listbox"
-            >
-              {results.map((result, index) => (
-                <li
-                  key={result.id}
-                  data-search-item
-                  role="option"
-                  aria-selected={index === highlightedIndex}
-                  className={`
-                    flex items-center gap-3 cursor-pointer transition-colors
-                    ${isHero ? "px-4 py-3" : "px-3 py-2.5"}
-                    ${
-                      index === highlightedIndex
-                        ? "bg-primary/10 text-foreground"
-                        : "hover:bg-muted/60 text-foreground"
-                    }
-                  `}
-                  onClick={() => handleSelect(result)}
-                  onMouseEnter={() => setHighlightedIndex(index)}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-medium ${isHero ? "text-base" : "text-sm"}`}>
-                        {result.nasaYuwe}
-                      </span>
-                      <span className={`text-muted-foreground ${isHero ? "text-sm" : "text-xs"}`}>
-                        — {result.spanish}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {result.pronunciation && (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Volume2 className="h-3 w-3" />
-                          [{result.pronunciation}]
-                        </span>
-                      )}
-                      {result.category && (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] px-1.5 py-0 h-4"
-                        >
-                          {result.category}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
+      {/* HU1.1.7 — Suggest word modal */}
+      <SuggestWordModal
+        open={suggestOpen}
+        onOpenChange={setSuggestOpen}
+        initialTerm={debouncedQuery}
+      />
+    </>
   );
 }
