@@ -327,18 +327,31 @@ function HomeContent() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto border-t bg-muted/20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Leaf className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">
-                Nasa Yuwe — Diccionario Bilingüe
-              </span>
+      <footer className="mt-auto bg-black text-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
+          <div className="flex flex-col items-center sm:flex-row sm:items-start sm:justify-between gap-6">
+            {/* Logo + Brand */}
+            <div className="flex flex-col items-center sm:items-start gap-3">
+              <Image
+                src="/logo.png"
+                alt="Logo Nasa Yuwe"
+                width={56}
+                height={56}
+                className="rounded-lg"
+              />
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  Nasa Yuwe
+                </p>
+                <p className="text-xs text-neutral-400">
+                  Diccionario Bilingüe
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground text-center sm:text-right">
+
+            {/* Acknowledgment */}
+            <p className="text-xs text-neutral-400 text-center sm:text-right max-w-sm leading-relaxed">
               Con respeto y gratitud al pueblo Nasa (Páez) de Colombia.
-              <br />
               Este diccionario es una herramienta de preservación lingüística y cultural.
             </p>
           </div>
