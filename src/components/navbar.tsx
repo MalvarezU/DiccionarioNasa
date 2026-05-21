@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
-import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, User, Heart, Clock } from "lucide-react"
+import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock } from "lucide-react"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,11 @@ import {
 import { SettingsDialog } from "@/components/settings-dialog"
 import { AuthModal } from "@/components/auth-modal"
 import { cn } from "@/lib/utils"
+
+/** Dispatch a custom event to open the favorites/history panel from the page */
+function dispatchOpenPanel(tab: "favorites" | "history") {
+  window.dispatchEvent(new CustomEvent("open-panel", { detail: { tab } }))
+}
 
 export function NavBar() {
   const isOnline = useOnlineStatus()
@@ -95,6 +100,49 @@ export function NavBar() {
               </Badge>
             )}
 
+            {/* Favorites & History buttons (authenticated only) */}
+            {isAuthenticated && (
+              <>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-primary"
+                        onClick={() => dispatchOpenPanel("favorites")}
+                        aria-label="Mis favoritos"
+                      >
+                        <Heart className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Mis favoritos</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-primary"
+                        onClick={() => dispatchOpenPanel("history")}
+                        aria-label="Mi historial"
+                      >
+                        <Clock className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Mi historial</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
+            )}
+
             {/* Auth: Login button or User dropdown */}
             {isAuthenticated ? (
               <DropdownMenu>
@@ -118,17 +166,19 @@ export function NavBar() {
                     <p className="text-xs text-muted-foreground truncate">{session?.user?.email}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/?tab=favorites" className="cursor-pointer">
-                      <Heart className="mr-2 h-4 w-4 text-primary" />
-                      Mis favoritos
-                    </Link>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => dispatchOpenPanel("favorites")}
+                  >
+                    <Heart className="mr-2 h-4 w-4 text-primary" />
+                    Mis favoritos
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/?tab=history" className="cursor-pointer">
-                      <Clock className="mr-2 h-4 w-4 text-primary" />
-                      Mi historial
-                    </Link>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => dispatchOpenPanel("history")}
+                  >
+                    <Clock className="mr-2 h-4 w-4 text-primary" />
+                    Mi historial
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

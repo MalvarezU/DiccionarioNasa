@@ -723,3 +723,37 @@ Stage Summary:
 - HU3.3.7 ✅ Status filter: existing filter verified working with bulk actions; count badge showing filtered results; selection cleared on filter change
 - Files created: src/app/api/admin/words/bulk-status/route.ts
 - Files modified: src/app/api/admin/words/[id]/route.ts, src/components/admin-dashboard.tsx
+---
+Task ID: 1
+Agent: Main Agent
+Task: Reorganize favorites and history from page sections into responsive modal/sheet panel
+
+Work Log:
+- Read existing page.tsx, navbar.tsx, word-detail-card.tsx, auth-modal.tsx to understand current implementation
+- Created new `FavoritesHistoryPanel` component (`src/components/favorites-history-panel.tsx`) that renders:
+  - Dialog (centered modal) on desktop (≥768px)
+  - Sheet (side drawer) on mobile
+  - Internal tabs to switch between "Favoritos" and "Historial"
+  - All data fetching logic (favorites, history) moved from page.tsx into this component
+  - Clicking a word in the panel closes it and opens the word detail
+  - Handles unauthenticated state with login prompt
+- Updated `src/app/page.tsx`:
+  - Removed "Favoritos" and "Historial" tabs from the main tab bar
+  - Removed FavoriteWord/HistoryWord interfaces and related state
+  - Removed favorites/history fetch effects and groupedHistory computation
+  - Added panelOpen/panelTab state and custom event listener (`open-panel`)
+  - Added FavoritesHistoryPanel component at the bottom of the component tree
+  - Cleaned up unused imports (Suspense, useSearchParams, Clock, Trash2, Loader2, LogIn, Button)
+- Updated `src/components/navbar.tsx`:
+  - Added Heart and Clock icon buttons in the NavBar for authenticated users (with tooltips)
+  - Changed dropdown menu items ("Mis favoritos", "Mi historial") from Link navigation to dispatching custom events via `dispatchOpenPanel()`
+  - Added `dispatchOpenPanel` helper function that dispatches `CustomEvent("open-panel")` on window
+- Fixed lint issues: removed setState in effect and ref access during render patterns
+
+Stage Summary:
+- Favorites and History are now accessed via NavBar buttons/dropdown and appear as:
+  - Desktop: centered Dialog modal
+  - Mobile: Sheet side drawer
+- Main page only shows "Destacadas" and "Explorar A-Z" tabs
+- Custom event system connects NavBar to the page's panel state
+- All lint checks pass
