@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock } from "lucide-react"
 import { useOnlineStatus } from "@/hooks/use-online-status"
@@ -23,7 +22,6 @@ import {
 } from "@/components/ui/tooltip"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { AuthModal } from "@/components/auth-modal"
-import { cn } from "@/lib/utils"
 
 /** Dispatch a custom event to open the favorites/history panel from the page */
 function dispatchOpenPanel(tab: "favorites" | "history") {
@@ -34,9 +32,7 @@ export function NavBar() {
   const isOnline = useOnlineStatus()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
-  const pathname = usePathname()
-  const isAdmin = pathname === "/admin"
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const isAuthenticated = !!session?.user
   const userRole = (session?.user as { role?: string } | undefined)?.role
   const isAdminUser = userRole === "admin"
@@ -55,36 +51,8 @@ export function NavBar() {
             </span>
           </Link>
 
-          {/* Right side: nav links + connection + auth + settings */}
+          {/* Right side: connection + auth + settings */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {/* Admin link — only visible to admin users */}
-            {isAdminUser && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link href="/admin">
-                      <Button
-                        variant={isAdmin ? "secondary" : "ghost"}
-                        size="sm"
-                        className={cn(
-                          "gap-1.5 text-xs sm:text-sm",
-                          isAdmin
-                            ? "text-primary font-medium"
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <Shield className="h-4 w-4" />
-                        <span className="hidden sm:inline">Admin</span>
-                      </Button>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Panel de administración</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
             {/* Connection Status */}
             {isOnline ? (
               <Badge
@@ -142,6 +110,16 @@ export function NavBar() {
                     Mi historial
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  {/* Admin link — only visible to admin users */}
+                  {isAdminUser && (
+                    <DropdownMenuItem className="cursor-pointer" asChild>
+                      <Link href="/admin">
+                        <Shield className="mr-2 h-4 w-4 text-primary" />
+                        Panel de administración
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {isAdminUser && <DropdownMenuSeparator />}
                   <DropdownMenuItem
                     onClick={() => signOut({ callbackUrl: "/" })}
                     className="cursor-pointer text-destructive focus:text-destructive"
