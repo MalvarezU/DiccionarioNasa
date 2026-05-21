@@ -123,7 +123,7 @@ function HomeContent() {
         <DownloadBanner />
 
         {/* Hero Section with Search Bar */}
-        <section className="relative overflow-hidden pb-8">
+        <section className="relative pb-8">
           <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
           <div className="absolute inset-0 opacity-[0.06]">
             <Image
