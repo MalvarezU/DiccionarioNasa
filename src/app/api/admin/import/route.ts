@@ -5,8 +5,12 @@ import { requireAdmin } from "@/lib/auth"
 /**
  * POST /api/admin/import
  *
- * Imports words from CSV/JSON data.
- * Expects a JSON body with a `words` array.
+ * Imports words from CSV data.
+ * Expects a JSON body with a `words` array where each item may contain:
+ *   - nasaYuwe, spanish (required)
+ *   - category, pronunciation, culturalContext, audioUrl (optional)
+ *   - examples: Array<{ spanish: string; nasaYuwe: string }> (optional, stored as JSON string)
+ *   - status: "DRAFT" | "PUBLISHED" | "ARCHIVED" (defaults to PUBLISHED)
  */
 export async function POST(request: Request) {
   const { session, error } = await requireAdmin()
@@ -43,7 +47,7 @@ export async function POST(request: Request) {
 
       if (!spanish || !nasaYuwe) {
         errors++
-        errorRows.push({ row: i + 1, reason: "Campos obligatorios faltantes (español, nasa yuwe)" })
+        errorRows.push({ row: i + 1, reason: "Campos obligatorios faltantes (Palabra_esp, Palabra_nyW)" })
         continue
       }
 
@@ -60,6 +64,29 @@ export async function POST(request: Request) {
         continue
       }
 
+      // Normalize status
+      const rawStatus = (row.status || "PUBLISHED").trim().toUpperCase()
+      let status = "PUBLISHED"
+      if (rawStatus === "DRAFT" || rawStatus === "BORRADOR") status = "DRAFT"
+      else if (rawStatus === "PUBLISHED" || rawStatus === "PUBLICADA") status = "PUBLISHED"
+      else if (rawStatus === "ARCHIVED" || rawStatus === "ARCHIVADA") status = "ARCHIVED"
+
+      // Handle examples: could be an array of objects or a JSON string
+      let examplesJson: string | null = null
+      if (row.examples) {
+        if (typeof row.examples === "string") {
+          examplesJson = row.examples
+        } else if (Array.isArray(row.examples)) {
+          // Only store if at least one example has content
+          const nonEmpty = row.examples.filter(
+            (ex: { spanish?: string; nasaYuwe?: string }) => ex.spanish?.trim() || ex.nasaYuwe?.trim()
+          )
+          if (nonEmpty.length > 0) {
+            examplesJson = JSON.stringify(nonEmpty)
+          }
+        }
+      }
+
       // Create the word
       try {
         await db.dictionaryWord.create({
@@ -70,8 +97,8 @@ export async function POST(request: Request) {
             audioUrl: row.audioUrl?.trim() || row.audio_url?.trim() || null,
             culturalContext: row.culturalContext?.trim() || row.cultural_context?.trim() || null,
             category: row.category?.trim() || null,
-            examples: row.examples ? JSON.stringify(row.examples) : null,
-            status: row.status || "PUBLISHED",
+            examples: examplesJson,
+            status,
           },
         })
         created++

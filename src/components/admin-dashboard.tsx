@@ -1574,7 +1574,131 @@ function EditWordModal({
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ImportCorpusModal (HU3.5.5 → F3.2)
+// CSV format: Palabra_nyW, Palabra_esp, tipo1, Ejemplo_ny, Ejemplo_esp, Estado
 // ═══════════════════════════════════════════════════════════════════════════
+
+/** Column name aliases — map from CSV header → internal field name */
+const CSV_COLUMN_MAP: Record<string, string> = {
+  // Primary corpus format
+  "palabra_nyw": "nasaYuwe",
+  "palabra_esp": "spanish",
+  "tipo1": "category",
+  "ejemplo_ny": "exampleNasaYuwe",
+  "ejemplo_esp": "exampleSpanish",
+  "estado": "status",
+  // English / internal aliases (backward compat)
+  "nasa_yuwe": "nasaYuwe",
+  "nasayuwe": "nasaYuwe",
+  "spanish": "spanish",
+  "category": "category",
+  "pronunciation": "pronunciation",
+  "culturalcontext": "culturalContext",
+  "cultural_context": "culturalContext",
+  "audio_url": "audioUrl",
+  "audiourl": "audioUrl",
+  "status": "status",
+  "examples": "examples",
+}
+
+/** Valid status values */
+const VALID_STATUSES = new Set(["DRAFT", "PUBLISHED", "ARCHIVED", "BORRADOR", "PUBLICADA", "ARCHIVADA"])
+
+/** Map Spanish status labels to internal values */
+function normalizeStatus(raw: string): string {
+  const upper = raw.trim().toUpperCase()
+  if (upper === "BORRADOR") return "DRAFT"
+  if (upper === "PUBLICADA") return "PUBLISHED"
+  if (upper === "ARCHIVADA") return "ARCHIVED"
+  if (VALID_STATUSES.has(upper)) return upper
+  return "DRAFT" // default fallback
+}
+
+/**
+ * Robust CSV parser that handles:
+ *  - Quoted fields (with commas inside)
+ *  - Escaped quotes ("")
+ *  - CRLF or LF line endings
+ *  - UTF-8 BOM
+ */
+function parseCSVRows(text: string): Array<Record<string, string>> {
+  // Strip BOM
+  let raw = text.replace(/^\uFEFF/, "")
+  // Normalize line endings
+  raw = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+
+  const lines: string[] = []
+  let current = ""
+  let inQuotes = false
+
+  // Split respecting quoted newlines
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i]
+    if (ch === '"') {
+      if (inQuotes && raw[i + 1] === '"') {
+        // Escaped quote
+        current += '"'
+        i++
+      } else {
+        inQuotes = !inQuotes
+        current += ch
+      }
+    } else if (ch === '\n' && !inQuotes) {
+      lines.push(current)
+      current = ""
+    } else {
+      current += ch
+    }
+  }
+  if (current.trim()) lines.push(current)
+
+  if (lines.length < 2) return []
+
+  // Parse header row
+  const headers = parseCSVLine(lines[0]).map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"))
+  const mappedHeaders = headers.map((h) => CSV_COLUMN_MAP[h] || h)
+
+  const rows: Array<Record<string, string>> = []
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue // skip blank lines
+
+    const values = parseCSVLine(line)
+    const row: Record<string, string> = {}
+    mappedHeaders.forEach((h, idx) => {
+      row[h] = (values[idx] || "").trim()
+    })
+    rows.push(row)
+  }
+
+  return rows
+}
+
+/** Parse a single CSV line respecting quoted fields */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ""
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"'
+        i++
+      } else {
+        inQuotes = !inQuotes
+      }
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current)
+      current = ""
+    } else {
+      current += ch
+    }
+  }
+  result.push(current)
+  return result
+}
 
 function ImportCorpusModal({
   open,
@@ -1596,26 +1720,6 @@ function ImportCorpusModal({
   } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
 
-  const parseCSV = useCallback((text: string): Array<Record<string, string>> => {
-    const lines = text.trim().split("\n")
-    if (lines.length < 2) return []
-
-    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase())
-    const rows: Array<Record<string, string>> = []
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(",").map((v) => v.trim())
-      if (values.length === headers.length) {
-        const row: Record<string, string> = {}
-        headers.forEach((h, idx) => {
-          row[h] = values[idx]
-        })
-        rows.push(row)
-      }
-    }
-    return rows
-  }, [])
-
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
@@ -1628,26 +1732,60 @@ function ImportCorpusModal({
         setImportResult(null)
         setImportError(null)
       }
-      reader.readAsText(file)
+      reader.readAsText(file, "utf-8")
     },
     []
   )
 
   const handleImport = useCallback(async () => {
     if (!csvText.trim()) {
-      setImportError("Pega un CSV o sube un archivo")
+      setImportError("Sube un archivo CSV o pega los datos")
       return
     }
 
-    const words = parseCSV(csvText)
-    if (words.length === 0) {
-      setImportError("No se encontraron filas válidas. Asegúrate de incluir encabezados (spanish, nasaYuwe, ...)")
+    const rows = parseCSVRows(csvText)
+    if (rows.length === 0) {
+      setImportError("No se encontraron filas válidas. Verifica que la primera fila tenga los encabezados correctos.")
+      return
+    }
+
+    // Validate that at least nasaYuwe or spanish columns exist
+    const hasNasaYuwe = rows.some((r) => r.nasaYuwe)
+    const hasSpanish = rows.some((r) => r.spanish)
+    if (!hasNasaYuwe && !hasSpanish) {
+      setImportError("No se encontró la columna «Palabra_nyW» ni «Palabra_esp». Verifica los encabezados del CSV.")
       return
     }
 
     setIsImporting(true)
     setImportError(null)
     setImportResult(null)
+
+    // Transform rows: combine examples into JSON array, normalize status
+    const words = rows.map((row) => {
+      const exampleNasa = row.exampleNasaYuwe?.trim()
+      const exampleEsp = row.exampleSpanish?.trim()
+
+      // Build examples array if at least one example is present
+      let examples: Array<{ spanish: string; nasaYuwe: string }> | null = null
+      if (exampleEsp || exampleNasa) {
+        examples = [{
+          spanish: exampleEsp || "",
+          nasaYuwe: exampleNasa || "",
+        }]
+      }
+
+      return {
+        nasaYuwe: row.nasaYuwe?.trim() || "",
+        spanish: row.spanish?.trim() || "",
+        category: row.category?.trim() || null,
+        pronunciation: row.pronunciation?.trim() || null,
+        culturalContext: row.culturalContext?.trim() || null,
+        audioUrl: row.audioUrl?.trim() || null,
+        status: row.status ? normalizeStatus(row.status) : "PUBLISHED",
+        examples: examples,
+      }
+    })
 
     try {
       const res = await fetch("/api/admin/import", {
@@ -1668,7 +1806,7 @@ function ImportCorpusModal({
     } finally {
       setIsImporting(false)
     }
-  }, [csvText, parseCSV, onImported])
+  }, [csvText, onImported])
 
   const handleClose = useCallback(() => {
     if (!isImporting) {
@@ -1688,22 +1826,64 @@ function ImportCorpusModal({
             Importar corpus
           </DialogTitle>
           <DialogDescription>
-            Importa palabras desde un archivo CSV o pega los datos directamente
+            Importa palabras al diccionario desde un archivo CSV
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Format info */}
           <Card className="bg-muted/40">
-            <CardContent className="pt-4 pb-4">
+            <CardContent className="pt-4 pb-4 space-y-2">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                <strong>Formato CSV:</strong> Primera fila con encabezados. Columnas requeridas: <code className="bg-muted px-1 rounded">spanish</code>, <code className="bg-muted px-1 rounded">nasaYuwe</code>.
-                Opcionales: <code className="bg-muted px-1 rounded">pronunciation</code>, <code className="bg-muted px-1 rounded">category</code>, <code className="bg-muted px-1 rounded">culturalContext</code>, <code className="bg-muted px-1 rounded">status</code>.
-                Máximo 500 filas por importación.
+                <strong>Formato CSV requerido:</strong> Primera fila con encabezados.
+                Los campos deben estar separados por comas. Si un campo contiene comas, envuélvelo entre comillas dobles.
               </p>
-              <p className="text-[10px] text-muted-foreground mt-2 font-mono">
-                spanish,nasaYuwe,pronunciation,category,culturalContext,status<br />
-                casa,kxãwã,kshah-wah,sustantivo,Vivienda tradicional,PUBLISHED
+              <div className="overflow-x-auto">
+                <table className="text-[10px] font-mono text-muted-foreground w-full">
+                  <thead>
+                    <tr className="border-b border-muted-foreground/20">
+                      <th className="text-left py-1 pr-3 font-semibold">Columna</th>
+                      <th className="text-left py-1 pr-3 font-semibold">Obligatoria</th>
+                      <th className="text-left py-1 font-semibold">Descripción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-muted-foreground/10">
+                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Palabra_nyW</code></td>
+                      <td className="py-1 pr-3 text-emerald-600">Sí</td>
+                      <td className="py-1">Palabra en Nasa Yuwe</td>
+                    </tr>
+                    <tr className="border-b border-muted-foreground/10">
+                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Palabra_esp</code></td>
+                      <td className="py-1 pr-3 text-emerald-600">Sí</td>
+                      <td className="py-1">Palabra en español</td>
+                    </tr>
+                    <tr className="border-b border-muted-foreground/10">
+                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">tipo1</code></td>
+                      <td className="py-1 pr-3 text-muted-foreground">No</td>
+                      <td className="py-1">Categoría gramatical (sustantivo, verbo…)</td>
+                    </tr>
+                    <tr className="border-b border-muted-foreground/10">
+                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Ejemplo_ny</code></td>
+                      <td className="py-1 pr-3 text-muted-foreground">No</td>
+                      <td className="py-1">Ejemplo de uso en Nasa Yuwe</td>
+                    </tr>
+                    <tr className="border-b border-muted-foreground/10">
+                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Ejemplo_esp</code></td>
+                      <td className="py-1 pr-3 text-muted-foreground">No</td>
+                      <td className="py-1">Ejemplo de uso en español</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Estado</code></td>
+                      <td className="py-1 pr-3 text-muted-foreground">No</td>
+                      <td className="py-1">DRAFT / PUBLISHED / ARCHIVED (default: PUBLISHED)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1 font-mono bg-muted/60 rounded p-2">
+                Palabra_nyW,Palabra_esp,tipo1,Ejemplo_ny,Ejemplo_esp,Estado<br />
+                kxãwã,casa,sustantivo,"Kxãwã peç weçx","La casa es grande",PUBLISHED
               </p>
             </CardContent>
           </Card>
@@ -1721,7 +1901,7 @@ function ImportCorpusModal({
               {csvText && (
                 <Badge variant="secondary" className="gap-1">
                   <FileUp className="h-3 w-3" />
-                  {csvText.split("\n").length - 1} filas
+                  {parseCSVRows(csvText).length} filas
                 </Badge>
               )}
             </div>
@@ -1733,7 +1913,7 @@ function ImportCorpusModal({
           <div className="space-y-2">
             <Label>O pega el CSV aquí</Label>
             <Textarea
-              placeholder="spanish,nasaYuwe,pronunciation,category..."
+              placeholder="Palabra_nyW,Palabra_esp,tipo1,Ejemplo_ny,Ejemplo_esp,Estado"
               rows={6}
               value={csvText}
               onChange={(e) => {
@@ -1765,6 +1945,15 @@ function ImportCorpusModal({
                         <span className="text-red-600">Errores: <strong>{importResult.errors}</strong></span>
                       )}
                     </div>
+                    {importResult.errorRows && importResult.errorRows.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {importResult.errorRows.map((err, i) => (
+                          <p key={i} className="text-[11px] text-red-600">
+                            Fila {err.row}: {err.reason}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -1772,7 +1961,10 @@ function ImportCorpusModal({
           )}
 
           {importError && (
-            <p className="text-sm text-destructive">{importError}</p>
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{importError}</p>
+            </div>
           )}
         </div>
 
