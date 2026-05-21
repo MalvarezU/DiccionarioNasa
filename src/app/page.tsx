@@ -46,6 +46,7 @@ function HomeContent() {
   const isAuthenticated = !!session?.user;
 
   const [featuredWords, setFeaturedWords] = useState<FeaturedWord[]>([]);
+  const [totalWords, setTotalWords] = useState<number>(0);
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("featured");
@@ -62,6 +63,7 @@ function HomeContent() {
         if (res.ok) {
           const data = await res.json();
           setFeaturedWords(data.words ?? []);
+          setTotalWords(data.totalWords ?? 0);
         }
       } catch {
         // Silently fail
@@ -158,7 +160,7 @@ function HomeContent() {
             <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-6">
               <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
                 <BookOpen className="h-3.5 w-3.5 text-primary" />
-                <span>69 palabras</span>
+                <span>{totalWords > 0 ? `${totalWords} palabras` : "Palabras"}</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
                 <Volume2 className="h-3.5 w-3.5 text-primary" />
