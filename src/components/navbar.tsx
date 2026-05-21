@@ -137,7 +137,7 @@ export function NavBar() {
                 onClick={() => setAuthModalOpen(true)}
               >
                 <LogIn className="h-4 w-4" />
-                <span className="hidden sm:inline">Iniciar sesión</span>
+                Iniciar sesión
               </Button>
             )}
 
