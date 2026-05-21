@@ -20,6 +20,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   favorites     Favorite[]
+  viewHistory   ViewHistory[]
   searchHistory SearchHistory[]
 }
 
@@ -36,8 +37,9 @@ model DictionaryWord {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  favorites Favorite[]
-  auditLogs AuditLog[]
+  favorites  Favorite[]
+  viewHistory ViewHistory[]
+  auditLogs  AuditLog[]
 }
 
 model Favorite {
@@ -50,6 +52,19 @@ model Favorite {
   word DictionaryWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
 
   @@unique([userId, wordId])
+}
+
+model ViewHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  wordId    String
+  createdAt DateTime @default(now())
+
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word DictionaryWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
+  @@index([userId, createdAt])
 }
 
 model SearchHistory {

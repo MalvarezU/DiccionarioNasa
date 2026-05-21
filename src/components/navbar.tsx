@@ -3,10 +3,18 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BookOpen, Wifi, WifiOff, Settings, Shield } from "lucide-react"
+import { useSession, signOut } from "next-auth/react"
+import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, User, Heart, Clock } from "lucide-react"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Tooltip,
   TooltipContent,
@@ -14,13 +22,19 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { AuthModal } from "@/components/auth-modal"
 import { cn } from "@/lib/utils"
 
 export function NavBar() {
   const isOnline = useOnlineStatus()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
   const pathname = usePathname()
   const isAdmin = pathname === "/admin"
+  const { data: session, status } = useSession()
+  const isAuthenticated = !!session?.user
+
+  const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "Usuario"
 
   return (
     <>
@@ -34,7 +48,7 @@ export function NavBar() {
             </span>
           </Link>
 
-          {/* Right side: nav links + connection + settings */}
+          {/* Right side: nav links + connection + auth + settings */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Admin link */}
             <TooltipProvider>
@@ -81,6 +95,63 @@ export function NavBar() {
               </Badge>
             )}
 
+            {/* Auth: Login button or User dropdown */}
+            {isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary shrink-0">
+                      <span className="text-[11px] font-bold uppercase">
+                        {userName.charAt(0)}
+                      </span>
+                    </div>
+                    <span className="hidden sm:inline max-w-[100px] truncate">{userName}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium text-foreground truncate">{userName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{session?.user?.email}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/?tab=favorites" className="cursor-pointer">
+                      <Heart className="mr-2 h-4 w-4 text-primary" />
+                      Mis favoritos
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/?tab=history" className="cursor-pointer">
+                      <Clock className="mr-2 h-4 w-4 text-primary" />
+                      Mi historial
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Cerrar sesión
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-1.5 text-xs sm:text-sm"
+                onClick={() => setAuthModalOpen(true)}
+              >
+                <LogIn className="h-4 w-4" />
+                <span className="hidden sm:inline">Iniciar sesión</span>
+              </Button>
+            )}
+
             {/* Settings Button */}
             <TooltipProvider>
               <Tooltip>
@@ -104,8 +175,9 @@ export function NavBar() {
         </div>
       </header>
 
-      {/* Settings Dialog */}
+      {/* Modals */}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
     </>
   )
 }
