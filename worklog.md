@@ -757,3 +757,22 @@ Stage Summary:
 - Main page only shows "Destacadas" and "Explorar A-Z" tabs
 - Custom event system connects NavBar to the page's panel state
 - All lint checks pass
+---
+Task ID: 2
+Agent: Main Agent
+Task: Remove standalone Heart/Clock icons from NavBar & fix history recording error
+
+Work Log:
+- Removed standalone Heart and Clock icon buttons from the NavBar header bar (were showing next to the profile icon for authenticated users)
+- Kept the "Mis favoritos" and "Mi historial" options only in the user dropdown menu (dispatching custom events)
+- Investigated the 500 error on POST /api/dictionary/history
+- Found the root cause: `TypeError: Cannot read properties of undefined (reading 'upsert')` at `db.viewHistory.upsert()`
+- The Prisma client singleton (`globalForPrisma.prisma`) was stale — created before the ViewHistory model was added to the schema
+- Fixed by regenerating Prisma client (`bunx prisma generate`) and restarting the dev server
+- Verified the fix: POST /api/dictionary/history now returns `{"success":true}` and GET returns proper history entries
+- All lint checks pass
+
+Stage Summary:
+- NavBar no longer shows separate Heart/Clock icon buttons next to the profile
+- Favorites and History are accessible only through the user dropdown menu → opens the panel
+- History recording API is now fully functional (was broken due to stale Prisma client cache)

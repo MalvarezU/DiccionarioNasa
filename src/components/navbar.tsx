@@ -100,49 +100,6 @@ export function NavBar() {
               </Badge>
             )}
 
-            {/* Favorites & History buttons (authenticated only) */}
-            {isAuthenticated && (
-              <>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 text-muted-foreground hover:text-primary"
-                        onClick={() => dispatchOpenPanel("favorites")}
-                        aria-label="Mis favoritos"
-                      >
-                        <Heart className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Mis favoritos</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 text-muted-foreground hover:text-primary"
-                        onClick={() => dispatchOpenPanel("history")}
-                        aria-label="Mi historial"
-                      >
-                        <Clock className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Mi historial</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </>
-            )}
-
             {/* Auth: Login button or User dropdown */}
             {isAuthenticated ? (
               <DropdownMenu>
