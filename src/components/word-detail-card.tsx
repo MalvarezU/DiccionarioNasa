@@ -591,7 +591,7 @@ export function WordDetailCard({
                 Detalle completo de la palabra seleccionada
               </SheetDescription>
             </SheetHeader>
-            <div className="mt-2">
+            <div className="mt-2 px-4 pb-10">
               <WordContent {...contentProps} />
             </div>
           </SheetContent>
