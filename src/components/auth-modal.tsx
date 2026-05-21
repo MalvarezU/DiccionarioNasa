@@ -25,6 +25,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -32,6 +33,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const resetForm = () => {
     setEmail("");
     setPassword("");
+    setConfirmPassword("");
     setName("");
     setIsLoading(false);
   };
@@ -78,6 +80,16 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const handleRegister = async () => {
     if (!email || !password) {
       toast({ title: "Campos requeridos", description: "Ingresa email y contraseña", variant: "destructive" });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast({ title: "Contraseñas no coinciden", description: "La contraseña y su confirmación deben ser iguales", variant: "destructive" });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({ title: "Contraseña muy corta", description: "La contraseña debe tener al menos 6 caracteres", variant: "destructive" });
       return;
     }
 
@@ -188,6 +200,27 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               disabled={isLoading}
             />
           </div>
+
+          {mode === "register" && (
+            <div className="grid gap-2">
+              <Label htmlFor="auth-confirm-password">Confirmar contraseña</Label>
+              <Input
+                id="auth-confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repite tu contraseña"
+                required
+                minLength={6}
+                disabled={isLoading}
+                aria-invalid={confirmPassword.length > 0 && password !== confirmPassword}
+                className={confirmPassword.length > 0 && password !== confirmPassword ? "border-destructive" : ""}
+              />
+              {confirmPassword.length > 0 && password !== confirmPassword && (
+                <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
+              )}
+            </div>
+          )}
 
           <DialogFooter className="flex-col gap-2 sm:gap-0">
             <Button type="submit" className="w-full gap-2" disabled={isLoading}>
