@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { requireAdmin } from "@/lib/auth"
 
 /**
  * POST /api/admin/import
  *
  * Imports words from CSV/JSON data.
  * Expects a JSON body with a `words` array.
- * No auth required for now (MVP).
  */
 export async function POST(request: Request) {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
   try {
     const body = await request.json()
     const { words } = body
@@ -90,7 +93,7 @@ export async function POST(request: Request) {
             skipped,
             errors,
           }),
-          userId: null, // MVP: no auth
+          userId: (session!.user as { id: string }).id,
         },
       })
     }

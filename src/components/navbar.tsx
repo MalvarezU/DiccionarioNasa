@@ -38,6 +38,8 @@ export function NavBar() {
   const isAdmin = pathname === "/admin"
   const { data: session, status } = useSession()
   const isAuthenticated = !!session?.user
+  const userRole = (session?.user as { role?: string } | undefined)?.role
+  const isAdminUser = userRole === "admin"
 
   const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "Usuario"
 
@@ -55,31 +57,33 @@ export function NavBar() {
 
           {/* Right side: nav links + connection + auth + settings */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {/* Admin link */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/admin">
-                    <Button
-                      variant={isAdmin ? "secondary" : "ghost"}
-                      size="sm"
-                      className={cn(
-                        "gap-1.5 text-xs sm:text-sm",
-                        isAdmin
-                          ? "text-primary font-medium"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <Shield className="h-4 w-4" />
-                      <span className="hidden sm:inline">Admin</span>
-                    </Button>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Panel de administración</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* Admin link — only visible to admin users */}
+            {isAdminUser && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link href="/admin">
+                      <Button
+                        variant={isAdmin ? "secondary" : "ghost"}
+                        size="sm"
+                        className={cn(
+                          "gap-1.5 text-xs sm:text-sm",
+                          isAdmin
+                            ? "text-primary font-medium"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <Shield className="h-4 w-4" />
+                        <span className="hidden sm:inline">Admin</span>
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Panel de administración</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
 
             {/* Connection Status */}
             {isOnline ? (

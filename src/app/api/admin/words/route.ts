@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { requireAdmin } from "@/lib/auth"
 
 /**
  * GET /api/admin/words
  *
  * Lists all dictionary words for admin panel (paginated).
  * Supports ?page=&pageSize=&status=&search= filters.
- * No auth required for now (MVP).
  */
 export async function GET(request: Request) {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
   try {
     const { searchParams } = new URL(request.url)
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
@@ -67,9 +70,11 @@ export async function GET(request: Request) {
  * POST /api/admin/words
  *
  * Creates a new dictionary word (admin action).
- * No auth required for now (MVP).
  */
 export async function POST(request: Request) {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
   try {
     const body = await request.json()
     const {
@@ -105,7 +110,7 @@ export async function POST(request: Request) {
       },
     })
 
-    // Log the action in audit log (HU3.3.1: "admin (MVP)" as responsable)
+    // Log the action in audit log
     await db.auditLog.create({
       data: {
         action: "CREATE",
@@ -117,9 +122,9 @@ export async function POST(request: Request) {
           category: word.category,
           status: word.status,
           audioUrl: word.audioUrl || null,
-          responsable: "admin (MVP)",
+          responsable: session!.user.name || session!.user.email,
         }),
-        userId: null, // MVP: no auth — getResponsible() returns "admin (MVP)"
+        userId: (session!.user as { id: string }).id,
         wordId: word.id,
       },
     })

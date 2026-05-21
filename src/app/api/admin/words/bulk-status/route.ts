@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth'
 
 /**
  * POST /api/admin/words/bulk-status
@@ -10,6 +11,9 @@ import { NextResponse } from 'next/server'
  * Returns summary: { updated, skipped, total }
  */
 export async function POST(request: Request) {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
   try {
     const body = await request.json()
     const { wordIds, status } = body
@@ -79,9 +83,9 @@ export async function POST(request: Request) {
           entityId: wordId,
           changes: JSON.stringify({
             status: { before: previousStatus, after: status },
-            responsable: 'admin (MVP)',
+            responsable: session!.user.name || session!.user.email,
           }),
-          userId: null,
+          userId: (session!.user as { id: string }).id,
           wordId,
         },
       })

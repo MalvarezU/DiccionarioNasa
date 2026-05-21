@@ -3,8 +3,10 @@
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import { NavBar } from "@/components/navbar"
 import { AdminDashboard } from "@/components/admin-dashboard"
+import { UserManagementSection } from "@/components/user-management-section"
 
 export default function AdminPage() {
   return (
@@ -25,6 +27,11 @@ export default function AdminPage() {
 
           {/* Admin Dashboard */}
           <AdminDashboard />
+
+          <Separator className="my-8" />
+
+          {/* User Management */}
+          <UserManagementSection />
         </div>
       </main>
 

@@ -776,3 +776,35 @@ Stage Summary:
 - NavBar no longer shows separate Heart/Clock icon buttons next to the profile
 - Favorites and History are accessible only through the user dropdown menu → opens the panel
 - History recording API is now fully functional (was broken due to stale Prisma client cache)
+---
+Task ID: 3
+Agent: Main Agent
+Task: Implement role-based access control system (admin vs user)
+
+Work Log:
+- Created centralized auth helper at `/src/lib/auth.ts` with `requireAdmin()`, `requireAuth()`, `isAdmin()` functions
+- Created Next.js middleware at `/src/middleware.ts` that protects all `/admin/*` routes:
+  - Unauthenticated users → redirect to `/?auth=required`
+  - Authenticated non-admin users → redirect to `/?auth=denied`
+  - Admin users → allow through
+- Updated NavBar (`/src/components/navbar.tsx`): Admin link (Shield icon) now only shows when `session.user.role === "admin"`
+- Protected ALL 8 admin API routes with `requireAdmin()` check (stats, words, words/[id], import, upload-audio, delete-audio, audit-logs, bulk-status)
+- Updated audit logs in admin API routes to use real user ID and name from session instead of hardcoded "admin (MVP)"
+- Created user management API routes:
+  - `GET /api/admin/users` — list all users with search filter
+  - `PATCH /api/admin/users/[id]` — change user role (admin/user), prevents self-demotion
+  - `DELETE /api/admin/users/[id]` — delete user, prevents self-deletion
+- Created `UserManagementSection` component with user table, search, role toggle, delete with confirmation
+- Added UserManagementSection to admin page below the dashboard
+- Created seed script at `prisma/seed-admin.ts` for initial admin user creation
+- Ran seed script to create admin@nasayuwe.com and promoted demo@nasayuwe.com to admin
+- All lint checks pass
+
+Stage Summary:
+- Full role-based access control implemented end-to-end
+- Server-side route protection via Next.js middleware (cannot be bypassed by client)
+- All admin API endpoints verify admin role before executing
+- NavBar conditionally shows Admin link only for admin users
+- User management section added to admin dashboard
+- Seed script created for initial admin deployment
+- Tested and verified: unauthenticated→redirect, user→redirect/denied, admin→allowed

@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth'
 
 // Valid status values
 const VALID_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED']
@@ -27,6 +28,9 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
   try {
     const { id } = await params
 
@@ -131,9 +135,9 @@ export async function PUT(
         entityId: id,
         changes: JSON.stringify({
           ...changes,
-          responsable: 'admin (MVP)',
+          responsable: session!.user.name || session!.user.email,
         }),
-        userId: null,
+        userId: (session!.user as { id: string }).id,
         wordId: id,
       },
     })
@@ -168,6 +172,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
   try {
     const { id } = await params
     const body = await request.json()
@@ -222,9 +229,9 @@ export async function PATCH(
         entityId: id,
         changes: JSON.stringify({
           status: { before: previousStatus, after: status },
-          responsable: 'admin (MVP)',
+          responsable: session!.user.name || session!.user.email,
         }),
-        userId: null,
+        userId: (session!.user as { id: string }).id,
         wordId: id,
       },
     })

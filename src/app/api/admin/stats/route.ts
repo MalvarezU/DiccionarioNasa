@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { requireAdmin } from "@/lib/auth"
 
 /**
  * GET /api/admin/stats
  *
  * Returns dashboard statistics for the admin panel.
- * No auth required for now (per HU3.5.1 note: "Por ahora deja el panel directo sin login").
  */
 export async function GET() {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
   try {
     // Total words (ALL statuses: DRAFT + PUBLISHED + ARCHIVED)
     const totalWords = await db.dictionaryWord.count()

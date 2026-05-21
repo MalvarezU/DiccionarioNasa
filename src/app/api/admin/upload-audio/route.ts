@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server"
 import { writeFile, mkdir } from "fs/promises"
 import path from "path"
+import { requireAdmin } from "@/lib/auth"
 
 /**
  * POST /api/admin/upload-audio
  *
  * Uploads an audio file (MP3, WAV, OGG) for a dictionary word.
  * Max file size: 10 MB.
- * No auth required for now (MVP).
  */
 export async function POST(request: Request) {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
   try {
     const formData = await request.formData()
     const file = formData.get("file") as File | null

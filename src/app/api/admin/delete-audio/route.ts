@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server"
 import { unlink } from "fs/promises"
 import path from "path"
+import { requireAdmin } from "@/lib/auth"
 
 /**
  * POST /api/admin/delete-audio
  *
  * Deletes an audio file from the server filesystem.
  * Expects { audioUrl: "/audio/filename.mp3" } in the body.
- * No auth required for now (MVP).
  */
 export async function POST(request: Request) {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
   try {
     const body = await request.json()
     const { audioUrl } = body

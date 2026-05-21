@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { requireAdmin } from "@/lib/auth"
 
 /**
  * GET /api/admin/audit-logs
  *
  * Returns full audit log with pagination and optional filters.
  * Query params: page, pageSize, action, entity
- * No auth required for now (MVP).
  */
 export async function GET(request: Request) {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
   try {
     const { searchParams } = new URL(request.url)
     const page = Math.max(1, Number(searchParams.get("page")) || 1)
