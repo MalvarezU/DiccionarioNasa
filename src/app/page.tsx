@@ -11,7 +11,6 @@ import {
   Users,
   Star,
   List,
-  Shield,
 } from "lucide-react";
 import { NavBar } from "@/components/navbar";
 import { SearchBar } from "@/components/search-bar";
@@ -19,7 +18,7 @@ import { WordDetailCard } from "@/components/word-detail-card";
 import { DownloadBanner } from "@/components/download-banner";
 import { ExploreSection } from "@/components/explore-section";
 import { WordOfDayCard } from "@/components/word-of-day-card";
-import { AdminDashboard } from "@/components/admin-dashboard";
+
 import {
   Card,
   CardContent,
@@ -38,7 +37,7 @@ interface FeaturedWord {
   culturalContext: string | null;
 }
 
-type TabType = "featured" | "explore" | "admin";
+type TabType = "featured" | "explore";
 
 export default function Home() {
   const [featuredWords, setFeaturedWords] = useState<FeaturedWord[]>([]);
@@ -170,18 +169,7 @@ export default function Home() {
               <List className="h-4 w-4" />
               Explorar A-Z
             </button>
-            <button
-              onClick={() => setActiveTab("admin")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "admin"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-              }`}
-              aria-pressed={activeTab === "admin"}
-            >
-              <Shield className="h-4 w-4" />
-              Admin
-            </button>
+
           </div>
 
           {/* Featured Words Tab */}
@@ -251,10 +239,7 @@ export default function Home() {
             <ExploreSection onWordSelect={handleWordSelect} />
           )}
 
-          {/* Admin Tab — Dashboard (HU3.5.1) */}
-          {activeTab === "admin" && (
-            <AdminDashboard />
-          )}
+
         </section>
 
         {/* About Section */}
