@@ -40,15 +40,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-local-*
+*.local
 .claude
 .z-ai-config
 *.log
 dev.log
 dev.out.log
-test
+/test
 prompt
+TEST_REPORT.md
 
 server.log
 # Skills directory
 /skills/
+
+# CodeGraph index
+.codegraph/
