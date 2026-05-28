@@ -62,3 +62,10 @@ prisma/db/dictionary.db
 
 # Test audio files (real audio are .wav)
 public/audio/*.mp3
+
+# Generated reports and agent context (artifacts, not source)
+INFORME_COMPLETO.md
+TEST_REPORT.md
+worklog.md
+agent-ctx/
+download/
