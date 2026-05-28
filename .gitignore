@@ -56,3 +56,9 @@ server.log
 
 # CodeGraph index
 .codegraph/
+
+# Database file (generated)
+prisma/db/dictionary.db
+
+# Test audio files (real audio are .wav)
+public/audio/*.mp3

@@ -7,7 +7,7 @@ import { db } from '@/lib/db'
  * - Remove diacritics/accents (NFD decomposition + strip combining marks)
  * - Trim whitespace
  */
-function normalize(str: string): string {
+export function normalize(str: string): string {
   return str
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // strip combining diacritical marks
@@ -22,7 +22,7 @@ function normalize(str: string): string {
  *   2 = partial/contains match (field contains query somewhere)
  *   3 = no match
  */
-function getRelevance(field: string, query: string): number {
+export function getRelevance(field: string, query: string): number {
   const nField = normalize(field)
   const nQuery = normalize(query)
 
