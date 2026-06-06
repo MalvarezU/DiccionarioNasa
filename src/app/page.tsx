@@ -146,7 +146,7 @@ function HomeContent() {
             src="/banner.webp"
             alt=""
             fill
-            className="object-cover opacity-[0.4] z-0"
+            className="object-cover opacity-[0.6] z-0"
             aria-hidden="true"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
