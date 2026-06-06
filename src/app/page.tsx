@@ -153,41 +153,39 @@ function HomeContent() {
             }}
           />
 
-          {/* Content with glassmorphism panel */}
+          {/* Content */}
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-20 pb-6 text-center z-20">
-            <div className="mx-auto max-w-3xl bg-black/40 backdrop-blur-md rounded-3xl p-8 sm:p-12 border border-white/10 shadow-2xl">
-              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/30 border-2 border-primary/50">
-                <Leaf className="h-7 w-7 text-white" />
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/30 border-2 border-primary/50">
+              <Leaf className="h-7 w-7 text-white" />
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)' }}>
+              Nasa Yuwe
+            </h1>
+            <p className="mt-2 text-base sm:text-lg text-white font-medium" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
+              Diccionario Bilingüe
+            </p>
+            <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base text-white/90 leading-relaxed" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+              Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.
+              Busca palabras, pronunciaciones y contexto cultural.
+            </p>
+
+            <div className="mt-8">
+              <SearchBar variant="hero" />
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-6">
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <BookOpen className="h-3.5 w-3.5 text-white" />
+                <span>{totalWords > 0 ? `${totalWords} palabras` : "Palabras"}</span>
               </div>
-
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)' }}>
-                Nasa Yuwe
-              </h1>
-              <p className="mt-2 text-base sm:text-lg text-white font-medium" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
-                Diccionario Bilingüe
-              </p>
-              <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base text-white/90 leading-relaxed" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-                Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.
-                Busca palabras, pronunciaciones y contexto cultural.
-              </p>
-
-              <div className="mt-8">
-                <SearchBar variant="hero" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <Volume2 className="h-3.5 w-3.5 text-white" />
+                <span>Pronunciación guiada</span>
               </div>
-
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-6">
-                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-                  <BookOpen className="h-3.5 w-3.5 text-white" />
-                  <span>{totalWords > 0 ? `${totalWords} palabras` : "Palabras"}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-                  <Volume2 className="h-3.5 w-3.5 text-white" />
-                  <span>Pronunciación guiada</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-                  <Globe className="h-3.5 w-3.5 text-white" />
-                  <span>Español ↔ Nasa Yuwe</span>
-                </div>
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <Globe className="h-3.5 w-3.5 text-white" />
+                <span>Español ↔ Nasa Yuwe</span>
               </div>
             </div>
           </div>
