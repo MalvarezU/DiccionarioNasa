@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Loader2, Volume2, CloudOff, Cloud, Database, WifiOff } from "lucide-react";
+import { Search, Loader2, Volume2, CloudOff, Cloud, Database, WifiOff, Lightbulb } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -248,7 +248,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Dropdown with results */}
         {showDropdown && (
           <div
-            className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden ${
+            className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden animate-in fade-in duration-200 ${
               isHero ? "mt-2 rounded-xl" : "mt-1"
             }`}
           >
@@ -284,7 +284,8 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                     setIsOpen(false);
                   }}
                 >
-                  💡 Sugerir esta palabra
+                  <Lightbulb className="h-4 w-4" />
+                  Sugerir esta palabra
                 </Button>
                 {!isOnline && (
                   <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 justify-center">

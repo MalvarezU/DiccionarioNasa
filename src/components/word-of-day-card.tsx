@@ -225,7 +225,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
 
   return (
     <Card
-      className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5 cursor-pointer transition-all hover:shadow-md hover:border-primary/30 group"
+      className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30 group"
       onClick={handleClick}
     >
       <CardHeader className="pb-3">

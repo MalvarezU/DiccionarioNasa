@@ -649,7 +649,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                       >
                         <button
                           onClick={() => handleWordClick(word.id)}
-                          className="flex items-center gap-3 p-3 rounded-lg text-left transition-all hover:bg-primary/5 hover:border-primary/20 border border-transparent hover:shadow-sm group w-full"
+                          className="flex items-center gap-3 p-3 rounded-lg text-left transition-all duration-200 hover:bg-primary/5 hover:border-primary/20 border border-transparent hover:shadow-sm group w-full"
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
@@ -671,12 +671,17 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                                 </span>
                               )}
                               {word.category && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[9px] px-1 py-0 h-3.5"
-                                >
-                                  {word.category}
-                                </Badge>
+                                <div className="flex flex-wrap gap-1">
+                                  {parseCategories(word.category).map((cat) => (
+                                    <Badge
+                                      key={cat}
+                                      variant="secondary"
+                                      className="text-[9px] px-1 py-0 h-3.5"
+                                    >
+                                      {getCategoryDisplay(cat)}
+                                    </Badge>
+                                  ))}
+                                </div>
                               )}
                             </div>
                           </div>

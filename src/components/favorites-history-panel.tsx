@@ -257,7 +257,7 @@ function PanelContent({
               {favorites.map((fav) => (
                 <Card
                   key={fav.id}
-                  className="group cursor-pointer transition-all hover:shadow-md hover:border-primary/30"
+                  className="group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30"
                   onClick={() => handleWordClick(fav.word.id)}
                 >
                   <CardHeader className="pb-2">
@@ -344,7 +344,7 @@ function PanelContent({
                     {items.map((item) => (
                       <Card
                         key={item.id}
-                        className="group cursor-pointer transition-all hover:shadow-md hover:border-primary/30"
+                        className="group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30"
                         onClick={() => handleWordClick(item.word.id)}
                       >
                         <CardHeader className="pb-2">
