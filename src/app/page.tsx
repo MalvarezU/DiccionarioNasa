@@ -128,9 +128,9 @@ function HomeContent() {
 
         {/* Hero Section with Search Bar */}
         <section className="relative pb-8">
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/8 via-primary/3 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/20" />
           <div
-            className="absolute inset-0 opacity-[0.04]"
+            className="absolute inset-0 opacity-[0.06]"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232563eb' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
               backgroundRepeat: 'repeat',
@@ -141,7 +141,7 @@ function HomeContent() {
             src="/banner.webp"
             alt=""
             fill
-            className="object-cover opacity-[0.8]"
+            className="object-cover opacity-[0.35]"
             aria-hidden="true"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
@@ -149,17 +149,17 @@ function HomeContent() {
           />
 
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-20 pb-6 text-center">
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
-              <Leaf className="h-7 w-7 text-primary" />
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/20 border border-primary/30">
+              <Leaf className="h-7 w-7 text-primary-foreground" />
             </div>
 
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-md">
               Nasa Yuwe
             </h1>
-            <p className="mt-2 text-base sm:text-lg text-accent font-medium">
+            <p className="mt-2 text-base sm:text-lg text-primary-foreground font-medium">
               Diccionario Bilingüe
             </p>
-            <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base text-muted-foreground leading-relaxed">
+            <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base text-neutral-200 leading-relaxed drop-shadow-sm">
               Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.
               Busca palabras, pronunciaciones y contexto cultural.
             </p>
@@ -169,16 +169,16 @@ function HomeContent() {
             </div>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-6">
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
-                <BookOpen className="h-3.5 w-3.5 text-primary" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-neutral-200">
+                <BookOpen className="h-3.5 w-3.5 text-primary-foreground" />
                 <span>{totalWords > 0 ? `${totalWords} palabras` : "Palabras"}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
-                <Volume2 className="h-3.5 w-3.5 text-primary" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-neutral-200">
+                <Volume2 className="h-3.5 w-3.5 text-primary-foreground" />
                 <span>Pronunciación guiada</span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
-                <Globe className="h-3.5 w-3.5 text-primary" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-neutral-200">
+                <Globe className="h-3.5 w-3.5 text-primary-foreground" />
                 <span>Español ↔ Nasa Yuwe</span>
               </div>
             </div>
