@@ -127,59 +127,67 @@ function HomeContent() {
         <DownloadBanner />
 
         {/* Hero Section with Search Bar */}
-        <section className="relative pb-8">
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/20" />
+        <section className="relative pb-8 overflow-hidden">
+          {/* Dark overlay base */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/50 z-10" />
+          
+          {/* Decorative pattern */}
           <div
-            className="absolute inset-0 opacity-[0.06]"
+            className="absolute inset-0 opacity-[0.06] z-0"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232563eb' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
               backgroundRepeat: 'repeat',
             }}
             aria-hidden="true"
           />
+          
+          {/* Background image */}
           <Image
             src="/banner.webp"
             alt=""
             fill
-            className="object-cover opacity-[0.35]"
+            className="object-cover opacity-[0.4] z-0"
             aria-hidden="true"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
           />
 
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-20 pb-6 text-center">
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/20 border border-primary/30">
-              <Leaf className="h-7 w-7 text-primary-foreground" />
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-md">
-              Nasa Yuwe
-            </h1>
-            <p className="mt-2 text-base sm:text-lg text-primary-foreground font-medium">
-              Diccionario Bilingüe
-            </p>
-            <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base text-neutral-200 leading-relaxed drop-shadow-sm">
-              Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.
-              Busca palabras, pronunciaciones y contexto cultural.
-            </p>
-
-            <div className="mt-8">
-              <SearchBar variant="hero" />
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-6">
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-neutral-200">
-                <BookOpen className="h-3.5 w-3.5 text-primary-foreground" />
-                <span>{totalWords > 0 ? `${totalWords} palabras` : "Palabras"}</span>
+          {/* Content with glassmorphism panel */}
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-20 pb-6 text-center z-20">
+            <div className="mx-auto max-w-3xl bg-black/40 backdrop-blur-md rounded-3xl p-8 sm:p-12 border border-white/10 shadow-2xl">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/30 border-2 border-primary/50">
+                <Leaf className="h-7 w-7 text-white" />
               </div>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-neutral-200">
-                <Volume2 className="h-3.5 w-3.5 text-primary-foreground" />
-                <span>Pronunciación guiada</span>
+
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)' }}>
+                Nasa Yuwe
+              </h1>
+              <p className="mt-2 text-base sm:text-lg text-white font-medium" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
+                Diccionario Bilingüe
+              </p>
+              <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base text-white/90 leading-relaxed" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+                Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.
+                Busca palabras, pronunciaciones y contexto cultural.
+              </p>
+
+              <div className="mt-8">
+                <SearchBar variant="hero" />
               </div>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-neutral-200">
-                <Globe className="h-3.5 w-3.5 text-primary-foreground" />
-                <span>Español ↔ Nasa Yuwe</span>
+
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-6">
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                  <BookOpen className="h-3.5 w-3.5 text-white" />
+                  <span>{totalWords > 0 ? `${totalWords} palabras` : "Palabras"}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                  <Volume2 className="h-3.5 w-3.5 text-white" />
+                  <span>Pronunciación guiada</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                  <Globe className="h-3.5 w-3.5 text-white" />
+                  <span>Español ↔ Nasa Yuwe</span>
+                </div>
               </div>
             </div>
           </div>
