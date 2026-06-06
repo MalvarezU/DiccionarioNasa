@@ -239,7 +239,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {isOnline && isHero && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <Cloud className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-white">
               Búsqueda en línea
             </span>
           </div>
