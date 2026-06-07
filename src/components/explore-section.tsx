@@ -437,6 +437,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
           {totalFiltered} palabra{totalFiltered !== 1 ? "s" : ""}
           {selectedCategory && (
             <> · <button
+              type="button"
               onClick={() => handleCategorySelect(null)}
               className="text-primary hover:underline"
             >
@@ -474,6 +475,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
               <div className="absolute top-full left-0 mt-1 w-56 rounded-lg border border-border bg-popover shadow-lg z-50 overflow-hidden">
                 <div className="p-1 max-h-72 overflow-y-auto">
                   <button
+                    type="button"
                     onClick={() => handleCategorySelect(null)}
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                       !selectedCategory
@@ -488,6 +490,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
 
                   {categories.map((cat) => (
                     <button
+                      type="button"
                       key={cat}
                       onClick={() => handleCategorySelect(cat)}
                       className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
@@ -545,6 +548,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                 const isActive = activeLetters.has(letter)
                 return (
                   <button
+                    type="button"
                     key={letter}
                     onClick={() => isActive && scrollToLetter(letter)}
                     disabled={!isActive}
@@ -573,6 +577,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                 const isActive = activeLetters.has(letter)
                 return (
                   <button
+                    type="button"
                     key={letter}
                     onClick={() => isActive && scrollToLetter(letter)}
                     disabled={!isActive}
@@ -648,6 +653,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                         }}
                       >
                         <button
+                          type="button"
                           onClick={() => handleWordClick(word.id)}
                           className="flex items-center gap-3 p-3 rounded-lg text-left transition-all duration-200 hover:bg-surface-container-low hover:shadow-sm border border-transparent hover:border-outline-variant/30 group w-full"
                         >

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Newsreader, Public_Sans } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { SessionProvider } from "@/components/session-provider";
@@ -55,19 +56,15 @@ export default function RootLayout({
         </SessionProvider>
         <Toaster />
         {/* Register service worker for offline app shell */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
-                    console.warn('SW registration failed:', err);
-                  });
-                });
-              }
-            `,
-          }}
-        />
+        <Script id="sw-register" strategy="afterInteractive">{`
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                console.warn('SW registration failed:', err);
+              });
+            });
+          }
+        `}</Script>
       </body>
     </html>
   );

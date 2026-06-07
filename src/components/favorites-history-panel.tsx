@@ -104,46 +104,35 @@ function PanelContent({
     setActiveTab(initialTab);
   }, [initialTab]);
 
+  // Stable refs for fetch functions
+  const fetchFavoritesRef = useRef<() => void>(() => {
+    if (activeTab !== "favorites" || !isAuthenticated) return;
+    setIsLoadingFavorites(true);
+    fetch("/api/dictionary/favorites")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data) setFavorites(data.favorites ?? []); })
+      .catch(() => {})
+      .finally(() => setIsLoadingFavorites(false));
+  });
+
+  const fetchHistoryRef = useRef<() => void>(() => {
+    if (activeTab !== "history" || !isAuthenticated) return;
+    setIsLoadingHistory(true);
+    fetch("/api/dictionary/history")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data) setHistory(data.history ?? []); })
+      .catch(() => {})
+      .finally(() => setIsLoadingHistory(false));
+  });
+
   // Fetch favorites when tab is active and user is authenticated
   useEffect(() => {
-    if (activeTab !== "favorites" || !isAuthenticated) return;
-
-    const fetchFavorites = async () => {
-      setIsLoadingFavorites(true);
-      try {
-        const res = await fetch("/api/dictionary/favorites");
-        if (res.ok) {
-          const data = await res.json();
-          setFavorites(data.favorites ?? []);
-        }
-      } catch {
-        // Silently fail
-      } finally {
-        setIsLoadingFavorites(false);
-      }
-    };
-    fetchFavorites();
+    fetchFavoritesRef.current();
   }, [activeTab, isAuthenticated]);
 
   // Fetch history when tab is active and user is authenticated
   useEffect(() => {
-    if (activeTab !== "history" || !isAuthenticated) return;
-
-    const fetchHistory = async () => {
-      setIsLoadingHistory(true);
-      try {
-        const res = await fetch("/api/dictionary/history");
-        if (res.ok) {
-          const data = await res.json();
-          setHistory(data.history ?? []);
-        }
-      } catch {
-        // Silently fail
-      } finally {
-        setIsLoadingHistory(false);
-      }
-    };
-    fetchHistory();
+    fetchHistoryRef.current();
   }, [activeTab, isAuthenticated]);
 
   const handleClearHistory = async () => {
@@ -218,6 +207,7 @@ function PanelContent({
       {/* Tab switcher */}
       <div className="flex items-center gap-2 mb-5">
         <button
+          type="button"
           onClick={() => setActiveTab("favorites")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "favorites"
@@ -230,6 +220,7 @@ function PanelContent({
           Favoritos
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("history")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "history"

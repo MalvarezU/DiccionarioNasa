@@ -145,6 +145,7 @@ function HomeContent() {
             src="/banner.webp"
             alt=""
             fill
+            sizes="100vw"
             className="object-cover opacity-[0.6] z-0"
             aria-hidden="true"
             onError={(e) => {
@@ -382,7 +383,7 @@ function HomeContent() {
 
           {/* Bottom bar */}
           <div className="mt-8 pt-6 border-t border-white/20">
-            <p className="text-center text-[10px] text-white/50">
+            <p className="text-center text-[10px] text-white/50" suppressHydrationWarning>
               © {new Date().getFullYear()} Nasa Yuwe · Proyecto de preservación lingüística
             </p>
           </div>
@@ -391,6 +392,7 @@ function HomeContent() {
 
       {/* Word detail card */}
       <WordDetailCard
+        key={selectedWordId ?? "none"}
         wordId={selectedWordId}
         open={detailOpen}
         onOpenChange={setDetailOpen}

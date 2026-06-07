@@ -972,30 +972,7 @@ function EditWordModal({
   const [showPublishNoAudioWarning, setShowPublishNoAudioWarning] = useState(false)
   const [pendingStatusTransition, setPendingStatusTransition] = useState<string | null>(null)
 
-  // Load word data when modal opens
-  useEffect(() => {
-    if (open && word) {
-      const formData = {
-        spanish: word.spanish,
-        nasaYuwe: word.nasaYuwe,
-        pronunciation: word.pronunciation || "",
-        culturalContext: word.culturalContext || "",
-        category: word.category || "",
-        status: word.status,
-      }
-      setForm(formData)
-      setOriginalForm(formData)
-      setAudioUrl(word.audioUrl)
-      setOriginalAudioUrl(word.audioUrl)
-      setAudioChanged(false)
-      setAudioFile(null)
-      setAudioPreview(null)
-      setAudioError(null)
-      setFieldErrors({})
-      setSubmitError(null)
-      setSuccessMessage(null)
-    }
-  }, [open, word])
+  // State reset is handled via key={editingWord?.id} in the component usage below
 
   const handleChange = useCallback(
     (field: string, value: string) => {
@@ -2003,12 +1980,19 @@ function FullAuditLogModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const prevOpenRef = useRef(false)
+  const currentFilterRef = useRef<string>("all")
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
   const [actionFilter, setActionFilter] = useState<string>("all")
+
+  // Keep filter ref in sync so fetchLogs reads it without needing filter in deps
+  useEffect(() => {
+    currentFilterRef.current = actionFilter
+  }, [actionFilter])
 
   const fetchLogs = useCallback(async (p: number, action?: string) => {
     setIsLoading(true)
@@ -2017,8 +2001,9 @@ function FullAuditLogModal({
         page: String(p),
         pageSize: "20",
       })
-      if (action && action !== "all") {
-        params.set("action", action)
+      const filter = action ?? currentFilterRef.current
+      if (filter && filter !== "all") {
+        params.set("action", filter)
       }
       const res = await fetch(`/api/admin/audit-logs?${params}`)
       if (res.ok) {
@@ -2034,12 +2019,12 @@ function FullAuditLogModal({
     }
   }, [])
 
+  // Fetch logs when modal opens (filter handled by handler)
   useEffect(() => {
-    if (open) {
-      setPage(1)
-      fetchLogs(1, actionFilter)
-    }
-  }, [open, fetchLogs, actionFilter])
+    if (!open) return
+    setPage(1)
+    fetchLogs(1)
+  }, [open, fetchLogs])
 
   const handlePageChange = useCallback(
     (newPage: number) => {
@@ -2248,6 +2233,7 @@ function WordListModal({
   onEditWord: (word: WordForEdit) => void
   onBulkActionDone: () => void
 }) {
+  const prevOpenRef = useRef(false)
   const [words, setWords] = useState<WordForEdit[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [page, setPage] = useState(1)
@@ -2266,12 +2252,22 @@ function WordListModal({
     action: string
   } | null>(null)
 
+  // Refs for stable access in fetchWords without adding to deps
+  const searchQueryRef = useRef(searchQuery)
+  const statusFilterRef = useRef(statusFilter)
+
+  // Keep search/status refs in sync
+  useEffect(() => { searchQueryRef.current = searchQuery }, [searchQuery])
+  useEffect(() => { statusFilterRef.current = statusFilter }, [statusFilter])
+
   const fetchWords = useCallback(async (p: number, search?: string, status?: string) => {
     setIsLoading(true)
     try {
       const params = new URLSearchParams({ page: String(p), pageSize: "15" })
-      if (search && search.trim()) params.set("search", search.trim())
-      if (status && status !== "all") params.set("status", status)
+      const s = search ?? searchQueryRef.current
+      const st = status ?? statusFilterRef.current
+      if (s && s.trim()) params.set("search", s.trim())
+      if (st && st !== "all") params.set("status", st)
       const res = await fetch(`/api/admin/words?${params}`)
       if (res.ok) {
         const data = await res.json()
@@ -2286,14 +2282,16 @@ function WordListModal({
     }
   }, [])
 
+  // Reset state when modal opens
   useEffect(() => {
-    if (open) {
+    if (open && !prevOpenRef.current) {
       setPage(1)
       setSelectedIds(new Set())
       setBulkResult(null)
-      fetchWords(1, searchQuery, statusFilter)
+      fetchWords(1)
     }
-  }, [open, fetchWords, searchQuery, statusFilter])
+    prevOpenRef.current = open
+  }, [open, fetchWords])
 
   const handleSearch = useCallback(() => {
     setPage(1)
@@ -3420,6 +3418,7 @@ export function AdminDashboard() {
         onBulkActionDone={handleWordSaved}
       />
       <EditWordModal
+        key={editingWord?.id ?? "new"}
         open={editWordOpen}
         onOpenChange={setEditWordOpen}
         word={editingWord}

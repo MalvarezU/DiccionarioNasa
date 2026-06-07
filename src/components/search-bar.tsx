@@ -211,7 +211,9 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
             className={`pl-10 w-full bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 transition-colors ${isHero ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md text-white placeholder:text-white/50" : "h-10 pr-9"}`}
             aria-label="Buscar palabras en el diccionario"
             aria-expanded={showDropdown}
+            aria-controls="search-results-list"
             aria-autocomplete="list"
+            aria-activedescendant={highlightedIndex >= 0 ? `search-option-${highlightedIndex}` : undefined}
             role="combobox"
           />
           {isLoading && (
@@ -293,12 +295,15 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
             ) : (
               <ul
                 ref={listRef}
+                id="search-results-list"
                 className={isHero ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
                 role="listbox"
+                aria-label="Resultados de búsqueda"
               >
                 {results.map((result, index) => (
                   <li
                     key={result.id}
+                    id={`search-option-${index}`}
                     data-search-item
                     role="option"
                     aria-selected={index === highlightedIndex}
@@ -350,6 +355,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
 
       {/* Word detail card (Sheet) */}
       <WordDetailCard
+        key={selectedWordId ?? "none"}
         wordId={selectedWordId}
         open={detailOpen}
         onOpenChange={setDetailOpen}
