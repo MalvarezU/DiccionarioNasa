@@ -126,7 +126,7 @@ function HomeContent() {
         <DownloadBanner />
 
         {/* Hero Section with Search Bar */}
-        <section className="relative pb-8">
+        <section className="relative pb-12 sm:pb-16 pt-16 sm:pt-24">
           {/* Dark overlay base */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/50 z-10" />
           
@@ -153,33 +153,33 @@ function HomeContent() {
           />
 
           {/* Content */}
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-20 pb-6 text-center z-20">            
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)' }}>
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 text-center z-20">            
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)' }}>
               Nasa Yuwe
             </h1>
-            <p className="mt-2 text-base sm:text-lg text-white font-medium" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
+            <p className="mt-3 text-lg sm:text-xl text-white font-medium" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
               Diccionario Bilingüe
             </p>
-            <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base text-white/90 leading-relaxed" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+            <p className="mt-4 max-w-xl mx-auto text-base sm:text-lg text-white/90 leading-relaxed" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
               Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.
               Busca palabras, pronunciaciones y contexto cultural.
             </p>
 
-            <div className="mt-8">
+            <div className="mt-8 sm:mt-10">
               <SearchBar variant="hero" />
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-6">
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-                <BookOpen className="h-3.5 w-3.5 text-white" />
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
+              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <BookOpen className="h-4 w-4 text-white" />
                 <span>{totalWords > 0 ? `${totalWords} palabras` : "Palabras"}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-                <Volume2 className="h-3.5 w-3.5 text-white" />
+              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <Volume2 className="h-4 w-4 text-white" />
                 <span>Pronunciación guiada</span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-                <Globe className="h-3.5 w-3.5 text-white" />
+              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <Globe className="h-4 w-4 text-white" />
                 <span>Español ↔ Nasa Yuwe</span>
               </div>
             </div>
