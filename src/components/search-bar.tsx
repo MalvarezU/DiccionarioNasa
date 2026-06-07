@@ -189,7 +189,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Search Input */}
         <div className="relative">
           <Search
-            className={`absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground ${isHero ? "h-5 w-5" : "h-4 w-4"}`}
+            className={`absolute left-3 top-1/2 -translate-y-1/2 ${isHero ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
           />
           <Input
             ref={inputRef}
@@ -208,11 +208,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               }
             }}
             onKeyDown={handleKeyDown}
-            className={`pl-10 w-full bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 transition-colors ${
-              isHero
-                ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md"
-                : "h-10 pr-9"
-            }`}
+            className={`pl-10 w-full bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 transition-colors ${isHero ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md text-white placeholder:text-white/50" : "h-10 pr-9"}`}
             aria-label="Buscar palabras en el diccionario"
             aria-expanded={showDropdown}
             aria-autocomplete="list"

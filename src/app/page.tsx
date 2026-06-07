@@ -126,7 +126,7 @@ function HomeContent() {
         <DownloadBanner />
 
         {/* Hero Section with Search Bar */}
-        <section className="relative pb-8 overflow-hidden">
+        <section className="relative pb-8">
           {/* Dark overlay base */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/50 z-10" />
           
@@ -153,11 +153,7 @@ function HomeContent() {
           />
 
           {/* Content */}
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-20 pb-6 text-center z-20">
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/30 border-2 border-primary/50">
-              <Leaf className="h-7 w-7 text-white" />
-            </div>
-
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-20 pb-6 text-center z-20">            
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)' }}>
               Nasa Yuwe
             </h1>
