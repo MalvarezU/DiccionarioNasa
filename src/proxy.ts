@@ -12,7 +12,7 @@ import { getToken } from "next-auth/jwt"
  * This runs on the server BEFORE any page renders, so it cannot be bypassed
  * by client-side URL manipulation.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Protect all /admin routes
