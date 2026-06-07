@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import * as fs from 'fs'
 import * as path from 'path'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -14,11 +15,35 @@ interface WordData {
   examples: string
 }
 
+async function createAdmin() {
+  const email = process.env.ADMIN_EMAIL || 'admin@nasayuwe.com'
+  const password = process.env.ADMIN_PASSWORD || 'AdminNasa2024!'
+  const name = process.env.ADMIN_NAME || 'Administrador'
+
+  const existing = await prisma.user.findUnique({ where: { email } })
+
+  if (existing) {
+    if (existing.role === 'admin') {
+      console.log('✓ Admin user already exists')
+      return
+    }
+    await prisma.user.update({ where: { email }, data: { role: 'admin' } })
+    console.log('✓ Existing user promoted to admin')
+    return
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10)
+  await prisma.user.create({
+    data: { email, password: hashedPassword, name, role: 'admin' },
+  })
+  console.log('✓ Admin user created: admin@nasayuwe.com / AdminNasa2024!')
+}
+
 function parseCSV(content: string): WordData[] {
   const lines = content.trim().split('\n')
   const words: WordData[] = []
 
-  for (let i = 2; i < lines.length; i++) {
+  for (let i = 1; i < lines.length; i++) {
     const line = lines[i].replace(/^\uFEFF/, '')
     const parts = line.split(',')
 
@@ -26,41 +51,21 @@ function parseCSV(content: string): WordData[] {
 
     const nasaYuwe = parts[0]?.trim() || ''
     const spanish = parts[1]?.trim() || ''
-    const tipo1 = parts[2]?.trim() || ''
-    const tipo2 = parts[3]?.trim() || ''
-    const tipo3 = parts[4]?.trim() || ''
-    const ejemploNy = parts[5]?.trim() || ''
+    const category = parts[2]?.trim() || 'sustantivo'
+    const pronunciation = parts[3]?.trim() || nasaYuwe.toLowerCase()
+    const culturalContext = parts[4]?.trim() || ''
+    const examples = parts[5]?.trim() || '[]'
 
     if (!nasaYuwe || !spanish) continue
-    if (nasaYuwe === 'Ç' || nasaYuwe === 'K' || nasaYuwe === 'Ç') continue
-
-    let category = 'sustantivo'
-    if (tipo1 === 'Verbo') category = 'verbo'
-    else if (tipo1 === 'Adjetivo') category = 'adjetivo'
-    else if (tipo1 === 'Adverbio') category = 'adverbio'
-    else if (tipo1 === 'Pronombre') category = 'pronombre'
-    else if (tipo1 === 'Expresión') category = 'expresion'
-    else if (tipo1 === 'Onomatopeya') category = 'onomatopeya'
-    else if (tipo1 === 'Conector') category = 'conector'
-    else if (tipo1 === 'Sufijo') continue
-
-    let culturalContext = ''
-    if (tipo2) culturalContext += tipo2
-    if (tipo3) culturalContext += (culturalContext ? ' - ' : '') + tipo3
-
-    const examples: { spanish: string; nasaYuwe: string }[] = []
-    if (ejemploNy) {
-      examples.push({ spanish: '', nasaYuwe: ejemploNy })
-    }
 
     words.push({
       spanish,
       nasaYuwe,
-      pronunciation: nasaYuwe.toLowerCase(),
+      pronunciation,
       culturalContext: culturalContext || 'Palabra de la lengua Nasa Yuwe, dialecto Wila',
       category,
       audioUrl: null,
-      examples: JSON.stringify(examples),
+      examples,
     })
   }
 
@@ -68,9 +73,12 @@ function parseCSV(content: string): WordData[] {
 }
 
 async function main() {
-  console.log('Seeding database from CSV...')
+  console.log('Seeding database...\n')
 
-  const csvPath = path.join(__dirname, '..', '..', 'Diccionario-Nasa-Yuwe_Dialecto-Wila-_1_.csv')
+  await createAdmin()
+  console.log('')
+
+  const csvPath = path.join(__dirname, 'seed-data.csv')
 
   if (!fs.existsSync(csvPath)) {
     console.error('CSV file not found:', csvPath)

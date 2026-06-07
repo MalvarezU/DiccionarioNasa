@@ -57,8 +57,9 @@ server.log
 # CodeGraph index
 .codegraph/
 
-# Database file (generated)
-prisma/db/dictionary.db
+# Database files (generated) - except seed data
+prisma/db/*.db
+!prisma/db/
 
 # Test audio files (real audio are .wav)
 public/audio/*.mp3
