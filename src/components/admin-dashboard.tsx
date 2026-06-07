@@ -167,16 +167,16 @@ function getActionLabel(action: string): string {
 
 function getActionColor(action: string): string {
   const colors: Record<string, string> = {
-    CREATE: "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30",
-    UPDATE: "text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/30",
-    DELETE: "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30",
-    IMPORT: "text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30",
-    SUGGEST: "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30",
-    STATUS_CHANGE: "text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
-    PUBLISH: "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30",
-    ARCHIVE: "text-gray-700 dark:text-gray-400 bg-gray-50 dark:bg-gray-950/30",
-    BATCH_PUBLISH: "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30",
-    BATCH_ARCHIVE: "text-gray-700 dark:text-gray-400 bg-gray-50 dark:bg-gray-950/30",
+    CREATE: "text-secondary bg-secondary/10",
+    UPDATE: "text-primary bg-primary/10",
+    DELETE: "text-destructive bg-destructive/10",
+    IMPORT: "text-primary bg-primary/10",
+    SUGGEST: "text-tertiary bg-tertiary/10",
+    STATUS_CHANGE: "text-primary bg-primary/10",
+    PUBLISH: "text-secondary bg-secondary/10",
+    ARCHIVE: "text-muted-foreground bg-muted/50",
+    BATCH_PUBLISH: "text-secondary bg-secondary/10",
+    BATCH_ARCHIVE: "text-muted-foreground bg-muted/50",
   }
   return colors[action] || "text-muted-foreground bg-muted/50"
 }
@@ -663,8 +663,8 @@ function CreateWordModal({
                   )}
                   {audioUrl && !isUploadingAudio && (
                     <div className="mt-2 flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      <span className="text-xs text-emerald-600">Audio subido correctamente</span>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-secondary" />
+                      <span className="text-xs text-secondary">Audio subido correctamente</span>
                     </div>
                   )}
                 </CardContent>
@@ -802,19 +802,19 @@ function WordPreviewModal({
           {/* Status badge */}
           <div className="flex items-center gap-2">
             {word.status === "DRAFT" && (
-              <Badge variant="outline" className="text-amber-700 bg-amber-50 dark:bg-amber-950/30 text-xs">
+              <Badge variant="outline" className="text-tertiary bg-tertiary/10 text-xs">
                 <Pencil className="h-3 w-3 mr-1" />
                 Borrador — no visible al público
               </Badge>
             )}
             {word.status === "PUBLISHED" && (
-              <Badge variant="outline" className="text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 text-xs">
+              <Badge variant="outline" className="text-secondary bg-secondary/10 text-xs">
                 <Eye className="h-3 w-3 mr-1" />
                 Publicada
               </Badge>
             )}
             {word.status === "ARCHIVED" && (
-              <Badge variant="outline" className="text-gray-700 bg-gray-50 dark:bg-gray-950/30 text-xs">
+              <Badge variant="outline" className="text-muted-foreground bg-muted/50 text-xs">
                 <Archive className="h-3 w-3 mr-1" />
                 Archivada
               </Badge>
@@ -1344,7 +1344,7 @@ function EditWordModal({
                 <Badge variant="secondary" className="text-[10px] ml-1">Archivo actual</Badge>
               )}
               {audioChanged && (
-                <Badge variant="outline" className="text-[10px] ml-1 text-amber-700 bg-amber-50">Reemplazado</Badge>
+                <Badge variant="outline" className="text-[10px] ml-1 text-tertiary bg-tertiary/10">Reemplazado</Badge>
               )}
             </Label>
 
@@ -1396,8 +1396,8 @@ function EditWordModal({
                   )}
                   {audioUrl && !isUploadingAudio && audioChanged && (
                     <div className="mt-2 flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      <span className="text-xs text-emerald-600">Audio subido correctamente</span>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-secondary" />
+                      <span className="text-xs text-secondary">Audio subido correctamente</span>
                     </div>
                   )}
                 </CardContent>
@@ -1483,7 +1483,7 @@ function EditWordModal({
             <Button
               onClick={() => handleStatusTransition("PUBLISHED")}
               disabled={isSubmitting || isTransitioning || isUploadingAudio}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="gap-2 bg-secondary hover:bg-secondary/90 text-white"
             >
               {isTransitioning ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1512,7 +1512,7 @@ function EditWordModal({
             <Button
               onClick={() => handleStatusTransition("PUBLISHED")}
               disabled={isSubmitting || isTransitioning || isUploadingAudio}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="gap-2 bg-secondary hover:bg-secondary/90 text-white"
             >
               {isTransitioning ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1528,7 +1528,7 @@ function EditWordModal({
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  <AlertTriangle className="h-5 w-5 text-tertiary" />
                   Publicar sin audio
                 </AlertDialogTitle>
                 <AlertDialogDescription>
@@ -1544,7 +1544,7 @@ function EditWordModal({
                       executeStatusTransition(pendingStatusTransition)
                     }
                   }}
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-secondary hover:bg-secondary/90"
                 >
                   Publicar de todas formas
                 </AlertDialogAction>
@@ -1850,12 +1850,12 @@ function ImportCorpusModal({
                   <tbody>
                     <tr className="border-b border-muted-foreground/10">
                       <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Palabra_nyW</code></td>
-                      <td className="py-1 pr-3 text-emerald-600">Sí</td>
+                      <td className="py-1 pr-3 text-secondary">Sí</td>
                       <td className="py-1">Palabra en Nasa Yuwe</td>
                     </tr>
                     <tr className="border-b border-muted-foreground/10">
                       <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Palabra_esp</code></td>
-                      <td className="py-1 pr-3 text-emerald-600">Sí</td>
+                      <td className="py-1 pr-3 text-secondary">Sí</td>
                       <td className="py-1">Palabra en español</td>
                     </tr>
                     <tr className="border-b border-muted-foreground/10">
@@ -1927,28 +1927,28 @@ function ImportCorpusModal({
 
           {/* Import result */}
           {importResult && (
-            <Card className="border-emerald-200 dark:border-emerald-800/40">
+            <Card className="border-secondary/30">
               <CardContent className="pt-4 pb-4">
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="h-5 w-5 text-secondary shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-foreground">
                       Importación completada
                     </p>
                     <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                       <span>Total: <strong className="text-foreground">{importResult.total}</strong></span>
-                      <span className="text-emerald-600">Creadas: <strong>{importResult.created}</strong></span>
+                      <span className="text-secondary">Creadas: <strong>{importResult.created}</strong></span>
                       {importResult.skipped > 0 && (
-                        <span className="text-amber-600">Duplicadas: <strong>{importResult.skipped}</strong></span>
+                        <span className="text-tertiary">Duplicadas: <strong>{importResult.skipped}</strong></span>
                       )}
                       {importResult.errors > 0 && (
-                        <span className="text-red-600">Errores: <strong>{importResult.errors}</strong></span>
+                        <span className="text-destructive">Errores: <strong>{importResult.errors}</strong></span>
                       )}
                     </div>
                     {importResult.errorRows && importResult.errorRows.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {importResult.errorRows.map((err, i) => (
-                          <p key={i} className="text-[11px] text-red-600">
+                          <p key={i} className="text-[11px] text-destructive">
                             Fila {err.row}: {err.reason}
                           </p>
                         ))}
@@ -2310,11 +2310,11 @@ function WordListModal({
   const getStatusBadge = useCallback((status: string) => {
     switch (status) {
       case "PUBLISHED":
-        return <Badge variant="outline" className="text-[10px] text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30">Publicada</Badge>
+        return <Badge variant="outline" className="text-[10px] text-secondary bg-secondary/10">Publicada</Badge>
       case "DRAFT":
-        return <Badge variant="outline" className="text-[10px] text-amber-700 bg-amber-50 dark:bg-amber-950/30">Borrador</Badge>
+        return <Badge variant="outline" className="text-[10px] text-tertiary bg-tertiary/10">Borrador</Badge>
       case "ARCHIVED":
-        return <Badge variant="outline" className="text-[10px] text-gray-700 bg-gray-50 dark:bg-gray-950/30">Archivada</Badge>
+        return <Badge variant="outline" className="text-[10px] text-muted-foreground bg-muted/50">Archivada</Badge>
       default:
         return <Badge variant="outline" className="text-[10px]">{status}</Badge>
     }
@@ -2448,7 +2448,7 @@ function WordListModal({
                   size="sm"
                   onClick={() => handleBulkAction("PUBLISHED")}
                   disabled={isBulkAction}
-                  className="h-8 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="h-8 gap-1.5 text-xs bg-secondary hover:bg-secondary/90 text-white"
                 >
                   {isBulkAction ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
                   Publicar seleccionadas
@@ -2477,11 +2477,11 @@ function WordListModal({
 
           {/* HU3.3.6: Bulk action result */}
           {bulkResult && (
-            <Card className="border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/20">
+            <Card className="border-secondary/30 bg-secondary/5">
               <CardContent className="pt-3 pb-3">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4 text-secondary shrink-0" />
+                  <p className="text-sm text-secondary">
                     {bulkResult.updated} palabra{bulkResult.updated !== 1 ? "s" : ""} {bulkResult.action}
                     {bulkResult.skipped > 0 && (
                       <span className="text-muted-foreground"> · {bulkResult.skipped} omitida{bulkResult.skipped !== 1 ? "s" : ""}</span>
@@ -3023,9 +3023,9 @@ export function AdminDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {sumMatchesTotal ? (
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <CheckCircle2 className="h-5 w-5 text-secondary shrink-0" />
               ) : (
-                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <AlertTriangle className="h-5 w-5 text-tertiary shrink-0" />
               )}
               <div>
                 <p className="text-sm font-medium text-foreground">
@@ -3040,7 +3040,7 @@ export function AdminDashboard() {
               variant={sumMatchesTotal ? "outline" : "destructive"}
               className={`text-xs gap-1 ${
                 sumMatchesTotal
-                  ? "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400"
+                  ? "border-secondary/30 text-secondary"
                   : ""
               }`}
             >
@@ -3062,15 +3062,15 @@ export function AdminDashboard() {
 
       {/* ─── Row 3: Audio completeness (HU3.5.3) + secondary stats ──────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="border-rose-200 dark:border-rose-800/40 bg-gradient-to-br from-rose-50/50 via-background to-rose-50/30 dark:from-rose-950/20 dark:to-rose-950/10">
+        <Card className="border-tertiary/30 bg-tertiary/5">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription>Sin audio cargado</CardDescription>
-              <VolumeX className="h-4 w-4 text-rose-500 dark:text-rose-400" />
+              <VolumeX className="h-4 w-4 text-tertiary" />
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+            <p className="text-2xl font-bold text-tertiary">
               {formatNumber(stats.publishedWithoutAudio)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -3078,9 +3078,9 @@ export function AdminDashboard() {
             </p>
             {stats.publishedCount > 0 && (
               <div className="mt-2">
-                <div className="w-full h-1.5 rounded-full bg-rose-100 dark:bg-rose-900/40">
+                <div className="w-full h-1.5 rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-rose-400 transition-all duration-500"
+                    className="h-full rounded-full bg-tertiary transition-all duration-500"
                     style={{ width: `${(stats.publishedWithoutAudio / stats.publishedCount) * 100}%` }}
                   />
                 </div>
@@ -3094,15 +3094,15 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/50 via-background to-emerald-50/30 dark:from-emerald-950/20 dark:to-emerald-950/10">
+        <Card className="border-secondary/30 bg-secondary/5">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription>Con audio</CardDescription>
-              <Volume2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+              <Volume2 className="h-4 w-4 text-secondary" />
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            <p className="text-2xl font-bold text-secondary">
               {formatNumber(publishedWithAudio)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -3110,9 +3110,9 @@ export function AdminDashboard() {
             </p>
             {stats.publishedCount > 0 && (
               <div className="mt-2">
-                <div className="w-full h-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                <div className="w-full h-1.5 rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    className="h-full rounded-full bg-secondary transition-all duration-500"
                     style={{ width: `${(publishedWithAudio / stats.publishedCount) * 100}%` }}
                   />
                 </div>
@@ -3177,12 +3177,12 @@ export function AdminDashboard() {
             {stats.publishedCount > 0 && (
               <>
                 <div
-                  className="h-full bg-emerald-500 transition-all duration-500"
+                  className="h-full bg-secondary transition-all duration-500"
                   style={{ width: `${(publishedWithAudio / stats.publishedCount) * 100}%` }}
                   title={`Con audio: ${publishedWithAudio}`}
                 />
                 <div
-                  className="h-full bg-rose-400 transition-all duration-500"
+                  className="h-full bg-tertiary transition-all duration-500"
                   style={{ width: `${(stats.publishedWithoutAudio / stats.publishedCount) * 100}%` }}
                   title={`Sin audio: ${stats.publishedWithoutAudio}`}
                 />
@@ -3191,14 +3191,14 @@ export function AdminDashboard() {
           </div>
           <div className="mt-3 flex items-center justify-center gap-6 text-xs">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-secondary inline-block" />
               <span className="text-muted-foreground">Con audio:</span>
               <span className="font-semibold text-foreground">{formatNumber(publishedWithAudio)}</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-tertiary inline-block" />
               <span className="text-muted-foreground">Sin audio:</span>
-              <span className="font-semibold text-rose-600 dark:text-rose-400">{formatNumber(stats.publishedWithoutAudio)}</span>
+              <span className="font-semibold text-tertiary">{formatNumber(stats.publishedWithoutAudio)}</span>
             </span>
             <span className="text-muted-foreground">
               ({stats.publishedCount > 0
@@ -3224,7 +3224,7 @@ export function AdminDashboard() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <Eye className="h-3.5 w-3.5 text-emerald-600" />
+                    <Eye className="h-3.5 w-3.5 text-secondary" />
                     <span className="text-sm font-medium text-foreground">Publicadas</span>
                   </div>
                   <span className="text-sm font-semibold text-foreground">
@@ -3233,7 +3233,7 @@ export function AdminDashboard() {
                 </div>
                 <div className="w-full h-2 rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    className="h-full rounded-full bg-secondary transition-all duration-500"
                     style={{
                       width: stats.totalWords > 0
                         ? `${(stats.publishedCount / stats.totalWords) * 100}%`
@@ -3246,7 +3246,7 @@ export function AdminDashboard() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <Pencil className="h-3.5 w-3.5 text-amber-600" />
+                    <Pencil className="h-3.5 w-3.5 text-tertiary" />
                     <span className="text-sm font-medium text-foreground">Borradores</span>
                   </div>
                   <span className="text-sm font-semibold text-foreground">
@@ -3255,7 +3255,7 @@ export function AdminDashboard() {
                 </div>
                 <div className="w-full h-2 rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                    className="h-full rounded-full bg-tertiary transition-all duration-500"
                     style={{
                       width: stats.totalWords > 0
                         ? `${(stats.draftCount / stats.totalWords) * 100}%`
@@ -3268,7 +3268,7 @@ export function AdminDashboard() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <Archive className="h-3.5 w-3.5 text-gray-500" />
+                    <Archive className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-sm font-medium text-foreground">Archivadas</span>
                   </div>
                   <span className="text-sm font-semibold text-foreground">
@@ -3277,7 +3277,7 @@ export function AdminDashboard() {
                 </div>
                 <div className="w-full h-2 rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-gray-400 transition-all duration-500"
+                    className="h-full rounded-full bg-muted-foreground/50 transition-all duration-500"
                     style={{
                       width: stats.totalWords > 0
                         ? `${(stats.archivedCount / stats.totalWords) * 100}%`
@@ -3291,17 +3291,17 @@ export function AdminDashboard() {
             <div className="mt-5 pt-4 border-t">
               <p className="text-xs text-muted-foreground text-center">
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  <span className="w-2 h-2 rounded-full bg-secondary inline-block" />
                   {formatNumber(stats.publishedCount)}
                 </span>
                 {" + "}
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                  <span className="w-2 h-2 rounded-full bg-tertiary inline-block" />
                   {formatNumber(stats.draftCount)}
                 </span>
                 {" + "}
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/50 inline-block" />
                   {formatNumber(stats.archivedCount)}
                 </span>
                 {" = "}
