@@ -620,9 +620,9 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                             width: "100%",
                             transform: `translateY(${virtualItem.start}px)`,
                           }}
-                          className="bg-primary/5 border-b border-primary/15 py-2 px-3 rounded-t-md"
+                          className="bg-gradient-to-r from-primary/10 via-surface-container-high to-transparent py-2 px-3 rounded-t-md border-l-4 border-primary"
                         >
-                          <h3 className="text-2xl font-bold text-primary">
+                          <h3 className="font-serif text-2xl font-bold text-primary">
                             {row.letter}
                           </h3>
                           <p className="text-xs text-muted-foreground">
@@ -649,7 +649,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                       >
                         <button
                           onClick={() => handleWordClick(word.id)}
-                          className="flex items-center gap-3 p-3 rounded-lg text-left transition-all duration-200 hover:bg-primary/5 hover:border-primary/20 border border-transparent hover:shadow-sm group w-full"
+                          className="flex items-center gap-3 p-3 rounded-lg text-left transition-all duration-200 hover:bg-surface-container-low hover:shadow-sm border border-transparent hover:border-outline-variant/30 group w-full"
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
@@ -659,7 +659,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                               <span className="text-xs text-muted-foreground truncate">
                                 —
                               </span>
-                              <span className="text-sm text-primary font-medium truncate">
+                              <span className="font-serif text-sm text-primary font-medium truncate">
                                 {word.nasaYuwe}
                               </span>
                             </div>
@@ -676,7 +676,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                                     <Badge
                                       key={cat}
                                       variant="secondary"
-                                      className="text-[9px] px-1 py-0 h-3.5"
+                                      className="text-[9px] px-1 py-0 h-3.5 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
                                     >
                                       {getCategoryDisplay(cat)}
                                     </Badge>

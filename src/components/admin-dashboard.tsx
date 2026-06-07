@@ -487,11 +487,11 @@ function CreateWordModal({
 
         {/* Success message (HU3.3.1) */}
         {successMessage && (
-          <Card className="border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/20">
+          <Card className="border border-secondary/30 bg-secondary/5">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="h-5 w-5 text-secondary shrink-0" />
+                <p className="text-sm font-medium text-secondary">
                   {successMessage}
                 </p>
               </div>
@@ -1241,11 +1241,11 @@ function EditWordModal({
         </DialogHeader>
 
         {successMessage && (
-          <Card className="border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/20">
+          <Card className="border border-secondary/30 bg-secondary/5">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{successMessage}</p>
+                <CheckCircle2 className="h-5 w-5 text-secondary shrink-0" />
+                <p className="text-sm font-medium text-secondary">{successMessage}</p>
               </div>
             </CardContent>
           </Card>
@@ -2840,7 +2840,7 @@ export function AdminDashboard() {
       </div>
 
       {/* ─── HU3.5.5: Quick Actions ──────────────────────────────────────────── */}
-      <Card className="mb-6 border-primary/15 bg-gradient-to-r from-primary/5 via-background to-accent/5">
+      <Card className="mb-6 border border-outline-variant/30 bg-white shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Acciones rápidas
@@ -2884,7 +2884,7 @@ export function AdminDashboard() {
       </Card>
 
       {/* ─── Row 1: Total Words (hero card) ──────────────────────────────── */}
-      <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
+      <Card className="mb-6 border border-outline-variant/30 bg-white shadow-sm">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
@@ -2898,7 +2898,7 @@ export function AdminDashboard() {
                 Todas las fichas en el sistema (borrador + publicadas + archivadas)
               </p>
             </div>
-            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 shrink-0">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 shrink-0">
               <BookOpen className="h-8 w-8 text-primary" />
             </div>
           </div>
@@ -2908,29 +2908,29 @@ export function AdminDashboard() {
       {/* ─── Row 2: Three status indicator cards ──────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {/* Publicadas */}
-        <Card className="border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/50 via-background to-emerald-50/30 dark:from-emerald-950/20 dark:to-emerald-950/10">
+        <Card className="border border-secondary/30 bg-white shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
                   Publicadas
                 </p>
-                <p className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 tracking-tight">
+                <p className="text-4xl font-bold text-secondary mt-1 tracking-tight">
                   {formatNumber(stats.publishedCount)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
                   Visibles al público
                 </p>
               </div>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
-                <Eye className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-secondary/10 border border-secondary/20 shrink-0">
+                <Eye className="h-6 w-6 text-secondary" />
               </div>
             </div>
             {stats.totalWords > 0 && (
-              <div className="mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/30">
-                <div className="w-full h-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+              <div className="mt-3 pt-3 border-t border-secondary/20">
+                <div className="w-full h-1.5 rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    className="h-full rounded-full bg-secondary transition-all duration-500"
                     style={{ width: `${(stats.publishedCount / stats.totalWords) * 100}%` }}
                   />
                 </div>
@@ -2943,29 +2943,29 @@ export function AdminDashboard() {
         </Card>
 
         {/* Borrador */}
-        <Card className="border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/50 via-background to-amber-50/30 dark:from-amber-950/20 dark:to-amber-950/10">
+        <Card className="border border-tertiary/30 bg-white shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
                   Borrador
                 </p>
-                <p className="text-4xl font-bold text-amber-600 dark:text-amber-400 mt-1 tracking-tight">
+                <p className="text-4xl font-bold text-tertiary mt-1 tracking-tight">
                   {formatNumber(stats.draftCount)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
                   Pendientes de publicación
                 </p>
               </div>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 shrink-0">
-                <Pencil className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-tertiary/10 border border-tertiary/20 shrink-0">
+                <Pencil className="h-6 w-6 text-tertiary" />
               </div>
             </div>
             {stats.totalWords > 0 && (
-              <div className="mt-3 pt-3 border-t border-amber-200/50 dark:border-amber-800/30">
-                <div className="w-full h-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40">
+              <div className="mt-3 pt-3 border-t border-tertiary/20">
+                <div className="w-full h-1.5 rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                    className="h-full rounded-full bg-tertiary transition-all duration-500"
                     style={{ width: `${(stats.draftCount / stats.totalWords) * 100}%` }}
                   />
                 </div>
@@ -2980,29 +2980,29 @@ export function AdminDashboard() {
         </Card>
 
         {/* Archivadas */}
-        <Card className="border-gray-200 dark:border-gray-700/40 bg-gradient-to-br from-gray-50/50 via-background to-gray-50/30 dark:from-gray-900/20 dark:to-gray-900/10">
+        <Card className="border border-outline-variant/30 bg-white shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
                   Archivadas
                 </p>
-                <p className="text-4xl font-bold text-gray-500 dark:text-gray-400 mt-1 tracking-tight">
+                <p className="text-4xl font-bold text-muted-foreground mt-1 tracking-tight">
                   {formatNumber(stats.archivedCount)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
                   Retiradas del público
                 </p>
               </div>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800/40 shrink-0">
-                <Archive className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-muted border border-outline-variant/30 shrink-0">
+                <Archive className="h-6 w-6 text-muted-foreground" />
               </div>
             </div>
             {stats.totalWords > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-200/50 dark:border-gray-700/30">
-                <div className="w-full h-1.5 rounded-full bg-gray-100 dark:bg-gray-800/40">
+              <div className="mt-3 pt-3 border-t border-outline-variant/20">
+                <div className="w-full h-1.5 rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-gray-400 transition-all duration-500"
+                    className="h-full rounded-full bg-muted-foreground/50 transition-all duration-500"
                     style={{ width: `${(stats.archivedCount / stats.totalWords) * 100}%` }}
                   />
                 </div>

@@ -257,18 +257,18 @@ function PanelContent({
               {favorites.map((fav) => (
                 <Card
                   key={fav.id}
-                  className="group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30"
+                  className="group cursor-pointer transition-all duration-200 bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
                   onClick={() => handleWordClick(fav.word.id)}
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-lg text-primary group-hover:text-primary/80 transition-colors">
+                      <CardTitle className="font-serif text-lg text-primary group-hover:text-primary/80 transition-colors">
                         {fav.word.nasaYuwe}
                       </CardTitle>
                       {fav.word.category && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] shrink-0"
+                          className="text-[10px] shrink-0 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
                         >
                           {fav.word.category}
                         </Badge>
@@ -344,18 +344,18 @@ function PanelContent({
                     {items.map((item) => (
                       <Card
                         key={item.id}
-                        className="group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30"
+                        className="group cursor-pointer transition-all duration-200 bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
                         onClick={() => handleWordClick(item.word.id)}
                       >
                         <CardHeader className="pb-2">
                           <div className="flex items-start justify-between gap-2">
-                            <CardTitle className="text-lg text-primary group-hover:text-primary/80 transition-colors">
+                            <CardTitle className="font-serif text-lg text-primary group-hover:text-primary/80 transition-colors">
                               {item.word.nasaYuwe}
                             </CardTitle>
                             {item.word.category && (
                               <Badge
                                 variant="secondary"
-                                className="text-[10px] shrink-0"
+                                className="text-[10px] shrink-0 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
                               >
                                 {item.word.category}
                               </Badge>

@@ -150,7 +150,7 @@ function WordContent({
             <Badge
               key={cat}
               variant="secondary"
-              className="text-xs gap-1"
+              className="text-xs gap-1 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors cursor-pointer"
             >
               <Tag className="h-3 w-3" />
               {getCategoryDisplay(cat)}
@@ -160,14 +160,14 @@ function WordContent({
       ) : (
         <Badge
           variant="outline"
-          className="w-fit mb-2 text-xs text-muted-foreground"
+          className="w-fit mb-2 text-xs text-muted-foreground bg-surface-container-highest"
         >
           Categoría desconocida
         </Badge>
       )}
 
       {/* Spanish word as MAIN title */}
-      <div className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+      <div className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-primary">
         {word.spanish}
       </div>
 
@@ -175,16 +175,16 @@ function WordContent({
       <div className="mt-2 flex items-center gap-2">
         <BookOpen className="h-4 w-4 text-primary shrink-0" />
         <span className="text-sm text-muted-foreground">Nasa Yuwe:</span>
-        <span className="text-xl font-semibold text-primary">
+        <span className="font-serif text-xl font-semibold text-primary">
           {word.nasaYuwe || "Traducción no disponible aún"}
         </span>
       </div>
 
-      <div className="mt-6 flex flex-col gap-5">
+      <div className="mt-6 flex flex-col gap-8">
         {/* Phonetic pronunciation */}
         {word.pronunciation ? (
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
-            <Volume2 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
+            <Volume2 className="h-5 w-5 text-secondary mt-0.5 shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">
                 Pronunciación fonética
@@ -212,7 +212,7 @@ function WordContent({
 
         {/* Offline audio cache status */}
         {word.audioUrl && (
-          <div className="flex flex-col gap-2 p-3 rounded-lg bg-muted/30 border border-border/30">
+          <div className="flex flex-col gap-2 p-3 rounded-lg bg-gradient-to-br from-surface-container-high to-surface-container-low border border-outline-variant/30">
             {isDownloading ? (
               <>
                 <div className="flex items-center gap-2">
@@ -225,7 +225,7 @@ function WordContent({
               </>
             ) : isCached ? (
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <CheckCircle2 className="h-4 w-4 text-secondary" />
                 <span className="text-xs text-muted-foreground">
                   Audio disponible sin conexión
                 </span>
@@ -253,12 +253,10 @@ function WordContent({
           </div>
         )}
 
-        <Separator />
-
         {/* Cultural context */}
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <MessageCircle className="h-4 w-4 text-primary" />
+            <MessageCircle className="h-4 w-4 text-tertiary" />
             Contexto cultural
           </h3>
           {word.culturalContext ? (
@@ -283,7 +281,7 @@ function WordContent({
               {word.examples.map((ex, i) => (
                 <div
                   key={i}
-                  className="p-3 rounded-lg bg-muted/30 border border-border/30"
+                  className="p-3 rounded-lg bg-surface-container-high"
                 >
                   <p className="text-sm text-foreground font-medium">
                     {ex.spanish}
@@ -301,13 +299,11 @@ function WordContent({
           )}
         </div>
 
-        <Separator />
-
         {/* Favorite button */}
         <div className="flex flex-col gap-2 pb-2">
           <Button
             variant={isFavorite ? "default" : "outline"}
-            className="w-full gap-2"
+            className={`w-full gap-2 ${isFavorite ? "bg-secondary hover:bg-secondary/90 transition-colors" : ""}`}
             onClick={onToggleFavorite}
             disabled={isTogglingFav || isDownloading}
           >

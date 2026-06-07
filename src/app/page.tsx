@@ -29,7 +29,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FeaturedWord {
@@ -191,14 +190,10 @@ function HomeContent() {
           </div>
         </section>
 
-        <Separator className="mx-auto max-w-7xl" />
-
         {/* Word of the Day */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
           <WordOfDayCard onWordSelect={handleWordSelect} />
         </section>
-
-        <Separator className="mx-auto max-w-7xl" />
 
         {/* Tabbed Section: Featured | Explore */}
         <section id="explorar" className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
@@ -218,7 +213,7 @@ function HomeContent() {
 
             <TabsContent value="featured">
               <div className="text-center mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-primary">
                   Palabras Destacadas
                 </h2>
                 <p className="mt-2 text-sm sm:text-base text-muted-foreground">
@@ -231,18 +226,18 @@ function HomeContent() {
                   {featuredWords.map((word) => (
                     <Card
                       key={word.id}
-                      className="group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30"
+                      className="group cursor-pointer transition-all duration-200 bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
                       onClick={() => handleWordClick(word)}
                     >
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-lg text-primary group-hover:text-primary/80 transition-colors">
+                          <CardTitle className="font-serif text-lg text-primary group-hover:text-primary/80 transition-colors">
                             {word.nasaYuwe}
                           </CardTitle>
                           {word.category && (
                             <Badge
                               variant="secondary"
-                              className="text-[10px] shrink-0"
+                              className="text-[10px] shrink-0 bg-tertiary/10 text-tertiary border border-tertiary/20 hover:bg-tertiary-fixed hover:text-foreground transition-colors"
                             >
                               {word.category}
                             </Badge>
@@ -255,7 +250,7 @@ function HomeContent() {
                         </p>
                         {word.pronunciation && (
                           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                            <Volume2 className="h-3 w-3" />
+                            <Volume2 className="h-3 w-3 text-secondary" />
                             [{word.pronunciation}]
                           </p>
                         )}
@@ -282,14 +277,14 @@ function HomeContent() {
         </section>
 
         {/* About Section */}
-        <section id="acerca" className="bg-muted/30 border-y">
+        <section id="acerca" className="bg-surface-container-high">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
                   <Heart className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="font-semibold text-foreground">
+                <h3 className="font-serif font-semibold text-foreground">
                   Preservación Cultural
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -298,10 +293,10 @@ function HomeContent() {
                 </p>
               </div>
               <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <Users className="h-6 w-6 text-primary" />
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10 border border-secondary/20">
+                  <Users className="h-6 w-6 text-secondary" />
                 </div>
-                <h3 className="font-semibold text-foreground">
+                <h3 className="font-serif font-semibold text-foreground">
                   Comunidad Nasa
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -310,10 +305,10 @@ function HomeContent() {
                 </p>
               </div>
               <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <Globe className="h-6 w-6 text-primary" />
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-tertiary/10 border border-tertiary/20">
+                  <Globe className="h-6 w-6 text-tertiary" />
                 </div>
-                <h3 className="font-semibold text-foreground">
+                <h3 className="font-serif font-semibold text-foreground">
                   Acceso Universal
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -327,7 +322,7 @@ function HomeContent() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto bg-black text-white">
+      <footer className="mt-auto bg-primary text-primary-foreground">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Logo + Brand */}
@@ -341,40 +336,40 @@ function HomeContent() {
                   className="rounded-lg"
                 />
                 <div>
-                  <p className="text-sm font-semibold text-white">
+                  <p className="font-serif text-sm font-semibold text-primary-foreground">
                     Nasa Yuwe
                   </p>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-primary-foreground/70">
                     Diccionario Bilingüe
                   </p>
                 </div>
               </div>
-              <p className="text-xs text-neutral-400 max-w-xs leading-relaxed">
+              <p className="text-xs text-primary-foreground/70 max-w-xs leading-relaxed">
                 Con respeto y gratitud al pueblo Nasa (Páez) de Colombia.
               </p>
             </div>
 
             {/* Navigation Links */}
             <div className="flex flex-col items-center gap-3">
-              <p className="text-xs font-semibold text-white uppercase tracking-wider mb-1">
+              <p className="text-xs font-semibold text-primary-foreground uppercase tracking-wider mb-1">
                 Navegación
               </p>
               <nav className="flex flex-col items-center gap-2">
                 <Link
                   href="/#explorar"
-                  className="text-xs text-neutral-400 hover:text-white transition-colors duration-200"
+                  className="text-xs text-primary-foreground/70 hover:text-tertiary-fixed transition-colors duration-200"
                 >
                   Explorar A-Z
                 </Link>
                 <Link
                   href="/#acerca"
-                  className="text-xs text-neutral-400 hover:text-white transition-colors duration-200"
+                  className="text-xs text-primary-foreground/70 hover:text-tertiary-fixed transition-colors duration-200"
                 >
                   Acerca del proyecto
                 </Link>
                 <Link
                   href="/admin"
-                  className="text-xs text-neutral-400 hover:text-white transition-colors duration-200"
+                  className="text-xs text-primary-foreground/70 hover:text-tertiary-fixed transition-colors duration-200"
                 >
                   Administración
                 </Link>
@@ -383,18 +378,18 @@ function HomeContent() {
 
             {/* Acknowledgment + Version */}
             <div className="flex flex-col items-center md:items-end gap-3">
-              <p className="text-xs text-neutral-400 text-center md:text-right max-w-xs leading-relaxed">
+              <p className="text-xs text-primary-foreground/70 text-center md:text-right max-w-xs leading-relaxed">
                 Este diccionario es una herramienta de preservación lingüística y cultural.
               </p>
-              <p className="text-[10px] text-neutral-500">
+              <p className="text-[10px] text-primary-foreground/50">
                 Versión 1.0.0
               </p>
             </div>
           </div>
 
           {/* Bottom bar */}
-          <div className="mt-8 pt-6 border-t border-neutral-800">
-            <p className="text-center text-[10px] text-neutral-500">
+          <div className="mt-8 pt-6 border-t border-primary-foreground/20">
+            <p className="text-center text-[10px] text-primary-foreground/50">
               © {new Date().getFullYear()} Nasa Yuwe · Proyecto de preservación lingüística
             </p>
           </div>

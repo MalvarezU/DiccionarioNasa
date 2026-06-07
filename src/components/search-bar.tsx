@@ -208,9 +208,9 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               }
             }}
             onKeyDown={handleKeyDown}
-            className={`pl-10 w-full bg-background/60 border-border/50 focus-visible:border-primary/50 ${
+            className={`pl-10 w-full bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 transition-colors ${
               isHero
-                ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md transition-shadow"
+                ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md"
                 : "h-10 pr-9"
             }`}
             aria-label="Buscar palabras en el diccionario"
@@ -248,7 +248,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Dropdown with results */}
         {showDropdown && (
           <div
-            className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden animate-in fade-in duration-200 ${
+            className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200 ${
               isHero ? "mt-2 rounded-xl" : "mt-1"
             }`}
           >
@@ -275,9 +275,9 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                   en el diccionario.
                 </p>
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
-                  className="gap-1.5"
+                  className="gap-1.5 bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity"
                   disabled={!isOnline}
                   onClick={() => {
                     setSuggestOpen(true);
@@ -307,12 +307,12 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                     role="option"
                     aria-selected={index === highlightedIndex}
                     className={`
-                      flex items-center gap-3 cursor-pointer transition-colors
+                      flex items-center gap-3 cursor-pointer transition-all
                       ${isHero ? "px-4 py-3" : "px-3 py-2.5"}
                       ${
                         index === highlightedIndex
-                          ? "bg-primary/10 text-foreground"
-                          : "hover:bg-muted/60 text-foreground"
+                          ? "bg-surface-container-high text-foreground border-l-4 border-primary"
+                          : "hover:bg-surface-container-high text-foreground border-l-4 border-transparent hover:border-primary/50"
                       }
                     `}
                     onClick={() => handleSelect(result)}
@@ -330,14 +330,14 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                       <div className="flex items-center gap-2 mt-0.5">
                         {result.pronunciation && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Volume2 className="h-3 w-3" />
+                            <Volume2 className="h-3 w-3 text-secondary" />
                             [{result.pronunciation}]
                           </span>
                         )}
                         {result.category && (
                           <Badge
                             variant="secondary"
-                            className="text-[10px] px-1.5 py-0 h-4"
+                            className="text-[10px] px-1.5 py-0 h-4 bg-tertiary/10 text-tertiary border border-tertiary/20"
                           >
                             {result.category}
                           </Badge>
