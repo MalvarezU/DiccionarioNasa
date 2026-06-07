@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     "indigenous language",
   ],
   icons: {
-    icon: "/favicon.ico",
+    icon: "/libro-abierto.png",
   },
   openGraph: {
     title: "Nasa Yuwe — Diccionario Bilingüe",
