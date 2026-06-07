@@ -322,54 +322,51 @@ function HomeContent() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto bg-primary text-primary-foreground">
+      <footer className="mt-auto bg-black text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Logo + Brand */}
             <div className="flex flex-col items-center md:items-start gap-3">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <Image
-                  src="/logo.png"
-                  alt="Logo Nasa Yuwe"
-                  width={48}
-                  height={48}
-                  className="rounded-lg"
+                  src="/ybc.jpg"
+                  alt="YBC Logo"
+                  width={72}
+                  height={72}
+                  className="rounded-full border-2 border-white/30"
                 />
                 <div>
-                  <p className="font-serif text-sm font-semibold text-primary-foreground">
-                    Nasa Yuwe
+                  <p className="font-serif text-lg font-bold text-white">
+                    Grupo YBC
                   </p>
-                  <p className="text-xs text-primary-foreground/70">
-                    Diccionario Bilingüe
+                  <p className="text-xs text-white/70">
+                    Nasa Yuwe · Diccionario Bilingüe
                   </p>
                 </div>
               </div>
-              <p className="text-xs text-primary-foreground/70 max-w-xs leading-relaxed">
-                Con respeto y gratitud al pueblo Nasa (Páez) de Colombia.
-              </p>
             </div>
 
             {/* Navigation Links */}
             <div className="flex flex-col items-center gap-3">
-              <p className="text-xs font-semibold text-primary-foreground uppercase tracking-wider mb-1">
+              <p className="text-xs font-semibold text-white uppercase tracking-wider mb-1">
                 Navegación
               </p>
               <nav className="flex flex-col items-center gap-2">
                 <Link
                   href="/#explorar"
-                  className="text-xs text-primary-foreground/70 hover:text-tertiary-fixed transition-colors duration-200"
+                  className="text-xs text-white/70 hover:text-white transition-colors duration-200"
                 >
                   Explorar A-Z
                 </Link>
                 <Link
                   href="/#acerca"
-                  className="text-xs text-primary-foreground/70 hover:text-tertiary-fixed transition-colors duration-200"
+                  className="text-xs text-white/70 hover:text-white transition-colors duration-200"
                 >
                   Acerca del proyecto
                 </Link>
                 <Link
                   href="/admin"
-                  className="text-xs text-primary-foreground/70 hover:text-tertiary-fixed transition-colors duration-200"
+                  className="text-xs text-white/70 hover:text-white transition-colors duration-200"
                 >
                   Administración
                 </Link>
@@ -378,18 +375,18 @@ function HomeContent() {
 
             {/* Acknowledgment + Version */}
             <div className="flex flex-col items-center md:items-end gap-3">
-              <p className="text-xs text-primary-foreground/70 text-center md:text-right max-w-xs leading-relaxed">
+              <p className="text-xs text-white/70 text-center md:text-right max-w-xs leading-relaxed">
                 Este diccionario es una herramienta de preservación lingüística y cultural.
               </p>
-              <p className="text-[10px] text-primary-foreground/50">
+              <p className="text-[10px] text-white/50">
                 Versión 1.0.0
               </p>
             </div>
           </div>
 
           {/* Bottom bar */}
-          <div className="mt-8 pt-6 border-t border-primary-foreground/20">
-            <p className="text-center text-[10px] text-primary-foreground/50">
+          <div className="mt-8 pt-6 border-t border-white/20">
+            <p className="text-center text-[10px] text-white/50">
               © {new Date().getFullYear()} Nasa Yuwe · Proyecto de preservación lingüística
             </p>
           </div>
