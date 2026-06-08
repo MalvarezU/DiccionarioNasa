@@ -32,12 +32,6 @@ export async function GET(request: NextRequest) {
         name: true,
         role: true,
         createdAt: true,
-        _count: {
-          select: {
-            favorites: true,
-            viewHistory: true,
-          },
-        },
       },
       orderBy: { createdAt: "desc" },
     })

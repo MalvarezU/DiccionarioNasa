@@ -21,6 +21,7 @@ import { DownloadBanner } from "@/components/download-banner";
 import { ExploreSection } from "@/components/explore-section";
 import { WordOfDayCard } from "@/components/word-of-day-card";
 import { FavoritesHistoryPanel } from "@/components/favorites-history-panel";
+import { recordLocalHistory } from "@/lib/demo-storage";
 
 import {
   Card,
@@ -87,19 +88,23 @@ function HomeContent() {
   useEffect(() => {
     if (!selectedWordId || !detailOpen || !isAuthenticated) return;
 
+    const userId = (session?.user as any)?.id || 'demo-user';
+
     const recordHistory = async () => {
       try {
-        await fetch("/api/dictionary/history", {
+        const res = await fetch("/api/dictionary/history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ wordId: selectedWordId }),
         });
+        if (!res.ok) throw new Error('API error')
       } catch {
-        // Silently fail
+        // Fallback to localStorage for demo mode
+        recordLocalHistory(userId, selectedWordId);
       }
     };
     recordHistory();
-  }, [selectedWordId, detailOpen, isAuthenticated]);
+  }, [selectedWordId, detailOpen, isAuthenticated, session]);
 
   // Open favorites/history panel
   const openPanel = useCallback((tab: "favorites" | "history") => {

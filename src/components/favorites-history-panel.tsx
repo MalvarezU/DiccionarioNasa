@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import {
   Dialog,
@@ -35,6 +35,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AuthModal } from "@/components/auth-modal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { SEED_WORDS } from "@/lib/demo-data";
+import {
+  getLocalFavoritesWithWord,
+  getLocalHistoryWithWord,
+  clearLocalHistory,
+} from "@/lib/demo-storage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,13 +111,48 @@ function PanelContent({
   }, [initialTab]);
 
   // Stable refs for fetch functions
+  const userId = (session?.user as any)?.id || 'demo-user';
+
   const fetchFavoritesRef = useRef<() => void>(() => {
     if (activeTab !== "favorites" || !isAuthenticated) return;
     setIsLoadingFavorites(true);
+
     fetch("/api/dictionary/favorites")
       .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (data) setFavorites(data.favorites ?? []); })
-      .catch(() => {})
+      .then((data) => {
+        if (data?.favorites && data.favorites.length > 0) {
+          setFavorites(data.favorites ?? []);
+          return
+        }
+        // Fallback to localStorage for demo mode
+        const localFavs = getLocalFavoritesWithWord(userId, (id: string) => {
+          const word = SEED_WORDS.find(w => w.id === id)
+          return word ? {
+            id: word.id,
+            spanish: word.spanish,
+            nasaYuwe: word.nasaYuwe,
+            pronunciation: word.pronunciation,
+            category: word.category,
+            audioUrl: word.audioUrl,
+          } : null
+        }).filter(f => f.word !== null)
+        setFavorites(localFavs as FavoriteWord[])
+      })
+      .catch(() => {
+        // Fallback to localStorage on error
+        const localFavs = getLocalFavoritesWithWord(userId, (id: string) => {
+          const word = SEED_WORDS.find(w => w.id === id)
+          return word ? {
+            id: word.id,
+            spanish: word.spanish,
+            nasaYuwe: word.nasaYuwe,
+            pronunciation: word.pronunciation,
+            category: word.category,
+            audioUrl: word.audioUrl,
+          } : null
+        }).filter(f => f.word !== null)
+        setFavorites(localFavs as FavoriteWord[])
+      })
       .finally(() => setIsLoadingFavorites(false));
   });
 
@@ -120,8 +161,40 @@ function PanelContent({
     setIsLoadingHistory(true);
     fetch("/api/dictionary/history")
       .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (data) setHistory(data.history ?? []); })
-      .catch(() => {})
+      .then((data) => {
+        if (data?.history && data.history.length > 0) {
+          setHistory(data.history ?? []);
+          return
+        }
+        // Fallback to localStorage for demo mode
+        const localHist = getLocalHistoryWithWord(userId, (id: string) => {
+          const word = SEED_WORDS.find(w => w.id === id)
+          return word ? {
+            id: word.id,
+            spanish: word.spanish,
+            nasaYuwe: word.nasaYuwe,
+            pronunciation: word.pronunciation,
+            category: word.category,
+            audioUrl: word.audioUrl,
+          } : null
+        }).filter(h => h.word !== null)
+        setHistory(localHist as HistoryWord[])
+      })
+      .catch(() => {
+        // Fallback to localStorage on error
+        const localHist = getLocalHistoryWithWord(userId, (id: string) => {
+          const word = SEED_WORDS.find(w => w.id === id)
+          return word ? {
+            id: word.id,
+            spanish: word.spanish,
+            nasaYuwe: word.nasaYuwe,
+            pronunciation: word.pronunciation,
+            category: word.category,
+            audioUrl: word.audioUrl,
+          } : null
+        }).filter(h => h.word !== null)
+        setHistory(localHist as HistoryWord[])
+      })
       .finally(() => setIsLoadingHistory(false));
   });
 
@@ -142,8 +215,11 @@ function PanelContent({
         setHistory([]);
       }
     } catch {
-      // Silently fail
+      // Continue to clear localStorage even if API fails
     }
+    // Also clear localStorage for demo mode
+    clearLocalHistory(userId);
+    setHistory([]);
   };
 
   const handleWordClick = useCallback(
