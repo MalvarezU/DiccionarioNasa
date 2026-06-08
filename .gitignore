@@ -75,4 +75,4 @@ INFORME_COMPLETO.md
 TEST_REPORT.md
 worklog.md
 agent-ctx/
-download/
+download/.env.demo
