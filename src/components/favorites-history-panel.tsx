@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import {
   Dialog,
@@ -35,6 +35,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AuthModal } from "@/components/auth-modal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { SEED_WORDS } from "@/lib/demo-data";
+import {
+  getLocalFavoritesWithWord,
+  getLocalHistoryWithWord,
+  clearLocalHistory,
+} from "@/lib/demo-storage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -104,46 +110,102 @@ function PanelContent({
     setActiveTab(initialTab);
   }, [initialTab]);
 
+  // Stable refs for fetch functions
+  const userId = (session?.user as any)?.id || 'demo-user';
+
+  const fetchFavoritesRef = useRef<() => void>(() => {
+    if (activeTab !== "favorites" || !isAuthenticated) return;
+    setIsLoadingFavorites(true);
+
+    fetch("/api/dictionary/favorites")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.favorites && data.favorites.length > 0) {
+          setFavorites(data.favorites ?? []);
+          return
+        }
+        // Fallback to localStorage for demo mode
+        const localFavs = getLocalFavoritesWithWord(userId, (id: string) => {
+          const word = SEED_WORDS.find(w => w.id === id)
+          return word ? {
+            id: word.id,
+            spanish: word.spanish,
+            nasaYuwe: word.nasaYuwe,
+            pronunciation: word.pronunciation,
+            category: word.category,
+            audioUrl: word.audioUrl,
+          } : null
+        }).filter(f => f.word !== null)
+        setFavorites(localFavs as FavoriteWord[])
+      })
+      .catch(() => {
+        // Fallback to localStorage on error
+        const localFavs = getLocalFavoritesWithWord(userId, (id: string) => {
+          const word = SEED_WORDS.find(w => w.id === id)
+          return word ? {
+            id: word.id,
+            spanish: word.spanish,
+            nasaYuwe: word.nasaYuwe,
+            pronunciation: word.pronunciation,
+            category: word.category,
+            audioUrl: word.audioUrl,
+          } : null
+        }).filter(f => f.word !== null)
+        setFavorites(localFavs as FavoriteWord[])
+      })
+      .finally(() => setIsLoadingFavorites(false));
+  });
+
+  const fetchHistoryRef = useRef<() => void>(() => {
+    if (activeTab !== "history" || !isAuthenticated) return;
+    setIsLoadingHistory(true);
+    fetch("/api/dictionary/history")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.history && data.history.length > 0) {
+          setHistory(data.history ?? []);
+          return
+        }
+        // Fallback to localStorage for demo mode
+        const localHist = getLocalHistoryWithWord(userId, (id: string) => {
+          const word = SEED_WORDS.find(w => w.id === id)
+          return word ? {
+            id: word.id,
+            spanish: word.spanish,
+            nasaYuwe: word.nasaYuwe,
+            pronunciation: word.pronunciation,
+            category: word.category,
+            audioUrl: word.audioUrl,
+          } : null
+        }).filter(h => h.word !== null)
+        setHistory(localHist as HistoryWord[])
+      })
+      .catch(() => {
+        // Fallback to localStorage on error
+        const localHist = getLocalHistoryWithWord(userId, (id: string) => {
+          const word = SEED_WORDS.find(w => w.id === id)
+          return word ? {
+            id: word.id,
+            spanish: word.spanish,
+            nasaYuwe: word.nasaYuwe,
+            pronunciation: word.pronunciation,
+            category: word.category,
+            audioUrl: word.audioUrl,
+          } : null
+        }).filter(h => h.word !== null)
+        setHistory(localHist as HistoryWord[])
+      })
+      .finally(() => setIsLoadingHistory(false));
+  });
+
   // Fetch favorites when tab is active and user is authenticated
   useEffect(() => {
-    if (activeTab !== "favorites" || !isAuthenticated) return;
-
-    const fetchFavorites = async () => {
-      setIsLoadingFavorites(true);
-      try {
-        const res = await fetch("/api/dictionary/favorites");
-        if (res.ok) {
-          const data = await res.json();
-          setFavorites(data.favorites ?? []);
-        }
-      } catch {
-        // Silently fail
-      } finally {
-        setIsLoadingFavorites(false);
-      }
-    };
-    fetchFavorites();
+    fetchFavoritesRef.current();
   }, [activeTab, isAuthenticated]);
 
   // Fetch history when tab is active and user is authenticated
   useEffect(() => {
-    if (activeTab !== "history" || !isAuthenticated) return;
-
-    const fetchHistory = async () => {
-      setIsLoadingHistory(true);
-      try {
-        const res = await fetch("/api/dictionary/history");
-        if (res.ok) {
-          const data = await res.json();
-          setHistory(data.history ?? []);
-        }
-      } catch {
-        // Silently fail
-      } finally {
-        setIsLoadingHistory(false);
-      }
-    };
-    fetchHistory();
+    fetchHistoryRef.current();
   }, [activeTab, isAuthenticated]);
 
   const handleClearHistory = async () => {
@@ -153,8 +215,11 @@ function PanelContent({
         setHistory([]);
       }
     } catch {
-      // Silently fail
+      // Continue to clear localStorage even if API fails
     }
+    // Also clear localStorage for demo mode
+    clearLocalHistory(userId);
+    setHistory([]);
   };
 
   const handleWordClick = useCallback(
@@ -218,6 +283,7 @@ function PanelContent({
       {/* Tab switcher */}
       <div className="flex items-center gap-2 mb-5">
         <button
+          type="button"
           onClick={() => setActiveTab("favorites")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "favorites"
@@ -230,6 +296,7 @@ function PanelContent({
           Favoritos
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("history")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "history"
@@ -257,18 +324,18 @@ function PanelContent({
               {favorites.map((fav) => (
                 <Card
                   key={fav.id}
-                  className="group cursor-pointer transition-all hover:shadow-md hover:border-primary/30"
+                  className="group cursor-pointer transition-all duration-200 bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
                   onClick={() => handleWordClick(fav.word.id)}
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-lg text-primary group-hover:text-primary/80 transition-colors">
+                      <CardTitle className="font-serif text-lg text-primary group-hover:text-primary/80 transition-colors">
                         {fav.word.nasaYuwe}
                       </CardTitle>
                       {fav.word.category && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] shrink-0"
+                          className="text-[10px] shrink-0 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
                         >
                           {fav.word.category}
                         </Badge>
@@ -344,18 +411,18 @@ function PanelContent({
                     {items.map((item) => (
                       <Card
                         key={item.id}
-                        className="group cursor-pointer transition-all hover:shadow-md hover:border-primary/30"
+                        className="group cursor-pointer transition-all duration-200 bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
                         onClick={() => handleWordClick(item.word.id)}
                       >
                         <CardHeader className="pb-2">
                           <div className="flex items-start justify-between gap-2">
-                            <CardTitle className="text-lg text-primary group-hover:text-primary/80 transition-colors">
+                            <CardTitle className="font-serif text-lg text-primary group-hover:text-primary/80 transition-colors">
                               {item.word.nasaYuwe}
                             </CardTitle>
                             {item.word.category && (
                               <Badge
                                 variant="secondary"
-                                className="text-[10px] shrink-0"
+                                className="text-[10px] shrink-0 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
                               >
                                 {item.word.category}
                               </Badge>

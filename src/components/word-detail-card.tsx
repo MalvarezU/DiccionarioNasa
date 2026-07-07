@@ -38,6 +38,7 @@ import { AuthModal } from "@/components/auth-modal";
 import { useToast } from "@/hooks/use-toast";
 import { useOfflineAudio } from "@/hooks/use-offline-audio";
 import { getLocalWord, isLocalDBReady } from "@/lib/local-db";
+import { isLocalFavorite, toggleLocalFavorite } from "@/lib/demo-storage";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -150,7 +151,7 @@ function WordContent({
             <Badge
               key={cat}
               variant="secondary"
-              className="text-xs gap-1"
+              className="text-xs gap-1 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors cursor-pointer"
             >
               <Tag className="h-3 w-3" />
               {getCategoryDisplay(cat)}
@@ -160,14 +161,14 @@ function WordContent({
       ) : (
         <Badge
           variant="outline"
-          className="w-fit mb-2 text-xs text-muted-foreground"
+          className="w-fit mb-2 text-xs text-muted-foreground bg-surface-container-highest"
         >
           Categoría desconocida
         </Badge>
       )}
 
       {/* Spanish word as MAIN title */}
-      <div className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+      <div className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-primary">
         {word.spanish}
       </div>
 
@@ -175,16 +176,16 @@ function WordContent({
       <div className="mt-2 flex items-center gap-2">
         <BookOpen className="h-4 w-4 text-primary shrink-0" />
         <span className="text-sm text-muted-foreground">Nasa Yuwe:</span>
-        <span className="text-xl font-semibold text-primary">
+        <span className="font-serif text-xl font-semibold text-primary">
           {word.nasaYuwe || "Traducción no disponible aún"}
         </span>
       </div>
 
-      <div className="mt-6 flex flex-col gap-5">
+      <div className="mt-6 flex flex-col gap-8">
         {/* Phonetic pronunciation */}
         {word.pronunciation ? (
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
-            <Volume2 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
+            <Volume2 className="h-5 w-5 text-secondary mt-0.5 shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">
                 Pronunciación fonética
@@ -212,7 +213,7 @@ function WordContent({
 
         {/* Offline audio cache status */}
         {word.audioUrl && (
-          <div className="flex flex-col gap-2 p-3 rounded-lg bg-muted/30 border border-border/30">
+          <div className="flex flex-col gap-2 p-3 rounded-lg bg-gradient-to-br from-surface-container-high to-surface-container-low border border-outline-variant/30">
             {isDownloading ? (
               <>
                 <div className="flex items-center gap-2">
@@ -225,7 +226,7 @@ function WordContent({
               </>
             ) : isCached ? (
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <CheckCircle2 className="h-4 w-4 text-secondary" />
                 <span className="text-xs text-muted-foreground">
                   Audio disponible sin conexión
                 </span>
@@ -253,12 +254,10 @@ function WordContent({
           </div>
         )}
 
-        <Separator />
-
         {/* Cultural context */}
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <MessageCircle className="h-4 w-4 text-primary" />
+            <MessageCircle className="h-4 w-4 text-tertiary" />
             Contexto cultural
           </h3>
           {word.culturalContext ? (
@@ -283,7 +282,7 @@ function WordContent({
               {word.examples.map((ex, i) => (
                 <div
                   key={i}
-                  className="p-3 rounded-lg bg-muted/30 border border-border/30"
+                  className="p-3 rounded-lg bg-surface-container-high"
                 >
                   <p className="text-sm text-foreground font-medium">
                     {ex.spanish}
@@ -301,13 +300,11 @@ function WordContent({
           )}
         </div>
 
-        <Separator />
-
         {/* Favorite button */}
         <div className="flex flex-col gap-2 pb-2">
           <Button
             variant={isFavorite ? "default" : "outline"}
-            className="w-full gap-2"
+            className={`w-full gap-2 ${isFavorite ? "bg-secondary hover:bg-secondary/90 transition-colors" : ""}`}
             onClick={onToggleFavorite}
             disabled={isTogglingFav || isDownloading}
           >
@@ -389,9 +386,15 @@ export function WordDetailCard({
             const localWord = await getLocalWord(wordId);
             if (localWord) {
               setWord({
-                ...localWord,
+                id: localWord.id,
+                spanish: localWord.spanish,
+                nasaYuwe: localWord.nasaYuwe,
+                pronunciation: localWord.pronunciation ?? null,
+                audioUrl: localWord.audioUrl ?? null,
+                culturalContext: localWord.culturalContext ?? null,
+                category: localWord.category ?? null,
                 examples: localWord.examples ? JSON.parse(localWord.examples) : null,
-              });
+              } as WordDetail);
             } else {
               setWord(null);
             }
@@ -412,9 +415,15 @@ export function WordDetailCard({
           const localWord = await getLocalWord(wordId);
           if (localWord) {
             setWord({
-              ...localWord,
+              id: localWord.id,
+              spanish: localWord.spanish,
+              nasaYuwe: localWord.nasaYuwe,
+              pronunciation: localWord.pronunciation ?? null,
+              audioUrl: localWord.audioUrl ?? null,
+              culturalContext: localWord.culturalContext ?? null,
+              category: localWord.category ?? null,
               examples: localWord.examples ? JSON.parse(localWord.examples) : null,
-            });
+            } as WordDetail);
           } else {
             setWord(null);
           }
@@ -436,6 +445,8 @@ export function WordDetailCard({
       return;
     }
 
+    const userId = (session?.user as any)?.id || 'demo-user';
+
     const checkFavorite = async () => {
       try {
         const response = await fetch(
@@ -444,14 +455,17 @@ export function WordDetailCard({
         if (response.ok) {
           const data = await response.json();
           setIsFavorite(data.isFavorite);
+          return
         }
       } catch {
-        // Silently fail
+        // Fall through to localStorage fallback
       }
+      // localStorage fallback for demo mode
+      setIsFavorite(isLocalFavorite(userId, wordId));
     };
 
     checkFavorite();
-  }, [wordId, open, isAuthenticated]);
+  }, [wordId, open, isAuthenticated, session]);
 
   // Handle auto-download/remove of offline audio when favorite status changes
   useEffect(() => {
@@ -493,6 +507,8 @@ export function WordDetailCard({
     if (!wordId || isTogglingFav) return;
 
     setIsTogglingFav(true);
+    const userId = (session?.user as any)?.id || 'demo-user';
+
     try {
       const response = await fetch("/api/dictionary/favorites", {
         method: "POST",
@@ -502,6 +518,7 @@ export function WordDetailCard({
 
       if (response.status === 401) {
         setAuthModalOpen(true);
+        setIsTogglingFav(false);
         return;
       }
 
@@ -515,28 +532,36 @@ export function WordDetailCard({
           pendingOfflineAction.current = "remove";
         }
 
-        if (data.isFavorite) {
-          toast({
-            title: "Añadido a favoritos",
-            description: "La palabra se ha guardado en tus favoritos.",
-          });
-        } else {
-          toast({
-            title: "Eliminado de favoritos",
-            description: "La palabra se ha eliminado de tus favoritos.",
-          });
-        }
+        toast({
+          title: data.isFavorite ? "Añadido a favoritos" : "Eliminado de favoritos",
+          description: data.isFavorite
+            ? "La palabra se ha guardado en tus favoritos."
+            : "La palabra se ha eliminado de tus favoritos.",
+        });
+      } else {
+        throw new Error('API error')
       }
     } catch {
+      // Fallback to localStorage for demo mode
+      const newState = toggleLocalFavorite(userId, wordId);
+      setIsFavorite(newState);
+
+      if (newState) {
+        pendingOfflineAction.current = "download";
+      } else {
+        pendingOfflineAction.current = "remove";
+      }
+
       toast({
-        title: "Error",
-        description: "No se pudo actualizar favoritos. Intenta de nuevo.",
-        variant: "destructive",
+        title: newState ? "Añadido a favoritos" : "Eliminado de favoritos",
+        description: newState
+          ? "La palabra se ha guardado en tus favoritos (offline)."
+          : "La palabra se ha eliminado de tus favoritos.",
       });
     } finally {
       setIsTogglingFav(false);
     }
-  }, [wordId, isAuthenticated, isTogglingFav, toast]);
+  }, [wordId, isAuthenticated, isTogglingFav, toast, session]);
 
   const categories = parseCategories(word?.category ?? null);
 

@@ -41,12 +41,12 @@ export function NavBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
           {/* Logo / App Name — links to home */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
             <BookOpen className="h-5 w-5 text-primary group-hover:text-primary/80 transition-colors" />
-            <span className="font-semibold text-base tracking-tight text-foreground group-hover:text-foreground/80 transition-colors">
+            <span className="font-serif font-semibold text-lg tracking-tight text-primary group-hover:text-primary/80 transition-colors">
               Nasa Yuwe
             </span>
           </Link>
@@ -57,15 +57,15 @@ export function NavBar() {
             {isOnline ? (
               <Badge
                 variant="secondary"
-                className="gap-1.5 text-[11px] font-normal"
+                className="gap-1.5 text-[11px] font-normal bg-secondary/10 text-secondary border border-secondary/20"
               >
-                <Wifi className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                <Wifi className="h-3 w-3" />
                 <span className="hidden sm:inline">En línea</span>
               </Badge>
             ) : (
               <Badge
                 variant="secondary"
-                className="gap-1.5 text-[11px] font-normal text-amber-700 dark:text-amber-400"
+                className="gap-1.5 text-[11px] font-normal bg-tertiary/10 text-tertiary border border-tertiary/20"
               >
                 <WifiOff className="h-3 w-3" />
                 <span className="hidden sm:inline">Sin conexión</span>
@@ -133,7 +133,7 @@ export function NavBar() {
               <Button
                 variant="default"
                 size="sm"
-                className="gap-1.5 text-xs sm:text-sm"
+                className="gap-1.5 text-xs sm:text-sm bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity"
                 onClick={() => setAuthModalOpen(true)}
               >
                 <LogIn className="h-4 w-4" />

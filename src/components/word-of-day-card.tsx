@@ -225,14 +225,14 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
 
   return (
     <Card
-      className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5 cursor-pointer transition-all hover:shadow-md hover:border-primary/30 group"
+      className="border border-outline-variant/30 bg-gradient-to-br from-surface-container-low via-surface-container-high to-tertiary/5 cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-tertiary/40 group"
       onClick={handleClick}
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base font-semibold text-foreground">
+            <CardTitle className="font-serif text-base font-semibold text-primary">
               Palabra del Día
             </CardTitle>
           </div>
@@ -240,7 +240,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
             {isFromCache && (
               <Badge
                 variant="outline"
-                className="text-[10px] gap-1 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+                className="text-[10px] gap-1 text-tertiary bg-surface-container-highest border-outline-variant/20"
               >
                 <WifiOff className="h-2.5 w-2.5" />
                 sin conexión
@@ -261,17 +261,17 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             {/* Spanish word */}
-            <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+            <h3 className="font-serif text-3xl font-bold text-primary group-hover:text-primary/80 transition-colors">
               {wordData.spanish}
             </h3>
 
             {/* Nasa Yuwe translation */}
-            <p className="text-lg font-semibold text-primary mt-0.5">
+            <p className="font-serif text-2xl font-semibold text-primary/80 mt-1">
               {wordData.nasaYuwe}
             </p>
 
             {/* Pronunciation + Category */}
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-3">
               {wordData.pronunciation && (
                 <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                   <Volume2 className="h-3 w-3" />
@@ -279,7 +279,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
                 </span>
               )}
               {wordData.category && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors">
                   {wordData.category}
                 </Badge>
               )}
@@ -287,13 +287,13 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
 
             {/* Cultural context preview */}
             {wordData.culturalContext && (
-              <p className="text-xs text-muted-foreground mt-2 line-clamp-2 leading-relaxed">
+              <p className="text-sm text-muted-foreground mt-3 line-clamp-2 leading-relaxed">
                 {wordData.culturalContext}
               </p>
             )}
 
             {/* "Ver más" link */}
-            <div className="flex items-center gap-1 mt-2 text-primary text-xs font-medium group-hover:underline">
+            <div className="flex items-center gap-1 mt-3 text-primary text-xs font-medium group-hover:underline">
               <BookOpen className="h-3 w-3" />
               Ver ficha completa
               <ChevronRight className="h-3 w-3" />
@@ -301,7 +301,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
           </div>
 
           {/* Decorative sparkle */}
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 shrink-0">
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-surface-container-highest shrink-0">
             <BookOpen className="h-6 w-6 text-primary/60" />
           </div>
         </div>

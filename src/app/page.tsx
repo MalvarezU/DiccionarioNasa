@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Leaf,
   BookOpen,
@@ -20,6 +21,7 @@ import { DownloadBanner } from "@/components/download-banner";
 import { ExploreSection } from "@/components/explore-section";
 import { WordOfDayCard } from "@/components/word-of-day-card";
 import { FavoritesHistoryPanel } from "@/components/favorites-history-panel";
+import { recordLocalHistory } from "@/lib/demo-storage";
 
 import {
   Card,
@@ -28,7 +30,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FeaturedWord {
   id: string;
@@ -86,19 +88,23 @@ function HomeContent() {
   useEffect(() => {
     if (!selectedWordId || !detailOpen || !isAuthenticated) return;
 
+    const userId = (session?.user as any)?.id || 'demo-user';
+
     const recordHistory = async () => {
       try {
-        await fetch("/api/dictionary/history", {
+        const res = await fetch("/api/dictionary/history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ wordId: selectedWordId }),
         });
+        if (!res.ok) throw new Error('API error')
       } catch {
-        // Silently fail
+        // Fallback to localStorage for demo mode
+        recordLocalHistory(userId, selectedWordId);
       }
     };
     recordHistory();
-  }, [selectedWordId, detailOpen, isAuthenticated]);
+  }, [selectedWordId, detailOpen, isAuthenticated, session]);
 
   // Open favorites/history panel
   const openPanel = useCallback((tab: "favorites" | "history") => {
@@ -125,99 +131,91 @@ function HomeContent() {
         <DownloadBanner />
 
         {/* Hero Section with Search Bar */}
-        <section className="relative pb-8">
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-          <div className="absolute inset-0 opacity-[0.06]">
-            <Image
-              src="/nasa-pattern.png"
-              alt=""
-              fill
-              className="object-cover"
-              aria-hidden="true"
-            />
-          </div>
+        <section className="relative pb-12 sm:pb-16 pt-16 sm:pt-24">
+          {/* Dark overlay base */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/50 z-10" />
+          
+          {/* Decorative pattern */}
+          <div
+            className="absolute inset-0 opacity-[0.06] z-0"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232563eb' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundRepeat: 'repeat',
+            }}
+            aria-hidden="true"
+          />
+          
+          {/* Background image */}
+          <Image
+            src="/banner.webp"
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover opacity-[0.6] z-0"
+            aria-hidden="true"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
 
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-20 pb-6 text-center">
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
-              <Leaf className="h-7 w-7 text-primary" />
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+          {/* Content */}
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 text-center z-20">            
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)' }}>
               Nasa Yuwe
             </h1>
-            <p className="mt-2 text-base sm:text-lg text-accent font-medium">
+            <p className="mt-3 text-lg sm:text-xl text-white font-medium" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
               Diccionario Bilingüe
             </p>
-            <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base text-muted-foreground leading-relaxed">
+            <p className="mt-4 max-w-xl mx-auto text-base sm:text-lg text-white/90 leading-relaxed" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
               Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.
               Busca palabras, pronunciaciones y contexto cultural.
             </p>
 
-            <div className="mt-8">
+            <div className="mt-8 sm:mt-10">
               <SearchBar variant="hero" />
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-6">
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
-                <BookOpen className="h-3.5 w-3.5 text-primary" />
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
+              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <BookOpen className="h-4 w-4 text-white" />
                 <span>{totalWords > 0 ? `${totalWords} palabras` : "Palabras"}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
-                <Volume2 className="h-3.5 w-3.5 text-primary" />
+              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <Volume2 className="h-4 w-4 text-white" />
                 <span>Pronunciación guiada</span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
-                <Globe className="h-3.5 w-3.5 text-primary" />
+              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <Globe className="h-4 w-4 text-white" />
                 <span>Español ↔ Nasa Yuwe</span>
               </div>
             </div>
           </div>
         </section>
 
-        <Separator className="mx-auto max-w-7xl" />
-
         {/* Word of the Day */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
           <WordOfDayCard onWordSelect={handleWordSelect} />
         </section>
 
-        <Separator className="mx-auto max-w-7xl" />
-
         {/* Tabbed Section: Featured | Explore */}
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
-          {/* Tab buttons */}
-          <div className="flex items-center justify-center gap-2 mb-8 flex-wrap">
-            <button
-              onClick={() => setActiveTab("featured")}
-              className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "featured"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-              }`}
-              aria-pressed={activeTab === "featured"}
-            >
-              <Star className="h-4 w-4" />
-              Destacadas
-            </button>
-            <button
-              onClick={() => setActiveTab("explore")}
-              className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "explore"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-              }`}
-              aria-pressed={activeTab === "explore"}
-            >
-              <List className="h-4 w-4" />
-              Explorar A-Z
-            </button>
-          </div>
+        <section id="explorar" className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)} className="w-full">
+            <div className="flex items-center justify-center mb-8">
+              <TabsList className="gap-2">
+                <TabsTrigger value="featured" className="gap-2">
+                  <Star className="h-4 w-4" />
+                  Destacadas
+                </TabsTrigger>
+                <TabsTrigger value="explore" className="gap-2">
+                  <List className="h-4 w-4" />
+                  Explorar A-Z
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-          {/* Featured Words Tab */}
-          {activeTab === "featured" && (
-            <>
+            <TabsContent value="featured">
               <div className="text-center mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-primary">
                   Palabras Destacadas
                 </h2>
                 <p className="mt-2 text-sm sm:text-base text-muted-foreground">
@@ -230,18 +228,18 @@ function HomeContent() {
                   {featuredWords.map((word) => (
                     <Card
                       key={word.id}
-                      className="group cursor-pointer transition-all hover:shadow-md hover:border-primary/30"
+                      className="group cursor-pointer transition-all duration-200 bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
                       onClick={() => handleWordClick(word)}
                     >
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-lg text-primary group-hover:text-primary/80 transition-colors">
+                          <CardTitle className="font-serif text-lg text-primary group-hover:text-primary/80 transition-colors">
                             {word.nasaYuwe}
                           </CardTitle>
                           {word.category && (
                             <Badge
                               variant="secondary"
-                              className="text-[10px] shrink-0"
+                              className="text-[10px] shrink-0 bg-tertiary/10 text-tertiary border border-tertiary/20 hover:bg-tertiary-fixed hover:text-foreground transition-colors"
                             >
                               {word.category}
                             </Badge>
@@ -254,7 +252,7 @@ function HomeContent() {
                         </p>
                         {word.pronunciation && (
                           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                            <Volume2 className="h-3 w-3" />
+                            <Volume2 className="h-3 w-3 text-secondary" />
                             [{word.pronunciation}]
                           </p>
                         )}
@@ -272,26 +270,23 @@ function HomeContent() {
                   <p className="text-muted-foreground">Cargando palabras...</p>
                 </div>
               )}
-            </>
-          )}
+            </TabsContent>
 
-          {/* Explore Tab */}
-          {activeTab === "explore" && (
-            <ExploreSection onWordSelect={handleWordSelect} />
-          )}
-
-
+            <TabsContent value="explore">
+              <ExploreSection onWordSelect={handleWordSelect} />
+            </TabsContent>
+          </Tabs>
         </section>
 
         {/* About Section */}
-        <section className="bg-muted/30 border-y">
+        <section id="acerca" className="bg-surface-container-high">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
                   <Heart className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="font-semibold text-foreground">
+                <h3 className="font-serif font-semibold text-foreground">
                   Preservación Cultural
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -300,10 +295,10 @@ function HomeContent() {
                 </p>
               </div>
               <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <Users className="h-6 w-6 text-primary" />
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10 border border-secondary/20">
+                  <Users className="h-6 w-6 text-secondary" />
                 </div>
-                <h3 className="font-semibold text-foreground">
+                <h3 className="font-serif font-semibold text-foreground">
                   Comunidad Nasa
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -312,10 +307,10 @@ function HomeContent() {
                 </p>
               </div>
               <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <Globe className="h-6 w-6 text-primary" />
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-tertiary/10 border border-tertiary/20">
+                  <Globe className="h-6 w-6 text-tertiary" />
                 </div>
-                <h3 className="font-semibold text-foreground">
+                <h3 className="font-serif font-semibold text-foreground">
                   Acceso Universal
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -331,30 +326,70 @@ function HomeContent() {
       {/* Footer */}
       <footer className="mt-auto bg-black text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
-          <div className="flex flex-col items-center sm:flex-row sm:items-start sm:justify-between gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Logo + Brand */}
-            <div className="flex flex-col items-center sm:items-start gap-3">
-              <Image
-                src="/logo.png"
-                alt="Logo Nasa Yuwe"
-                width={56}
-                height={56}
-                className="rounded-lg"
-              />
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  Nasa Yuwe
-                </p>
-                <p className="text-xs text-neutral-400">
-                  Diccionario Bilingüe
-                </p>
+            <div className="flex flex-col items-center md:items-start gap-3">
+              <div className="flex items-center gap-4">
+                <Image
+                  src="/ybc.jpg"
+                  alt="YBC Logo"
+                  width={72}
+                  height={72}
+                  className="rounded-full border-2 border-white/30"
+                />
+                <div>
+                  <p className="font-serif text-lg font-bold text-white">
+                    Grupo YBC
+                  </p>
+                  <p className="text-xs text-white/70">
+                    Nasa Yuwe · Diccionario Bilingüe
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Acknowledgment */}
-            <p className="text-xs text-neutral-400 text-center sm:text-right max-w-sm leading-relaxed">
-              Con respeto y gratitud al pueblo Nasa (Páez) de Colombia.
-              Este diccionario es una herramienta de preservación lingüística y cultural.
+            {/* Navigation Links */}
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-xs font-semibold text-white uppercase tracking-wider mb-1">
+                Navegación
+              </p>
+              <nav className="flex flex-col items-center gap-2">
+                <Link
+                  href="/#explorar"
+                  className="text-xs text-white/70 hover:text-white transition-colors duration-200"
+                >
+                  Explorar A-Z
+                </Link>
+                <Link
+                  href="/#acerca"
+                  className="text-xs text-white/70 hover:text-white transition-colors duration-200"
+                >
+                  Acerca del proyecto
+                </Link>
+                <Link
+                  href="/admin"
+                  className="text-xs text-white/70 hover:text-white transition-colors duration-200"
+                >
+                  Administración
+                </Link>
+              </nav>
+            </div>
+
+            {/* Acknowledgment + Version */}
+            <div className="flex flex-col items-center md:items-end gap-3">
+              <p className="text-xs text-white/70 text-center md:text-right max-w-xs leading-relaxed">
+                Este diccionario es una herramienta de preservación lingüística y cultural.
+              </p>
+              <p className="text-[10px] text-white/50">
+                Versión 1.0.0
+              </p>
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="mt-8 pt-6 border-t border-white/20">
+            <p className="text-center text-[10px] text-white/50" suppressHydrationWarning>
+              © {new Date().getFullYear()} Nasa Yuwe · Proyecto de preservación lingüística
             </p>
           </div>
         </div>
@@ -362,6 +397,7 @@ function HomeContent() {
 
       {/* Word detail card */}
       <WordDetailCard
+        key={selectedWordId ?? "none"}
         wordId={selectedWordId}
         open={detailOpen}
         onOpenChange={setDetailOpen}

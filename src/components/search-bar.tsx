@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Loader2, Volume2, CloudOff, Cloud, Database, WifiOff } from "lucide-react";
+import { Search, Loader2, Volume2, CloudOff, Cloud, Database, WifiOff, Lightbulb } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -189,7 +189,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Search Input */}
         <div className="relative">
           <Search
-            className={`absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground ${isHero ? "h-5 w-5" : "h-4 w-4"}`}
+            className={`absolute left-3 top-1/2 -translate-y-1/2 ${isHero ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
           />
           <Input
             ref={inputRef}
@@ -208,14 +208,12 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               }
             }}
             onKeyDown={handleKeyDown}
-            className={`pl-10 w-full bg-background/60 border-border/50 focus-visible:border-primary/50 ${
-              isHero
-                ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md transition-shadow"
-                : "h-10 pr-9"
-            }`}
+            className={`pl-10 w-full bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 transition-colors ${isHero ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md text-white placeholder:text-white/50" : "h-10 pr-9"}`}
             aria-label="Buscar palabras en el diccionario"
             aria-expanded={showDropdown}
+            aria-controls="search-results-list"
             aria-autocomplete="list"
+            aria-activedescendant={highlightedIndex >= 0 ? `search-option-${highlightedIndex}` : undefined}
             role="combobox"
           />
           {isLoading && (
@@ -239,7 +237,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {isOnline && isHero && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <Cloud className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-white">
               Búsqueda en línea
             </span>
           </div>
@@ -248,7 +246,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Dropdown with results */}
         {showDropdown && (
           <div
-            className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden ${
+            className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200 ${
               isHero ? "mt-2 rounded-xl" : "mt-1"
             }`}
           >
@@ -275,16 +273,17 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                   en el diccionario.
                 </p>
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
-                  className="gap-1.5"
+                  className="gap-1.5 bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity"
                   disabled={!isOnline}
                   onClick={() => {
                     setSuggestOpen(true);
                     setIsOpen(false);
                   }}
                 >
-                  💡 Sugerir esta palabra
+                  <Lightbulb className="h-4 w-4" />
+                  Sugerir esta palabra
                 </Button>
                 {!isOnline && (
                   <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 justify-center">
@@ -296,22 +295,25 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
             ) : (
               <ul
                 ref={listRef}
+                id="search-results-list"
                 className={isHero ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
                 role="listbox"
+                aria-label="Resultados de búsqueda"
               >
                 {results.map((result, index) => (
                   <li
                     key={result.id}
+                    id={`search-option-${index}`}
                     data-search-item
                     role="option"
                     aria-selected={index === highlightedIndex}
                     className={`
-                      flex items-center gap-3 cursor-pointer transition-colors
+                      flex items-center gap-3 cursor-pointer transition-all
                       ${isHero ? "px-4 py-3" : "px-3 py-2.5"}
                       ${
                         index === highlightedIndex
-                          ? "bg-primary/10 text-foreground"
-                          : "hover:bg-muted/60 text-foreground"
+                          ? "bg-surface-container-high text-foreground border-l-4 border-primary"
+                          : "hover:bg-surface-container-high text-foreground border-l-4 border-transparent hover:border-primary/50"
                       }
                     `}
                     onClick={() => handleSelect(result)}
@@ -329,14 +331,14 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                       <div className="flex items-center gap-2 mt-0.5">
                         {result.pronunciation && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Volume2 className="h-3 w-3" />
+                            <Volume2 className="h-3 w-3 text-secondary" />
                             [{result.pronunciation}]
                           </span>
                         )}
                         {result.category && (
                           <Badge
                             variant="secondary"
-                            className="text-[10px] px-1.5 py-0 h-4"
+                            className="text-[10px] px-1.5 py-0 h-4 bg-tertiary/10 text-tertiary border border-tertiary/20"
                           >
                             {result.category}
                           </Badge>
@@ -353,6 +355,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
 
       {/* Word detail card (Sheet) */}
       <WordDetailCard
+        key={selectedWordId ?? "none"}
         wordId={selectedWordId}
         open={detailOpen}
         onOpenChange={setDetailOpen}

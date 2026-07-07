@@ -140,7 +140,7 @@ export function DownloadBanner() {
   if (!isVisible) return null
 
   return (
-    <div className="w-full transition-all duration-300 ease-in-out animate-in slide-in-from-top-2">
+    <div className="w-full animate-in fade-in duration-300">
       <div
         className={`
           mx-auto px-4 py-3
