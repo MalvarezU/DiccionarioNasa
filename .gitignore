@@ -48,7 +48,6 @@ dev.log
 dev.out.log
 /test
 prompt
-TEST_REPORT.md
 
 server.log
 # Skills directory
@@ -69,10 +68,8 @@ server.log
 # Test audio files (real audio are .wav)
 public/audio/*.mp3
 
-# Generated reports and agent context (artifacts, not source)
-usuarios.md
-INFORME_COMPLETO.md
-TEST_REPORT.md
+# Generated reports, agent context, and project docs (artifacts, not source)
+docs/
 worklog.md
 agent-ctx/
 download/.env.demo
