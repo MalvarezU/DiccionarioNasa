@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { safeParseExamples } from "@/lib/utils"
 
 /**
  * GET /api/dictionary/word-of-day
@@ -70,10 +71,10 @@ export async function GET(request: Request) {
 
     const word = words[0]
 
-    // Parse examples JSON
+    // Parse examples JSON (defensive: seed data may contain invalid JSON)
     const parsedWord = {
       ...word,
-      examples: word.examples ? JSON.parse(word.examples) : null,
+      examples: safeParseExamples(word.examples),
     }
 
     return NextResponse.json({
