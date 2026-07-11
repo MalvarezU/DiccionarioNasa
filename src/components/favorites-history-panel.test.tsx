@@ -162,7 +162,7 @@ describe("FavoritesHistoryPanel", () => {
       Response.json(mockHistory)
     )
     await userEvent.setup().click(screen.getByText("Historial"))
-    expect(screen.getByText("Limpiar historial")).toBeDefined()
+    expect(await screen.findByText("Limpiar historial")).toBeDefined()
   })
 
   it("calls onWordSelect and closes when word is clicked", async () => {

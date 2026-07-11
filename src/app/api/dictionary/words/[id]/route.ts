@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { safeParseExamples } from '@/lib/utils'
 
 export async function GET(
   _request: NextRequest,
@@ -34,7 +35,7 @@ export async function GET(
     // Parse examples JSON if it exists
     const parsedWord = {
       ...word,
-      examples: word.examples ? JSON.parse(word.examples) : null,
+      examples: safeParseExamples(word.examples),
     }
 
     return NextResponse.json(parsedWord)

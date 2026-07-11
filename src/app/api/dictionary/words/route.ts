@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { safeParseExamples } from '@/lib/utils'
 
 /**
  * GET /api/dictionary/words
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     // Parse examples JSON for each word
     const parsedWords = words.map((word) => ({
       ...word,
-      examples: word.examples ? JSON.parse(word.examples) : null,
+      examples: safeParseExamples(word.examples),
     }))
 
     return NextResponse.json({
