@@ -251,13 +251,13 @@ export function UserManagementSection() {
                       <TableCell className="hidden sm:table-cell">
                         <span className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Heart className="h-3 w-3" />
-                          {user._count.favorites}
+                          {user._count?.favorites ?? 0}
                         </span>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <span className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          {user._count.viewHistory}
+                          {user._count?.viewHistory ?? 0}
                         </span>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
