@@ -161,7 +161,7 @@ function PanelContent({
   // Stable refs for fetch functions
   const userId = (session?.user as any)?.id || 'demo-user';
 
-  const fetchFavoritesRef = useRef<() => void>(() => {
+  const fetchFavorites = useCallback(() => {
     if (activeTab !== "favorites" || !isAuthenticated) return;
     setIsLoadingFavorites(true);
 
@@ -179,9 +179,9 @@ function PanelContent({
         setFavorites(await buildLocalFavorites(userId))
       })
       .finally(() => setIsLoadingFavorites(false));
-  });
+  }, [activeTab, isAuthenticated, userId]);
 
-  const fetchHistoryRef = useRef<() => void>(() => {
+  const fetchHistory = useCallback(() => {
     if (activeTab !== "history" || !isAuthenticated) return;
     setIsLoadingHistory(true);
     fetch("/api/dictionary/history")
@@ -198,17 +198,17 @@ function PanelContent({
         setHistory(await buildLocalHistory(userId))
       })
       .finally(() => setIsLoadingHistory(false));
-  });
+  }, [activeTab, isAuthenticated, userId]);
 
   // Fetch favorites when tab is active and user is authenticated
   useEffect(() => {
-    fetchFavoritesRef.current();
-  }, [activeTab, isAuthenticated]);
+    fetchFavorites();
+  }, [fetchFavorites]);
 
   // Fetch history when tab is active and user is authenticated
   useEffect(() => {
-    fetchHistoryRef.current();
-  }, [activeTab, isAuthenticated]);
+    fetchHistory();
+  }, [fetchHistory]);
 
   const handleClearHistory = async () => {
     try {
