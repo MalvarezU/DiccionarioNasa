@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -48,7 +49,6 @@ dev.log
 dev.out.log
 /test
 prompt
-TEST_REPORT.md
 
 server.log
 # Skills directory
@@ -59,8 +59,6 @@ server.log
 
 # Database files (generated) - except seed data
 db/*.db
-prisma/db/*.db
-!prisma/db/
 
 # Logs
 dev.log
@@ -69,10 +67,7 @@ server.log
 # Test audio files (real audio are .wav)
 public/audio/*.mp3
 
-# Generated reports and agent context (artifacts, not source)
-usuarios.md
-INFORME_COMPLETO.md
-TEST_REPORT.md
+# Generated reports, agent context, and project docs (artifacts, not source)
+docs/
 worklog.md
 agent-ctx/
-download/

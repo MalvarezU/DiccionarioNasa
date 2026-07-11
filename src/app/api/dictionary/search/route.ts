@@ -53,7 +53,9 @@ export async function GET(request: NextRequest) {
     )
 
     // Fetch more candidates than needed so we can rank and trim
-    // We use raw SQL to do accent-insensitive search via Unicode normalization
+    // We use raw SQL with Postgres `unaccent` extension for accent-insensitive search
+    // (the extension must be enabled in Supabase: Database → Extensions → unaccent)
+    // Note: "nasaYuwe" is quoted because Postgres folds unquoted identifiers to lowercase
     const searchPromise = db.$queryRaw<
       Array<{
         id: string
@@ -63,32 +65,12 @@ export async function GET(request: NextRequest) {
         category: string | null
       }>
     >`
-      SELECT id, spanish, nasaYuwe, pronunciation, category
-      FROM DictionaryWord
+      SELECT id, spanish, "nasaYuwe", pronunciation, category
+      FROM "DictionaryWord"
       WHERE status = 'PUBLISHED'
         AND (
-          LOWER(spanish) LIKE '%' || ${query} || '%'
-          OR LOWER(nasaYuwe) LIKE '%' || ${query} || '%'
-          OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(spanish,
-              'á','a'), 'é','e'), 'í','i'), 'ó','o'), 'ú','u'),
-              'Á','a'), 'É','e'), 'Í','i'), 'Ó','o'), 'Ú','u'),
-              'ñ','n'), 'Ñ','n'), 'ü','u'), 'Ü','u'),
-              'ã','a'), 'Ã','a'), 'ĩ','i'), 'Ĩ','i'),
-              'ũ','u'), 'Ũ','u')
-            ) LIKE '%' || ${query.toLowerCase()} || '%'
-          OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(nasaYuwe,
-              'á','a'), 'é','e'), 'í','i'), 'ó','o'), 'ú','u'),
-              'Á','a'), 'É','e'), 'Í','i'), 'Ó','o'), 'Ú','u'),
-              'ñ','n'), 'Ñ','n'), 'ü','u'), 'Ü','u'),
-              'ã','a'), 'Ã','a'), 'ĩ','i'), 'Ĩ','i'),
-              'ũ','u'), 'Ũ','u')
-            ) LIKE '%' || ${query.toLowerCase()} || '%'
+          lower(unaccent(spanish)) LIKE '%' || lower(unaccent(${query})) || '%'
+          OR lower(unaccent("nasaYuwe")) LIKE '%' || lower(unaccent(${query})) || '%'
         )
       LIMIT 50
     `

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import {
   Dialog,
@@ -35,6 +35,60 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AuthModal } from "@/components/auth-modal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getLocalWord } from "@/lib/local-db";
+import {
+  getLocalFavorites,
+  getLocalHistory,
+  getLocalFavoritesWithWord,
+  getLocalHistoryWithWord,
+  clearLocalHistory,
+} from "@/lib/demo-storage";
+
+async function buildLocalFavorites(userId: string): Promise<FavoriteWord[]> {
+  const wordMap = new Map<string, FavoriteWord["word"]>();
+  const favIds = getLocalFavorites(userId).map((f) => f.wordId);
+  await Promise.all(
+    favIds.map(async (id) => {
+      const word = await getLocalWord(id);
+      if (word) {
+        wordMap.set(id, {
+          id: word.id,
+          spanish: word.spanish,
+          nasaYuwe: word.nasaYuwe,
+          pronunciation: word.pronunciation,
+          category: word.category,
+          audioUrl: word.audioUrl ?? null,
+        });
+      }
+    })
+  );
+  return getLocalFavoritesWithWord(userId, (id) => wordMap.get(id) ?? null).filter(
+    (f) => f.word !== null
+  ) as FavoriteWord[];
+}
+
+async function buildLocalHistory(userId: string): Promise<HistoryWord[]> {
+  const wordMap = new Map<string, HistoryWord["word"]>();
+  const histIds = getLocalHistory(userId).map((h) => h.wordId);
+  await Promise.all(
+    histIds.map(async (id) => {
+      const word = await getLocalWord(id);
+      if (word) {
+        wordMap.set(id, {
+          id: word.id,
+          spanish: word.spanish,
+          nasaYuwe: word.nasaYuwe,
+          pronunciation: word.pronunciation,
+          category: word.category,
+          audioUrl: word.audioUrl ?? null,
+        });
+      }
+    })
+  );
+  return getLocalHistoryWithWord(userId, (id) => wordMap.get(id) ?? null).filter(
+    (h) => h.word !== null
+  ) as HistoryWord[];
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,13 +159,25 @@ function PanelContent({
   }, [initialTab]);
 
   // Stable refs for fetch functions
+  const userId = (session?.user as any)?.id || 'demo-user';
+
   const fetchFavoritesRef = useRef<() => void>(() => {
     if (activeTab !== "favorites" || !isAuthenticated) return;
     setIsLoadingFavorites(true);
+
     fetch("/api/dictionary/favorites")
       .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (data) setFavorites(data.favorites ?? []); })
-      .catch(() => {})
+      .then(async (data) => {
+        if (data?.favorites && data.favorites.length > 0) {
+          setFavorites(data.favorites ?? []);
+          return
+        }
+        // Fallback to localStorage for offline / demo mode
+        setFavorites(await buildLocalFavorites(userId))
+      })
+      .catch(async () => {
+        setFavorites(await buildLocalFavorites(userId))
+      })
       .finally(() => setIsLoadingFavorites(false));
   });
 
@@ -120,8 +186,17 @@ function PanelContent({
     setIsLoadingHistory(true);
     fetch("/api/dictionary/history")
       .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (data) setHistory(data.history ?? []); })
-      .catch(() => {})
+      .then(async (data) => {
+        if (data?.history && data.history.length > 0) {
+          setHistory(data.history ?? []);
+          return
+        }
+        // Fallback to localStorage for offline / demo mode
+        setHistory(await buildLocalHistory(userId))
+      })
+      .catch(async () => {
+        setHistory(await buildLocalHistory(userId))
+      })
       .finally(() => setIsLoadingHistory(false));
   });
 
@@ -142,8 +217,11 @@ function PanelContent({
         setHistory([]);
       }
     } catch {
-      // Silently fail
+      // Continue to clear localStorage even if API fails
     }
+    // Also clear localStorage for demo mode
+    clearLocalHistory(userId);
+    setHistory([]);
   };
 
   const handleWordClick = useCallback(

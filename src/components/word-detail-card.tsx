@@ -38,6 +38,7 @@ import { AuthModal } from "@/components/auth-modal";
 import { useToast } from "@/hooks/use-toast";
 import { useOfflineAudio } from "@/hooks/use-offline-audio";
 import { getLocalWord, isLocalDBReady } from "@/lib/local-db";
+import { isLocalFavorite, toggleLocalFavorite } from "@/lib/demo-storage";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -385,9 +386,15 @@ export function WordDetailCard({
             const localWord = await getLocalWord(wordId);
             if (localWord) {
               setWord({
-                ...localWord,
+                id: localWord.id,
+                spanish: localWord.spanish,
+                nasaYuwe: localWord.nasaYuwe,
+                pronunciation: localWord.pronunciation ?? null,
+                audioUrl: localWord.audioUrl ?? null,
+                culturalContext: localWord.culturalContext ?? null,
+                category: localWord.category ?? null,
                 examples: localWord.examples ? JSON.parse(localWord.examples) : null,
-              });
+              } as WordDetail);
             } else {
               setWord(null);
             }
@@ -408,9 +415,15 @@ export function WordDetailCard({
           const localWord = await getLocalWord(wordId);
           if (localWord) {
             setWord({
-              ...localWord,
+              id: localWord.id,
+              spanish: localWord.spanish,
+              nasaYuwe: localWord.nasaYuwe,
+              pronunciation: localWord.pronunciation ?? null,
+              audioUrl: localWord.audioUrl ?? null,
+              culturalContext: localWord.culturalContext ?? null,
+              category: localWord.category ?? null,
               examples: localWord.examples ? JSON.parse(localWord.examples) : null,
-            });
+            } as WordDetail);
           } else {
             setWord(null);
           }
@@ -432,6 +445,8 @@ export function WordDetailCard({
       return;
     }
 
+    const userId = (session?.user as any)?.id || 'demo-user';
+
     const checkFavorite = async () => {
       try {
         const response = await fetch(
@@ -440,14 +455,17 @@ export function WordDetailCard({
         if (response.ok) {
           const data = await response.json();
           setIsFavorite(data.isFavorite);
+          return
         }
       } catch {
-        // Silently fail
+        // Fall through to localStorage fallback
       }
+      // localStorage fallback for demo mode
+      setIsFavorite(isLocalFavorite(userId, wordId));
     };
 
     checkFavorite();
-  }, [wordId, open, isAuthenticated]);
+  }, [wordId, open, isAuthenticated, session]);
 
   // Handle auto-download/remove of offline audio when favorite status changes
   useEffect(() => {
@@ -489,6 +507,8 @@ export function WordDetailCard({
     if (!wordId || isTogglingFav) return;
 
     setIsTogglingFav(true);
+    const userId = (session?.user as any)?.id || 'demo-user';
+
     try {
       const response = await fetch("/api/dictionary/favorites", {
         method: "POST",
@@ -498,6 +518,7 @@ export function WordDetailCard({
 
       if (response.status === 401) {
         setAuthModalOpen(true);
+        setIsTogglingFav(false);
         return;
       }
 
@@ -511,28 +532,36 @@ export function WordDetailCard({
           pendingOfflineAction.current = "remove";
         }
 
-        if (data.isFavorite) {
-          toast({
-            title: "Añadido a favoritos",
-            description: "La palabra se ha guardado en tus favoritos.",
-          });
-        } else {
-          toast({
-            title: "Eliminado de favoritos",
-            description: "La palabra se ha eliminado de tus favoritos.",
-          });
-        }
+        toast({
+          title: data.isFavorite ? "Añadido a favoritos" : "Eliminado de favoritos",
+          description: data.isFavorite
+            ? "La palabra se ha guardado en tus favoritos."
+            : "La palabra se ha eliminado de tus favoritos.",
+        });
+      } else {
+        throw new Error('API error')
       }
     } catch {
+      // Fallback to localStorage for demo mode
+      const newState = toggleLocalFavorite(userId, wordId);
+      setIsFavorite(newState);
+
+      if (newState) {
+        pendingOfflineAction.current = "download";
+      } else {
+        pendingOfflineAction.current = "remove";
+      }
+
       toast({
-        title: "Error",
-        description: "No se pudo actualizar favoritos. Intenta de nuevo.",
-        variant: "destructive",
+        title: newState ? "Añadido a favoritos" : "Eliminado de favoritos",
+        description: newState
+          ? "La palabra se ha guardado en tus favoritos (offline)."
+          : "La palabra se ha eliminado de tus favoritos.",
       });
     } finally {
       setIsTogglingFav(false);
     }
-  }, [wordId, isAuthenticated, isTogglingFav, toast]);
+  }, [wordId, isAuthenticated, isTogglingFav, toast, session]);
 
   const categories = parseCategories(word?.category ?? null);
 
