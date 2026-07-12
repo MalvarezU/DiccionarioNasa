@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
-import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock } from "lucide-react"
+import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock, Gamepad2, GraduationCap } from "lucide-react"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -50,6 +50,42 @@ export function NavBar() {
               Nasa Yuwe
             </span>
           </Link>
+
+          {/* Center nav links */}
+          <nav className="hidden md:flex items-center gap-1 ml-6">
+            <Link
+              href="/juegos"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            >
+              <Gamepad2 className="h-4 w-4" />
+              Juegos
+            </Link>
+            <Link
+              href="/cursos"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            >
+              <GraduationCap className="h-4 w-4" />
+              Cursos
+            </Link>
+          </nav>
+
+          {/* Mobile nav links */}
+          <nav className="flex md:hidden items-center gap-1">
+            <Link
+              href="/juegos"
+              className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              aria-label="Juegos"
+            >
+              <Gamepad2 className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/cursos"
+              className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              aria-label="Cursos"
+            >
+              <GraduationCap className="h-4 w-4" />
+            </Link>
+          </nav>
 
           {/* Right side: connection + auth + settings */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
