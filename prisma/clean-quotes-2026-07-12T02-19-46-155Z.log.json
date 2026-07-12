@@ -1,0 +1,73 @@
+{
+  "audit": [
+    {
+      "id": "cmrfi0g44000qckmi1px2uzuk",
+      "data": {
+        "spanish": "Nido"
+      },
+      "at": "2026-07-12T02:19:47.003Z"
+    },
+    {
+      "id": "cmrfi0mmw0016ckmit0fcu3x2",
+      "data": {
+        "spanish": "Pie"
+      },
+      "at": "2026-07-12T02:19:47.872Z"
+    },
+    {
+      "id": "cmrfi12oa0026ckmi2pwz0opf",
+      "data": {
+        "spanish": "Tú"
+      },
+      "at": "2026-07-12T02:19:48.831Z"
+    },
+    {
+      "id": "cmrfi1wkr0041ckmiotlzcjla",
+      "data": {
+        "spanish": "Suave"
+      },
+      "at": "2026-07-12T02:19:50.056Z"
+    },
+    {
+      "id": "cmrfi2mtt005sckmit7v7rl3x",
+      "data": {
+        "spanish": "Pedir"
+      },
+      "at": "2026-07-12T02:19:51.489Z"
+    },
+    {
+      "id": "cmrfi3p5w007ockmi37rjmjlh",
+      "data": {
+        "spanish": "Tutumo",
+        "culturalContext": "galón\" - Sustantivo"
+      },
+      "at": "2026-07-12T02:19:52.512Z"
+    },
+    {
+      "id": "cmrfi3vob0080ckmi4u1sogvk",
+      "data": {
+        "spanish": "Èl",
+        "culturalContext": "aquello\" - Pronombre"
+      },
+      "at": "2026-07-12T02:19:53.536Z"
+    },
+    {
+      "id": "cmrfi3yqi0089ckmi26o2nnq3",
+      "data": {
+        "spanish": "Señorita"
+      },
+      "at": "2026-07-12T02:19:54.973Z"
+    },
+    {
+      "id": "cmrfi4tbi009yckmizmiz5vz2",
+      "data": {
+        "spanish": "Muy"
+      },
+      "at": "2026-07-12T02:19:56.204Z"
+    }
+  ],
+  "warnings": [
+    "id=cmrfi0mmw0016ckmit0fcu3x2 field=examples: JSON inválido tras unescape (se conserva valor sin tocar si --apply)",
+    "id=cmrfi3p5w007ockmi37rjmjlh field=examples: JSON inválido tras unescape (se conserva valor sin tocar si --apply)"
+  ]
+}
