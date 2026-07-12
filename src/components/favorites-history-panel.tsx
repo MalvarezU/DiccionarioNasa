@@ -147,11 +147,15 @@ function PanelContent({
 
   // Favorites state
   const [favorites, setFavorites] = useState<FavoriteWord[]>([]);
-  const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(
+    initialTab === "favorites"
+  );
 
   // History state
   const [history, setHistory] = useState<HistoryWord[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(
+    initialTab === "history"
+  );
 
   // Reset tab when initialTab changes (e.g. opening panel with different tab)
   useEffect(() => {
@@ -161,54 +165,70 @@ function PanelContent({
   // Stable refs for fetch functions
   const userId = (session?.user as any)?.id || 'demo-user';
 
-  const fetchFavorites = useCallback(() => {
-    if (activeTab !== "favorites" || !isAuthenticated) return;
-    setIsLoadingFavorites(true);
-
-    fetch("/api/dictionary/favorites")
-      .then((res) => res.ok ? res.json() : null)
-      .then(async (data) => {
-        if (data?.favorites && data.favorites.length > 0) {
-          setFavorites(data.favorites ?? []);
-          return
-        }
-        // Fallback to localStorage for offline / demo mode
-        setFavorites(await buildLocalFavorites(userId))
-      })
-      .catch(async () => {
-        setFavorites(await buildLocalFavorites(userId))
-      })
-      .finally(() => setIsLoadingFavorites(false));
-  }, [activeTab, isAuthenticated, userId]);
-
-  const fetchHistory = useCallback(() => {
-    if (activeTab !== "history" || !isAuthenticated) return;
-    setIsLoadingHistory(true);
-    fetch("/api/dictionary/history")
-      .then((res) => res.ok ? res.json() : null)
-      .then(async (data) => {
-        if (data?.history && data.history.length > 0) {
-          setHistory(data.history ?? []);
-          return
-        }
-        // Fallback to localStorage for offline / demo mode
-        setHistory(await buildLocalHistory(userId))
-      })
-      .catch(async () => {
-        setHistory(await buildLocalHistory(userId))
-      })
-      .finally(() => setIsLoadingHistory(false));
-  }, [activeTab, isAuthenticated, userId]);
-
-  // Fetch favorites when tab is active and user is authenticated
+  // Single source-of-truth effect: fetch data for the active tab.
+  // - Depends directly on activeTab (no fragile useCallback ref chain)
+  // - Uses 'cancelled' flag in cleanup to avoid race conditions when
+  //   the user switches tabs while a fetch is in flight
+  // - Resets isLoadingX for the opposite tab so a previous spinner
+  //   doesn't stay stuck on screen after switching
   useEffect(() => {
-    fetchFavorites();
-  }, [fetchFavorites]);
+    let cancelled = false;
 
-  // Fetch history when tab is active and user is authenticated
-  useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+    if (!isAuthenticated) {
+      setFavorites([]);
+      setHistory([]);
+      setIsLoadingFavorites(false);
+      setIsLoadingHistory(false);
+      return;
+    }
+
+    if (activeTab === "favorites") {
+      setIsLoadingFavorites(true);
+      setIsLoadingHistory(false);
+      fetch("/api/dictionary/favorites")
+        .then((res) => (res.ok ? res.json() : null))
+        .then(async (data) => {
+          if (cancelled) return;
+          if (data?.favorites && data.favorites.length > 0) {
+            setFavorites(data.favorites);
+            return;
+          }
+          setFavorites(await buildLocalFavorites(userId));
+        })
+        .catch(async () => {
+          if (cancelled) return;
+          setFavorites(await buildLocalFavorites(userId));
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoadingFavorites(false);
+        });
+    } else {
+      // activeTab === "history"
+      setIsLoadingHistory(true);
+      setIsLoadingFavorites(false);
+      fetch("/api/dictionary/history")
+        .then((res) => (res.ok ? res.json() : null))
+        .then(async (data) => {
+          if (cancelled) return;
+          if (data?.history && data.history.length > 0) {
+            setHistory(data.history);
+            return;
+          }
+          setHistory(await buildLocalHistory(userId));
+        })
+        .catch(async () => {
+          if (cancelled) return;
+          setHistory(await buildLocalHistory(userId));
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoadingHistory(false);
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, isAuthenticated, userId]);
 
   const handleClearHistory = async () => {
     try {
