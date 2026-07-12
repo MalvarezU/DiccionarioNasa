@@ -4,6 +4,25 @@ vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
 }))
 
+const mockRemove = vi.fn()
+
+vi.mock("@/lib/supabase-server", () => ({
+  getSupabaseServer: vi.fn(() => ({
+    storage: {
+      from: vi.fn(() => ({
+        remove: mockRemove,
+      })),
+    },
+  })),
+  AUDIO_BUCKET: "audios",
+  signedUrlToObjectPath: vi.fn((url: string) => {
+    if (url === "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc") {
+      return "temp/file.mp3"
+    }
+    return null
+  }),
+}))
+
 import { requireAdmin } from "@/lib/auth"
 import { POST } from "./route"
 
@@ -32,17 +51,20 @@ describe("POST /api/admin/delete-audio", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     allow()
+    mockRemove.mockReset()
   })
 
-  // Note: fs/promises unlink is the real function (not mocked).
-  // In the test environment the file won't exist, so unlink throws ENOENT,
-  // hitting the "no encontrado" branch.
+  it("deletes audio from Supabase Storage", async () => {
+    mockRemove.mockResolvedValue({ error: null })
 
-  it("handles file-not-found gracefully (no-op)", async () => {
-    const res = await POST(makeReq({ audioUrl: "/audio/test.mp3" }))
+    const res = await POST(makeReq({
+      audioUrl: "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc",
+    }))
     const body = await res.json()
 
-    expect(body.message).toContain("no encontrado")
+    expect(res.status).toBe(200)
+    expect(body.message).toContain("eliminado")
+    expect(body.objectPath).toBe("temp/file.mp3")
   })
 
   it("returns 400 when audioUrl is missing", async () => {
@@ -55,19 +77,26 @@ describe("POST /api/admin/delete-audio", () => {
     expect(res.status).toBe(400)
   })
 
-  it("returns 400 when audioUrl is outside /audio/", async () => {
-    const res = await POST(makeReq({ audioUrl: "/config/passwords.txt" }))
+  it("returns 400 when audioUrl is not a valid Supabase signed URL", async () => {
+    const res = await POST(makeReq({ audioUrl: "/audio/test.mp3" }))
     expect(res.status).toBe(400)
   })
 
-  it("returns 400 when audioUrl tries path traversal", async () => {
-    const res = await POST(makeReq({ audioUrl: "/audio/../../.env" }))
-    expect(res.status).toBe(400)
+  it("returns 500 when remove fails", async () => {
+    mockRemove.mockResolvedValue({ error: new Error("Storage error") })
+
+    const res = await POST(makeReq({
+      audioUrl: "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc",
+    }))
+
+    expect(res.status).toBe(500)
   })
 
   it("returns 401 when not admin", async () => {
     deny()
-    const res = await POST(makeReq({ audioUrl: "/audio/test.mp3" }))
+    const res = await POST(makeReq({
+      audioUrl: "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc",
+    }))
     expect(res.status).toBe(401)
   })
 })

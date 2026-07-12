@@ -1,86 +1,71 @@
 import { NextResponse } from "next/server"
-import { writeFile, mkdir } from "fs/promises"
-import path from "path"
 import { requireAdmin } from "@/lib/auth"
+import { getSupabaseServer, AUDIO_BUCKET, audioObjectPath } from "@/lib/supabase-server"
 
-/**
- * POST /api/admin/upload-audio
- *
- * Uploads an audio file (MP3, WAV, OGG) for a dictionary word.
- * Max file size: 10 MB.
- */
+const VALID_MIME_TYPES = [
+  "audio/mpeg",
+  "audio/wav",
+  "audio/wave",
+  "audio/x-wav",
+  "audio/ogg",
+  "audio/vorbis",
+]
+
+const VALID_EXTENSIONS = [".mp3", ".wav", ".ogg"]
+
 export async function POST(request: Request) {
-  const { session, error } = await requireAdmin()
+  const { error } = await requireAdmin()
   if (error) return error
 
+  const file = await extractFile(request)
+  if (!file) {
+    return NextResponse.json(
+      { message: "No se proporcionó ningún archivo" },
+      { status: 400 }
+    )
+  }
+
+  const validationError = validateAudio(file)
+  if (validationError) {
+    return NextResponse.json({ message: validationError }, { status: 400 })
+  }
+
   try {
-    const formData = await request.formData()
-    const file = formData.get("file") as File | null
-
-    if (!file) {
-      return NextResponse.json(
-        { message: "No se proporcionó ningún archivo" },
-        { status: 400 }
-      )
-    }
-
-    // Validate file format
-    const validMimeTypes = [
-      "audio/mpeg",       // MP3
-      "audio/wav",        // WAV
-      "audio/wave",       // WAV (alternative)
-      "audio/x-wav",      // WAV (alternative)
-      "audio/ogg",        // OGG
-      "audio/vorbis",     // OGG Vorbis
-    ]
-    const validExtensions = [".mp3", ".wav", ".ogg"]
-
-    const fileExtension = path.extname(file.name).toLowerCase()
-
-    if (!validMimeTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-      return NextResponse.json(
-        { message: "Formato no soportado. Usa MP3, WAV u OGG" },
-        { status: 400 }
-      )
-    }
-
-    if (!validExtensions.includes(fileExtension)) {
-      return NextResponse.json(
-        { message: "Formato no soportado. Usa MP3, WAV u OGG" },
-        { status: 400 }
-      )
-    }
-
-    // Validate file size (max 10 MB)
-    const MAX_SIZE = 10 * 1024 * 1024 // 10 MB in bytes
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json(
-        { message: "El audio no puede superar los 10 MB" },
-        { status: 400 }
-      )
-    }
-
-    // Generate a unique filename to avoid collisions
-    const timestamp = Date.now()
-    const safeName = file.name
-      .replace(/[^a-zA-Z0-9._-]/g, "_")
-      .replace(/\s+/g, "_")
-    const uniqueName = `${timestamp}-${safeName}`
-
-    // Ensure the audio directory exists
-    const audioDir = path.join(process.cwd(), "public", "audio")
-    await mkdir(audioDir, { recursive: true })
-
-    // Write the file
-    const filePath = path.join(audioDir, uniqueName)
+    const supabase = getSupabaseServer()
     const buffer = Buffer.from(await file.arrayBuffer())
-    await writeFile(filePath, buffer)
+    const objectPath = audioObjectPath("temp", file.name)
 
-    // Return the public URL path
-    const audioUrl = `/audio/${uniqueName}`
+    const { error: uploadError } = await supabase.storage
+      .from(AUDIO_BUCKET)
+      .upload(objectPath, buffer, {
+        contentType: file.type,
+        cacheControl: "3600",
+        upsert: false,
+      })
+
+    if (uploadError) {
+      console.error("Supabase upload error:", uploadError)
+      return NextResponse.json(
+        { message: "Error al subir el audio al servidor" },
+        { status: 500 }
+      )
+    }
+
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from(AUDIO_BUCKET)
+      .createSignedUrl(objectPath, 3600)
+
+    if (signedUrlError || !signedUrlData) {
+      console.error("Signed URL error:", signedUrlError)
+      return NextResponse.json(
+        { message: "Error al generar el enlace del audio" },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({
-      audioUrl,
+      audioUrl: signedUrlData.signedUrl,
+      objectPath,
       fileName: file.name,
       size: file.size,
       message: "Audio subido correctamente",
@@ -92,4 +77,33 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
+}
+
+async function extractFile(request: Request): Promise<File | null> {
+  try {
+    const formData = await request.formData()
+    const file = formData.get("file")
+    if (!file || !(file instanceof File)) return null
+    return file as File
+  } catch {
+    return null
+  }
+}
+
+function validateAudio(file: File): string | null {
+  const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase()
+
+  if (!VALID_MIME_TYPES.includes(file.type) && !VALID_EXTENSIONS.includes(ext)) {
+    return "Formato no soportado. Usa MP3, WAV u OGG"
+  }
+
+  if (!VALID_EXTENSIONS.includes(ext)) {
+    return "Formato no soportado. Usa MP3, WAV u OGG"
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    return "El audio no puede superar los 10 MB"
+  }
+
+  return null
 }

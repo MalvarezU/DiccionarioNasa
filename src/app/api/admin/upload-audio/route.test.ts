@@ -4,6 +4,26 @@ vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
 }))
 
+const mockUpload = vi.fn()
+const mockCreateSignedUrl = vi.fn()
+
+const mockSupabaseClient = {
+  storage: {
+    from: vi.fn(() => ({
+      upload: mockUpload,
+      createSignedUrl: mockCreateSignedUrl,
+      remove: vi.fn(),
+    })),
+  },
+  auth: { admin: {} },
+}
+
+vi.mock("@/lib/supabase-server", () => ({
+  getSupabaseServer: vi.fn(() => mockSupabaseClient),
+  AUDIO_BUCKET: "audios",
+  audioObjectPath: vi.fn(() => "temp/test.mp3"),
+}))
+
 import { requireAdmin } from "@/lib/auth"
 import { POST } from "./route"
 
@@ -41,6 +61,8 @@ describe("POST /api/admin/upload-audio", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     allow()
+    mockUpload.mockReset()
+    mockCreateSignedUrl.mockReset()
   })
 
   it("rejects non-audio file types", async () => {
@@ -75,12 +97,38 @@ describe("POST /api/admin/upload-audio", () => {
     expect(res.status).toBe(401)
   })
 
-  it("validates audio format is accepted (MP3)", async () => {
+  it("uploads audio and returns signed URL", async () => {
+    mockUpload.mockResolvedValue({ error: null })
+    mockCreateSignedUrl.mockResolvedValue({
+      data: { signedUrl: "https://supabase.co/storage/v1/object/sign/audios/temp/test.mp3?token=abc" },
+      error: null,
+    })
+
     const req = createMockRequest("test.mp3", "audio/mpeg", "fake")
     const res = await POST(req)
-    // Not 401 — admin check passed
-    // Not 400 — format/extension validation passed
-    // Status may be 200 or 500 depending on fs operations in test env
-    expect([200, 500]).toContain(res.status)
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.audioUrl).toContain("supabase.co")
+    expect(body.objectPath).toBe("temp/test.mp3")
+  })
+
+  it("returns 500 when upload fails", async () => {
+    mockUpload.mockResolvedValue({ error: new Error("Storage quota exceeded") })
+
+    const req = createMockRequest("test.mp3", "audio/mpeg", "fake")
+    const res = await POST(req)
+
+    expect(res.status).toBe(500)
+  })
+
+  it("returns 500 when signed URL generation fails", async () => {
+    mockUpload.mockResolvedValue({ error: null })
+    mockCreateSignedUrl.mockResolvedValue({ data: null, error: new Error("Invalid URL") })
+
+    const req = createMockRequest("test.mp3", "audio/mpeg", "fake")
+    const res = await POST(req)
+
+    expect(res.status).toBe(500)
   })
 })
