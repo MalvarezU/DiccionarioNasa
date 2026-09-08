@@ -15,6 +15,16 @@ vi.mock("@/lib/supabase-server", () => ({
     },
   })),
   AUDIO_BUCKET: "audios",
+  audioUrlToObjectPath: vi.fn((url: string) => {
+    if (
+      url === "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc" ||
+      url === "https://rjdukxvhmvzbiqliakyu.supabase.co/storage/v1/object/public/audios/temp/file.mp3" ||
+      url === "temp/file.mp3"
+    ) {
+      return "temp/file.mp3"
+    }
+    return null
+  }),
   signedUrlToObjectPath: vi.fn((url: string) => {
     if (url === "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc") {
       return "temp/file.mp3"
@@ -80,6 +90,28 @@ describe("POST /api/admin/delete-audio", () => {
   it("returns 400 when audioUrl is not a valid Supabase signed URL", async () => {
     const res = await POST(makeReq({ audioUrl: "/audio/test.mp3" }))
     expect(res.status).toBe(400)
+  })
+
+  it("accepts public URL", async () => {
+    mockRemove.mockResolvedValue({ error: null })
+
+    const res = await POST(makeReq({
+      audioUrl: "https://rjdukxvhmvzbiqliakyu.supabase.co/storage/v1/object/public/audios/temp/file.mp3",
+    }))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.objectPath).toBe("temp/file.mp3")
+  })
+
+  it("accepts objectPath directly", async () => {
+    mockRemove.mockResolvedValue({ error: null })
+
+    const res = await POST(makeReq({ objectPath: "temp/file.mp3" }))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.objectPath).toBe("temp/file.mp3")
   })
 
   it("returns 500 when remove fails", async () => {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { RefreshCw, CheckCircle2 } from "lucide-react"
+import { RefreshCw, CheckCircle2, Target, Timer, HelpCircle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -37,7 +37,7 @@ export function MemoryGame() {
 
   const [gameKey, setGameKey] = useState(0)
 
-  const cards = useMemo(() => {
+  const initialCards = useMemo(() => {
     const pairs = shuffle(DEMO_WORDS).slice(0, NUM_PAIRS)
     const newCards: MemoryCard[] = []
     pairs.forEach((word) => {
@@ -60,6 +60,11 @@ export function MemoryGame() {
     })
     return shuffle(newCards)
   }, [gameKey])
+
+  // Sincronizar mazo inicial (evita redeclarar `cards`)
+  useEffect(() => {
+    setCards(initialCards)
+  }, [initialCards])
 
   useEffect(() => {
     if (finished || matched === NUM_PAIRS) return
@@ -86,7 +91,7 @@ export function MemoryGame() {
         setMatched((m) => m + 1)
         setFlippedIndices([])
       } else {
-        const timeout = setTimeout(() => {
+        setTimeout(() => {
           setCards((prev) =>
             prev.map((c, idx) =>
               idx === i || idx === j ? { ...c, flipped: false } : c
@@ -94,7 +99,6 @@ export function MemoryGame() {
           )
           setFlippedIndices([])
         }, 1000)
-        return () => clearTimeout(timeout)
       }
     },
     []
@@ -102,7 +106,7 @@ export function MemoryGame() {
 
   useEffect(() => {
     if (flippedIndices.length === 2) {
-      return checkPair(flippedIndices, cards) as unknown as () => void
+      checkPair(flippedIndices, cards)
     }
   }, [flippedIndices, cards, checkPair])
 
@@ -164,13 +168,15 @@ export function MemoryGame() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" role="status" aria-live="polite">
         <div className="flex gap-3">
           <Badge variant="secondary" className="gap-1.5 text-sm">
-            🎯 Movimientos: {moves}
+            <Target className="h-4 w-4" aria-hidden="true" />
+            Movimientos: {moves}
           </Badge>
           <Badge variant="secondary" className="gap-1.5 text-sm">
-            ⏱️ {formatTime(seconds)}
+            <Timer className="h-4 w-4" aria-hidden="true" />
+            {formatTime(seconds)}
           </Badge>
         </div>
         <Badge variant="outline" className="gap-1.5 text-sm text-muted-foreground">
@@ -178,14 +184,20 @@ export function MemoryGame() {
         </Badge>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3" role="group" aria-label="Tablero de memoria">
         {cards.map((card, index) => {
           const isFlipped = card.flipped || card.matched
           return (
             <button
               key={card.id}
+              type="button"
               onClick={() => handleClick(index)}
               disabled={isFlipped || flippedIndices.length >= 2}
+              aria-label={
+                isFlipped
+                  ? `${card.text} (${card.type === "spanish" ? "Español" : "Nasa Yuwe"})`
+                  : `Carta tapada ${index + 1}`
+              }
               className={`relative aspect-[3/4] rounded-xl border-2 transition-all duration-300 ${
                 isFlipped
                   ? card.matched
@@ -205,13 +217,13 @@ export function MemoryGame() {
                   >
                     {card.text}
                   </span>
-                  <span className="text-[9px] text-muted-foreground mt-1">
+                  <span className="text-xs text-muted-foreground mt-1">
                     {card.type === "spanish" ? "Español" : "Nasa Yuwe"}
                   </span>
                 </span>
               ) : (
-                <span className="flex items-center justify-center h-full text-2xl text-muted-foreground/30">
-                  ?
+                <span className="flex items-center justify-center h-full text-muted-foreground/40">
+                  <HelpCircle className="h-7 w-7" aria-hidden="true" />
                 </span>
               )}
             </button>

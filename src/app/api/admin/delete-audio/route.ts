@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth"
-import { getSupabaseServer, AUDIO_BUCKET, signedUrlToObjectPath } from "@/lib/supabase-server"
+import { getSupabaseServer, AUDIO_BUCKET, audioUrlToObjectPath } from "@/lib/supabase-server"
 
 export async function POST(request: Request) {
   const { error } = await requireAdmin()
@@ -8,16 +8,18 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { audioUrl } = body
+    // Acepta URL pública, signed URL legacy o objectPath directo
+    const { audioUrl, objectPath: directPath } = body
+    const rawRef = typeof directPath === "string" && directPath ? directPath : audioUrl
 
-    if (!audioUrl || typeof audioUrl !== "string") {
+    if (!rawRef || typeof rawRef !== "string") {
       return NextResponse.json(
-        { message: "Se requiere audioUrl (signed URL de Supabase)" },
+        { message: "Se requiere audioUrl u objectPath del audio" },
         { status: 400 }
       )
     }
 
-    const objectPath = signedUrlToObjectPath(audioUrl)
+    const objectPath = audioUrlToObjectPath(rawRef)
     if (!objectPath) {
       return NextResponse.json(
         { message: "No se pudo determinar la ruta del audio en Storage" },

@@ -1,5 +1,9 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
 
+vi.mock("@/lib/auth", () => ({
+  requireAdmin: vi.fn(),
+}))
+
 vi.mock("@/lib/db", () => ({
   db: {
     dictionaryWord: {
@@ -8,11 +12,27 @@ vi.mock("@/lib/db", () => ({
   },
 }))
 
+import { requireAdmin } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { POST } from "./route"
 
+const adminSession = { user: { id: "admin1", role: "admin" } } as never
+
 describe("POST /api/dictionary/update-audio", () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(requireAdmin).mockResolvedValue({ session: adminSession, error: null })
+  })
+
+  it("returns 401 when not admin", async () => {
+    vi.mocked(requireAdmin).mockResolvedValue({
+      session: null,
+      error: Response.json({ message: "No autorizado" }, { status: 401 }),
+    })
+
+    const res = await POST()
+    expect(res.status).toBe(401)
+  })
 
   it("updates audio URLs for all predefined words", async () => {
     vi.mocked(db.dictionaryWord.updateMany).mockResolvedValue({ count: 1 } as never)

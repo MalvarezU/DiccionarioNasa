@@ -129,7 +129,10 @@ describe("GET /api/dictionary/export", () => {
 
     expect(db.dictionaryWord.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { updatedAt: { gt: new Date("2025-01-01T00:00:00.000Z") } },
+        where: {
+          status: "PUBLISHED",
+          updatedAt: { gt: new Date("2025-01-01T00:00:00.000Z") },
+        },
       })
     )
   })

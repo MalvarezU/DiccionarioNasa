@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/auth'
 
 /**
  * POST /api/dictionary/update-audio
  * One-time script to update audioUrl for demo words.
- * In production, this would be done via the admin panel.
+ * Requiere admin: antes era público y permitía sobrescribir audios.
  */
 export async function POST() {
+  const { error } = await requireAdmin()
+  if (error) return error
+
   const audioMap: Record<string, string> = {
     'agua': '/audio/wala.wav',
     'persona': '/audio/nasa.wav',

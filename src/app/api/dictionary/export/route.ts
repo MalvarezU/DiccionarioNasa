@@ -22,10 +22,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Build where clause for incremental sync
-    const where = sinceDate
-      ? { updatedAt: { gt: sinceDate } }
-      : {}
+    // Build where clause for incremental sync (solo publicadas en endpoint público)
+    const where = {
+      status: 'PUBLISHED' as const,
+      ...(sinceDate ? { updatedAt: { gt: sinceDate } } : {}),
+    }
 
     // Fetch words and count in parallel
     const [words, total] = await Promise.all([

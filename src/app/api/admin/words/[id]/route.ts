@@ -1,6 +1,11 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
+import {
+  getSupabaseServer,
+  AUDIO_BUCKET,
+  audioUrlToObjectPath,
+} from '@/lib/supabase-server'
 
 // Valid status values
 const VALID_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED']
@@ -154,6 +159,88 @@ export async function PUT(
     return NextResponse.json(response, { status: 200 })
   } catch (error) {
     console.error('Error updating word:', error)
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * DELETE /api/admin/words/[id]
+ *
+ * Elimina la ficha y su audio asociado en Supabase Storage (si existe),
+ * evitando archivos huérfanos. Las relaciones Favorite/ViewHistory se
+ * eliminan en cascada según el schema de Prisma.
+ */
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { session, error } = await requireAdmin()
+  if (error) return error
+
+  try {
+    const { id } = await params
+
+    const existingWord = await db.dictionaryWord.findUnique({
+      where: { id },
+    })
+
+    if (!existingWord) {
+      return NextResponse.json(
+        { error: 'Palabra no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    // Limpiar audio en Storage antes de borrar la ficha (best-effort)
+    const objectPath = existingWord.audioUrl
+      ? audioUrlToObjectPath(existingWord.audioUrl)
+      : null
+    if (objectPath) {
+      try {
+        const supabase = getSupabaseServer()
+        const { error: storageError } = await supabase.storage
+          .from(AUDIO_BUCKET)
+          .remove([objectPath])
+        if (storageError) {
+          console.error('Error eliminando audio de la palabra:', storageError)
+        }
+      } catch (storageException) {
+        console.error('Error eliminando audio de la palabra:', storageException)
+      }
+    }
+
+    await db.dictionaryWord.delete({ where: { id } })
+
+    const sessionUser = session?.user as
+      | { id: string; name?: string | null; email?: string | null }
+      | undefined
+
+    await db.auditLog.create({
+      data: {
+        action: 'DELETE',
+        entity: 'DictionaryWord',
+        entityId: id,
+        changes: JSON.stringify({
+          deleted: {
+            spanish: existingWord.spanish,
+            nasaYuwe: existingWord.nasaYuwe,
+          },
+          responsable: sessionUser?.name || sessionUser?.email,
+        }),
+        userId: sessionUser?.id,
+        wordId: null,
+      },
+    })
+
+    return NextResponse.json(
+      { message: 'Palabra eliminada', id },
+      { status: 200 }
+    )
+  } catch (deleteError) {
+    console.error('Error deleting word:', deleteError)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }

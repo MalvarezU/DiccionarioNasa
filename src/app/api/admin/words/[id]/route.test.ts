@@ -6,14 +6,26 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/db", () => ({
   db: {
-    dictionaryWord: { findUnique: vi.fn(), update: vi.fn() },
+    dictionaryWord: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     auditLog: { create: vi.fn() },
   },
 }))
 
+const mockRemove = vi.fn()
+
+vi.mock("@/lib/supabase-server", () => ({
+  getSupabaseServer: vi.fn(() => ({
+    storage: { from: vi.fn(() => ({ remove: mockRemove })) },
+  })),
+  AUDIO_BUCKET: "audios",
+  audioUrlToObjectPath: vi.fn((url: string) =>
+    url.includes("supabase.co") ? "temp/audio.mp3" : null
+  ),
+}))
+
 import { requireAdmin } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { PUT, PATCH } from "./route"
+import { PUT, PATCH, DELETE } from "./route"
 
 const adminSession = { user: { id: "admin1", name: "Admin", email: "a@b.com", role: "admin" } } as never
 
@@ -223,5 +235,88 @@ describe("PATCH /api/admin/words/[id]", () => {
     )
     const body = await res.json()
     expect(body.message).toContain("ya tiene este estado")
+  })
+})
+
+describe("DELETE /api/admin/words/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRemove.mockReset()
+  })
+
+  it("deletes word without audio", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
+    vi.mocked(db.dictionaryWord.delete).mockResolvedValue(existingWord)
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await DELETE(
+      new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),
+      params
+    )
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.id).toBe("w1")
+    expect(db.dictionaryWord.delete).toHaveBeenCalledWith({ where: { id: "w1" } })
+    expect(mockRemove).not.toHaveBeenCalled()
+  })
+
+  it("deletes word and its audio from Storage", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      audioUrl: "https://xyz.supabase.co/storage/v1/object/public/audios/temp/audio.mp3",
+    })
+    vi.mocked(db.dictionaryWord.delete).mockResolvedValue(existingWord)
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    mockRemove.mockResolvedValue({ error: null })
+
+    const res = await DELETE(
+      new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),
+      params
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockRemove).toHaveBeenCalledWith(["temp/audio.mp3"])
+  })
+
+  it("deletes word even if Storage cleanup fails", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      audioUrl: "https://xyz.supabase.co/storage/v1/object/public/audios/temp/audio.mp3",
+    })
+    vi.mocked(db.dictionaryWord.delete).mockResolvedValue(existingWord)
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    mockRemove.mockResolvedValue({ error: new Error("boom") })
+
+    const res = await DELETE(
+      new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),
+      params
+    )
+
+    expect(res.status).toBe(200)
+    expect(db.dictionaryWord.delete).toHaveBeenCalled()
+  })
+
+  it("returns 404 when word not found", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(null)
+
+    const res = await DELETE(
+      new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),
+      params
+    )
+    expect(res.status).toBe(404)
+  })
+
+  it("returns 401 when not admin", async () => {
+    deny()
+    const res = await DELETE(
+      new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),
+      params
+    )
+    expect(res.status).toBe(401)
   })
 })

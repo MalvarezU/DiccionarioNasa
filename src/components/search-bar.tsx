@@ -189,7 +189,8 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Search Input */}
         <div className="relative">
           <Search
-            className={`absolute left-3 top-1/2 -translate-y-1/2 ${isHero ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
+            className={`absolute left-3 top-1/2 -translate-y-1/2 ${isHero ? "text-muted-foreground h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
+            aria-hidden="true"
           />
           <Input
             ref={inputRef}
@@ -208,7 +209,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               }
             }}
             onKeyDown={handleKeyDown}
-            className={`pl-10 w-full bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 transition-colors ${isHero ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md text-white placeholder:text-white/50" : "h-10 pr-9"}`}
+            className={`pl-10 w-full bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 transition-colors ${isHero ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md text-foreground placeholder:text-muted-foreground" : "h-10 pr-9"}`}
             aria-label="Buscar palabras en el diccionario"
             aria-expanded={showDropdown}
             aria-controls="search-results-list"
@@ -236,8 +237,8 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Online indicator */}
         {isOnline && isHero && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
-            <Cloud className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs text-white">
+            <Cloud className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            <span className="text-xs font-medium text-foreground/80 [text-shadow:0_1px_8px_rgb(0_0_0/0.6)]">
               Búsqueda en línea
             </span>
           </div>

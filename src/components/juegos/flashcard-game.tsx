@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Volume2, RefreshCw, CheckCircle2, XCircle } from "lucide-react"
+import { Volume2, RefreshCw, CheckCircle2, XCircle, Flame, Check } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -120,15 +120,21 @@ export function FlashcardGame({ questions: providedQuestions }: FlashcardGamePro
           <div className="flex items-center gap-3">
             {streak >= 2 && (
               <Badge variant="secondary" className="gap-1 bg-secondary/10 text-secondary">
-                🔥 Racha: {streak}
+                <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+                Racha: {streak}
               </Badge>
             )}
-            <span className="text-muted-foreground">
-              ✓ {correctCount}
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              <Check className="h-4 w-4" aria-hidden="true" />
+              <span aria-label={`${correctCount} aciertos`}>{correctCount}</span>
             </span>
           </div>
         </div>
-        <Progress value={((currentIndex + 1) / total) * 100} className="h-2" />
+        <Progress
+          value={((currentIndex + 1) / total) * 100}
+          className="h-2"
+          aria-label={`Progreso: pregunta ${currentIndex + 1} de ${total}`}
+        />
       </div>
 
       <Card className="border-primary/20 bg-primary/[0.02]">

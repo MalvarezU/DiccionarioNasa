@@ -124,6 +124,20 @@ describe("GET /api/dictionary/words", () => {
     expect(body.words[0].examples[0].spanish).toBe("Mi casa")
   })
 
+  it("only exposes PUBLISHED words", async () => {
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue(mockWords)
+    vi.mocked(db.dictionaryWord.count).mockResolvedValue(1)
+
+    await GET(req("http://localhost:3000/api/dictionary/words"))
+
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: "PUBLISHED" } })
+    )
+    expect(vi.mocked(db.dictionaryWord.count)).toHaveBeenCalledWith({
+      where: { status: "PUBLISHED" },
+    })
+  })
+
   it("orders by spanish ascending", async () => {
     vi.mocked(db.dictionaryWord.findMany).mockResolvedValue(mockWords)
     vi.mocked(db.dictionaryWord.count).mockResolvedValue(1)

@@ -206,7 +206,7 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
           <p className="text-sm text-muted-foreground">
             Escribe las letras que faltan:
           </p>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
             {current.display.map((char, idx) => {
               if (char === null) {
                 const isCorrect =
@@ -214,6 +214,7 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
                   (status === "failed" &&
                     (inputs[idx] || "").toLowerCase() ===
                       current.word.spanish.toLowerCase()[idx])
+                const isWrong = status === "wrong" || (status === "failed" && !isCorrect)
                 return (
                   <Input
                     key={idx}
@@ -221,6 +222,8 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
                     onChange={(e) => handleInputChange(idx, e.target.value)}
                     disabled={status === "correct" || status === "failed"}
                     maxLength={1}
+                    aria-label={`Letra ${idx + 1} de ${current.word.spanish.length}`}
+                    aria-invalid={isWrong}
                     className={`w-10 h-14 sm:w-12 sm:h-16 text-center text-2xl font-bold uppercase p-0 ${
                       status === "correct"
                         ? "border-secondary text-secondary"
@@ -257,14 +260,18 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
+          <span className="sr-only">Intentos fallidos: {attempts} de {maxAttempts}</span>
+          <span role="img" aria-label={`${maxAttempts - attempts} intentos restantes de ${maxAttempts}`} className="flex items-center gap-2">
           {Array.from({ length: maxAttempts }).map((_, i) => (
             <span
               key={i}
+              aria-hidden="true"
               className={`h-3 w-3 rounded-full ${
                 i < attempts ? "bg-destructive" : "bg-muted-foreground/20"
               }`}
             />
           ))}
+          </span>
           <span className="text-xs text-muted-foreground ml-1">
             Intentos: {attempts}/{maxAttempts}
           </span>
@@ -276,8 +283,8 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
           </Button>
         )}
         {status === "correct" && (
-          <div className="flex items-center gap-2 text-secondary">
-            <CheckCircle2 className="h-5 w-5" />
+          <div className="flex items-center gap-2 text-secondary" role="status">
+            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
             <span className="font-medium">¡Correcto!</span>
             <Button onClick={handleNext} variant="outline" className="gap-2 ml-2">
               Siguiente
@@ -285,13 +292,13 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
           </div>
         )}
         {status === "wrong" && (
-          <div className="flex items-center gap-2 text-destructive">
-            <XCircle className="h-5 w-5" />
-            <span className="font-medium">Incorrecto</span>
+          <div className="flex items-center gap-2 text-destructive" role="alert">
+            <XCircle className="h-5 w-5" aria-hidden="true" />
+            <span className="font-medium">Incorrecto, inténtalo de nuevo</span>
           </div>
         )}
         {status === "failed" && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" role="status">
             <div className="flex items-center gap-2 text-muted-foreground">
               <XCircle className="h-5 w-5" />
               <span>

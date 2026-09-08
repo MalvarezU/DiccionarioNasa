@@ -9,6 +9,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
@@ -17,7 +19,9 @@
     "db:seed": "bun run prisma/seed.ts",
     "db:clean-quotes": "bun run prisma/clean-quotes.ts",
     "db:clean-quotes:apply": "bun run prisma/clean-quotes.ts -- --apply",
-    "db:clean-quotes:source": "bun run prisma/clean-quotes-source.ts"
+    "db:clean-quotes:source": "bun run prisma/clean-quotes-source.ts",
+    "db:migrate-audio-urls": "bun run prisma/migrate-audio-urls.ts",
+    "db:migrate-audio-urls:apply": "bun run prisma/migrate-audio-urls.ts -- --apply"
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",

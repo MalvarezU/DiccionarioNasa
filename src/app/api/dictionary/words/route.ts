@@ -11,12 +11,19 @@ import { safeParseExamples } from '@/lib/utils'
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
-  const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
-  const pageSize = Math.min(500, Math.max(1, Number(searchParams.get('pageSize') ?? '100')))
+  const rawPage = Number(searchParams.get('page') ?? '1')
+  const rawPageSize = Number(searchParams.get('pageSize') ?? '100')
+  const page = Number.isFinite(rawPage) ? Math.max(1, Math.floor(rawPage)) : 1
+  const pageSize = Number.isFinite(rawPageSize)
+    ? Math.min(500, Math.max(1, Math.floor(rawPageSize)))
+    : 100
 
   try {
+    // Solo contenido publicado en el endpoint público
+    const where = { status: 'PUBLISHED' as const }
     const [words, total] = await Promise.all([
       db.dictionaryWord.findMany({
+        where,
         skip: (page - 1) * pageSize,
         take: pageSize,
         select: {
@@ -31,7 +38,7 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { spanish: 'asc' },
       }),
-      db.dictionaryWord.count(),
+      db.dictionaryWord.count({ where }),
     ])
 
     // Parse examples JSON for each word

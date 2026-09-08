@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth"
-import { getSupabaseServer, AUDIO_BUCKET, audioObjectPath } from "@/lib/supabase-server"
+import {
+  getSupabaseServer,
+  AUDIO_BUCKET,
+  audioObjectPath,
+  getPublicAudioUrl,
+} from "@/lib/supabase-server"
 
 const VALID_MIME_TYPES = [
   "audio/mpeg",
@@ -51,20 +56,13 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-      .from(AUDIO_BUCKET)
-      .createSignedUrl(objectPath, 3600)
-
-    if (signedUrlError || !signedUrlData) {
-      console.error("Signed URL error:", signedUrlError)
-      return NextResponse.json(
-        { message: "Error al generar el enlace del audio" },
-        { status: 500 }
-      )
-    }
+    // URL pública permanente (el bucket `audios` debe ser público).
+    // No usar signed URLs aquí: expiran en 1h y romperían el reproductor,
+    // favoritos, palabra del día y caché offline.
+    const audioUrl = getPublicAudioUrl(objectPath)
 
     return NextResponse.json({
-      audioUrl: signedUrlData.signedUrl,
+      audioUrl,
       objectPath,
       fileName: file.name,
       size: file.size,
@@ -91,13 +89,17 @@ async function extractFile(request: Request): Promise<File | null> {
 }
 
 function validateAudio(file: File): string | null {
-  const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase()
+  const dotIndex = file.name.lastIndexOf(".")
+  const ext = dotIndex === -1 ? "" : file.name.substring(dotIndex).toLowerCase()
 
-  if (!VALID_MIME_TYPES.includes(file.type) && !VALID_EXTENSIONS.includes(ext)) {
+  // La extensión es obligatoria (el MIME lo puede falsear el cliente)
+  if (!VALID_EXTENSIONS.includes(ext)) {
     return "Formato no soportado. Usa MP3, WAV u OGG"
   }
 
-  if (!VALID_EXTENSIONS.includes(ext)) {
+  // El MIME debe acompañar, salvo genéricos que envían algunos navegadores
+  const GENERIC_MIMES = ["", "application/octet-stream"]
+  if (!VALID_MIME_TYPES.includes(file.type) && !GENERIC_MIMES.includes(file.type)) {
     return "Formato no soportado. Usa MP3, WAV u OGG"
   }
 
