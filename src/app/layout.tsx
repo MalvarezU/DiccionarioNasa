@@ -18,10 +18,11 @@ const publicSans = Public_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Nasa Yuwe — Diccionario Bilingüe",
+  title: "Piiyaak — Proyecto de preservación de la lengua Nasa Yuwe",
   description:
-    "Diccionario bilingüe Nasa Yuwe–Español. Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.",
+    "Piiyaak, plataforma para preservar y compartir la lengua Nasa Yuwe del pueblo Nasa (Páez) de Colombia: diccionario bilingüe, juegos y cursos.",
   keywords: [
+    "Piiyaak",
     "Nasa Yuwe",
     "Páez",
     "diccionario",
@@ -34,9 +35,9 @@ export const metadata: Metadata = {
     icon: "/libro-abierto.png",
   },
   openGraph: {
-    title: "Nasa Yuwe — Diccionario Bilingüe",
+    title: "Piiyaak — Proyecto de preservación de la lengua Nasa Yuwe",
     description:
-      "Diccionario bilingüe Nasa Yuwe–Español. Preservando y compartiendo la lengua del pueblo Nasa de Colombia.",
+      "Piiyaak, plataforma para preservar y compartir la lengua Nasa Yuwe del pueblo Nasa de Colombia: diccionario, juegos y cursos.",
     type: "website",
   },
 };

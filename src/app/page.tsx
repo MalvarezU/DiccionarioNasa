@@ -161,10 +161,10 @@ function HomeContent() {
           {/* Content */}
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 text-center z-20">            
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)' }}>
-              Nasa Yuwe
+              Piiyaak
             </h1>
             <p className="mt-3 text-lg sm:text-xl text-white font-medium" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
-              Diccionario Bilingüe
+              Proyecto de preservación de la lengua Nasa Yuwe · Diccionario bilingüe
             </p>
             <p className="mt-4 max-w-xl mx-auto text-base sm:text-lg text-white/90 leading-relaxed" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
               Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.
@@ -342,7 +342,7 @@ function HomeContent() {
                     Grupo YBC
                   </p>
                   <p className="text-xs text-white/70">
-                    Nasa Yuwe · Diccionario Bilingüe
+                    Piiyaak · Diccionario Nasa Yuwe
                   </p>
                 </div>
               </div>
@@ -389,7 +389,7 @@ function HomeContent() {
           {/* Bottom bar */}
           <div className="mt-8 pt-6 border-t border-white/20">
             <p className="text-center text-[10px] text-white/50" suppressHydrationWarning>
-              © {new Date().getFullYear()} Nasa Yuwe · Proyecto de preservación lingüística
+              © {new Date().getFullYear()} Piiyaak · Proyecto de preservación de la lengua Nasa Yuwe
             </p>
           </div>
         </div>

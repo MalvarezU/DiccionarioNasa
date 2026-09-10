@@ -47,7 +47,7 @@ export function NavBar() {
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
             <BookOpen className="h-5 w-5 text-primary group-hover:text-primary/80 transition-colors" />
             <span className="font-serif font-semibold text-lg tracking-tight text-primary group-hover:text-primary/80 transition-colors">
-              Nasa Yuwe
+              Piiyaak
             </span>
           </Link>
 

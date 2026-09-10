@@ -40,7 +40,7 @@ export default function AdminPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-muted-foreground">
-              Panel de administración — Nasa Yuwe
+              Panel de administración — Piiyaak
             </p>
           </div>
         </div>

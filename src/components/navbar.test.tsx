@@ -46,7 +46,7 @@ describe("NavBar", () => {
 
   it("renders the app name as a link", () => {
     render(<NavBar />)
-    expect(screen.getByText("Nasa Yuwe")).toBeDefined()
+    expect(screen.getByText("Piiyaak")).toBeDefined()
   })
 
   it("shows online badge when connected", () => {
