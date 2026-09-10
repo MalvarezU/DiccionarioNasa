@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from '@/lib/rate-limit'
+
+const REGISTER_LIMIT = 10
+const REGISTER_WINDOW_MS = 60_000
 
 /**
  * POST /api/auth/register
  * Register a new user account.
  * Body: { email, password, name? }
+ * Rate-limit: 10/min por IP (bcrypt es costoso + evita enumeración masiva).
  */
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const { allowed, retryAfterMs } = checkRateLimit(
+    `register:${ip}`,
+    REGISTER_LIMIT,
+    REGISTER_WINDOW_MS
+  )
+  if (!allowed) return rateLimitResponse(retryAfterMs)
+
   try {
     const body = await request.json()
     const { email, password, name } = body

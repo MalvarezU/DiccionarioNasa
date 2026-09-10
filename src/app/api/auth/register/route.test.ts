@@ -17,6 +17,7 @@ vi.mock("bcryptjs", () => ({
 
 import { db } from "@/lib/db"
 import bcrypt from "bcryptjs"
+import { __resetRateLimitStore } from "@/lib/rate-limit"
 import { POST } from "./route"
 
 function makeRequest(body: unknown) {
@@ -26,7 +27,10 @@ function makeRequest(body: unknown) {
 }
 
 describe("POST /api/auth/register", () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    __resetRateLimitStore()
+  })
 
   it("registers a new user successfully", async () => {
     vi.mocked(db.user.findUnique).mockResolvedValue(null)
@@ -158,5 +162,30 @@ describe("POST /api/auth/register", () => {
     const res = await POST(makeRequest({ email: "", password: "" }))
     expect(res.status).toBe(400)
     expect(bcrypt.hash).not.toHaveBeenCalled()
+  })
+
+  it("returns 429 after exceeding 10 requests per minute", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue(null)
+    vi.mocked(bcrypt.hash).mockResolvedValue("hashed-pw" as never)
+    vi.mocked(db.user.create).mockResolvedValue({
+      id: "u1",
+      email: "test@example.com",
+      name: null,
+      password: "hashed-pw",
+      role: "user",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never)
+
+    for (let i = 0; i < 10; i++) {
+      await POST(
+        makeRequest({ email: `u${i}@example.com`, password: "password123" })
+      )
+    }
+
+    const limited = await POST(
+      makeRequest({ email: "otro@example.com", password: "password123" })
+    )
+    expect(limited.status).toBe(429)
   })
 })

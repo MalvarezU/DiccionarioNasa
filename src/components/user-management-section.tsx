@@ -61,6 +61,7 @@ export function UserManagementSection() {
   const { toast } = useToast()
 
   const [users, setUsers] = useState<UserRow[]>([])
+  const [totalUsers, setTotalUsers] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -70,11 +71,16 @@ export function UserManagementSection() {
   const fetchUsers = useCallback(async () => {
     setIsLoading(true)
     try {
-      const params = search ? `?search=${encodeURIComponent(search)}` : ""
-      const res = await fetch(`/api/admin/users${params}`)
+      // pageSize=100 (máximo): el panel no pagina aún; con esto se mantiene
+      // el comportamiento previo para instalaciones reales (<100 usuarios)
+      // y la API queda acotada.
+      const query = new URLSearchParams({ pageSize: "100" })
+      if (search) query.set("search", search)
+      const res = await fetch(`/api/admin/users?${query}`)
       if (res.ok) {
         const data = await res.json()
         setUsers(data.users ?? [])
+        setTotalUsers(typeof data.total === "number" ? data.total : (data.users ?? []).length)
       } else if (res.status === 403) {
         setUsers([])
         toast({
@@ -184,6 +190,11 @@ export function UserManagementSection() {
               </CardTitle>
               <CardDescription className="mt-1">
                 Administra los roles y cuentas de usuario del sistema
+                {totalUsers > 0 && (
+                  <span aria-live="polite">
+                    {" "}· {totalUsers} usuario{totalUsers !== 1 ? "s" : ""} en total
+                  </span>
+                )}
               </CardDescription>
             </div>
             <div className="relative w-full sm:w-64">

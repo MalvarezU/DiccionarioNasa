@@ -10,7 +10,7 @@ vi.mock("@/lib/db", () => ({
 }))
 
 import { db } from "@/lib/db"
-import { GET } from "./route"
+import { GET, hashDateKey } from "./route"
 
 function req(date?: string): Request {
   const url = date
@@ -137,5 +137,43 @@ describe("GET /api/dictionary/word-of-day", () => {
     expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({ take: 1 })
     )
+  })
+
+  it("uses stable id ordering (inserts do not reshuffle)", async () => {
+    vi.mocked(db.dictionaryWord.count).mockResolvedValue(100)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([mockWord] as never)
+
+    await GET(req("2026-01-01"))
+
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { id: "asc" } })
+    )
+  })
+
+  it("derives index from date hash within range", async () => {
+    vi.mocked(db.dictionaryWord.count).mockResolvedValue(100)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([mockWord] as never)
+
+    await GET(req("2026-01-01"))
+
+    const { skip } = vi.mocked(db.dictionaryWord.findMany).mock.calls[0][0] as {
+      skip: number
+    }
+    expect(skip).toBe(hashDateKey("2026-01-01") % 100)
+    expect(skip).toBeGreaterThanOrEqual(0)
+    expect(skip).toBeLessThan(100)
+  })
+})
+
+describe("hashDateKey", () => {
+  it("is stable for the same input", () => {
+    expect(hashDateKey("2026-06-01")).toBe(hashDateKey("2026-06-01"))
+  })
+
+  it("returns an unsigned 32-bit integer", () => {
+    const h = hashDateKey("2026-01-01")
+    expect(Number.isInteger(h)).toBe(true)
+    expect(h).toBeGreaterThanOrEqual(0)
+    expect(h).toBeLessThan(2 ** 32)
   })
 })

@@ -9,6 +9,7 @@ vi.mock("@/lib/db", () => ({
 }))
 
 import { db } from "@/lib/db"
+import { __resetRateLimitStore } from "@/lib/rate-limit"
 import { POST } from "./route"
 
 function makeRequest(body: unknown) {
@@ -18,7 +19,10 @@ function makeRequest(body: unknown) {
 }
 
 describe("POST /api/dictionary/suggest", () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    __resetRateLimitStore()
+  })
 
   it("accepts a valid suggestion", async () => {
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
@@ -112,5 +116,30 @@ describe("POST /api/dictionary/suggest", () => {
 
     const res = await POST(makeRequest({ term: "casa" }))
     expect(res.status).toBe(500)
+  })
+
+  it("returns 400 when term exceeds max length", async () => {
+    const res = await POST(makeRequest({ term: "a".repeat(101) }))
+    expect(res.status).toBe(400)
+  })
+
+  it("returns 400 when comment exceeds max length", async () => {
+    const res = await POST(
+      makeRequest({ term: "casa", comment: "b".repeat(501) })
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it("returns 429 after exceeding 5 requests per minute", async () => {
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    for (let i = 0; i < 5; i++) {
+      const res = await POST(makeRequest({ term: `casa${i}` }))
+      expect(res.status).toBe(200)
+    }
+
+    const limited = await POST(makeRequest({ term: "casa5" }))
+    expect(limited.status).toBe(429)
+    expect(limited.headers.get("Retry-After")).toBeDefined()
   })
 })

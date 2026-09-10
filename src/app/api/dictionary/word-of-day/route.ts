@@ -3,11 +3,27 @@ import { db } from "@/lib/db"
 import { safeParseExamples } from "@/lib/utils"
 
 /**
+ * Hash FNV-1a (32 bits) de un string. Determinista entre ejecuciones
+ * (a diferencia de `dayOfYear`, no repite la misma secuencia cada año).
+ */
+export function hashDateKey(dateKey: string): number {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < dateKey.length; i++) {
+    hash ^= dateKey.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash >>> 0
+}
+
+/**
  * GET /api/dictionary/word-of-day
  *
  * Returns a deterministic "Word of the Day" based on the current date.
- * Uses a seeded approach: day-of-year modulo total-word-count to pick
- * a consistent word for all users on the same date.
+ * Usa hash(FNV-1a) de la fecha (YYYY-MM-DD en UTC) módulo total, sobre un
+ * orden estable (`id asc`): insertar palabras nuevas no reordena las
+ * existentes (con `spanish asc` cada insert rebarajaba los índices).
+ * Nota: si cambia el total, el módulo puede rotar asignaciones; para una
+ * estabilidad total haría falta persistir fecha→wordId en una tabla.
  *
  * Query params:
  *   date — optional ISO date string (YYYY-MM-DD) for testing
@@ -17,7 +33,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const dateParam = searchParams.get("date")
 
-    // Determine the date to use
+    // Determine the date to use (siempre en UTC: evita off-by-one por TZ)
     const targetDate = dateParam ? new Date(dateParam + "T00:00:00.000Z") : new Date()
     if (isNaN(targetDate.getTime())) {
       return NextResponse.json(
@@ -25,6 +41,7 @@ export async function GET(request: Request) {
         { status: 400 }
       )
     }
+    const dateKey = targetDate.toISOString().slice(0, 10)
 
     // Get total word count (only PUBLISHED words)
     const totalWords = await db.dictionaryWord.count({
@@ -38,13 +55,10 @@ export async function GET(request: Request) {
       )
     }
 
-    // Deterministic selection: day-of-year % totalWords
-    const startOfYear = new Date(targetDate.getUTCFullYear(), 0, 0)
-    const diff = targetDate.getTime() - startOfYear.getTime()
-    const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24))
-    const wordIndex = dayOfYear % totalWords
+    // Deterministic selection: hash(fecha) % totalWords
+    const wordIndex = hashDateKey(dateKey) % totalWords
 
-    // Fetch the word at that index (alphabetically sorted for consistency, PUBLISHED only)
+    // Fetch the word at that index (orden estable por id, PUBLISHED only)
     const words = await db.dictionaryWord.findMany({
       where: { status: "PUBLISHED" },
       select: {
@@ -57,7 +71,7 @@ export async function GET(request: Request) {
         category: true,
         examples: true,
       },
-      orderBy: { spanish: "asc" },
+      orderBy: { id: "asc" },
       skip: wordIndex,
       take: 1,
     })

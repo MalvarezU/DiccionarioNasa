@@ -108,7 +108,7 @@ describe("WordDetailCard", () => {
     vi.mocked(fetch).mockResolvedValue(Response.json(mockWord))
     renderCard()
     expect(await screen.findByText("yu'")).toBeDefined()
-    expect(screen.findByText("agua")).toBeDefined()
+    expect((await screen.findAllByText("agua")).length).toBeGreaterThan(0)
     expect(screen.getByText("[yuʔ]")).toBeDefined()
     expect(screen.getByText("El agua es esencial en la cultura Nasa")).toBeDefined()
   })

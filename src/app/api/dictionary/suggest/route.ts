@@ -1,12 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from '@/lib/rate-limit'
+
+const MAX_TERM_LENGTH = 100
+const MAX_COMMENT_LENGTH = 500
+const SUGGEST_LIMIT = 5
+const SUGGEST_WINDOW_MS = 60_000
 
 /**
  * POST /api/dictionary/suggest
  * Accept a word suggestion from a user.
  * For now, stores it in the database for admin review.
+ * Rate-limit: 5/min por IP (endpoint público, anti-spam).
  */
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const { allowed, retryAfterMs } = checkRateLimit(
+    `suggest:${ip}`,
+    SUGGEST_LIMIT,
+    SUGGEST_WINDOW_MS
+  )
+  if (!allowed) return rateLimitResponse(retryAfterMs)
+
   try {
     const body = await request.json()
     const { term, comment } = body
@@ -14,6 +33,22 @@ export async function POST(request: NextRequest) {
     if (!term || typeof term !== 'string' || term.trim().length < 2) {
       return NextResponse.json(
         { message: 'El término debe tener al menos 2 caracteres' },
+        { status: 400 }
+      )
+    }
+
+    if (term.trim().length > MAX_TERM_LENGTH) {
+      return NextResponse.json(
+        { message: `El término no puede superar los ${MAX_TERM_LENGTH} caracteres` },
+        { status: 400 }
+      )
+    }
+
+    const cleanComment =
+      (comment && typeof comment === 'string' ? comment.trim() : '') || null
+    if (cleanComment && cleanComment.length > MAX_COMMENT_LENGTH) {
+      return NextResponse.json(
+        { message: `El comentario no puede superar los ${MAX_COMMENT_LENGTH} caracteres` },
         { status: 400 }
       )
     }
@@ -27,7 +62,7 @@ export async function POST(request: NextRequest) {
         entityId: 'suggestion',
         changes: JSON.stringify({
           term: term.trim(),
-          comment: (comment && typeof comment === 'string' ? comment.trim() : '') || null,
+          comment: cleanComment,
           source: 'community',
         }),
       },
