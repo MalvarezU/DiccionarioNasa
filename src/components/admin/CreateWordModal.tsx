@@ -445,7 +445,7 @@ export function CreateWordModal({
                       <p className="text-[11px] text-muted-foreground">
                         {(audioFile.size / 1024 / 1024).toFixed(2)} MB
                         {isUploadingAudio && " — Subiendo..."}
-                        {audioUrl && !isUploadingAudio && " — Subido"}
+                        {audioUrl && !isUploadingAudio && " — Subido (guarda la ficha para conservarlo)"}
                       </p>
                     </div>
                     <Button

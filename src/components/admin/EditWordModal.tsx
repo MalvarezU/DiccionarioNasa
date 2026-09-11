@@ -495,7 +495,7 @@ export function EditWordModal({
                       <p className="text-[11px] text-muted-foreground">
                         {audioFile ? `${(audioFile.size / 1024 / 1024).toFixed(2)} MB` : audioUrl?.split("/").pop()}
                         {isUploadingAudio && " — Subiendo..."}
-                        {audioUrl && !isUploadingAudio && " — Listo"}
+                        {audioUrl && !isUploadingAudio && (audioChanged ? " — Subido (guarda la ficha para conservarlo)" : " — Guardado")}
                       </p>
                     </div>
                     {(audioChanged || originalAudioUrl) && (
