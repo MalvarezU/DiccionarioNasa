@@ -3,6 +3,12 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import type { JWT } from "next-auth/jwt";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import {
+  getAuthorizeIp,
+  isLoginLocked,
+  recordLoginFailure,
+  resetLoginAttempts,
+} from "@/lib/login-lockout";
 
 const secret = process.env.NEXTAUTH_SECRET;
 if (!secret) {
@@ -20,6 +26,56 @@ function limitFor(role?: string): number {
   return role === "admin" ? ADMIN_INACTIVITY_LIMIT_S : USER_INACTIVITY_LIMIT_S;
 }
 
+/**
+ * Lógica de login con credenciales + bloqueo CA-22.
+ * Exportada para tests (ver nota en el provider).
+ */
+export async function authorizeCredentials(
+  credentials: Record<"email" | "password", string> | undefined,
+  req?: unknown
+) {
+  if (!credentials?.email || !credentials?.password) return null;
+
+  const email = credentials.email.trim();
+  const ip = getAuthorizeIp(req);
+
+  // Bloqueo CA-22: indistinguible del fallo (mismo null, sin consulta).
+  if (isLoginLocked(email, ip)) return null;
+
+  const user = await db.user.findUnique({
+    where: { email: credentials.email },
+  });
+
+  if (!user) {
+    recordLoginFailure(email, ip);
+    return null;
+  }
+
+  // For demo: allow plain text comparison or bcrypt
+  let isValid = false;
+  if (user.password) {
+    try {
+      isValid = await bcrypt.compare(credentials.password, user.password);
+    } catch {
+      // If not bcrypt hash, do direct comparison (demo only)
+      isValid = credentials.password === user.password;
+    }
+  }
+
+  if (!isValid) {
+    recordLoginFailure(email, ip);
+    return null;
+  }
+
+  resetLoginAttempts(email, ip);
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+  };
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -28,35 +84,10 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-
-        const user = await db.user.findUnique({
-          where: { email: credentials.email },
-        });
-
-        if (!user) return null;
-
-        // For demo: allow plain text comparison or bcrypt
-        let isValid = false;
-        if (user.password) {
-          try {
-            isValid = await bcrypt.compare(credentials.password, user.password);
-          } catch {
-            // If not bcrypt hash, do direct comparison (demo only)
-            isValid = credentials.password === user.password;
-          }
-        }
-
-        if (!isValid) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
-      },
+      // OJO: el factory deja authorize=()=>null en el objeto crudo; el core
+      // de NextAuth fusiona `options` en runtime. Se exporta la función para
+      // testearla directo sin depender de ese merge interno.
+      authorize: authorizeCredentials,
     }),
   ],
   session: {

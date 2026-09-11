@@ -1,9 +1,22 @@
-import { beforeAll, describe, expect, it, vi } from "vitest"
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+
+const { mockDb } = vi.hoisted(() => ({
+  mockDb: { user: { findUnique: vi.fn() } },
+}))
+vi.mock("@/lib/db", () => ({ db: mockDb }))
+vi.mock("bcryptjs", () => ({
+  default: { compare: vi.fn(), hash: vi.fn() },
+  compare: vi.fn(),
+  hash: vi.fn(),
+}))
 
 vi.stubEnv("NEXTAUTH_SECRET", "test-secret-b16")
 
 const { authOptions, ADMIN_INACTIVITY_LIMIT_S, USER_INACTIVITY_LIMIT_S } =
   await import("./route")
+const { __resetLoginLockoutStore } = await import("@/lib/login-lockout")
+import bcrypt from "bcryptjs"
+import { db } from "@/lib/db"
 
 const jwt = authOptions.callbacks!.jwt!
 
@@ -102,5 +115,85 @@ describe("nextauth jwt inactivity timeout (B1.6)", () => {
       user: undefined,
     } as never)) as unknown as Record<string, unknown>
     expect(out.lastActivity).toBe(base + 6 * 60)
+  })
+})
+
+describe("authorize con bloqueo CA-22 (B1.4)", () => {
+  // Se testea la función exportada: el objeto crudo del factory trae
+  // authorize=()=>null y solo el core de NextAuth fusiona `options`.
+  const authorize = async (creds: unknown, req?: unknown) =>
+    (
+      await import("./route")
+    ).authorizeCredentials(
+      creds as Record<"email" | "password", string> | undefined,
+      req
+    )
+  const req = { headers: { "x-forwarded-for": "5.5.5.5" } }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useRealTimers()
+    __resetLoginLockoutStore()
+    vi.mocked(db.user.findUnique).mockResolvedValue(null)
+    vi.mocked(bcrypt.compare).mockResolvedValue(false as never)
+  })
+
+  it("bloquea tras 5 fallos sin consultar la BD (indistinguible)", async () => {
+    for (let i = 0; i < 5; i++) {
+      expect(
+        await authorize({ email: "v@x.com", password: "mal" }, req)
+      ).toBeNull()
+    }
+    vi.clearAllMocks()
+    expect(
+      await authorize({ email: "v@x.com", password: "bien1234" }, req)
+    ).toBeNull()
+    // Bloqueado: ni siquiera pregunta a la BD (anti-enumeración)
+    expect(db.user.findUnique).not.toHaveBeenCalled()
+  })
+
+  it("el exito limpia el contador de fallos", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      id: "u1",
+      email: "v@x.com",
+      password: "hashed",
+      role: "user",
+    } as never)
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+
+    for (let i = 0; i < 4; i++) {
+      vi.mocked(bcrypt.compare).mockResolvedValueOnce(false as never)
+      expect(
+        await authorize({ email: "v@x.com", password: "mal" }, req)
+      ).toBeNull()
+    }
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+    const ok = (await authorize(
+      { email: "v@x.com", password: "bien1234" },
+      req
+    )) as unknown as Record<string, unknown>
+    expect(ok.id).toBe("u1")
+
+    // Tras el éxito, 4 fallos más no bloquean
+    vi.mocked(bcrypt.compare).mockResolvedValue(false as never)
+    for (let i = 0; i < 4; i++) {
+      expect(
+        await authorize({ email: "v@x.com", password: "mal" }, req)
+      ).toBeNull()
+    }
+    expect(db.user.findUnique).toHaveBeenCalled()
+  })
+
+  it("el bloqueo es por cuenta+IP", async () => {
+    for (let i = 0; i < 5; i++) {
+      await authorize({ email: "v@x.com", password: "mal" }, req)
+    }
+    vi.clearAllMocks()
+    // Otra IP sí consulta la BD
+    await authorize(
+      { email: "v@x.com", password: "x" },
+      { headers: { "x-forwarded-for": "9.9.9.9" } }
+    )
+    expect(db.user.findUnique).toHaveBeenCalledTimes(1)
   })
 })

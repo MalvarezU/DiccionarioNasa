@@ -8,6 +8,7 @@ vi.mock("next-auth/jwt", () => ({
 import { getToken } from "next-auth/jwt"
 import { proxy } from "./proxy"
 import { urlRequest } from "@/test/factories/request"
+import { __resetRateLimitStore } from "@/lib/rate-limit"
 
 function adminRequest(cookie?: string) {
   return new NextRequest("http://localhost:3000/admin", {
@@ -59,5 +60,38 @@ describe("proxy /admin (B1.6)", () => {
     vi.stubEnv("NEXTAUTH_SECRET", "")
     vi.mocked(getToken).mockResolvedValue(null)
     await expect(proxy(adminRequest())).rejects.toThrow("NEXTAUTH_SECRET")
+  })
+})
+
+describe("proxy rate-limit login (B1.4)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubEnv("NEXTAUTH_SECRET", "test-secret-b16")
+    __resetRateLimitStore()
+  })
+
+  function loginPost() {
+    return new NextRequest("http://localhost:3000/api/auth/callback/credentials", {
+      method: "POST",
+    })
+  }
+
+  it("permite 20 POST/min y frena el 21 con 429", async () => {
+    for (let i = 0; i < 20; i++) {
+      const res = await proxy(loginPost())
+      expect(res.status).toBe(200)
+    }
+    const blocked = await proxy(loginPost())
+    expect(blocked.status).toBe(429)
+    expect(blocked.headers.get("Retry-After")).not.toBeNull()
+    expect(vi.mocked(getToken)).not.toHaveBeenCalled()
+  })
+
+  it("el polling GET /api/auth/session pasa sin verificar ni limitar", async () => {
+    const res = await proxy(
+      urlRequest("http://localhost:3000/api/auth/session")
+    )
+    expect(res.status).toBe(200)
+    expect(vi.mocked(getToken)).not.toHaveBeenCalled()
   })
 })
