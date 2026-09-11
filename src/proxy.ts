@@ -13,6 +13,12 @@ import { getToken } from "next-auth/jwt"
  * by client-side URL manipulation.
  */
 export async function proxy(request: NextRequest) {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    // Falla en voz alta: jamás operar con secreto por defecto (RNF-11)
+    throw new Error("NEXTAUTH_SECRET no está definido (proxy)");
+  }
+
   const { pathname } = request.nextUrl
 
   // Protect all /admin routes
@@ -20,13 +26,20 @@ export async function proxy(request: NextRequest) {
     // Get the JWT token (works with JWT strategy)
     const token = await getToken({
       req: request,
-      secret: process.env.NEXTAUTH_SECRET || "nasa-yuwe-dict-dev-secret-change-in-prod",
+      secret,
     })
 
-    // Not authenticated → redirect to home
+    // Not authenticated → redirect to home.
+    // Si trae cookie de sesión pero el token no valida, la sesión expiró.
     if (!token) {
+      const hasSessionCookie =
+        request.cookies.has("next-auth.session-token") ||
+        request.cookies.has("__Secure-next-auth.session-token")
       const homeUrl = new URL("/", request.url)
-      homeUrl.searchParams.set("auth", "required")
+      homeUrl.searchParams.set(
+        "auth",
+        hasSessionCookie ? "expired" : "required"
+      )
       return NextResponse.redirect(homeUrl)
     }
 

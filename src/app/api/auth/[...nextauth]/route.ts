@@ -1,7 +1,18 @@
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import type { JWT } from "next-auth/jwt";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
+
+const secret = process.env.NEXTAUTH_SECRET;
+if (!secret) {
+  // Falla en voz alta: jamás arrancar con secreto por defecto (RNF-11)
+  throw new Error("NEXTAUTH_SECRET no está definido");
+}
+
+/** Inactividad máxima de la sesión (30 min) y frecuencia de re-sellado (5 min). */
+export const INACTIVITY_LIMIT_S = 30 * 60;
+export const ACTIVITY_WRITE_THROTTLE_S = 5 * 60;
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -47,9 +58,29 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
+      const now = Math.floor(Date.now() / 1000);
+
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+        (token as JWT & { lastActivity?: number }).lastActivity = now;
+        return token;
+      }
+
+      const last =
+        typeof (token as JWT & { lastActivity?: unknown }).lastActivity ===
+        "number"
+          ? ((token as JWT & { lastActivity?: number }).lastActivity as number)
+          : now;
+
+      if (now - last > INACTIVITY_LIMIT_S) {
+        // Sesión expirada por inactividad: devolver null la destruye (NextAuth v4)
+        return null as unknown as JWT;
+      }
+
+      // Re-sella la cookie como máximo cada 5 min (evita firmarla en cada request)
+      if (now - last > ACTIVITY_WRITE_THROTTLE_S) {
+        (token as JWT & { lastActivity?: number }).lastActivity = now;
       }
       return token;
     },
@@ -65,7 +96,7 @@ export const authOptions: NextAuthOptions = {
     // We use a custom modal, not a dedicated page
     signIn: "/",
   },
-  secret: process.env.NEXTAUTH_SECRET || "nasa-yuwe-dict-dev-secret-change-in-prod",
+  secret,
 };
 
 const handler = NextAuth(authOptions);
