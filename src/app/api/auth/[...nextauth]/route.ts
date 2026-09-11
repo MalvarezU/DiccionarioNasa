@@ -10,9 +10,15 @@ if (!secret) {
   throw new Error("NEXTAUTH_SECRET no está definido");
 }
 
-/** Inactividad máxima de la sesión (30 min) y frecuencia de re-sellado (5 min). */
-export const INACTIVITY_LIMIT_S = 30 * 60;
+/** Inactividad máxima por rol y frecuencia de re-sellado (5 min).
+ *  Admin 30 min (CA-29: panel sensible); resto 30 días (UX web/móvil). */
+export const ADMIN_INACTIVITY_LIMIT_S = 30 * 60;
+export const USER_INACTIVITY_LIMIT_S = 30 * 24 * 3600;
 export const ACTIVITY_WRITE_THROTTLE_S = 5 * 60;
+
+function limitFor(role?: string): number {
+  return role === "admin" ? ADMIN_INACTIVITY_LIMIT_S : USER_INACTIVITY_LIMIT_S;
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -72,8 +78,11 @@ export const authOptions: NextAuthOptions = {
         "number"
           ? ((token as JWT & { lastActivity?: number }).lastActivity as number)
           : now;
+      const limit = limitFor(
+        (token as JWT & { role?: string }).role as string | undefined
+      );
 
-      if (now - last > INACTIVITY_LIMIT_S) {
+      if (now - last > limit) {
         // Sesión expirada por inactividad: devolver null la destruye (NextAuth v4)
         return null as unknown as JWT;
       }
