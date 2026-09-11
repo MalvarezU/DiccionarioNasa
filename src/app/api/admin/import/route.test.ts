@@ -7,7 +7,7 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/db", () => ({
   db: {
-    dictionaryWord: { findFirst: vi.fn(), create: vi.fn() },
+    dictionaryWord: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn() },
     auditLog: { create: vi.fn() },
   },
 }))
@@ -48,7 +48,7 @@ describe("POST /api/admin/import", () => {
 
   it("imports new words successfully", async () => {
     allow()
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
     vi.mocked(db.dictionaryWord.create).mockResolvedValue({ id: "new1" } as never)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
@@ -90,7 +90,7 @@ describe("POST /api/admin/import", () => {
 
   it("skips duplicates", async () => {
     allow()
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue({ id: "existing" } as never)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([{ spanish: "casa" }] as never)
 
     const res = await POST(makeReq([{ spanish: "casa", nasaYuwe: "ya:t" }]))
     const body = await res.json()
@@ -99,9 +99,30 @@ describe("POST /api/admin/import", () => {
     expect(body.created).toBe(0)
   })
 
+  it("entra en BORRADOR por defecto y detecta duplicado insensible a mayúsculas [B1.10]", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([{ spanish: "CASA" }] as never)
+    vi.mocked(db.dictionaryWord.create).mockResolvedValue({ id: "n1" } as never)
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await POST(
+      makeReq([
+        { spanish: "casa", nasaYuwe: "ya:t" },
+        { spanish: "sol", nasaYuwe: "kiwe" },
+      ])
+    )
+    const body = await res.json()
+
+    expect(body.skipped).toBe(1)
+    expect(body.created).toBe(1)
+    expect(vi.mocked(db.dictionaryWord.create)).toHaveBeenCalledWith({
+      data: expect.objectContaining({ spanish: "sol", status: "DRAFT" }),
+    })
+  })
+
   it("counts rows with missing required fields as errors", async () => {
     allow()
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
 
     const res = await POST(makeReq([
       { spanish: "", nasaYuwe: "" },
@@ -115,7 +136,7 @@ describe("POST /api/admin/import", () => {
 
   it("handles nasa_yuwe (underscore variant)", async () => {
     allow()
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
     vi.mocked(db.dictionaryWord.create).mockResolvedValue({ id: "new1" } as never)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
@@ -127,7 +148,7 @@ describe("POST /api/admin/import", () => {
 
   it("normalizes status values", async () => {
     allow()
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
     vi.mocked(db.dictionaryWord.create).mockResolvedValue({ id: "new1" } as never)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
@@ -142,7 +163,7 @@ describe("POST /api/admin/import", () => {
 
   it("creates audit log when at least one word is created", async () => {
     allow()
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
     vi.mocked(db.dictionaryWord.create).mockResolvedValue({ id: "new1" } as never)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
@@ -155,7 +176,7 @@ describe("POST /api/admin/import", () => {
 
   it("registra una entrada por ficha con su entityId [B1.8]", async () => {
     allow()
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
     vi.mocked(db.dictionaryWord.create)
       .mockResolvedValueOnce({ id: "n1" } as never)
       .mockResolvedValueOnce({ id: "n2" } as never)

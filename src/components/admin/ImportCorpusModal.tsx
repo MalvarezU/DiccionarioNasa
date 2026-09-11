@@ -25,112 +25,34 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
 
-const CSV_COLUMN_MAP: Record<string, string> = {
-  "palabra_nyw": "nasaYuwe",
-  "palabra_esp": "spanish",
-  "tipo1": "category",
-  "ejemplo_ny": "exampleNasaYuwe",
-  "ejemplo_esp": "exampleSpanish",
-  "estado": "status",
-  "nasa_yuwe": "nasaYuwe",
-  "nasayuwe": "nasaYuwe",
-  "spanish": "spanish",
-  "category": "category",
-  "pronunciation": "pronunciation",
-  "culturalcontext": "culturalContext",
-  "cultural_context": "culturalContext",
-  "audio_url": "audioUrl",
-  "audiourl": "audioUrl",
-  "status": "status",
-  "examples": "examples",
+interface PreviewColumn {
+  header: string
+  mapped: string | null
 }
 
-const VALID_STATUSES = new Set(["DRAFT", "PUBLISHED", "ARCHIVED", "BORRADOR", "PUBLICADA", "ARCHIVADA"])
-
-function normalizeStatus(raw: string): string {
-  const upper = raw.trim().toUpperCase()
-  if (upper === "BORRADOR") return "DRAFT"
-  if (upper === "PUBLICADA") return "PUBLISHED"
-  if (upper === "ARCHIVADA") return "ARCHIVED"
-  if (VALID_STATUSES.has(upper)) return upper
-  return "DRAFT"
+interface PreviewData {
+  fileName: string
+  columns: PreviewColumn[]
+  total: number
+  valid: number
+  invalid: number
+  duplicates: number
+  errors: Array<{ row: number; reason: string }>
+  previewToken: string
 }
 
-function parseCSVRows(text: string): Array<Record<string, string>> {
-  let raw = text.replace(/^\uFEFF/, "")
-  raw = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
-
-  const lines: string[] = []
-  let current = ""
-  let inQuotes = false
-
-  for (let i = 0; i < raw.length; i++) {
-    const ch = raw[i]
-    if (ch === '"') {
-      if (inQuotes && raw[i + 1] === '"') {
-        current += '"'
-        i++
-      } else {
-        inQuotes = !inQuotes
-        current += ch
-      }
-    } else if (ch === '\n' && !inQuotes) {
-      lines.push(current)
-      current = ""
-    } else {
-      current += ch
-    }
-  }
-  if (current.trim()) lines.push(current)
-
-  if (lines.length < 2) return []
-
-  const headers = parseCSVLine(lines[0]).map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"))
-  const mappedHeaders = headers.map((h) => CSV_COLUMN_MAP[h] || h)
-
-  const rows: Array<Record<string, string>> = []
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!line) continue
-
-    const values = parseCSVLine(line)
-    const row: Record<string, string> = {}
-    mappedHeaders.forEach((h, idx) => {
-      row[h] = (values[idx] || "").trim()
-    })
-    rows.push(row)
-  }
-
-  return rows
+interface ReportRow {
+  spanish: string
+  nasaYuwe: string
+  resultado: string
 }
 
-function parseCSVLine(line: string): string[] {
-  const result: string[] = []
-  let current = ""
-  let inQuotes = false
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"'
-        i++
-      } else {
-        inQuotes = !inQuotes
-      }
-    } else if (ch === ',' && !inQuotes) {
-      result.push(current)
-      current = ""
-    } else {
-      current += ch
-    }
-  }
-  result.push(current)
-  return result
+interface ConfirmResult {
+  created: number
+  skipped: number
+  total: number
+  report: ReportRow[]
 }
 
 interface ImportCorpusModalProps {
@@ -144,91 +66,71 @@ export function ImportCorpusModal({
   onOpenChange,
   onImported,
 }: ImportCorpusModalProps) {
-  const [csvText, setCsvText] = useState("")
-  const [isImporting, setIsImporting] = useState(false)
-  const [importResult, setImportResult] = useState<{
-    total: number
-    created: number
-    skipped: number
-    errors: number
-    errorRows: Array<{ row: number; reason: string }>
-  } | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [isPreviewing, setIsPreviewing] = useState(false)
+  const [preview, setPreview] = useState<PreviewData | null>(null)
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [importResult, setImportResult] = useState<ConfirmResult | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
 
+  const reset = useCallback(() => {
+    setFileName(null)
+    setPreview(null)
+    setImportResult(null)
+    setImportError(null)
+  }, [])
+
+  // Paso 1: subir y previsualizar (valida sin escribir)
   const handleFileUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (!file) return
 
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const text = event.target?.result as string
-        setCsvText(text)
-        setImportResult(null)
-        setImportError(null)
+      setFileName(file.name)
+      setPreview(null)
+      setImportResult(null)
+      setImportError(null)
+      setIsPreviewing(true)
+
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
+        const res = await fetch("/api/admin/import/preview", {
+          method: "POST",
+          body: formData,
+        })
+        const data = await res.json()
+        if (res.ok) {
+          setPreview(data)
+        } else {
+          setImportError(data.message || "No se pudo previsualizar el archivo")
+        }
+      } catch {
+        setImportError("Error de conexión con el servidor")
+      } finally {
+        setIsPreviewing(false)
       }
-      reader.readAsText(file, "utf-8")
     },
     []
   )
 
-  const handleImport = useCallback(async () => {
-    if (!csvText.trim()) {
-      setImportError("Sube un archivo CSV o pega los datos")
-      return
-    }
+  // Paso 2: confirmar (todo entra en BORRADOR salvo columna explícita)
+  const handleConfirm = useCallback(async () => {
+    if (!preview) return
 
-    const rows = parseCSVRows(csvText)
-    if (rows.length === 0) {
-      setImportError("No se encontraron filas válidas. Verifica que la primera fila tenga los encabezados correctos.")
-      return
-    }
-
-    const hasNasaYuwe = rows.some((r) => r.nasaYuwe)
-    const hasSpanish = rows.some((r) => r.spanish)
-    if (!hasNasaYuwe && !hasSpanish) {
-      setImportError("No se encontró la columna «Palabra_nyW» ni «Palabra_esp». Verifica los encabezados del CSV.")
-      return
-    }
-
-    setIsImporting(true)
+    setIsConfirming(true)
     setImportError(null)
-    setImportResult(null)
-
-    const words = rows.map((row) => {
-      const exampleNasa = row.exampleNasaYuwe?.trim()
-      const exampleEsp = row.exampleSpanish?.trim()
-
-      let examples: Array<{ spanish: string; nasaYuwe: string }> | null = null
-      if (exampleEsp || exampleNasa) {
-        examples = [{
-          spanish: exampleEsp || "",
-          nasaYuwe: exampleNasa || "",
-        }]
-      }
-
-      return {
-        nasaYuwe: row.nasaYuwe?.trim() || "",
-        spanish: row.spanish?.trim() || "",
-        category: row.category?.trim() || null,
-        pronunciation: row.pronunciation?.trim() || null,
-        culturalContext: row.culturalContext?.trim() || null,
-        audioUrl: row.audioUrl?.trim() || null,
-        status: row.status ? normalizeStatus(row.status) : "PUBLISHED",
-        examples: examples,
-      }
-    })
 
     try {
-      const res = await fetch("/api/admin/import", {
+      const res = await fetch("/api/admin/import/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ words }),
+        body: JSON.stringify({ previewToken: preview.previewToken }),
       })
-
       const data = await res.json()
       if (res.ok) {
         setImportResult(data)
+        setPreview(null)
         onImported()
       } else {
         setImportError(data.message || "Error al importar")
@@ -236,18 +138,38 @@ export function ImportCorpusModal({
     } catch {
       setImportError("Error de conexión al servidor")
     } finally {
-      setIsImporting(false)
+      setIsConfirming(false)
     }
-  }, [csvText, onImported])
+  }, [preview, onImported])
+
+  const handleDownloadReport = useCallback(() => {
+    if (!importResult) return
+    const header = "espanol,nasa_yuwe,resultado"
+    const rows = importResult.report.map((r) =>
+      [r.spanish, r.nasaYuwe, r.resultado]
+        .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+        .join(",")
+    )
+    const csv = "\uFEFF" + [header, ...rows].join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `reporte-importacion-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }, [importResult])
 
   const handleClose = useCallback(() => {
-    if (!isImporting) {
-      setCsvText("")
-      setImportResult(null)
-      setImportError(null)
+    if (!isPreviewing && !isConfirming) {
+      reset()
       onOpenChange(false)
     }
-  }, [isImporting, onOpenChange])
+  }, [isPreviewing, isConfirming, reset, onOpenChange])
+
+  const busy = isPreviewing || isConfirming
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -258,7 +180,7 @@ export function ImportCorpusModal({
             Importar corpus
           </DialogTitle>
           <DialogDescription>
-            Importa palabras al diccionario desde un archivo CSV
+            Sube un Excel o CSV, revisa la vista previa y confirma. Todo entra en borrador.
           </DialogDescription>
         </DialogHeader>
 
@@ -266,93 +188,92 @@ export function ImportCorpusModal({
           <Card className="bg-muted/40">
             <CardContent className="pt-4 pb-4 space-y-2">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                <strong>Formato CSV requerido:</strong> Primera fila con encabezados.
-                Los campos deben estar separados por comas. Si un campo contiene comas, envuélvelo entre comillas dobles.
+                <strong>Paso 1:</strong> sube <code className="bg-muted px-1 rounded">.xlsx</code> o{" "}
+                <code className="bg-muted px-1 rounded">.csv</code> con encabezados
+                (<code className="bg-muted px-1 rounded">Palabra_esp</code>,{" "}
+                <code className="bg-muted px-1 rounded">Palabra_nyW</code>, categoría, ejemplos, estado).
+                <strong>Paso 2:</strong> revisa N listas + M errores y confirma.
               </p>
-              <div className="overflow-x-auto">
-                <table className="text-[10px] font-mono text-muted-foreground w-full">
-                  <thead>
-                    <tr className="border-b border-muted-foreground/20">
-                      <th className="text-left py-1 pr-3 font-semibold">Columna</th>
-                      <th className="text-left py-1 pr-3 font-semibold">Obligatoria</th>
-                      <th className="text-left py-1 font-semibold">Descripción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-muted-foreground/10">
-                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Palabra_nyW</code></td>
-                      <td className="py-1 pr-3 text-secondary">Sí</td>
-                      <td className="py-1">Palabra en Nasa Yuwe</td>
-                    </tr>
-                    <tr className="border-b border-muted-foreground/10">
-                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Palabra_esp</code></td>
-                      <td className="py-1 pr-3 text-secondary">Sí</td>
-                      <td className="py-1">Palabra en español</td>
-                    </tr>
-                    <tr className="border-b border-muted-foreground/10">
-                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">tipo1</code></td>
-                      <td className="py-1 pr-3 text-muted-foreground">No</td>
-                      <td className="py-1">Categoría gramatical (sustantivo, verbo…)</td>
-                    </tr>
-                    <tr className="border-b border-muted-foreground/10">
-                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Ejemplo_ny</code></td>
-                      <td className="py-1 pr-3 text-muted-foreground">No</td>
-                      <td className="py-1">Ejemplo de uso en Nasa Yuwe</td>
-                    </tr>
-                    <tr className="border-b border-muted-foreground/10">
-                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Ejemplo_esp</code></td>
-                      <td className="py-1 pr-3 text-muted-foreground">No</td>
-                      <td className="py-1">Ejemplo de uso en español</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 pr-3"><code className="bg-muted px-1 rounded">Estado</code></td>
-                      <td className="py-1 pr-3 text-muted-foreground">No</td>
-                      <td className="py-1">DRAFT / PUBLISHED / ARCHIVED (default: PUBLISHED)</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1 font-mono bg-muted/60 rounded p-2">
-                Palabra_nyW,Palabra_esp,tipo1,Ejemplo_ny,Ejemplo_esp,Estado<br />
-                kxãwã,casa,sustantivo,"Kxãwã peç weçx","La casa es grande",PUBLISHED
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Duplicados por «español» se omiten sin sobrescribir. Sin columna de estado, todo queda en{" "}
+                <strong>Borrador</strong> para revisión.
               </p>
             </CardContent>
           </Card>
 
           <div className="space-y-2">
-            <Label>Subir archivo CSV</Label>
+            <Label>Subir archivo Excel o CSV</Label>
             <div className="flex items-center gap-3">
               <Input
                 type="file"
-                accept=".csv,.txt"
+                accept=".xlsx,.xls,.csv"
                 onChange={handleFileUpload}
+                disabled={busy}
                 className="max-w-xs"
               />
-              {csvText && (
+              {fileName && (
                 <Badge variant="secondary" className="gap-1">
                   <FileUp className="h-3 w-3" />
-                  {parseCSVRows(csvText).length} filas
+                  {fileName}
                 </Badge>
               )}
             </div>
           </div>
 
-          <Separator />
+          {isPreviewing && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Validando archivo...
+            </div>
+          )}
 
-          <div className="space-y-2">
-            <Label>O pega el CSV aquí</Label>
-            <Textarea
-              placeholder="Palabra_nyW,Palabra_esp,tipo1,Ejemplo_ny,Ejemplo_esp,Estado"
-              rows={6}
-              value={csvText}
-              onChange={(e) => {
-                setCsvText(e.target.value)
-                setImportResult(null)
-                setImportError(null)
-              }}
-              className="font-mono text-xs"
-            />
-          </div>
+          {preview && (
+            <Card className="border-primary/30">
+              <CardContent className="pt-4 pb-4 space-y-2">
+                <p className="text-sm font-medium text-foreground">
+                  Vista previa: {preview.valid} listas de {preview.total} filas
+                  {preview.duplicates > 0 && (
+                    <span className="text-tertiary"> · {preview.duplicates} duplicadas</span>
+                  )}
+                  {preview.invalid > 0 && (
+                    <span className="text-destructive"> · {preview.invalid} con errores</span>
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {preview.columns.map((c) => (
+                    <Badge
+                      key={c.header}
+                      variant={c.mapped ? "secondary" : "outline"}
+                      className="text-[10px]"
+                    >
+                      {c.header} → {c.mapped ?? "ignorada"}
+                    </Badge>
+                  ))}
+                </div>
+                {preview.errors.length > 0 && (
+                  <div className="space-y-1">
+                    {preview.errors.map((err, i) => (
+                      <p key={i} className="text-[11px] text-destructive">
+                        Fila {err.row}: {err.reason}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  onClick={handleConfirm}
+                  disabled={isConfirming || preview.valid === 0}
+                  className="gap-2 mt-1"
+                >
+                  {isConfirming ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  {isConfirming ? "Importando..." : `Confirmar (${preview.valid} en borrador)`}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {importResult && (
             <Card className="border-secondary/30">
@@ -367,21 +288,18 @@ export function ImportCorpusModal({
                       <span>Total: <strong className="text-foreground">{importResult.total}</strong></span>
                       <span className="text-secondary">Creadas: <strong>{importResult.created}</strong></span>
                       {importResult.skipped > 0 && (
-                        <span className="text-tertiary">Duplicadas: <strong>{importResult.skipped}</strong></span>
-                      )}
-                      {importResult.errors > 0 && (
-                        <span className="text-destructive">Errores: <strong>{importResult.errors}</strong></span>
+                        <span className="text-tertiary">Omitidas: <strong>{importResult.skipped}</strong></span>
                       )}
                     </div>
-                    {importResult.errorRows && importResult.errorRows.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {importResult.errorRows.map((err, i) => (
-                          <p key={i} className="text-[11px] text-destructive">
-                            Fila {err.row}: {err.reason}
-                          </p>
-                        ))}
-                      </div>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDownloadReport}
+                      className="gap-1.5 mt-2 text-xs h-8"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Descargar reporte CSV
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -397,23 +315,9 @@ export function ImportCorpusModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isImporting}>
+          <Button variant="outline" onClick={handleClose} disabled={busy}>
             {importResult ? "Cerrar" : "Cancelar"}
           </Button>
-          {!importResult && (
-            <Button
-              onClick={handleImport}
-              disabled={isImporting || !csvText.trim()}
-              className="gap-2"
-            >
-              {isImporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              {isImporting ? "Importando..." : "Importar"}
-            </Button>
-          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

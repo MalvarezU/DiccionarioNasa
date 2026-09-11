@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireRole } from "@/lib/auth"
+import { validateRow, type ValidWord } from "@/lib/import-helpers"
 
 /**
  * POST /api/admin/import
  *
- * Imports words from CSV data.
- * Expects a JSON body with a `words` array where each item may contain:
- *   - nasaYuwe, spanish (required)
- *   - category, pronunciation, culturalContext, audioUrl (optional)
- *   - examples: Array<{ spanish: string; nasaYuwe: string }> (optional, stored as JSON string)
- *   - status: "DRAFT" | "PUBLISHED" | "ARCHIVED" (defaults to PUBLISHED)
+ * Imports words from a JSON `words` array (compatibilidad con el modal
+ * clásico; para archivos .xlsx/.csv usar preview+confirm).
+ * Usa la misma validación: default BORRADOR (CA-32), duplicados por
+ * «español» insensible a mayúsculas (CA-33) y bitácora por ficha (B1.8).
  */
 export async function POST(request: Request) {
   const { session, error } = await requireRole("editor")
@@ -40,67 +39,40 @@ export async function POST(request: Request) {
     let errors = 0
     const errorRows: Array<{ row: number; reason: string }> = []
 
+    const valid: Array<{ index: number; data: ValidWord }> = []
     for (let i = 0; i < words.length; i++) {
-      const row = words[i]
-      const spanish = row.spanish?.trim()
-      const nasaYuwe = row.nasaYuwe?.trim() || row.nasa_yuwe?.trim()
-
-      if (!spanish || !nasaYuwe) {
+      const result = validateRow((words[i] ?? {}) as Record<string, unknown>)
+      if (result.ok) valid.push({ index: i, data: result.data })
+      else {
         errors++
-        errorRows.push({ row: i + 1, reason: "Campos obligatorios faltantes (Palabra_esp, Palabra_nyW)" })
-        continue
+        errorRows.push({ row: i + 1, reason: result.reason })
       }
+    }
 
-      // Check for duplicate
-      const existing = await db.dictionaryWord.findFirst({
-        where: {
-          spanish,
-          nasaYuwe,
-        },
+    // Duplicados por «español» (una sola consulta)
+    const taken = new Set<string>()
+    if (valid.length > 0) {
+      const names = [...new Set(valid.map((w) => w.data.spanish))]
+      const existing = await db.dictionaryWord.findMany({
+        where: { spanish: { in: names, mode: "insensitive" } },
+        select: { spanish: true },
       })
+      for (const w of existing) taken.add(w.spanish.trim().toLowerCase())
+    }
 
-      if (existing) {
+    const seen = new Set<string>()
+    const userId = (session!.user as { id: string }).id
+    for (const { index, data } of valid) {
+      const key = data.spanish.trim().toLowerCase()
+      if (taken.has(key) || seen.has(key)) {
         skipped++
         continue
       }
-
-      // Normalize status
-      const rawStatus = (row.status || "PUBLISHED").trim().toUpperCase()
-      let status = "PUBLISHED"
-      if (rawStatus === "DRAFT" || rawStatus === "BORRADOR") status = "DRAFT"
-      else if (rawStatus === "PUBLISHED" || rawStatus === "PUBLICADA") status = "PUBLISHED"
-      else if (rawStatus === "ARCHIVED" || rawStatus === "ARCHIVADA") status = "ARCHIVED"
-
-      // Handle examples: could be an array of objects or a JSON string
-      let examplesJson: string | null = null
-      if (row.examples) {
-        if (typeof row.examples === "string") {
-          examplesJson = row.examples
-        } else if (Array.isArray(row.examples)) {
-          // Only store if at least one example has content
-          const nonEmpty = row.examples.filter(
-            (ex: { spanish?: string; nasaYuwe?: string }) => ex.spanish?.trim() || ex.nasaYuwe?.trim()
-          )
-          if (nonEmpty.length > 0) {
-            examplesJson = JSON.stringify(nonEmpty)
-          }
-        }
-      }
+      seen.add(key)
 
       // Create the word
       try {
-        const createdWord = await db.dictionaryWord.create({
-          data: {
-            spanish,
-            nasaYuwe,
-            pronunciation: row.pronunciation?.trim() || null,
-            audioUrl: row.audioUrl?.trim() || row.audio_url?.trim() || null,
-            culturalContext: row.culturalContext?.trim() || row.cultural_context?.trim() || null,
-            category: row.category?.trim() || null,
-            examples: examplesJson,
-            status,
-          },
-        })
+        const createdWord = await db.dictionaryWord.create({ data: { ...data } })
         // B1.8: una entrada por ficha (trazabilidad individual)
         await db.auditLog.create({
           data: {
@@ -108,19 +80,19 @@ export async function POST(request: Request) {
             entity: "DictionaryWord",
             entityId: createdWord.id,
             changes: JSON.stringify({
-              spanish,
-              nasaYuwe,
-              status,
-              row: i + 1,
+              spanish: data.spanish,
+              nasaYuwe: data.nasaYuwe,
+              status: data.status,
+              row: index + 1,
             }),
-            userId: (session!.user as { id: string }).id,
+            userId,
             wordId: createdWord.id,
           },
         })
         created++
       } catch {
         errors++
-        errorRows.push({ row: i + 1, reason: "Error al crear la ficha" })
+        errorRows.push({ row: index + 1, reason: "Error al crear la ficha" })
       }
     }
 
@@ -136,7 +108,7 @@ export async function POST(request: Request) {
             skipped,
             errors,
           }),
-          userId: (session!.user as { id: string }).id,
+          userId,
         },
       })
     }

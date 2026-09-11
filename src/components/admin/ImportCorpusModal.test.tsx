@@ -34,7 +34,7 @@ describe("ImportCorpusModal", () => {
 
   it("shows file upload label", () => {
     renderModal()
-    expect(screen.getByText("Subir archivo CSV")).toBeDefined()
+    expect(screen.getByText("Subir archivo Excel o CSV")).toBeDefined()
   })
 
   it("shows file upload area", () => {
