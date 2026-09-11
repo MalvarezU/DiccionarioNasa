@@ -22,7 +22,7 @@ export async function POST() {
       })
     }
 
-    const hashedPassword = await bcrypt.hash('demo123', 10)
+    const hashedPassword = await bcrypt.hash('demo123', 12)
 
     await db.user.create({
       data: {

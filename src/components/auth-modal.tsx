@@ -88,8 +88,8 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       return;
     }
 
-    if (password.length < 6) {
-      toast({ title: "Contraseña muy corta", description: "La contraseña debe tener al menos 6 caracteres", variant: "destructive" });
+    if (password.length < 8) {
+      toast({ title: "Contraseña muy corta", description: "La contraseña debe tener al menos 8 caracteres", variant: "destructive" });
       return;
     }
 
@@ -194,9 +194,9 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={mode === "register" ? "Mínimo 6 caracteres" : "Tu contraseña"}
+              placeholder={mode === "register" ? "Mínimo 8 caracteres" : "Tu contraseña"}
               required
-              minLength={6}
+              minLength={mode === "register" ? 8 : 1}
               disabled={isLoading}
             />
           </div>
@@ -211,7 +211,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repite tu contraseña"
                 required
-                minLength={6}
+                minLength={8}
                 disabled={isLoading}
                 aria-invalid={confirmPassword.length > 0 && password !== confirmPassword}
                 className={confirmPassword.length > 0 && password !== confirmPassword ? "border-destructive" : ""}

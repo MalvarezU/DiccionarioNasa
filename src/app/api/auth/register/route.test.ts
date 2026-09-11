@@ -57,7 +57,7 @@ describe("POST /api/auth/register", () => {
     expect(res.status).toBe(200)
     expect(body.success).toBe(true)
     expect(body.user.email).toBe("test@example.com")
-    expect(bcrypt.hash).toHaveBeenCalledWith("password123", 10)
+    expect(bcrypt.hash).toHaveBeenCalledWith("password123", 12)
   })
 
   it("returns 400 when email is missing", async () => {
@@ -74,13 +74,35 @@ describe("POST /api/auth/register", () => {
     expect(body.message).toContain("contraseña")
   })
 
-  it("returns 400 when password is too short (< 6 chars)", async () => {
+  it("returns 400 when password is too short (< 8 chars)", async () => {
     const res = await POST(
-      makeRequest({ email: "test@example.com", password: "12345" })
+      makeRequest({ email: "test@example.com", password: "1234567" })
     )
     expect(res.status).toBe(400)
     const body = await res.json()
-    expect(body.message).toContain("6 caracteres")
+    expect(body.message).toContain("8 caracteres")
+  })
+
+  it("accepts a password with exactly 8 chars (boundary)", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue(null)
+    vi.mocked(bcrypt.hash).mockResolvedValue("hashed-pw" as never)
+    vi.mocked(db.user.create).mockResolvedValue({
+      id: "u1",
+      email: "test@example.com",
+      name: null,
+      password: "hashed-pw",
+      role: "user",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never)
+
+    const res = await POST(
+      makeRequest({ email: "test@example.com", password: "12345678" })
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.success).toBe(true)
+    expect(bcrypt.hash).toHaveBeenCalledWith("12345678", 12)
   })
 
   it("returns 409 when email already exists", async () => {

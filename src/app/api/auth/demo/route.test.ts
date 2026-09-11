@@ -34,7 +34,7 @@ describe("POST /api/auth/demo", () => {
     expect(body.message).toBe("Demo user created")
     expect(body.email).toBe("demo@nasayuwe.com")
     expect(body.password).toBe("demo123")
-    expect(bcrypt.hash).toHaveBeenCalledWith("demo123", 10)
+    expect(bcrypt.hash).toHaveBeenCalledWith("demo123", 12)
   })
 
   it("returns existing demo user info when already exists", async () => {

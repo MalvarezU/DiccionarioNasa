@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { message: 'La contraseña debe tener al menos 6 caracteres' },
+        { message: 'La contraseña debe tener al menos 8 caracteres' },
         { status: 400 }
       )
     }
@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
+    // Hash password (cost 12 per RNF-10)
+    const hashedPassword = await bcrypt.hash(password, 12)
 
     // Create user
     const user = await db.user.create({

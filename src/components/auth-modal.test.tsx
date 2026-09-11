@@ -17,7 +17,7 @@ import { AuthModal } from "./auth-modal"
 const onOpenChange = vi.fn()
 const emailPlaceholder = "tu@email.com"
 const passwordPlaceholder = "Tu contraseña"
-const regPasswordPlaceholder = "Mínimo 6 caracteres"
+const regPasswordPlaceholder = "Mínimo 8 caracteres"
 const confirmPlaceholder = "Repite tu contraseña"
 
 describe("AuthModal", () => {
