@@ -9,7 +9,8 @@ vi.mock("@/app/api/auth/[...nextauth]/route", () => ({
 }))
 
 import { getServerSession } from "next-auth"
-import { getAuthSession, requireAuth, requireAdmin, isAdmin } from "@/lib/auth"
+import { getAuthSession, requireAuth, requireAdmin, requireRole, isAdmin, canUseAdminPanel } from "@/lib/auth"
+import { ROLES, isRole, canEdit, canAdminister } from "@/lib/roles"
 
 describe("auth helpers", () => {
   beforeEach(() => vi.clearAllMocks())
@@ -108,6 +109,60 @@ describe("auth helpers", () => {
 
     it("returns false when user has no role", () => {
       expect(isAdmin({ user: {} })).toBe(false)
+    })
+  })
+
+  describe("requireRole (B1.5)", () => {
+    const sess = (role?: string) =>
+      ({ user: { id: "u1", ...(role !== undefined ? { role } : {}) } }) as never
+
+    it("editor pasa donde se pide editor; admin también (jerarquía)", async () => {
+      vi.mocked(getServerSession).mockResolvedValue(sess("editor"))
+      expect((await requireRole("editor")).error).toBeNull()
+      vi.mocked(getServerSession).mockResolvedValue(sess("admin"))
+      expect((await requireRole("editor")).error).toBeNull()
+    })
+
+    it("user recibe 403 donde se pide editor", async () => {
+      vi.mocked(getServerSession).mockResolvedValue(sess("user"))
+      const result = await requireRole("editor")
+      expect(result.session).toBeNull()
+      expect(result.error!.status).toBe(403)
+    })
+
+    it("editor recibe 403 donde se pide admin", async () => {
+      vi.mocked(getServerSession).mockResolvedValue(sess("editor"))
+      const result = await requireRole("admin")
+      expect(result.session).toBeNull()
+      expect(result.error!.status).toBe(403)
+    })
+
+    it("sin sesión recibe 401", async () => {
+      vi.mocked(getServerSession).mockResolvedValue(null)
+      const result = await requireRole("editor")
+      expect(result.error!.status).toBe(401)
+    })
+  })
+
+  describe("canUseAdminPanel", () => {
+    it("admite editor y admin, niega resto", () => {
+      expect(canUseAdminPanel({ user: { role: "editor" } })).toBe(true)
+      expect(canUseAdminPanel({ user: { role: "admin" } })).toBe(true)
+      expect(canUseAdminPanel({ user: { role: "user" } })).toBe(false)
+      expect(canUseAdminPanel(null)).toBe(false)
+    })
+  })
+
+  describe("roles", () => {
+    it("define user < editor < admin", () => {
+      expect([...ROLES]).toEqual(["user", "editor", "admin"])
+      expect(isRole("editor")).toBe(true)
+      expect(isRole("superadmin")).toBe(false)
+      expect(canEdit("editor")).toBe(true)
+      expect(canEdit("admin")).toBe(true)
+      expect(canEdit("user")).toBe(false)
+      expect(canAdminister("editor")).toBe(false)
+      expect(canAdminister("admin")).toBe(true)
     })
   })
 })

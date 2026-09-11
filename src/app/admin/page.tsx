@@ -2,6 +2,7 @@
 
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { NavBar } from "@/components/navbar"
@@ -9,6 +10,10 @@ import { AdminDashboard } from "@/components/admin-dashboard"
 import { UserManagementSection } from "@/components/user-management-section"
 
 export default function AdminPage() {
+  const { data: session } = useSession()
+  const userRole = (session?.user as { role?: string } | undefined)?.role
+  const isAdmin = userRole === "admin"
+
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
@@ -25,13 +30,16 @@ export default function AdminPage() {
             </Link>
           </div>
 
-          {/* Admin Dashboard */}
-          <AdminDashboard />
+          {/* Admin Dashboard (editor: sin archivado en lote) */}
+          <AdminDashboard canBulkArchive={isAdmin} />
 
-          <Separator className="my-8" />
-
-          {/* User Management */}
-          <UserManagementSection />
+          {/* User Management (solo admin; la API también lo exige) */}
+          {isAdmin && (
+            <>
+              <Separator className="my-8" />
+              <UserManagementSection />
+            </>
+          )}
         </div>
       </main>
 

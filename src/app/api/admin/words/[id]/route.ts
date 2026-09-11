@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin, requireRole } from '@/lib/auth'
 import {
   getSupabaseServer,
   AUDIO_BUCKET,
@@ -33,7 +33,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { session, error } = await requireAdmin()
+  const { session, error } = await requireRole("editor")
   if (error) return error
 
   try {
@@ -259,11 +259,13 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { session, error } = await requireAdmin()
+  const { session, error } = await requireRole("editor")
   if (error) return error
 
   try {
     const { id } = await params
+
+    // Parse request body
     const body = await request.json()
     const { status } = body
 

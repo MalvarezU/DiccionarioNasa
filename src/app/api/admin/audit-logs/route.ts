@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { requireAdmin } from "@/lib/auth"
+import { requireRole } from "@/lib/auth"
 
 /**
  * GET /api/admin/audit-logs
@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/auth"
  * Query params: page, pageSize, action, entity
  */
 export async function GET(request: Request) {
-  const { session, error } = await requireAdmin()
+  const { session, error } = await requireRole("editor")
   if (error) return error
 
   try {

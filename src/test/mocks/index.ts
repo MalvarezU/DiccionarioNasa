@@ -4,9 +4,12 @@ export {
   mockAuth,
   adminSession,
   userSession,
+  editorSession,
   allowAdmin,
   denyAdmin,
   allowUser,
+  allowRole,
+  denyRole,
 } from "./auth"
 export {
   mockNextAuth,

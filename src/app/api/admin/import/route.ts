@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { requireAdmin } from "@/lib/auth"
+import { requireRole } from "@/lib/auth"
 
 /**
  * POST /api/admin/import
@@ -13,7 +13,7 @@ import { requireAdmin } from "@/lib/auth"
  *   - status: "DRAFT" | "PUBLISHED" | "ARCHIVED" (defaults to PUBLISHED)
  */
 export async function POST(request: Request) {
-  const { session, error } = await requireAdmin()
+  const { session, error } = await requireRole("editor")
   if (error) return error
 
   try {

@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest"
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
+  requireRole: vi.fn(),
 }))
 
 const mockUpload = vi.fn()
@@ -27,17 +28,23 @@ vi.mock("@/lib/supabase-server", () => ({
   ),
 }))
 
-import { requireAdmin } from "@/lib/auth"
+import { requireAdmin, requireRole } from "@/lib/auth"
 import { POST } from "./route"
 
 const adminSession = { user: { id: "admin1", role: "admin" } } as never
+const editorSession = { user: { id: "editor1", role: "editor" } } as never
 
 function allow() {
   vi.mocked(requireAdmin).mockResolvedValue({ session: adminSession, error: null })
+  vi.mocked(requireRole).mockResolvedValue({ session: editorSession, error: null })
 }
 
 function deny() {
   vi.mocked(requireAdmin).mockResolvedValue({
+    session: null,
+    error: Response.json({ message: "No autorizado" }, { status: 401 }),
+  })
+  vi.mocked(requireRole).mockResolvedValue({
     session: null,
     error: Response.json({ message: "No autorizado" }, { status: 401 }),
   })

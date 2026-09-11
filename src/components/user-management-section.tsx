@@ -6,6 +6,7 @@ import {
   Users,
   Shield,
   ShieldCheck,
+  Pencil,
   Loader2,
   Search,
   Trash2,
@@ -100,8 +101,17 @@ export function UserManagementSection() {
     fetchUsers()
   }, [fetchUsers])
 
+  const ROLE_LABELS: Record<string, string> = {
+    user: "usuario",
+    editor: "editor",
+    admin: "administrador",
+  }
+
+  const nextRole = (role: string) =>
+    role === "admin" ? "user" : role === "editor" ? "admin" : "editor"
+
   const handleToggleRole = async (user: UserRow) => {
-    const newRole = user.role === "admin" ? "user" : "admin"
+    const newRole = nextRole(user.role)
     setUpdatingId(user.id)
     try {
       const res = await fetch(`/api/admin/users/${user.id}`, {
@@ -115,8 +125,8 @@ export function UserManagementSection() {
           prev.map((u) => (u.id === user.id ? { ...u, role: newRole } : u))
         )
         toast({
-          title: newRole === "admin" ? "Rol actualizado" : "Rol actualizado",
-          description: `${user.email} ahora es ${newRole === "admin" ? "administrador" : "usuario"}`,
+          title: "Rol actualizado",
+          description: `${user.email} ahora es ${ROLE_LABELS[newRole] ?? newRole}`,
         })
       } else {
         const data = await res.json()
@@ -252,6 +262,11 @@ export function UserManagementSection() {
                             <ShieldCheck className="h-3 w-3" />
                             Admin
                           </Badge>
+                        ) : user.role === "editor" ? (
+                          <Badge className="gap-1 bg-secondary/10 text-secondary hover:bg-secondary/20 border-secondary/20">
+                            <Pencil className="h-3 w-3" />
+                            Editor
+                          </Badge>
                         ) : (
                           <Badge variant="secondary" className="gap-1">
                             <Shield className="h-3 w-3" />
@@ -292,7 +307,7 @@ export function UserManagementSection() {
                                 ) : (
                                   <ShieldCheck className="h-3 w-3" />
                                 )}
-                                {user.role === "admin" ? "Quitar admin" : "Hacer admin"}
+                                {user.role === "admin" ? "A usuario" : user.role === "editor" ? "A admin" : "A editor"}
                               </Button>
                               <Button
                                 variant="ghost"

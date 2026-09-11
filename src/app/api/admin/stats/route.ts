@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { requireAdmin } from "@/lib/auth"
+import { requireRole } from "@/lib/auth"
 
 /**
  * GET /api/admin/stats
@@ -8,7 +8,7 @@ import { requireAdmin } from "@/lib/auth"
  * Returns dashboard statistics for the admin panel.
  */
 export async function GET() {
-  const { session, error } = await requireAdmin()
+  const { session, error } = await requireRole("editor")
   if (error) return error
 
   try {

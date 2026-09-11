@@ -36,6 +36,7 @@ export function NavBar() {
   const isAuthenticated = !!session?.user
   const userRole = (session?.user as { role?: string } | undefined)?.role
   const isAdminUser = userRole === "admin"
+  const canUsePanel = userRole === "admin" || userRole === "editor"
 
   const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "Usuario"
 
@@ -146,8 +147,8 @@ export function NavBar() {
                     Mi historial
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {/* Admin link — only visible to admin users */}
-                  {isAdminUser && (
+                  {/* Admin link — visible para admin y editor */}
+                  {canUsePanel && (
                     <DropdownMenuItem className="cursor-pointer" asChild>
                       <Link href="/admin">
                         <Shield className="mr-2 h-4 w-4 text-primary" />

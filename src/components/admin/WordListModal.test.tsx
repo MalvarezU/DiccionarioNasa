@@ -113,4 +113,26 @@ describe("WordListModal", () => {
     const { onOpenChange } = renderModal()
     expect(onOpenChange).toBeDefined()
   })
+
+  it("oculta archivado en lote con canBulkArchive=false [B1.5]", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      Response.json({ words: mockWords, total: 2 }) as never
+    )
+    render(
+      <WordListModal
+        open={true}
+        onOpenChange={vi.fn()}
+        onEditWord={vi.fn()}
+        onBulkActionDone={vi.fn()}
+        canBulkArchive={false}
+      />
+    )
+    expect(await screen.findByText("Casa")).toBeDefined()
+    // El dialogo usa Portal: los checkboxes viven en document.body
+    const boxes = document.querySelectorAll('button[role="checkbox"]')
+    expect(boxes.length).toBeGreaterThan(0)
+    await userEvent.setup().click(boxes[0] as HTMLElement)
+    expect(await screen.findByText("Publicar seleccionadas")).toBeDefined()
+    expect(screen.queryByText("Archivar seleccionadas")).toBeNull()
+  })
 })

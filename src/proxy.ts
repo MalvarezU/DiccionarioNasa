@@ -64,8 +64,8 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(homeUrl)
     }
 
-    // Authenticated but not admin → redirect to home
-    if (token.role !== "admin") {
+    // Authenticated but without panel access (solo admin/editor) → redirect
+    if (token.role !== "admin" && token.role !== "editor") {
       const homeUrl = new URL("/", request.url)
       homeUrl.searchParams.set("auth", "denied")
       return NextResponse.redirect(homeUrl)

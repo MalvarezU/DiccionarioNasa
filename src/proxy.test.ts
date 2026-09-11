@@ -50,6 +50,13 @@ describe("proxy /admin (B1.6)", () => {
     expect(res.headers.get("location")).toContain("auth=denied")
   })
 
+  it("editor entra al panel (B1.5)", async () => {
+    vi.mocked(getToken).mockResolvedValue({ role: "editor" } as never)
+    const res = await proxy(adminRequest())
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+  })
+
   it("rutas fuera de /admin pasan sin verificar", async () => {
     const res = await proxy(urlRequest("http://localhost:3000/juegos"))
     expect(vi.mocked(getToken)).not.toHaveBeenCalled()

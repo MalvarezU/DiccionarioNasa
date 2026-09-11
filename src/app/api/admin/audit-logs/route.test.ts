@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest"
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
+  requireRole: vi.fn(),
 }))
 
 vi.mock("@/lib/db", () => ({
@@ -10,7 +11,7 @@ vi.mock("@/lib/db", () => ({
   },
 }))
 
-import { requireAdmin } from "@/lib/auth"
+import { requireAdmin, requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { GET } from "./route"
 
@@ -32,10 +33,18 @@ function allow() {
     session: { user: { id: "admin1", name: "Admin", email: "a@b.com", role: "admin" } } as never,
     error: null,
   })
+  vi.mocked(requireRole).mockResolvedValue({
+    session: { user: { id: "editor1", name: "Editor", email: "e@b.com", role: "editor" } } as never,
+    error: null,
+  })
 }
 
 function deny() {
   vi.mocked(requireAdmin).mockResolvedValue({
+    session: null,
+    error: Response.json({ message: "No autorizado" }, { status: 401 }),
+  })
+  vi.mocked(requireRole).mockResolvedValue({
     session: null,
     error: Response.json({ message: "No autorizado" }, { status: 401 }),
   })

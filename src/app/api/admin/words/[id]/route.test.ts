@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest"
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
+  requireRole: vi.fn(),
 }))
 
 vi.mock("@/lib/db", () => ({
@@ -23,18 +24,24 @@ vi.mock("@/lib/supabase-server", () => ({
   ),
 }))
 
-import { requireAdmin } from "@/lib/auth"
+import { requireAdmin, requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { PUT, PATCH, DELETE } from "./route"
 
 const adminSession = { user: { id: "admin1", name: "Admin", email: "a@b.com", role: "admin" } } as never
+const editorSession = { user: { id: "editor1", name: "Editor", email: "e@b.com", role: "editor" } } as never
 
 function allow() {
   vi.mocked(requireAdmin).mockResolvedValue({ session: adminSession, error: null })
+  vi.mocked(requireRole).mockResolvedValue({ session: editorSession, error: null })
 }
 
 function deny() {
   vi.mocked(requireAdmin).mockResolvedValue({
+    session: null,
+    error: Response.json({ message: "No autorizado" }, { status: 401 }),
+  })
+  vi.mocked(requireRole).mockResolvedValue({
     session: null,
     error: Response.json({ message: "No autorizado" }, { status: 401 }),
   })
@@ -173,6 +180,38 @@ describe("PUT /api/admin/words/[id]", () => {
       where: { id: "w1" },
       data: expect.objectContaining({ audioUrl: "/audio/new.mp3" }),
     })
+  })
+
+  it("editor no puede borrar (DELETE exige admin) [B1.5]", async () => {
+    // En producción requireAdmin devuelve 403 para editor (ver auth.test)
+    vi.mocked(requireAdmin).mockResolvedValue({
+      session: null,
+      error: Response.json({ message: "Acceso denegado" }, { status: 403 }),
+    })
+
+    const del = await DELETE(
+      new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),
+      params
+    )
+    expect(del.status).toBe(403)
+    expect(db.dictionaryWord.delete).not.toHaveBeenCalled()
+  })
+
+  it("editor sí puede editar con PUT [B1.5]", async () => {
+    vi.mocked(requireRole).mockResolvedValue({ session: editorSession, error: null })
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...existingWord, category: "verbo" })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "verbo" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(200)
   })
 })
 

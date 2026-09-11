@@ -93,19 +93,22 @@ describe("UserManagementSection", () => {
     )
   })
 
-  it("calls PATCH when toggling user role", async () => {
+  it("cycles user role user->editor on toggle [B1.5]", async () => {
     vi.mocked(fetch).mockResolvedValue(
       Response.json({ users: mockUsers })
     )
     renderSection()
     const user = userEvent.setup()
-    expect(await screen.findByRole("button", { name: /hacer admin/i })).toBeDefined()
-    const hacerAdminBtn = screen.getByRole("button", { name: /hacer admin/i })
+    expect(await screen.findByRole("button", { name: /a editor/i })).toBeDefined()
+    const toEditorBtn = screen.getByRole("button", { name: /a editor/i })
     vi.mocked(fetch).mockResolvedValue(Response.json({ message: "ok" }))
-    await user.click(hacerAdminBtn)
+    await user.click(toEditorBtn)
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/admin/users/user-2"),
-      expect.objectContaining({ method: "PATCH" })
+      expect.objectContaining({
+        method: "PATCH",
+        body: expect.stringContaining('"editor"'),
+      })
     )
   })
 

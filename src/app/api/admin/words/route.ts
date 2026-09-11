@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { requireAdmin } from "@/lib/auth"
+import { requireRole } from "@/lib/auth"
 
 /**
  * GET /api/admin/words
@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/auth"
  * Supports ?page=&pageSize=&status=&search= filters.
  */
 export async function GET(request: Request) {
-  const { session, error } = await requireAdmin()
+  const { session, error } = await requireRole("editor")
   if (error) return error
 
   try {
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
  * Creates a new dictionary word (admin action).
  */
 export async function POST(request: Request) {
-  const { session, error } = await requireAdmin()
+  const { session, error } = await requireRole("editor")
   if (error) return error
 
   try {

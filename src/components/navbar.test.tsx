@@ -91,6 +91,23 @@ describe("NavBar", () => {
     expect(screen.getByText("Panel de administración")).toBeDefined()
   })
 
+  it("shows admin link for editors, hides it for users [B1.5]", async () => {
+    mockSession({ user: { name: "Edi", email: "edi@test.com", role: "editor" } })
+    const user = userEvent.setup()
+    const { unmount } = render(<NavBar />)
+
+    await user.click(screen.getByText("E"))
+    expect(screen.getByText("Panel de administración")).toBeDefined()
+    unmount()
+
+    mockSession({ user: { name: "Mario", email: "mario@test.com", role: "user" } })
+    const user2 = userEvent.setup()
+    render(<NavBar />)
+
+    await user2.click(screen.getByText("M"))
+    expect(screen.queryByText("Panel de administración")).toBeNull()
+  })
+
   it("opens auth modal when login button is clicked", async () => {
     const user = userEvent.setup()
     render(<NavBar />)

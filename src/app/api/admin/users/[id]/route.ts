@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth"
+import { isRole } from "@/lib/roles"
 import { db } from "@/lib/db"
 
 /**
  * PATCH /api/admin/users/[id]
  *
  * Update a user's role (admin only).
- * Body: { role: "admin" | "user" }
+ * Body: { role: "admin" | "editor" | "user" }
  */
 export async function PATCH(
   request: NextRequest,
@@ -20,15 +21,15 @@ export async function PATCH(
     const body = await request.json()
     const { role } = body
 
-    if (!role || !["admin", "user"].includes(role)) {
+    if (!role || !isRole(role)) {
       return NextResponse.json(
-        { message: 'El rol debe ser "admin" o "user"' },
+        { message: 'El rol debe ser "admin", "editor" o "user"' },
         { status: 400 }
       )
     }
 
-    // Prevent self-demotion
-    if (id === (session!.user as { id: string }).id && role === "user") {
+    // Prevent self-demotion (cualquier cambio propio que quite admin)
+    if (id === (session!.user as { id: string }).id && role !== "admin") {
       return NextResponse.json(
         { message: "No puedes quitarte tu propio rol de administrador" },
         { status: 400 }

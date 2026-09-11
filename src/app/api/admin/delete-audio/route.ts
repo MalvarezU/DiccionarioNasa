@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
-import { requireAdmin } from "@/lib/auth"
+import { requireRole } from "@/lib/auth"
 import { getSupabaseServer, AUDIO_BUCKET, audioUrlToObjectPath } from "@/lib/supabase-server"
 
 export async function POST(request: Request) {
-  const { error } = await requireAdmin()
+  const { error } = await requireRole("editor")
   if (error) return error
 
   try {

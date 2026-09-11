@@ -60,7 +60,7 @@ import { WordListModal } from "./WordListModal"
 
 const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000 // 5 minutes (HU3.5.6)
 
-export function AdminDashboard() {
+export function AdminDashboard({ canBulkArchive = true }: { canBulkArchive?: boolean }) {
   const mounted = useMounted()
 
   const [stats, setStats] = useState<AdminStats | null>(null)
@@ -691,6 +691,7 @@ export function AdminDashboard() {
         onOpenChange={setWordListOpen}
         onEditWord={handleEditWord}
         onBulkActionDone={handleWordSaved}
+        canBulkArchive={canBulkArchive}
       />
       <EditWordModal
         key={editingWord?.id ?? "new"}

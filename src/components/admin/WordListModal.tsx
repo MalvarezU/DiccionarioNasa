@@ -55,6 +55,8 @@ interface WordListModalProps {
   onOpenChange: (open: boolean) => void
   onEditWord: (word: WordForEdit) => void
   onBulkActionDone: () => void
+  /** Editor: sin archivado en lote (CA-30). Default true (admin). */
+  canBulkArchive?: boolean
 }
 
 export function WordListModal({
@@ -62,6 +64,7 @@ export function WordListModal({
   onOpenChange,
   onEditWord,
   onBulkActionDone,
+  canBulkArchive = true,
 }: WordListModalProps) {
   const prevOpenRef = useRef(false)
   const [words, setWords] = useState<WordForEdit[]>([])
@@ -268,6 +271,7 @@ export function WordListModal({
                   {isBulkAction ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
                   Publicar seleccionadas
                 </Button>
+                {canBulkArchive && (
                 <Button
                   size="sm"
                   variant="secondary"
@@ -278,6 +282,7 @@ export function WordListModal({
                   {isBulkAction ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
                   Archivar seleccionadas
                 </Button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"

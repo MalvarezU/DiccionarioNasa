@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { canAccessAdminPanel, type Role } from "@/lib/roles"
 
 /**
  * Get the current authenticated session, or return null if not authenticated.
@@ -29,21 +30,27 @@ export async function requireAuth() {
 }
 
 /**
- * Require that the current user is authenticated AND has the "admin" role.
+ * Require that the current user is authenticated AND has one of the given roles.
+ * `editor` incluye a `admin` (jerarquía user < editor < admin).
  * Returns the session if authorized, or a NextResponse error if not.
  */
-export async function requireAdmin() {
+export async function requireRole(...allowed: Role[]) {
   const { session, error } = await requireAuth()
 
   if (error) return { session: null, error }
 
   const role = (session!.user as { role?: string }).role
 
-  if (role !== "admin") {
+  const ok =
+    allowed.includes("user") ||
+    (allowed.includes("editor") && (role === "editor" || role === "admin")) ||
+    (allowed.includes("admin") && role === "admin")
+
+  if (!ok) {
     return {
       session: null,
       error: Response.json(
-        { message: "Acceso denegado. Se requiere rol de administrador." },
+        { message: "Acceso denegado. Tu rol no permite esta acción." },
         { status: 403 }
       ),
     }
@@ -53,10 +60,28 @@ export async function requireAdmin() {
 }
 
 /**
+ * Require that the current user is authenticated AND has the "admin" role.
+ * Returns the session if authorized, or a NextResponse error if not.
+ */
+export async function requireAdmin() {
+  return requireRole("admin")
+}
+
+/**
  * Check if a session has admin role (type-safe helper).
  */
 export function isAdmin(session: { user?: { role?: string } | null } | null): boolean {
   if (!session?.user) return false
   const role = (session.user as { role?: string }).role
   return role === "admin"
+}
+
+/**
+ * Check if a session may enter /admin (editor y admin).
+ */
+export function canUseAdminPanel(
+  session: { user?: { role?: string } | null } | null
+): boolean {
+  if (!session?.user) return false
+  return canAccessAdminPanel((session.user as { role?: string }).role)
 }

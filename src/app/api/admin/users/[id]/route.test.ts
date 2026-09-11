@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
+import { NextRequest } from "next/server"
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
@@ -24,6 +25,9 @@ const mockUser = {
   email: "user@test.com",
   name: "User",
   role: "user",
+  password: "hashed",
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
 }
 
 function allow() {
@@ -37,8 +41,8 @@ function deny() {
   })
 }
 
-function req(body: object): Request {
-  return new Request("http://localhost:3000/api/admin/users/u1", {
+function req(body: object): NextRequest {
+  return new NextRequest("http://localhost:3000/api/admin/users/u1", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -88,6 +92,29 @@ describe("PATCH /api/admin/users/[id]", () => {
     expect(res.status).toBe(404)
   })
 
+  it("accepts editor role [B1.5]", async () => {
+    allow()
+    vi.mocked(db.user.findUnique).mockResolvedValue(mockUser)
+    vi.mocked(db.user.update).mockResolvedValue({ ...mockUser, role: "editor" })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await PATCH(req({ role: "editor" }), {
+      params: Promise.resolve({ id: "u1" }),
+    })
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.user.role).toBe("editor")
+  })
+
+  it("prevents self-demotion to editor [B1.5]", async () => {
+    allow()
+    const res = await PATCH(req({ role: "editor" }), {
+      params: Promise.resolve({ id: "admin1" }),
+    })
+    expect(res.status).toBe(400)
+  })
+
   it("returns 401 when not admin", async () => {
     deny()
     const res = await PATCH(req({ role: "user" }), {
@@ -106,7 +133,7 @@ describe("DELETE /api/admin/users/[id]", () => {
     vi.mocked(db.user.delete).mockResolvedValue({} as never)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
-    const res = await DELETE(new Request("http://localhost:3000/api/admin/users/u1"), {
+    const res = await DELETE(new NextRequest("http://localhost:3000/api/admin/users/u1"), {
       params: Promise.resolve({ id: "u1" }),
     })
     const body = await res.json()
@@ -115,7 +142,7 @@ describe("DELETE /api/admin/users/[id]", () => {
 
   it("prevents self-deletion", async () => {
     allow()
-    const res = await DELETE(new Request("http://localhost:3000/api/admin/users/admin1"), {
+    const res = await DELETE(new NextRequest("http://localhost:3000/api/admin/users/admin1"), {
       params: Promise.resolve({ id: "admin1" }),
     })
     expect(res.status).toBe(400)
@@ -125,7 +152,7 @@ describe("DELETE /api/admin/users/[id]", () => {
     allow()
     vi.mocked(db.user.findUnique).mockResolvedValue(null)
 
-    const res = await DELETE(new Request("http://localhost:3000/api/admin/users/nonexistent"), {
+    const res = await DELETE(new NextRequest("http://localhost:3000/api/admin/users/nonexistent"), {
       params: Promise.resolve({ id: "nonexistent" }),
     })
     expect(res.status).toBe(404)
@@ -133,7 +160,7 @@ describe("DELETE /api/admin/users/[id]", () => {
 
   it("returns 401 when not admin", async () => {
     deny()
-    const res = await DELETE(new Request("http://localhost:3000/api/admin/users/u1"), {
+    const res = await DELETE(new NextRequest("http://localhost:3000/api/admin/users/u1"), {
       params: Promise.resolve({ id: "u1" }),
     })
     expect(res.status).toBe(401)

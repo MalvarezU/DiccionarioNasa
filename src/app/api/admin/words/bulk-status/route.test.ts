@@ -140,4 +140,19 @@ describe("POST /api/admin/words/bulk-status", () => {
     )
     expect(res.status).toBe(401)
   })
+
+  it("editor recibe 403 en lote (solo admin) [B1.5]", async () => {
+    vi.mocked(requireAdmin).mockResolvedValue({
+      session: null,
+      error: Response.json({ message: "Acceso denegado" }, { status: 403 }),
+    })
+    const res = await POST(
+      new Request("http://localhost:3000/api/admin/words/bulk-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wordIds: ["w1"], status: "PUBLISHED" }),
+      })
+    )
+    expect(res.status).toBe(403)
+  })
 })

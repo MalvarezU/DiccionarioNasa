@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAdmin } from "@/lib/auth"
+import { requireRole } from "@/lib/auth"
 import {
   getSupabaseServer,
   AUDIO_BUCKET,
@@ -19,7 +19,7 @@ const VALID_MIME_TYPES = [
 const VALID_EXTENSIONS = [".mp3", ".wav", ".ogg"]
 
 export async function POST(request: Request) {
-  const { error } = await requireAdmin()
+  const { error } = await requireRole("editor")
   if (error) return error
 
   const file = await extractFile(request)
