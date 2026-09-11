@@ -168,6 +168,11 @@ describe("PUT /api/admin/words/[id]", () => {
     )
     const body = await res.json()
     expect(body.previousAudioUrl).toBe("/audio/old.mp3")
+    // El audio nuevo debe persistirse en BD (bug "no queda guardado")
+    expect(db.dictionaryWord.update).toHaveBeenCalledWith({
+      where: { id: "w1" },
+      data: expect.objectContaining({ audioUrl: "/audio/new.mp3" }),
+    })
   })
 })
 

@@ -36,7 +36,7 @@ const mockWord: WordForEdit = {
 function renderModal(word: WordForEdit | null = mockWord) {
   const onOpenChange = vi.fn()
   const onSaved = vi.fn()
-  render(
+  const view = render(
     <EditWordModal
       open={true}
       onOpenChange={onOpenChange}
@@ -44,7 +44,7 @@ function renderModal(word: WordForEdit | null = mockWord) {
       onSaved={onSaved}
     />
   )
-  return { onOpenChange, onSaved }
+  return { onOpenChange, onSaved, ...view }
 }
 
 describe("EditWordModal", () => {
@@ -171,5 +171,46 @@ describe("EditWordModal", () => {
     const user = userEvent.setup()
     await user.click(screen.getByText("Cancelar"))
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("muestra 'Guardado' cuando el audio ya esta persistido", () => {
+    renderModal({ ...mockWord, audioUrl: "https://x/public/audios/temp/viejo.mp3" })
+    expect(screen.getByText(/— Guardado/)).toBeDefined()
+    expect(
+      screen.queryByText(/guarda la ficha para conservarlo/)
+    ).toBeNull()
+  })
+
+  it("avisa que hay que guardar la ficha tras subir un audio nuevo", async () => {
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, {
+        createObjectURL: vi.fn(() => "blob:mock"),
+        revokeObjectURL: vi.fn(),
+      })
+    )
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        audioUrl: "https://x/public/audios/temp/nuevo.mp3",
+      }),
+    } as never)
+
+    const { container } = renderModal({ ...mockWord, audioUrl: null })
+    void container
+    const user = userEvent.setup()
+    // El dialogo usa Portal: el input vive en document.body
+    const input = document.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement
+    await user.upload(
+      input,
+      new File(["audio-bytes"], "nuevo.mp3", { type: "audio/mpeg" })
+    )
+
+    expect(
+      await screen.findByText(/guarda la ficha para conservarlo/)
+    ).toBeDefined()
+    vi.unstubAllGlobals()
   })
 })
