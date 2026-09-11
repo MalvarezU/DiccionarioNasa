@@ -153,6 +153,37 @@ describe("POST /api/admin/import", () => {
     )
   })
 
+  it("registra una entrada por ficha con su entityId [B1.8]", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.dictionaryWord.create)
+      .mockResolvedValueOnce({ id: "n1" } as never)
+      .mockResolvedValueOnce({ id: "n2" } as never)
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await POST(
+      makeReq([
+        { spanish: "casa", nasaYuwe: "ya:t" },
+        { spanish: "agua", nasaYuwe: "yu" },
+      ])
+    )
+    const body = await res.json()
+    expect(body.created).toBe(2)
+
+    const fichaCalls = vi
+      .mocked(db.auditLog.create)
+      .mock.calls.filter(
+        (c) =>
+          (c[0] as { data: { entityId?: string } }).data.entityId !== undefined
+      )
+    expect(fichaCalls).toHaveLength(2)
+    expect(fichaCalls[0][0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "IMPORT", entityId: "n1", wordId: "n1" }),
+      })
+    )
+  })
+
   it("returns 401 when not admin", async () => {
     deny()
     const res = await POST(makeReq([{ spanish: "casa", nasaYuwe: "ya:t" }]))

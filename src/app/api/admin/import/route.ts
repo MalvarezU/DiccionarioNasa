@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 
       // Create the word
       try {
-        await db.dictionaryWord.create({
+        const createdWord = await db.dictionaryWord.create({
           data: {
             spanish,
             nasaYuwe,
@@ -99,6 +99,22 @@ export async function POST(request: Request) {
             category: row.category?.trim() || null,
             examples: examplesJson,
             status,
+          },
+        })
+        // B1.8: una entrada por ficha (trazabilidad individual)
+        await db.auditLog.create({
+          data: {
+            action: "IMPORT",
+            entity: "DictionaryWord",
+            entityId: createdWord.id,
+            changes: JSON.stringify({
+              spanish,
+              nasaYuwe,
+              status,
+              row: i + 1,
+            }),
+            userId: (session!.user as { id: string }).id,
+            wordId: createdWord.id,
           },
         })
         created++
