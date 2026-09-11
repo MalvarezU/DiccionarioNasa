@@ -182,11 +182,22 @@ describe("AuthModal", () => {
       )
     })
 
-    it("offers Google sign-in without auto credentials login [B1.3]", async () => {
-      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+    it("offers Google sign-in without auto credentials login [B1.3]", async () => {      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
       const user = userEvent.setup()
       await user.click(screen.getByRole("button", { name: /continuar con google/i }))
       expect(signIn).toHaveBeenCalledWith("google", { callbackUrl: "/" })
+    })
+
+    it("apila los botones a ancho completo (sin fila lateral) [layout]", async () => {
+      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+      const submit = screen.getByRole("button", { name: /iniciar sesión/i })
+      const google = screen.getByRole("button", { name: /continuar con google/i })
+      // Mismo contenedor en columna: el submit nunca queda a la izquierda
+      expect(submit.parentElement).toBe(google.parentElement)
+      expect(submit.parentElement?.className).toMatch(/flex-col/)
+      expect(submit.parentElement?.className).not.toMatch(/flex-row/)
+      expect(submit.className).toMatch(/w-full/)
+      expect(google.className).toMatch(/w-full/)
     })
 
     it("shows error toast when register fails", async () => {

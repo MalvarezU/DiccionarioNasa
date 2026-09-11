@@ -6,7 +6,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -232,7 +231,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
             </div>
           )}
 
-          <DialogFooter className="flex-col gap-2 sm:gap-0">
+          <div className="flex flex-col gap-2">
             <Button type="submit" className="w-full gap-2" disabled={isLoading}>
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -253,7 +252,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               <Chrome className="h-4 w-4" />
               Continuar con Google
             </Button>
-          </DialogFooter>
+          </div>
         </form>
 
         <div className="text-center pt-2 border-t">
