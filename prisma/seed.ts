@@ -2,18 +2,9 @@ import { PrismaClient } from '@prisma/client'
 import * as fs from 'fs'
 import * as path from 'path'
 import bcrypt from 'bcryptjs'
+import { parseSeedCSV } from './seed-csv'
 
 const prisma = new PrismaClient()
-
-interface WordData {
-  spanish: string
-  nasaYuwe: string
-  pronunciation: string
-  culturalContext: string
-  category: string
-  audioUrl: string | null
-  examples: string
-}
 
 async function createAdmin() {
   const email = process.env.ADMIN_EMAIL || 'admin@nasayuwe.com'
@@ -39,37 +30,9 @@ async function createAdmin() {
   console.log('✓ Admin user created: admin@nasayuwe.com / AdminNasa2024!')
 }
 
-function parseCSV(content: string): WordData[] {
-  const lines = content.trim().split('\n')
-  const words: WordData[] = []
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].replace(/^\uFEFF/, '')
-    const parts = line.split(',')
-
-    if (parts.length < 2) continue
-
-    const nasaYuwe = parts[0]?.trim() || ''
-    const spanish = parts[1]?.trim() || ''
-    const category = parts[2]?.trim() || 'sustantivo'
-    const pronunciation = parts[3]?.trim() || nasaYuwe.toLowerCase()
-    const culturalContext = parts[4]?.trim() || ''
-    const examples = parts[5]?.trim() || '[]'
-
-    if (!nasaYuwe || !spanish) continue
-
-    words.push({
-      spanish,
-      nasaYuwe,
-      pronunciation,
-      culturalContext: culturalContext || 'Palabra de la lengua Nasa Yuwe, dialecto Wila',
-      category,
-      audioUrl: null,
-      examples,
-    })
-  }
-
-  return words
+function parseCSV(content: string) {
+  // Parser real con comillas (B1.11): ver seed-csv.ts
+  return parseSeedCSV(content).words;
 }
 
 async function main() {
@@ -86,9 +49,20 @@ async function main() {
   }
 
   const csvContent = fs.readFileSync(csvPath, 'utf-8')
-  const words = parseCSV(csvContent)
+  const { words, skippedDup } = parseSeedCSV(csvContent)
 
-  console.log(`Parsed ${words.length} words from CSV`)
+  console.log(`Parsed ${words.length} words from CSV (${skippedDup} duplicadas omitidas)`)
+
+  const existingCount = await prisma.dictionaryWord.count()
+  // Seguro anti-borrado: el seed hace deleteMany (¡borra favoritos/historial
+  // por cascada y pone audioUrl en null!). Solo con --force en BD con datos.
+  if (existingCount > 0 && !process.argv.includes('--force')) {
+    console.error(
+      `La BD ya tiene ${existingCount} fichas. El seed las BORRARÍA (incluye audioUrl, favoritos e historial). ` +
+      `Revisa el backup y re-ejecuta con --force. Nada modificado.`
+    )
+    process.exit(2)
+  }
 
   await prisma.dictionaryWord.deleteMany()
   console.log('Cleared existing words')
