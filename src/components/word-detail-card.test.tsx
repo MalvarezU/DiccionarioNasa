@@ -87,7 +87,10 @@ describe("WordDetailCard", () => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
     vi.mocked(useSession).mockReturnValue({
-      data: { user: { id: "user-1" } },
+      data: {
+        user: { id: "user-1" } as never,
+        expires: "2099-01-01T00:00:00Z",
+      },
       status: "authenticated",
       update: vi.fn(),
     })

@@ -7,7 +7,7 @@ vi.mock("next-auth/react", () => ({
 }))
 
 vi.mock("@/hooks/use-toast", () => ({
-  useToast: vi.fn(() => ({ toast: vi.fn() })),
+  useToast: vi.fn(() => ({ toast: vi.fn(), dismiss: vi.fn(), toasts: [] })),
 }))
 
 import { signIn } from "next-auth/react"
@@ -24,7 +24,7 @@ describe("AuthModal", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
-    vi.mocked(useToast).mockReturnValue({ toast: vi.fn() })
+    vi.mocked(useToast).mockReturnValue({ toast: vi.fn(), dismiss: vi.fn(), toasts: [] })
   })
 
   describe("login mode (default)", () => {

@@ -29,15 +29,16 @@ import { db } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { GET, POST } from "./route"
 
-function req(url: string, init?: RequestInit): NextRequest {
+function req(url: string, init?: NonNullable<ConstructorParameters<typeof NextRequest>[1]>): NextRequest {
   return new NextRequest(url, init)
 }
 
 const mockWord = { id: "w1", spanish: "casa", nasaYuwe: "ya:t" }
 const mockFavorite = {
   id: "fav1",
+  userId: "user1",
   wordId: "w1",
-  createdAt: new Date().toISOString(),
+  createdAt: new Date("2026-01-01T00:00:00Z"),
   word: mockWord,
 }
 

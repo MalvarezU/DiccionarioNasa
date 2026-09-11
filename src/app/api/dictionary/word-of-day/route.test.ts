@@ -28,6 +28,9 @@ const mockWord = {
   culturalContext: "Vivienda",
   category: "sustantivo",
   examples: null,
+  status: "PUBLISHED",
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
 }
 
 const mockWordWithExamples = {
@@ -68,12 +71,12 @@ describe("GET /api/dictionary/word-of-day", () => {
     vi.mocked(db.dictionaryWord.count).mockResolvedValue(100)
 
     await GET(req("2026-06-01"))
-    const { skip } = vi.mocked(db.dictionaryWord.findMany).mock.calls[0][0]
+    const { skip } = vi.mocked(db.dictionaryWord.findMany).mock.calls[0][0] as { skip: number }
 
     vi.mocked(db.dictionaryWord.findMany).mockClear()
 
     await GET(req("2026-06-01"))
-    const { skip: skip2 } = vi.mocked(db.dictionaryWord.findMany).mock.calls[0][0]
+    const { skip: skip2 } = vi.mocked(db.dictionaryWord.findMany).mock.calls[0][0] as { skip: number }
 
     expect(skip).toBe(skip2)
   })

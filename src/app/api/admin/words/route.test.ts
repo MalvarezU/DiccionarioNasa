@@ -43,9 +43,10 @@ const mockWord = {
   audioUrl: null,
   culturalContext: "Vivienda",
   category: "sustantivo",
+  examples: null,
   status: "PUBLISHED",
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
 }
 
 describe("GET /api/admin/words", () => {

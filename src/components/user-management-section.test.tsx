@@ -42,7 +42,10 @@ describe("UserManagementSection", () => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
     vi.mocked(useSession).mockReturnValue({
-      data: { user: { id: "user-1", email: "admin@test.com", role: "admin" } },
+      data: {
+        user: { id: "user-1", email: "admin@test.com", role: "admin" } as never,
+        expires: "2099-01-01T00:00:00Z",
+      },
       status: "authenticated",
       update: vi.fn(),
     })

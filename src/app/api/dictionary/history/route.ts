@@ -11,11 +11,11 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!(session?.user as { id?: string } | undefined)?.id) {
       return NextResponse.json({ history: [] })
     }
 
-    const userId = (session.user as { id: string }).id
+    const userId = (session?.user as { id?: string } | undefined)?.id as string
 
     const history = await db.viewHistory.findMany({
       where: { userId },
@@ -57,14 +57,14 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!(session?.user as { id?: string } | undefined)?.id) {
       return NextResponse.json(
         { message: 'Debes iniciar sesión para registrar historial' },
         { status: 401 }
       )
     }
 
-    const userId = (session.user as { id: string }).id
+    const userId = (session?.user as { id?: string } | undefined)?.id as string
     const body = await request.json()
     const { wordId } = body
 
@@ -116,14 +116,14 @@ export async function DELETE() {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!(session?.user as { id?: string } | undefined)?.id) {
       return NextResponse.json(
         { message: 'Debes iniciar sesión' },
         { status: 401 }
       )
     }
 
-    const userId = (session.user as { id: string }).id
+    const userId = (session?.user as { id?: string } | undefined)?.id as string
 
     await db.viewHistory.deleteMany({
       where: { userId },

@@ -45,7 +45,7 @@ describe("WordOfDayCard", () => {
 
   it("shows loading state initially", () => {
     // Keep fetch unresolved so loading persists
-    global.fetch = vi.fn(() => new Promise(() => {}))
+    global.fetch = vi.fn((): Promise<Response> => new Promise(() => {}))
     render(<WordOfDayCard />)
     expect(screen.getByText("Cargando...")).toBeDefined()
   })

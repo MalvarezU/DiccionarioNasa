@@ -10,13 +10,34 @@ export async function getAuthSession() {
 }
 
 /**
+ * Sesión garantizada por requireAuth/requireRole: usuario presente con id.
+ * Centraliza el tipado para no repetir casts inseguros en cada ruta.
+ */
+export interface AuthedSession {
+  user: {
+    id: string
+    name?: string | null
+    email?: string | null
+    image?: string | null
+    role?: string
+  }
+  expires: string
+}
+
+type GuardOk = { session: AuthedSession; error: null }
+type GuardFail = { session: null; error: Response }
+
+/**
  * Require that the current user is authenticated.
  * Returns the session if authenticated, or a NextResponse error if not.
  */
-export async function requireAuth() {
+export async function requireAuth(): Promise<GuardOk | GuardFail> {
   const session = await getServerSession(authOptions)
+  const rawUser = session?.user as
+    | { id?: unknown; name?: string | null; email?: string | null }
+    | undefined
 
-  if (!session?.user) {
+  if (!session?.user || typeof rawUser?.id !== "string" || !rawUser.id) {
     return {
       session: null,
       error: Response.json(
@@ -26,7 +47,16 @@ export async function requireAuth() {
     }
   }
 
-  return { session, error: null }
+  return {
+    session: {
+      ...session,
+      user: {
+        ...session.user,
+        id: rawUser.id,
+      },
+    } as AuthedSession,
+    error: null,
+  }
 }
 
 /**

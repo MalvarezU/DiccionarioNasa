@@ -24,7 +24,7 @@ const mockLogs = [
     changes: "{}",
     userId: "admin1",
     wordId: "w1",
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(),
   },
 ]
 

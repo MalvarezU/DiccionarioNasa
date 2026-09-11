@@ -35,8 +35,9 @@ export default function CursoDetailPage({
 
   // Un módulo está desbloqueado si el anterior está completo (todas sus lecciones)
   function isModuleUnlocked(moduleIdx: number): boolean {
-    if (moduleIdx === 0) return true
+    if (!course || moduleIdx === 0) return true
     const prevModule = course.modules[moduleIdx - 1]
+    if (!prevModule) return false
     return prevModule.lessons.every((l) => completedLessons.includes(l.id))
   }
 

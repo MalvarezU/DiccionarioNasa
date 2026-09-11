@@ -162,18 +162,37 @@ describe("AdminDashboard", () => {
     render(<AdminDashboard />)
     expect(await screen.findByText("Importar corpus")).toBeDefined()
     await user.click(screen.getByText("Importar corpus"))
-    expect(await screen.findByText("Importa palabras al diccionario desde un archivo CSV")).toBeDefined()
-    expect(screen.getByText(/Formato CSV requerido/)).toBeDefined()
+    expect(await screen.findByText("Subir archivo Excel o CSV")).toBeDefined()
+    expect(screen.getByText(/Todo entra en borrador/)).toBeDefined()
   })
 
-  it("ImportCorpusModal shows empty error", async () => {
+  it("ImportCorpusModal previews file before confirm [B1.10]", async () => {
     mockFetchStats()
     const user = userEvent.setup()
     render(<AdminDashboard />)
     expect(await screen.findByText("Importar corpus")).toBeDefined()
     await user.click(screen.getByText("Importar corpus"))
-    const importBtn = screen.getByRole("button", { name: "Importar" })
-    expect((importBtn as HTMLButtonElement).disabled).toBe(true)
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({
+        fileName: "corpus.xlsx",
+        columns: [{ header: "Palabra_esp", mapped: "spanish" }],
+        total: 2,
+        valid: 2,
+        invalid: 0,
+        duplicates: 0,
+        errors: [],
+        previewToken: "tok",
+      })
+    )
+    await user.upload(
+      input,
+      new File(["x"], "corpus.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+    )
+    expect(await screen.findByText(/Vista previa/)).toBeDefined()
+    expect(screen.getByText(/Confirmar \(2 en borrador\)/)).toBeDefined()
   })
 
   // ═══════════════════════════════════════

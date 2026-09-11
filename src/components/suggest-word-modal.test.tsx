@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("@/hooks/use-toast", () => ({
-  useToast: vi.fn(() => ({ toast: vi.fn() })),
+  useToast: vi.fn(() => ({ toast: vi.fn(), dismiss: vi.fn(), toasts: [] })),
 }))
 
 import { useToast } from "@/hooks/use-toast"
@@ -15,7 +15,7 @@ describe("SuggestWordModal", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
-    vi.mocked(useToast).mockReturnValue({ toast: vi.fn() })
+    vi.mocked(useToast).mockReturnValue({ toast: vi.fn(), dismiss: vi.fn(), toasts: [] })
   })
 
   it("renders the form with term pre-filled", () => {

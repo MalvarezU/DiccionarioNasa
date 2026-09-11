@@ -51,9 +51,9 @@ describe("POST /api/admin/import/confirm [B1.10]", () => {
   it("confirma lo validado con bitacora por ficha y reporte", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
-    vi.mocked(db.dictionaryWord.create).mockImplementation(async ({ data }: never) => ({
-      id: `n-${(data as { spanish: string }).spanish}`,
-    }))
+    vi.mocked(db.dictionaryWord.create)
+      .mockResolvedValueOnce({ id: "n-casa" } as never)
+      .mockResolvedValueOnce({ id: "n-agua" } as never)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
     const token = storePreview([word("casa"), word("agua")])

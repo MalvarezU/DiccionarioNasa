@@ -12,11 +12,11 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!(session?.user as { id?: string } | undefined)?.id) {
       return NextResponse.json({ favorites: [], isFavorite: false })
     }
 
-    const userId = (session.user as { id: string }).id
+    const userId = (session?.user as { id?: string } | undefined)?.id as string
     const wordId = request.nextUrl.searchParams.get('wordId')
 
     if (wordId) {
@@ -70,14 +70,14 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!(session?.user as { id?: string } | undefined)?.id) {
       return NextResponse.json(
         { message: 'Debes iniciar sesión para guardar favoritos' },
         { status: 401 }
       )
     }
 
-    const userId = (session.user as { id: string }).id
+    const userId = (session?.user as { id?: string } | undefined)?.id as string
     const body = await request.json()
     const { wordId } = body
 

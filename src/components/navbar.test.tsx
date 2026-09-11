@@ -30,7 +30,15 @@ import { useOnlineStatus } from "@/hooks/use-online-status"
 import { NavBar } from "./navbar"
 
 function mockSession(session: { user?: { name?: string; email?: string; role?: string } } | null) {
-  vi.mocked(useSession).mockReturnValue({ data: session, status: session ? "authenticated" : "unauthenticated", update: vi.fn() })
+  vi.mocked(useSession).mockReturnValue(
+    session
+      ? {
+          data: { user: session.user, expires: "2099-01-01T00:00:00Z" },
+          status: "authenticated",
+          update: vi.fn(),
+        }
+      : { data: null, status: "unauthenticated", update: vi.fn() }
+  )
 }
 
 function mockOnline(online: boolean) {

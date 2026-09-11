@@ -18,8 +18,13 @@ const defaultDBState = {
   isReady: false,
   isDownloading: false,
   downloadProgress: 0,
-  error: null,
+  localWordCount: 0,
+  error: null as string | null,
+  lastSync: null as string | null,
   startDownload: vi.fn(),
+  forceResync: vi.fn(),
+  refreshStats: vi.fn(),
+  checkAndResume: vi.fn(),
 }
 
 function mockOnline(online: boolean) {

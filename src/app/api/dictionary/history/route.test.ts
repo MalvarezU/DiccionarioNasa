@@ -29,14 +29,15 @@ import { db } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { GET, POST, DELETE } from "./route"
 
-function req(url: string, init?: RequestInit): NextRequest {
+function req(url: string, init?: NonNullable<ConstructorParameters<typeof NextRequest>[1]>): NextRequest {
   return new NextRequest(url, init)
 }
 
 const mockHistoryEntry = {
   id: "h1",
+  userId: "user1",
   wordId: "w1",
-  createdAt: new Date().toISOString(),
+  createdAt: new Date("2026-01-01T00:00:00Z"),
   word: {
     id: "w1",
     spanish: "casa",

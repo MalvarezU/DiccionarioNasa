@@ -20,6 +20,11 @@ const mockWords = [
     pronunciation: "yaat",
     category: "sustantivo",
     culturalContext: "Vivienda",
+    examples: null,
+    audioUrl: null,
+    status: "PUBLISHED",
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    updatedAt: new Date("2026-01-01T00:00:00Z"),
   },
   {
     id: "2",
@@ -28,6 +33,11 @@ const mockWords = [
     pronunciation: "kiwe",
     category: "sustantivo",
     culturalContext: "Astro",
+    examples: null,
+    audioUrl: null,
+    status: "PUBLISHED",
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    updatedAt: new Date("2026-01-01T00:00:00Z"),
   },
 ]
 

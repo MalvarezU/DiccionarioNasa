@@ -40,8 +40,8 @@ function mockDB() {
 }
 
 const mockResults = [
-  { id: "1", spanish: "Sol", nasaYuwe: "atek", pronunciation: "a-tek", category: "naturaleza" },
-  { id: "2", spanish: "Luna", nasaYuwe: "kiwe", pronunciation: "ki-we", category: "naturaleza" },
+  { id: "1", spanish: "Sol", nasaYuwe: "atek", pronunciation: "a-tek", category: "naturaleza", culturalContext: "Astro" },
+  { id: "2", spanish: "Luna", nasaYuwe: "kiwe", pronunciation: "ki-we", category: "naturaleza", culturalContext: "Astro" },
 ]
 
 describe("SearchBar", () => {

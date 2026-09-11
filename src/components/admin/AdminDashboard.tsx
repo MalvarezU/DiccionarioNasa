@@ -635,7 +635,7 @@ export function AdminDashboard({ canBulkArchive = true }: { canBulkArchive?: boo
           </CardHeader>
           <CardContent>
             {stats.recentAuditLogs.length > 0 ? (
-              <div className="max-h-96 overflow-y-auto">
+              <div className="max-h-96 overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

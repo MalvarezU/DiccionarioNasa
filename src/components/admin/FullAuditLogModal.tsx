@@ -267,7 +267,7 @@ export function FullAuditLogModal({
             </div>
           ) : logs.length > 0 ? (
             <>
-              <div className="max-h-[50vh] overflow-y-auto rounded-md border">
+              <div className="max-h-[50vh] overflow-auto rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>

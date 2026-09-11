@@ -28,7 +28,7 @@ function xlsxFile(rows: Record<string, unknown>[], name = "corpus.xlsx"): File {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Hoja1")
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer
-  return new File([buf], name, {
+  return new File([new Uint8Array(buf)], name, {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   })
 }

@@ -23,13 +23,16 @@ import { ExploreSection } from "./explore-section"
 
 function mockVirtualizer(virtualRows: Array<{ index: number; key: string; start: number; type: string }>) {
   const totalSize = virtualRows.length * 56
+  const getVirtualItems = Object.assign(
+    () => virtualRows.map((r) => ({ ...r, size: 56, end: r.start + 56, lane: 0 })),
+    { updateDeps: vi.fn() }
+  )
   vi.mocked(useVirtualizer).mockReturnValue({
-    getVirtualItems: () =>
-      virtualRows.map((r) => ({ ...r, size: 56, end: r.start + 56 })),
+    getVirtualItems,
     getTotalSize: () => totalSize,
     scrollToIndex: vi.fn(),
     measureElement: vi.fn(),
-  })
+  } as never)
 }
 
 const mockWords = [

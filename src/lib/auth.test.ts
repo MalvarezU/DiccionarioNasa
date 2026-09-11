@@ -35,7 +35,7 @@ describe("auth helpers", () => {
       const mockSession = { user: { id: "u1" } } as never
       vi.mocked(getServerSession).mockResolvedValue(mockSession)
       const result = await requireAuth()
-      expect(result.session).toBe(mockSession)
+      expect(result.session).toEqual(mockSession)
       expect(result.error).toBeNull()
     })
 
@@ -61,7 +61,7 @@ describe("auth helpers", () => {
       const mockSession = { user: { id: "u1", role: "admin" } } as never
       vi.mocked(getServerSession).mockResolvedValue(mockSession)
       const result = await requireAdmin()
-      expect(result.session).toBe(mockSession)
+      expect(result.session).toEqual(mockSession)
       expect(result.error).toBeNull()
     })
 
