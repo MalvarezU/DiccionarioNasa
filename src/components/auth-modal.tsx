@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, LogIn, UserPlus } from "lucide-react";
+import { Loader2, LogIn, UserPlus, Chrome } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthModalProps {
@@ -104,7 +104,17 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       const data = await response.json();
 
       if (response.ok) {
-        // Auto-login after register
+        if (data.requiresVerification) {
+          // B1.2: cuenta creada pendiente de verificación por correo
+          toast({
+            title: "¡Cuenta creada!",
+            description: "Revisa tu correo para verificarla antes de entrar",
+          });
+          resetForm();
+          setMode("login");
+          return;
+        }
+        // Auto-login after register (solo sin verificación, ej. desarrollo)
         const result = await signIn("credentials", {
           email,
           password,
@@ -232,6 +242,16 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                 <UserPlus className="h-4 w-4" />
               )}
               {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              disabled={isLoading}
+              onClick={() => signIn("google", { callbackUrl: "/" })}
+            >
+              <Chrome className="h-4 w-4" />
+              Continuar con Google
             </Button>
           </DialogFooter>
         </form>

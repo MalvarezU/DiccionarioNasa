@@ -60,6 +60,30 @@ describe("POST /api/auth/register", () => {
     expect(bcrypt.hash).toHaveBeenCalledWith("password123", 12)
   })
 
+  it("marca pendiente de verificación cuando hay proveedor de correo [B1.2]", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_test")
+    global.fetch = vi.fn().mockResolvedValue(Response.json({ id: "m1" }) as never)
+    vi.mocked(db.user.findUnique).mockResolvedValue(null)
+    vi.mocked(bcrypt.hash).mockResolvedValue("hashed-pw" as never)
+    vi.mocked(db.user.create).mockResolvedValue({ id: "u1" } as never)
+
+    const res = await POST(
+      makeRequest({ email: "n@x.com", password: "password123" })
+    )
+    const body = await res.json()
+
+    expect(body.requiresVerification).toBe(true)
+    expect(vi.mocked(db.user.create)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          emailVerified: null,
+          verifyToken: expect.any(String),
+        }),
+      })
+    )
+    vi.unstubAllEnvs()
+  })
+
   it("returns 400 when email is missing", async () => {
     const res = await POST(makeRequest({ password: "password123" }))
     expect(res.status).toBe(400)

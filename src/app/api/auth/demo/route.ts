@@ -30,6 +30,7 @@ export async function POST() {
         name: 'Usuario Demo',
         password: hashedPassword,
         role: 'user',
+        emailVerified: new Date(),
       },
     })
 

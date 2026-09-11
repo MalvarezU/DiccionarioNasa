@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import {
@@ -6,6 +7,7 @@ import {
   getClientIp,
   rateLimitResponse,
 } from '@/lib/rate-limit'
+import { appBaseUrl, sendEmail } from '@/lib/email'
 
 const REGISTER_LIMIT = 10
 const REGISTER_WINDOW_MS = 60_000
@@ -58,6 +60,15 @@ export async function POST(request: NextRequest) {
     // Hash password (cost 12 per RNF-10)
     const hashedPassword = await bcrypt.hash(password, 12)
 
+    // B1.2: cuenta pendiente de verificación (token 24h + correo).
+    // Sin RESEND_API_KEY (desarrollo) se auto-verifica con aviso.
+    const verifyToken = randomUUID()
+    const emailResult = await sendEmail({
+      to: email,
+      subject: "Verifica tu cuenta en Piiyaak",
+      html: `<p>Bienvenido/a a <strong>Piiyaak</strong>. Confirma tu correo en 24 horas:</p><p><a href="${appBaseUrl(request.url)}/api/auth/verify?token=${verifyToken}">Verificar mi cuenta</a></p>`,
+    }).catch(() => ({ sent: false as const }))
+
     // Create user
     const user = await db.user.create({
       data: {
@@ -65,11 +76,15 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name: name || null,
         role: 'user',
+        emailVerified: emailResult.sent ? null : new Date(),
+        verifyToken: emailResult.sent ? verifyToken : null,
+        verifyExpires: emailResult.sent ? new Date(Date.now() + 24 * 3600 * 1000) : null,
       },
     })
 
     return NextResponse.json({
       success: true,
+      requiresVerification: emailResult.sent,
       user: { id: user.id, email: user.email, name: user.name },
     })
   } catch (error) {

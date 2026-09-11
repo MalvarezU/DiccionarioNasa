@@ -16,13 +16,30 @@ model User {
   email     String   @unique
   name      String?
   password  String?  // Hashed password (bcrypt)
-  role      String   @default("user") // "user" | "admin"
+  role      String   @default("user") // "user" | "editor" | "admin"
+  emailVerified DateTime? // B1.2: verificación obligatoria (backfill en migración)
+  verifyToken   String?   @unique
+  verifyExpires DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  favorites     Favorite[]
-  viewHistory   ViewHistory[]
-  searchHistory SearchHistory[]
+  favorites      Favorite[]
+  viewHistory    ViewHistory[]
+  searchHistory  SearchHistory[]
+  passwordResets PasswordReset[]
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expires   DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model DictionaryWord {

@@ -162,6 +162,33 @@ describe("AuthModal", () => {
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
 
+    it("pide verificar el correo y no auto-entra cuando se requiere [B1.2]", async () => {
+      const { toast } = vi.mocked(useToast)()
+      vi.mocked(fetch).mockResolvedValueOnce(
+        Response.json({ success: true, requiresVerification: true })
+      )
+
+      const user = await renderRegister()
+
+      await user.type(screen.getByPlaceholderText("Tu nombre"), "Test User")
+      await user.type(screen.getByPlaceholderText(emailPlaceholder), "test@test.com")
+      await user.type(screen.getByPlaceholderText(regPasswordPlaceholder), "password123")
+      await user.type(screen.getByPlaceholderText(confirmPlaceholder), "password123")
+      await user.click(screen.getByRole("button", { name: /crear cuenta/i }))
+
+      expect(signIn).not.toHaveBeenCalled()
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ description: expect.stringContaining("Revisa tu correo") })
+      )
+    })
+
+    it("offers Google sign-in without auto credentials login [B1.3]", async () => {
+      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+      const user = userEvent.setup()
+      await user.click(screen.getByRole("button", { name: /continuar con google/i }))
+      expect(signIn).toHaveBeenCalledWith("google", { callbackUrl: "/" })
+    })
+
     it("shows error toast when register fails", async () => {
       const { toast } = vi.mocked(useToast)()
       vi.mocked(fetch).mockResolvedValueOnce(

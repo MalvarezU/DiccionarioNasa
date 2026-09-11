@@ -1,5 +1,6 @@
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import type { JWT } from "next-auth/jwt";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
@@ -89,11 +90,61 @@ export const authOptions: NextAuthOptions = {
       // testearla directo sin depender de ese merge interno.
       authorize: authorizeCredentials,
     }),
+    // B1.3: solo si hay credenciales (dev/prod sin Google sigue andando).
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          }),
+        ]
+      : []),
   ],
   session: {
     strategy: "jwt",
   },
   callbacks: {
+    // B1.2/B1.3: credenciales exigen email verificado. Google crea la cuenta
+    // ya verificada al primer login (rol user, jamás admin).
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "google") {
+        const email = user?.email?.trim().toLowerCase();
+        if (!email) return false;
+        try {
+          const existing = await db.user.findUnique({ where: { email } });
+          if (existing) {
+            if (!existing.emailVerified) {
+              await db.user.update({
+                where: { id: existing.id },
+                data: { emailVerified: new Date() },
+              });
+            }
+          } else {
+            const name =
+              user.name ??
+              (profile as { name?: string } | undefined)?.name ??
+              null;
+            await db.user.create({
+              data: { email, name, role: "user", emailVerified: new Date() },
+            });
+          }
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      if (account?.provider !== "credentials") return true;
+      if (!user?.email) return false;
+      try {
+        const dbUser = await db.user.findUnique({
+          where: { email: user.email },
+          select: { emailVerified: true },
+        });
+        return !!dbUser?.emailVerified;
+      } catch {
+        return false;
+      }
+    },
     async jwt({ token, user }) {
       const now = Math.floor(Date.now() / 1000);
 

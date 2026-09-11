@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { mockDb } = vi.hoisted(() => ({
-  mockDb: { user: { findUnique: vi.fn() } },
+  mockDb: { user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() } },
 }))
 vi.mock("@/lib/db", () => ({ db: mockDb }))
 vi.mock("bcryptjs", () => ({
@@ -118,8 +118,7 @@ describe("nextauth jwt inactivity timeout (B1.6)", () => {
   })
 })
 
-describe("authorize con bloqueo CA-22 (B1.4)", () => {
-  // Se testea la función exportada: el objeto crudo del factory trae
+describe("authorize con bloqueo CA-22 (B1.4)", () => {  // Se testea la función exportada: el objeto crudo del factory trae
   // authorize=()=>null y solo el core de NextAuth fusiona `options`.
   const authorize = async (creds: unknown, req?: unknown) =>
     (
@@ -195,5 +194,71 @@ describe("authorize con bloqueo CA-22 (B1.4)", () => {
       { headers: { "x-forwarded-for": "9.9.9.9" } }
     )
     expect(db.user.findUnique).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("signIn exige email verificado en credenciales (B1.2)", () => {
+  const signIn = authOptions.callbacks!.signIn!
+
+  it("niega credenciales sin verificar y admite verificadas", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue({ emailVerified: null } as never)
+    expect(
+      await signIn({
+        user: { email: "n@x.com" },
+        account: { provider: "credentials" },
+      } as never)
+    ).toBe(false)
+
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      emailVerified: new Date(),
+    } as never)
+    expect(
+      await signIn({
+        user: { email: "v@x.com" },
+        account: { provider: "credentials" },
+      } as never)
+    ).toBe(true)
+  })
+
+  it("Google crea la cuenta verificada al primer login [B1.3]", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue(null)
+    vi.mocked(db.user.create).mockResolvedValue({ id: "g1" } as never)
+    expect(
+      await signIn({
+        user: { email: "G@x.com", name: "Gugl" },
+        account: { provider: "google" },
+      } as never)
+    ).toBe(true)
+    expect(vi.mocked(db.user.create)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: "g@x.com",
+          role: "user",
+          emailVerified: expect.any(Date),
+        }),
+      })
+    )
+  })
+
+  it("Google existente entra y marca verificado si faltaba [B1.3]", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      id: "g1",
+      emailVerified: null,
+    } as never)
+    vi.mocked(db.user.update).mockResolvedValue({} as never)
+    expect(
+      await signIn({
+        user: { email: "g@x.com" },
+        account: { provider: "google" },
+      } as never)
+    ).toBe(true)
+    expect(vi.mocked(db.user.update)).toHaveBeenCalled()
+  })
+
+  it("proveedor desconocido pasa (comportamiento previo)", async () => {
+    expect(
+      await signIn({ user: { email: "x@x.com" }, account: { provider: "github" } } as never)
+    ).toBe(true)
+    expect(db.user.findUnique).not.toHaveBeenCalled()
   })
 })

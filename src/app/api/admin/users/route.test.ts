@@ -34,7 +34,7 @@ const mockUsers = [
     createdAt: new Date().toISOString(),
     _count: { favorites: 0, viewHistory: 0 },
   },
-]
+] as never
 
 function allow() {
   vi.mocked(requireAdmin).mockResolvedValue({
