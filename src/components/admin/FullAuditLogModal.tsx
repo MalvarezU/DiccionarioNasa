@@ -53,29 +53,37 @@ export function FullAuditLogModal({
   onOpenChange,
 }: FullAuditLogModalProps) {
   const prevOpenRef = useRef(false)
-  const currentFilterRef = useRef<string>("all")
+  const filtersRef = useRef({ action: "all", from: "", to: "", userId: "all" })
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
   const [actionFilter, setActionFilter] = useState<string>("all")
+  const [fromFilter, setFromFilter] = useState<string>("")
+  const [toFilter, setToFilter] = useState<string>("")
+  const [userFilter, setUserFilter] = useState<string>("all")
+  const [admins, setAdmins] = useState<Array<{ id: string; email: string }>>([])
 
   useEffect(() => {
-    currentFilterRef.current = actionFilter
-  }, [actionFilter])
+    filtersRef.current = { action: actionFilter, from: fromFilter, to: toFilter, userId: userFilter }
+  }, [actionFilter, fromFilter, toFilter, userFilter])
 
-  const fetchLogs = useCallback(async (p: number, action?: string) => {
+  const fetchLogs = useCallback(async (
+    p: number,
+    overrides?: { action?: string; from?: string; to?: string; userId?: string }
+  ) => {
     setIsLoading(true)
     try {
       const params = new URLSearchParams({
         page: String(p),
         pageSize: "20",
       })
-      const filter = action ?? currentFilterRef.current
-      if (filter && filter !== "all") {
-        params.set("action", filter)
-      }
+      const f = { ...filtersRef.current, ...overrides }
+      if (f.action && f.action !== "all") params.set("action", f.action)
+      if (f.from) params.set("from", new Date(`${f.from}T00:00:00`).toISOString())
+      if (f.to) params.set("to", new Date(`${f.to}T23:59:59`).toISOString())
+      if (f.userId && f.userId !== "all") params.set("userId", f.userId)
       const res = await fetch(`/api/admin/audit-logs?${params}`)
       if (res.ok) {
         const data = await res.json()
@@ -94,48 +102,65 @@ export function FullAuditLogModal({
     if (!open) return
     setPage(1)
     fetchLogs(1)
+    // Lista de responsables para el filtro (solo admin; editor la oculta)
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/users?pageSize=100")
+        if (!res || !res.ok) return
+        const data = await res.json()
+        if (data && Array.isArray(data.users)) {
+          setAdmins(
+            data.users.map((u: { id: string; email: string }) => ({
+              id: u.id,
+              email: u.email,
+            }))
+          )
+        }
+      } catch {
+        // Sin permiso (editor) o sin red: sin filtro por responsable
+      }
+    })()
   }, [open, fetchLogs])
 
   const handlePageChange = useCallback(
     (newPage: number) => {
       setPage(newPage)
-      fetchLogs(newPage, actionFilter)
+      fetchLogs(newPage)
     },
-    [fetchLogs, actionFilter]
+    [fetchLogs]
+  )
+
+  const refreshWith = useCallback(
+    (overrides: { action?: string; from?: string; to?: string; userId?: string }) => {
+      setPage(1)
+      fetchLogs(1, overrides)
+    },
+    [fetchLogs]
   )
 
   const handleActionFilterChange = useCallback(
     (value: string) => {
       setActionFilter(value)
-      setPage(1)
-      fetchLogs(1, value)
+      refreshWith({ action: value })
     },
-    [fetchLogs]
+    [refreshWith]
   )
 
   const handleExportCSV = useCallback(() => {
-    const headers = "Fecha/Hora,Acción,Entidad,Entidad ID,Responsable,Cambios"
-    const rows = logs.map((log) =>
-      [
-        formatDate(log.createdAt),
-        getActionLabel(log.action),
-        getEntityLabel(log.entity),
-        log.entityId || "",
-        getResponsible(log.userId),
-        (log.changes || "").replace(/"/g, '""'),
-      ]
-        .map((v) => `"${v}"`)
-        .join(",")
-    )
-    const csv = [headers, ...rows].join("\n")
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
+    // Exporta TODO lo filtrado desde el servidor (no solo la página visible)
+    const params = new URLSearchParams()
+    const f = filtersRef.current
+    if (f.action && f.action !== "all") params.set("action", f.action)
+    if (f.from) params.set("from", new Date(`${f.from}T00:00:00`).toISOString())
+    if (f.to) params.set("to", new Date(`${f.to}T23:59:59`).toISOString())
+    if (f.userId && f.userId !== "all") params.set("userId", f.userId)
     const a = document.createElement("a")
-    a.href = url
-    a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+    a.href = `/api/admin/audit-logs/export?${params}`
+    a.download = `bitacora-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
-  }, [logs])
+    a.remove()
+  }, [])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -173,6 +198,56 @@ export function FullAuditLogModal({
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Desde:</Label>
+              <input
+                type="date"
+                value={fromFilter}
+                onChange={(e) => {
+                  setFromFilter(e.target.value)
+                  refreshWith({ from: e.target.value })
+                }}
+                className="h-8 text-xs rounded-md border border-input bg-background px-2"
+                aria-label="Filtrar desde fecha"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Hasta:</Label>
+              <input
+                type="date"
+                value={toFilter}
+                onChange={(e) => {
+                  setToFilter(e.target.value)
+                  refreshWith({ to: e.target.value })
+                }}
+                className="h-8 text-xs rounded-md border border-input bg-background px-2"
+                aria-label="Filtrar hasta fecha"
+              />
+            </div>
+            {admins.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground">Responsable:</Label>
+                <Select
+                  value={userFilter}
+                  onValueChange={(value) => {
+                    setUserFilter(value)
+                    refreshWith({ userId: value })
+                  }}
+                >
+                  <SelectTrigger className="w-[180px] h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {admins.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button
               variant="outline"
               size="sm"

@@ -104,4 +104,51 @@ describe("GET /api/admin/audit-logs", () => {
     const res = await GET(new Request("http://localhost:3000/api/admin/audit-logs"))
     expect(res.status).toBe(500)
   })
+
+  it("filtra por fechas y responsable [B1.7]", async () => {
+    allow()
+    vi.mocked(db.auditLog.findMany).mockResolvedValue(mockLogs)
+    vi.mocked(db.auditLog.count).mockResolvedValue(1)
+
+    await GET(
+      new Request(
+        "http://localhost:3000/api/admin/audit-logs?from=2026-09-01&to=2026-09-30&userId=admin1&action=UPDATE"
+      )
+    )
+
+    expect(vi.mocked(db.auditLog.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          action: "UPDATE",
+          userId: "admin1",
+          createdAt: {
+            gte: new Date("2026-09-01"),
+            lte: new Date("2026-09-30"),
+          },
+        },
+      })
+    )
+  })
+
+  it("ignora fechas inválidas [B1.7]", async () => {
+    allow()
+    vi.mocked(db.auditLog.findMany).mockResolvedValue(mockLogs)
+    vi.mocked(db.auditLog.count).mockResolvedValue(1)
+
+    await GET(
+      new Request("http://localhost:3000/api/admin/audit-logs?from=no-fecha")
+    )
+
+    expect(vi.mocked(db.auditLog.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: {} })
+    )
+  })
+
+  it("no expone escritura: sin PUT/POST/DELETE (inmutable) [B1.7]", async () => {
+    const mod = (await import("./route")) as unknown as Record<string, unknown>
+    expect(mod.PUT).toBeUndefined()
+    expect(mod.POST).toBeUndefined()
+    expect(mod.DELETE).toBeUndefined()
+    expect(mod.PATCH).toBeUndefined()
+  })
 })

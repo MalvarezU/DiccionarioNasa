@@ -80,7 +80,7 @@ model SearchHistory {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   action    String   // "CREATE" | "UPDATE" | "DELETE" | "IMPORT"
   entity    String   // "DictionaryWord" | etc.
   entityId  String?
@@ -93,4 +93,5 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@index([createdAt])
+  @@index([userId, createdAt])
 }
