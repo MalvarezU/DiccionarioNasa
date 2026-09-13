@@ -1,194 +1,228 @@
 "use client"
 
-import { useState } from "react"
-import { CheckCircle2, Volume2, HelpCircle, Star } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { CheckCircle2, Volume2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import type { DemoLesson } from "@/lib/demo-content"
+import { FlashcardGame } from "@/components/juegos/flashcard-game"
+import { CompleteWordGame } from "@/components/juegos/complete-word-game"
+import {
+  buildFlashcardQuestions,
+  gameWordsOrDemo,
+  type GameWord,
+} from "@/lib/game-words"
 
-interface LessonRendererProps {
-  lesson: DemoLesson
-  isComplete: boolean
-  onComplete: () => void
+export interface RealLesson {
+  id: string
+  title: string
+  type: "READ" | "QUIZ" | "COMPLETE"
+  wordId: string | null
+  payload: string | null
+  word: {
+    id: string
+    spanish: string
+    nasaYuwe: string
+    pronunciation: string | null
+    audioUrl: string | null
+    culturalContext: string | null
+    category: string | null
+  } | null
 }
 
-export function LessonRenderer({
-  lesson,
-  isComplete,
-  onComplete,
-}: LessonRendererProps) {
-  if (lesson.type === "ficha") {
+interface LessonRendererProps {
+  lesson: RealLesson
+  isComplete: boolean
+  onComplete: (lessonId: string) => void
+}
+
+function CompleteButton({
+  done,
+  onClick,
+  children,
+}: {
+  done: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <Button
+      onClick={onClick}
+      disabled={done}
+      variant={done ? "secondary" : "default"}
+      className="w-full gap-2"
+    >
+      {done ? (
+        <>
+          <CheckCircle2 className="h-4 w-4" />
+          Lección completada
+        </>
+      ) : (
+        children
+      )}
+    </Button>
+  )
+}
+
+function ReadLesson({ lesson, isComplete, onComplete }: LessonRendererProps) {
+  const word = lesson.word
+  return (
+    <Card className="bg-muted/20">
+      <CardContent className="pt-4 pb-4 space-y-3">
+        <p className="text-sm font-medium text-foreground">{lesson.title}</p>
+        {word ? (
+          <div className="p-3 rounded-lg bg-background border border-outline-variant/20 space-y-2">
+            <p className="font-serif text-xl text-primary">{word.nasaYuwe}</p>
+            <p className="text-sm text-foreground">{word.spanish}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {word.pronunciation && (
+                <span className="flex items-center gap-1">
+                  <Volume2 className="h-3 w-3" />[{word.pronunciation}]
+                </span>
+              )}
+              {word.category && (
+                <Badge variant="outline" className="text-[10px]">
+                  {word.category}
+                </Badge>
+              )}
+            </div>
+            {word.audioUrl && (
+              <audio controls src={word.audioUrl} className="w-full h-8" aria-label={`Audio de ${word.spanish}`} />
+            )}
+            {word.culturalContext && (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {word.culturalContext}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Esta lección aún no tiene palabra asignada.
+          </p>
+        )}
+        <CompleteButton done={isComplete} onClick={() => onComplete(lesson.id)}>
+          Marcar como completada
+        </CompleteButton>
+      </CardContent>
+    </Card>
+  )
+}
+
+function parseQuizWords(payload: string | null): string[] {
+  if (!payload) return []
+  try {
+    const parsed = JSON.parse(payload) as { questions?: Array<{ wordSpanish?: string }> }
+    if (!Array.isArray(parsed.questions)) return []
+    return parsed.questions
+      .map((q) => (typeof q?.wordSpanish === "string" ? q.wordSpanish.trim() : ""))
+      .filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+function QuizLesson({ lesson, isComplete, onComplete }: LessonRendererProps) {
+  const wanted = useMemo(() => parseQuizWords(lesson.payload), [lesson.payload])
+  const [words, setWords] = useState<GameWord[] | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    gameWordsOrDemo(24).then((pool) => {
+      if (!alive) return
+      const bySpanish = new Map(pool.map((w) => [w.spanish.toLowerCase(), w]))
+      const matched = wanted
+        .map((s) => bySpanish.get(s.toLowerCase()))
+        .filter((w): w is GameWord => !!w)
+      setWords(matched.length > 0 ? matched : pool.slice(0, 4))
+    })
+    return () => {
+      alive = false
+    }
+  }, [wanted])
+
+  if (!words) {
     return (
       <Card className="bg-muted/20">
-        <CardContent className="pt-4 pb-4 space-y-3">
-          <p className="text-sm text-muted-foreground">{lesson.description}</p>
-          <div className="space-y-2">
-            {lesson.content.words?.map((word) => (
-              <div
-                key={word.id}
-                className="flex items-center justify-between gap-2 p-3 rounded-lg bg-background border border-outline-variant/20"
-              >
-                <div>
-                  <p className="font-serif text-lg text-primary">
-                    {word.nasaYuwe}
-                  </p>
-                  <p className="text-sm text-foreground">{word.spanish}</p>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {word.pronunciation && (
-                    <span className="flex items-center gap-1">
-                      <Volume2 className="h-3 w-3" />
-                      [{word.pronunciation}]
-                    </span>
-                  )}
-                  <Badge variant="outline" className="text-[10px]">
-                    {word.category}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-          <Button
-            onClick={onComplete}
-            disabled={isComplete}
-            variant={isComplete ? "secondary" : "default"}
-            className="w-full gap-2"
-          >
-            {isComplete ? (
-              <>
-                <CheckCircle2 className="h-4 w-4" />
-                Lección completada
-              </>
-            ) : (
-              "Marcar como completada"
-            )}
-          </Button>
+        <CardContent className="pt-4 pb-4">
+          <p className="text-sm text-muted-foreground">Cargando quiz...</p>
         </CardContent>
       </Card>
     )
   }
 
-  // Quiz
-  return <QuizRenderer lesson={lesson} isComplete={isComplete} onComplete={onComplete} />
+  return (
+    <div className="space-y-3">
+      <FlashcardGame
+        questions={buildFlashcardQuestions(words, words.length >= 4 ? words : [...words, ...words, ...words, ...words])}
+        onFinish={({ correct, total }) => {
+          if (total > 0 && correct / total >= 0.5) onComplete(lesson.id)
+        }}
+      />
+      {isComplete && (
+        <p className="flex items-center gap-2 text-sm text-secondary">
+          <CheckCircle2 className="h-4 w-4" />
+          Lección completada
+        </p>
+      )}
+    </div>
+  )
 }
 
-function QuizRenderer({
-  lesson,
-  isComplete,
-  onComplete,
-}: LessonRendererProps) {
-  const questions = lesson.content.questions || []
-  const [answers, setAnswers] = useState<Record<number, number>>({})
-  const [showResults, setShowResults] = useState(false)
+function CompleteLesson({ lesson, isComplete, onComplete }: LessonRendererProps) {
+  const [words, setWords] = useState<GameWord[] | null>(null)
 
-  const allAnswered = questions.every((_, idx) => answers[idx] !== undefined)
-  const correctCount = questions.filter(
-    (q, idx) => answers[idx] === q.correctIndex
-  ).length
+  useEffect(() => {
+    let alive = true
+    gameWordsOrDemo(24).then((pool) => {
+      if (!alive) return
+      if (lesson.word) {
+        setWords([
+          {
+            id: lesson.word.id,
+            spanish: lesson.word.spanish,
+            nasaYuwe: lesson.word.nasaYuwe,
+            pronunciation: lesson.word.pronunciation,
+          },
+        ])
+      } else {
+        setWords(pool.slice(0, 4))
+      }
+    })
+    return () => {
+      alive = false
+    }
+  }, [lesson.word])
 
-  function handleSelect(qIdx: number, optionIdx: number) {
-    if (showResults) return
-    setAnswers((prev) => ({ ...prev, [qIdx]: optionIdx }))
-  }
-
-  function handleCheck() {
-    setShowResults(true)
+  if (!words) {
+    return (
+      <Card className="bg-muted/20">
+        <CardContent className="pt-4 pb-4">
+          <p className="text-sm text-muted-foreground">Cargando ejercicio...</p>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
-    <Card className="bg-muted/20">
-      <CardContent className="pt-4 pb-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <HelpCircle className="h-4 w-4 text-primary" />
-          <p className="text-sm text-muted-foreground">{lesson.description}</p>
-        </div>
-
-        {questions.map((q, qIdx) => (
-          <div key={qIdx} className="space-y-2">
-            <p className="text-sm font-medium text-foreground">
-              {qIdx + 1}. {q.question}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {q.options.map((opt, oIdx) => {
-                const isSelected = answers[qIdx] === oIdx
-                const isCorrect = oIdx === q.correctIndex
-                const showResult = showResults
-
-                return (
-                  <button
-                    key={oIdx}
-                    onClick={() => handleSelect(qIdx, oIdx)}
-                    disabled={showResults}
-                    className={`p-2.5 rounded-lg border text-sm text-left transition-all ${
-                      showResult
-                        ? isCorrect
-                          ? "border-secondary bg-secondary/10 text-secondary"
-                          : isSelected && !isCorrect
-                            ? "border-destructive bg-destructive/10 text-destructive"
-                            : "border-outline-variant/20 opacity-50"
-                        : isSelected
-                          ? "border-primary bg-primary/5"
-                          : "border-outline-variant/20 hover:border-primary/40 hover:bg-muted/40"
-                    }`}
-                  >
-                    {opt}
-                    {showResult && isCorrect && (
-                      <CheckCircle2 className="inline h-4 w-4 ml-2 text-secondary" />
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-
-        {showResults && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
-            <Star className="h-5 w-5 text-secondary" />
-            <p className="text-sm text-secondary">
-              {correctCount} de {questions.length} correctas
-            </p>
-          </div>
-        )}
-
-        {!showResults ? (
-          <Button
-            onClick={handleCheck}
-            disabled={!allAnswered}
-            className="w-full"
-          >
-            Verificar respuestas
-          </Button>
-        ) : correctCount === questions.length ? (
-          <Button
-            onClick={onComplete}
-            disabled={isComplete}
-            variant={isComplete ? "secondary" : "default"}
-            className="w-full gap-2"
-          >
-            {isComplete ? (
-              <>
-                <CheckCircle2 className="h-4 w-4" />
-                Lección completada
-              </>
-            ) : (
-              "Completar lección"
-            )}
-          </Button>
-        ) : (
-          <Button
-            onClick={() => {
-              setAnswers({})
-              setShowResults(false)
-            }}
-            variant="outline"
-            className="w-full"
-          >
-            Intentar de nuevo
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-3">
+      <CompleteWordGame
+        words={words}
+        onFinish={({ correct, total }) => {
+          if (total > 0 && correct / total >= 0.5) onComplete(lesson.id)
+        }}
+      />
+      {isComplete && (
+        <p className="flex items-center gap-2 text-sm text-secondary">
+          <CheckCircle2 className="h-4 w-4" />
+          Lección completada
+        </p>
+      )}
+    </div>
   )
+}
+
+export function LessonRenderer(props: LessonRendererProps) {
+  if (props.lesson.type === "QUIZ") return <QuizLesson {...props} />
+  if (props.lesson.type === "COMPLETE") return <CompleteLesson {...props} />
+  return <ReadLesson {...props} />
 }

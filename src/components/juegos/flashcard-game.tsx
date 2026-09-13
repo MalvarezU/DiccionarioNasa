@@ -58,8 +58,17 @@ function mapProvided(
   provided: NonNullable<FlashcardGameProps["questions"]>,
   direction: Direction
 ): FlashcardQuestion[] {
+  if ("prompt" in provided[0]!) {
+    // Ya vienen armadas (lecciones): se respetan tal cual
+    return (provided as FlashcardQuestion[]).map((q) => ({ ...q }))
+  }
+  const legacy = provided as Array<{
+    word: DemoWord
+    options: string[]
+    correctIndex: number
+  }>
   if (direction === "es-nasa") {
-    return provided.map((q) => ({
+    return legacy.map((q) => ({
       prompt: "¿Cómo se dice en Nasa Yuwe?",
       title: q.word.spanish,
       options: q.options,
@@ -67,8 +76,8 @@ function mapProvided(
     }))
   }
   // Inversa: se pregunta el Nasa Yuwe y se elige en español
-  const pool = provided.map((q) => q.word.spanish)
-  return provided.map((q) => {
+  const pool = legacy.map((q) => q.word.spanish)
+  return legacy.map((q) => {
     const distractors = shuffle(pool.filter((s) => s !== q.word.spanish)).slice(0, 3)
     const options = shuffle([q.word.spanish, ...distractors])
     return {
@@ -81,17 +90,27 @@ function mapProvided(
 }
 
 interface FlashcardGameProps {
-  questions?: {
-    word: DemoWord
-    options: string[]
-    correctIndex: number
-  }[]
+  questions?: Array<
+    | {
+        word: DemoWord
+        options: string[]
+        correctIndex: number
+      }
+    | {
+        prompt: string
+        title: string
+        options: string[]
+        correctIndex: number
+      }
+  >
   direction?: Direction
+  onFinish?: (result: { correct: number; total: number }) => void
 }
 
 export function FlashcardGame({
   questions: providedQuestions,
   direction: initialDirection = "es-nasa",
+  onFinish,
 }: FlashcardGameProps = {}) {
   const [direction, setDirection] = useState<Direction>(initialDirection)
   const [roundKey, setRoundKey] = useState(0)
@@ -133,13 +152,14 @@ export function FlashcardGame({
   useEffect(() => {
     if (!finished || reported || total === 0) return
     setReported(true)
+    onFinish?.({ correct: correctCount, total })
     void reportGameResult({
       game: "flashcards",
       won: correctCount >= total * 0.5,
       score: correctCount * 10,
       streak: bestStreak,
     })
-  }, [finished, reported, total, correctCount, bestStreak])
+  }, [finished, reported, total, correctCount, bestStreak, onFinish])
 
   function handleRestart() {
     setCurrentIndex(0)

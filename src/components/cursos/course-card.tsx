@@ -1,18 +1,26 @@
 import Link from "next/link"
-import { GraduationCap, Clock, ArrowRight, Lock } from "lucide-react"
+import { GraduationCap, ArrowRight, Lock } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import type { DemoCourse } from "@/lib/demo-content"
+import { Progress } from "@/components/ui/progress"
+
+export interface CourseSummary {
+  id: string
+  title: string
+  description: string | null
+  status?: string
+  modules: number
+  lessons: number
+  progressPct: number | null
+}
 
 interface CourseCardProps {
-  course: DemoCourse
+  course: CourseSummary
   navEnabled: boolean
 }
 
 export function CourseCard({ course, navEnabled }: CourseCardProps) {
-  const isDemo = course.modules.length > 0
-
   return (
     <Card
       className={`transition-all ${
@@ -33,12 +41,9 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
                   <CardTitle className="text-lg font-serif">
                     {course.title}
                   </CardTitle>
-                  <Badge
-                    variant="secondary"
-                    className="mt-1 text-[10px] bg-primary/10 text-primary"
-                  >
-                    {course.level}
-                  </Badge>
+                  <span className="text-[11px] text-muted-foreground">
+                    {course.modules} módulos · {course.lessons} lecciones
+                  </span>
                 </div>
               </div>
             </div>
@@ -47,28 +52,20 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
               {course.description}
             </p>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                {isDemo && (
-                  <span>
-                    {course.modules.length} módulos ·{" "}
-                    {course.modules.reduce(
-                      (acc, m) => acc + m.lessons.length,
-                      0
-                    )}{" "}
-                    lecciones
-                  </span>
-                )}
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  ~{course.estimatedMinutes} min
-                </span>
+            {course.progressPct !== null && (
+              <div className="mb-4 space-y-1">
+                <Progress value={course.progressPct} className="h-2" aria-label={`Avance: ${course.progressPct}%`} />
+                <p className="text-[11px] text-muted-foreground">
+                  {course.progressPct}% completado
+                </p>
               </div>
+            )}
+            <div className="flex items-center justify-end">
               <Button
                 variant="ghost"
                 className="gap-1.5 px-0 text-primary hover:text-primary/80 hover:bg-transparent group-hover:gap-2.5 transition-all"
               >
-                Comenzar
+                {course.progressPct !== null && course.progressPct > 0 ? "Continuar" : "Comenzar"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

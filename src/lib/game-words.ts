@@ -24,6 +24,47 @@ export interface GameBest {
   played: number
 }
 
+export interface FlashcardBuilt {
+  prompt: string
+  title: string
+  options: string[]
+  correctIndex: number
+}
+
+function shuffleLocal<T>(arr: T[]): T[] {
+  const copy = [...arr]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+
+/**
+ * Arma preguntas de opción múltiple para palabras dadas (lecciones),
+ * con distractores del pool. Dirección es-nasa o nasa-es.
+ */
+export function buildFlashcardQuestions(
+  askWords: GameWord[],
+  pool: GameWord[],
+  direction: "es-nasa" | "nasa-es" = "es-nasa"
+): FlashcardBuilt[] {
+  const answer = (w: GameWord) => (direction === "es-nasa" ? w.nasaYuwe : w.spanish)
+  return askWords.map((word) => {
+    const distractors = shuffleLocal(pool.filter((w) => w.id !== word.id))
+      .slice(0, 3)
+      .map(answer)
+    const options = shuffleLocal([answer(word), ...distractors])
+    return {
+      prompt:
+        direction === "es-nasa" ? "¿Cómo se dice en Nasa Yuwe?" : "¿Qué significa en español?",
+      title: direction === "es-nasa" ? word.spanish : word.nasaYuwe,
+      options,
+      correctIndex: options.indexOf(answer(word)),
+    }
+  })
+}
+
 export async function fetchGameWords(count: number): Promise<GameWord[]> {
   try {
     const res = await fetch(`/api/games/words?count=${count}`)

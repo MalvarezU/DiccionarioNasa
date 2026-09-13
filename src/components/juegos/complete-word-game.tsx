@@ -59,18 +59,20 @@ function buildQuestion(word: GameWord, nivel: Nivel): CompleteQuestion {
 export function CompleteWordGame({
   nivel = "medio",
   words: providedWords,
+  onFinish,
 }: {
   nivel?: Nivel
   words?: GameWord[]
+  onFinish?: (result: { correct: number; total: number }) => void
 }) {
   const [nivelState, setNivelState] = useState<Nivel>(nivel)
   const [roundKey, setRoundKey] = useState(0)
   const [pool, setPool] = useState<GameWord[] | null>(
-    providedWords && providedWords.length >= 4 ? providedWords : null
+    providedWords && providedWords.length >= 1 ? providedWords : null
   )
 
   useEffect(() => {
-    if (providedWords && providedWords.length >= 4) return
+    if (providedWords && providedWords.length >= 1) return
     let alive = true
     gameWordsOrDemo(10).then((words) => {
       if (alive) setPool(words)
@@ -159,13 +161,14 @@ export function CompleteWordGame({
   useEffect(() => {
     if (!finished || reported || !questions || questions.length === 0) return
     setReported(true)
+    onFinish?.({ correct: correctCount, total: questions.length })
     void reportGameResult({
       game: "complete",
       won: correctCount >= questions.length * 0.5,
       score: correctCount * 10,
       streak: 0,
     })
-  }, [finished, reported, questions, correctCount])
+  }, [finished, reported, questions, correctCount, onFinish])
 
   if (!questions) {
     return (

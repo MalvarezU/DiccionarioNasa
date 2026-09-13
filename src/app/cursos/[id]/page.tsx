@@ -1,50 +1,175 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { use } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { notFound } from "next/navigation"
-import { GraduationCap, Clock, ArrowLeft, BookOpen, CheckCircle2 } from "lucide-react"
+import { GraduationCap, ArrowLeft, BookOpen, CheckCircle2 } from "lucide-react"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { NavBar } from "@/components/navbar"
-import { DemoBadge } from "@/components/demo-badge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { ModuleAccordion } from "@/components/cursos/module-accordion"
-import { DEMO_COURSES } from "@/lib/demo-content"
+import { ModuleAccordion, type RealModule } from "@/components/cursos/module-accordion"
+
+interface CourseDetail {
+  id: string
+  title: string
+  description: string | null
+  status: string
+  sequential: boolean
+  modules: RealModule[]
+}
+
+const ANON_KEY = "piiyaak:course:anon:v1"
+
+function loadAnon(courseId: string): string[] {
+  try {
+    const raw = localStorage.getItem(`${ANON_KEY}:${courseId}`)
+    const parsed = raw ? (JSON.parse(raw) as unknown) : []
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : []
+  } catch {
+    return []
+  }
+}
 
 export default function CursoDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
-  const { id } = use(params)
-  const course = DEMO_COURSES.find((c) => c.id === id)
+  // `use(params)` no resuelve en todos los entornos: promesa a estado
+  const [id, setId] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    params.then((p) => {
+      if (alive) setId(p.id)
+    })
+    return () => {
+      alive = false
+    }
+  }, [params])
+  const { data: session } = useSession()
+  const isAuthed = !!session?.user
 
+  const [course, setCourse] = useState<CourseDetail | null>(null)
+  const [notFoundFlag, setNotFoundFlag] = useState(false)
   const [completedLessons, setCompletedLessons] = useState<string[]>([])
+  const [lastVisited, setLastVisited] = useState<string | null>(null)
 
-  if (!course || course.modules.length === 0) {
-    notFound()
+  // Curso + progreso (backend si hay sesión, local si no)
+  useEffect(() => {
+    if (!id) return
+    let alive = true
+    fetch(`/api/courses/${id}`)
+      .then((res) => {
+        if (res.status === 404) {
+          if (alive) setNotFoundFlag(true)
+          return null
+        }
+        return res.ok ? res.json() : null
+      })
+      .then((data) => {
+        if (!alive || !data?.course) return
+        setCourse(data.course as CourseDetail)
+      })
+      .catch(() => {
+        if (alive) setNotFoundFlag(true)
+      })
+    return () => {
+      alive = false
+    }
+  }, [id])
+
+  useEffect(() => {
+    if (!course) return
+    let alive = true
+    if (isAuthed) {
+      fetch(`/api/courses/${course.id}/progress`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!alive || !data) return
+          if (Array.isArray(data.completedIds)) setCompletedLessons(data.completedIds)
+          if (typeof data.lastVisitedLessonId === "string") setLastVisited(data.lastVisitedLessonId)
+        })
+        .catch(() => {})
+    } else {
+      setCompletedLessons(loadAnon(course.id))
+    }
+    return () => {
+      alive = false
+    }
+  }, [course, isAuthed])
+
+  const handleLessonComplete = useCallback(
+    async (lessonId: string) => {
+      setCompletedLessons((prev) => (prev.includes(lessonId) ? prev : [...prev, lessonId]))
+      if (!course) return
+      if (isAuthed) {
+        try {
+          await fetch("/api/progress", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lessonId, completed: true }),
+          })
+        } catch {
+          // el estado local ya quedó; reintentará al reabrir
+        }
+      } else {
+        try {
+          const next = [...loadAnon(course.id), lessonId]
+          localStorage.setItem(`${ANON_KEY}:${course.id}`, JSON.stringify([...new Set(next)]))
+        } catch {
+          // sin almacenamiento: solo sesión en memoria
+        }
+      }
+    },
+    [course, isAuthed]
+  )
+
+  const allLessonIds = useMemo(
+    () => (course ? course.modules.flatMap((m) => m.lessons.map((l) => l.id)) : []),
+    [course]
+  )
+
+  const handleLessonOpen = useCallback(
+    async (lessonId: string) => {
+      setLastVisited(lessonId)
+      if (!isAuthed) return
+      try {
+        await fetch("/api/progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lessonId }),
+        })
+      } catch {
+        // best-effort
+      }
+    },
+    [isAuthed]
+  )
+
+  if (notFoundFlag) notFound()
+  if (!id || !course) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <NavBar />
+        <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8" aria-busy="true" aria-label="Cargando curso">
+          <div className="h-10 w-2/3 bg-muted/40 rounded animate-pulse" />
+          <div className="h-4 w-full bg-muted/40 rounded animate-pulse mt-4" />
+          <div className="h-40 bg-muted/40 rounded-xl animate-pulse mt-8" />
+        </main>
+      </div>
+    )
   }
 
-  const totalLessons = course.modules.reduce(
-    (acc, m) => acc + m.lessons.length,
-    0
-  )
-  const progress = Math.round((completedLessons.length / totalLessons) * 100)
+  const totalLessons = allLessonIds.length
+  const progress = totalLessons > 0 ? Math.round((completedLessons.length / totalLessons) * 100) : 0
 
-  // Un módulo está desbloqueado si el anterior está completo (todas sus lecciones)
   function isModuleUnlocked(moduleIdx: number): boolean {
-    if (!course || moduleIdx === 0) return true
-    const prevModule = course.modules[moduleIdx - 1]
+    if (!course!.sequential || moduleIdx === 0) return true
+    const prevModule = course!.modules[moduleIdx - 1]
     if (!prevModule) return false
     return prevModule.lessons.every((l) => completedLessons.includes(l.id))
-  }
-
-  function handleLessonComplete(lessonId: string) {
-    setCompletedLessons((prev) =>
-      prev.includes(lessonId) ? prev : [...prev, lessonId]
-    )
   }
 
   return (
@@ -67,29 +192,18 @@ export default function CursoDetailPage({
               <GraduationCap className="h-6 w-6 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-serif font-bold text-primary">
-                  {course.title}
-                </h1>
-                <DemoBadge />
-              </div>
-              <div className="flex items-center gap-3 mt-1">
-                <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary">
-                  {course.level}
-                </Badge>
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  ~{course.estimatedMinutes} min
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {course.modules.length} módulos · {totalLessons} lecciones
-                </span>
-              </div>
+              <h1 className="text-2xl sm:text-3xl font-serif font-bold text-primary">
+                {course.title}
+              </h1>
+              <span className="text-xs text-muted-foreground">
+                {course.modules.length} módulos · {totalLessons} lecciones
+                {!isAuthed && " · progreso solo en este navegador"}
+              </span>
             </div>
           </div>
-          <p className="text-muted-foreground leading-relaxed">
-            {course.description}
-          </p>
+          {course.description && (
+            <p className="text-muted-foreground leading-relaxed">{course.description}</p>
+          )}
 
           {/* Progreso */}
           <div className="space-y-1.5">
@@ -99,8 +213,13 @@ export default function CursoDetailPage({
                 {completedLessons.length}/{totalLessons} lecciones
               </span>
             </div>
-            <Progress value={progress} className="h-2" />
-            {progress === 100 && (
+            <Progress value={progress} className="h-2" aria-label={`Avance: ${progress}%`} />
+            {lastVisited && (
+              <p className="text-xs text-muted-foreground">
+                Última lección visitada guardada entre dispositivos
+              </p>
+            )}
+            {progress === 100 && totalLessons > 0 && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/10 border border-secondary/20 mt-2">
                 <CheckCircle2 className="h-5 w-5 text-secondary" />
                 <p className="text-sm text-secondary font-medium">
@@ -121,6 +240,7 @@ export default function CursoDetailPage({
               isUnlocked={isModuleUnlocked(idx)}
               completedLessons={completedLessons}
               onLessonComplete={handleLessonComplete}
+              onLessonOpen={handleLessonOpen}
             />
           ))}
         </div>
@@ -138,6 +258,14 @@ export default function CursoDetailPage({
             </Button>
           </Link>
         </div>
+
+        {!isAuthed && (
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            <Badge variant="outline" className="text-[10px]">
+              Inicia sesión para sincronizar tu avance entre dispositivos
+            </Badge>
+          </p>
+        )}
       </main>
     </div>
   )

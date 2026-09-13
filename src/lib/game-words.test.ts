@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
+  buildFlashcardQuestions,
   fetchGameWords,
   gameWordsOrDemo,
   getSessionKey,
@@ -55,5 +56,23 @@ describe("game-words [B2.1]", () => {
     expect(await reportGameResult({ game: "memory", won: true, score: 10, streak: 1 })).toBe(true)
     const [, opts] = vi.mocked(fetch).mock.calls[0] as unknown as [string, { body: string }]
     expect(JSON.parse(opts.body)).toMatchObject({ game: "memory", sessionKey: expect.any(String) })
+  })
+
+  it("arma preguntas para palabras dadas con distractores", () => {
+    const pool = [
+      { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null },
+      { id: "w2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null },
+      { id: "w3", spanish: "Sol", nasaYuwe: "Ate", pronunciation: null },
+      { id: "w4", spanish: "Luna", nasaYuwe: "Ate2", pronunciation: null },
+    ]
+    const qs = buildFlashcardQuestions([pool[0]!], pool)
+    expect(qs).toHaveLength(1)
+    expect(qs[0]).toMatchObject({ title: "Casa", prompt: expect.stringContaining("Nasa Yuwe") })
+    expect(qs[0]!.options).toHaveLength(4)
+    expect(qs[0]!.options[qs[0]!.correctIndex]).toBe("Yat")
+
+    const inv = buildFlashcardQuestions([pool[0]!], pool, "nasa-es")
+    expect(inv[0]).toMatchObject({ title: "Yat" })
+    expect(inv[0]!.options[inv[0]!.correctIndex]).toBe("Casa")
   })
 })

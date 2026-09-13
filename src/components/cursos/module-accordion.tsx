@@ -1,19 +1,37 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, BookOpen, HelpCircle, CheckCircle2, Lock } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { BookOpen, HelpCircle, Lock, CheckCircle2, ChevronDown, PenLine } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { LessonRenderer } from "./lesson-renderer"
-import type { DemoModule, DemoLesson } from "@/lib/demo-content"
+import { LessonRenderer, type RealLesson } from "./lesson-renderer"
+
+export interface RealModule {
+  id: string
+  title: string
+  lessons: RealLesson[]
+}
 
 interface ModuleAccordionProps {
-  module: DemoModule
+  module: RealModule
   moduleIndex: number
   isUnlocked: boolean
   completedLessons: string[]
   onLessonComplete: (lessonId: string) => void
+  onLessonOpen?: (lessonId: string) => void
+}
+
+function lessonIcon(type: string) {
+  if (type === "QUIZ") return HelpCircle
+  if (type === "COMPLETE") return PenLine
+  return BookOpen
+}
+
+function lessonTypeLabel(type: string) {
+  if (type === "QUIZ") return "Quiz"
+  if (type === "COMPLETE") return "Ejercicio"
+  return "Lectura"
 }
 
 export function ModuleAccordion({
@@ -22,127 +40,83 @@ export function ModuleAccordion({
   isUnlocked,
   completedLessons,
   onLessonComplete,
+  onLessonOpen,
 }: ModuleAccordionProps) {
-  const [isOpen, setIsOpen] = useState(isUnlocked)
-  const [activeLesson, setActiveLesson] = useState<DemoLesson | null>(null)
+  const [open, setOpen] = useState(moduleIndex === 1 && isUnlocked)
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(null)
 
-  if (!isUnlocked) {
-    return (
-      <Card className="opacity-60">
-        <CardContent className="pt-5 pb-5 flex items-center gap-4">
-          <Lock className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <h3 className="font-serif font-medium text-muted-foreground">
-              {module.title}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Completa el módulo anterior para desbloquear
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const moduleLessons = module.lessons
-  const completedInModule = moduleLessons.filter((l) =>
-    completedLessons.includes(l.id)
-  ).length
-  const moduleComplete = completedInModule === moduleLessons.length
+  const done = module.lessons.filter((l) => completedLessons.includes(l.id)).length
 
   return (
-    <Card className={`transition-all ${isOpen ? "shadow-sm" : ""}`}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-left"
+    <Card className={!isUnlocked ? "opacity-70" : ""}>
+      <CardHeader
+        className={`cursor-pointer hover:bg-muted/40 transition-colors ${!isUnlocked ? "pointer-events-none" : ""}`}
+        onClick={() => isUnlocked && setOpen((o) => !o)}
+        aria-expanded={isUnlocked && open}
       >
-        <CardContent className="pt-5 pb-5 flex items-center gap-4">
-          <div
-            className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${
-              moduleComplete
-                ? "bg-secondary/10 text-secondary"
-                : "bg-primary/10 text-primary"
-            }`}
-          >
-            {moduleComplete ? (
-              <CheckCircle2 className="h-5 w-5" />
-            ) : (
-              <span className="text-sm font-bold">{moduleIndex}</span>
-            )}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 text-primary font-bold">
+            {moduleIndex}
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="font-serif font-medium text-foreground">
-                {module.title.replace(`Módulo ${moduleIndex}: `, "")}
-              </h3>
-              <Badge
-                variant="outline"
-                className="text-[10px] text-muted-foreground"
-              >
-                {completedInModule}/{moduleLessons.length}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {module.description}
+            <CardTitle className="text-base font-serif">{module.title}</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {done}/{module.lessons.length} lecciones
             </p>
           </div>
-          <ChevronDown
-            className={`h-5 w-5 text-muted-foreground transition-transform shrink-0 ${
-              isOpen ? "rotate-180" : ""
-            }`}
-          />
-        </CardContent>
-      </button>
-
-      {isOpen && (
-        <div className="px-4 pb-4 space-y-2">
-          {moduleLessons.map((lesson, lessonIdx) => {
-            const isLessonComplete = completedLessons.includes(lesson.id)
-            const Icon = lesson.type === "ficha" ? BookOpen : HelpCircle
-
-            return (
-              <div key={lesson.id}>
-                <button
-                  onClick={() =>
-                    setActiveLesson(activeLesson?.id === lesson.id ? null : lesson)
-                  }
-                  className={`w-full text-left flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                    activeLesson?.id === lesson.id
-                      ? "bg-primary/5 border border-primary/20"
-                      : "hover:bg-muted/40 border border-transparent"
-                  }`}
-                >
-                  <div
-                    className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${
-                      isLessonComplete
-                        ? "bg-secondary/10 text-secondary"
-                        : "bg-muted/60 text-muted-foreground"
-                    }`}
-                  >
-                    {isLessonComplete ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <Icon className="h-4 w-4" />
-                    )}
-                  </div>
-                  <span className="text-sm text-foreground">
-                    {lessonIdx + 1}. {lesson.title.replace(/^Lección \d+\.\d+: /, "")}
-                  </span>
-                </button>
-
-                {activeLesson?.id === lesson.id && (
-                  <div className="mt-2 ml-11">
-                    <LessonRenderer
-                      lesson={lesson}
-                      isComplete={isLessonComplete}
-                      onComplete={() => onLessonComplete(lesson.id)}
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {isUnlocked ? (
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          ) : (
+            <Badge variant="outline" className="gap-1 text-[10px]">
+              <Lock className="h-3 w-3" />
+              Bloqueado
+            </Badge>
+          )}
         </div>
+      </CardHeader>
+      {isUnlocked && open && (
+        <CardContent className="space-y-3 pt-0">
+            {module.lessons.map((lesson) => {
+              const isComplete = completedLessons.includes(lesson.id)
+              const Icon = lessonIcon(lesson.type)
+              const active = activeLessonId === lesson.id
+              return (
+                <div key={lesson.id} className="rounded-lg border border-outline-variant/20">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = active ? null : lesson.id
+                      setActiveLessonId(next)
+                      if (next) onLessonOpen?.(next)
+                    }}
+                    className="w-full flex items-center gap-2 p-3 text-left hover:bg-muted/40 transition-colors"
+                    aria-expanded={active}
+                  >
+                    {isComplete ? (
+                      <CheckCircle2 className="h-4 w-4 text-secondary shrink-0" />
+                    ) : (
+                      <Icon className="h-4 w-4 text-primary shrink-0" />
+                    )}
+                    <span className="flex-1 text-sm font-medium">{lesson.title}</span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {lessonTypeLabel(lesson.type)}
+                    </Badge>
+                  </button>
+                  {active && (
+                    <div className="p-3 pt-0">
+                      <LessonRenderer
+                        lesson={lesson}
+                        isComplete={isComplete}
+                        onComplete={onLessonComplete}
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </CardContent>
       )}
     </Card>
   )
