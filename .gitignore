@@ -71,3 +71,8 @@ public/audio/*.mp3
 docs/
 worklog.md
 agent-ctx/
+
+# Playwright E2E artifacts
+test-results/
+playwright-report/
+playwright/.auth/
