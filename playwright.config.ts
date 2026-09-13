@@ -1,9 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * E2E Piiyaak (B4): flujos de lectura + juegos/cursos sin sesión.
- * No crea usuarios ni toca contenido: los resultados de juego usan
- * sessionKey "e2e-*" y se limpian post-run (ver e2e/cleanup).
+ * E2E Piiyaak (B4): suite GUI completa.
+ * - public: sin sesión (existente).
+ * - setup: registra usuario e2e + logins, guarda storageStates.
+ * - user/admin: flujos con sesión (dependen del setup).
+ * Limpieza: globalTeardown borra datos e2e-* (ver e2e/teardown.ts).
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -13,7 +15,26 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     trace: "retain-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "setup", testMatch: /setup\.ts/ },
+    {
+      name: "public",
+      testMatch: /public\.spec\.ts/,
+    },
+    {
+      name: "user",
+      testMatch: /user\.spec\.ts/,
+      dependencies: ["setup"],
+      use: { storageState: "e2e/.auth/user.json" },
+    },
+    {
+      name: "admin",
+      testMatch: /admin\.spec\.ts/,
+      dependencies: ["setup"],
+      use: { storageState: "e2e/.auth/admin.json" },
+    },
+  ],
+  globalTeardown: "./e2e/teardown.ts",
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {

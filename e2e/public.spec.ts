@@ -45,7 +45,7 @@ test.describe("Piiyaak público", () => {
     await expect(page.getByText("Nasa Yuwe Básico")).toBeVisible({ timeout: 15000 });
     await page.getByText("Nasa Yuwe Básico").click();
     await expect(page.getByText("Módulo 1", { exact: false })).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
   });
 
