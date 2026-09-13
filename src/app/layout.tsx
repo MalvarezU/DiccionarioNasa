@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Newsreader, Public_Sans } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
@@ -33,13 +33,21 @@ export const metadata: Metadata = {
   ],
   icons: {
     icon: "/libro-abierto.png",
+    apple: "/icon-192.png",
   },
+  manifest: "/manifest.webmanifest",
   openGraph: {
     title: "Piiyaak — Proyecto de preservación de la lengua Nasa Yuwe",
     description:
       "Piiyaak, plataforma para preservar y compartir la lengua Nasa Yuwe del pueblo Nasa de Colombia: diccionario, juegos y cursos.",
     type: "website",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#7c2d12",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
