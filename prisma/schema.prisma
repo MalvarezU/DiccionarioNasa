@@ -27,6 +27,8 @@ model User {
   viewHistory    ViewHistory[]
   searchHistory  SearchHistory[]
   passwordResets PasswordReset[]
+  gameSessions   UserGameSession[]
+  lessonProgress UserLessonProgress[]
 }
 
 model PasswordReset {
@@ -39,6 +41,89 @@ model PasswordReset {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+}
+
+enum LessonType {
+  READ
+  QUIZ
+  COMPLETE
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model UserGameSession {
+  id         String   @id @default(cuid())
+  userId     String?
+  sessionKey String?
+  game       String
+  played     Int      @default(1)
+  won        Int      @default(0)
+  bestScore  Int      @default(0)
+  bestStreak Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, game])
+  @@index([sessionKey, game])
+}
+
+model Course {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  status      ContentStatus @default(DRAFT)
+  sequential  Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  modules Module[]
+}
+
+model Module {
+  id       String   @id @default(cuid())
+  courseId String
+  title    String
+  order    Int      @default(0)
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons  Lesson[]
+
+  @@index([courseId, order])
+}
+
+model Lesson {
+  id       String     @id @default(cuid())
+  moduleId String
+  title    String
+  type     LessonType @default(READ)
+  order    Int        @default(0)
+  wordId   String?
+  payload  String?
+  module   Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  word     DictionaryWord? @relation(fields: [wordId], references: [id], onDelete: SetNull)
+  progress UserLessonProgress[]
+
+  @@index([moduleId, order])
+}
+
+model UserLessonProgress {
+  id            String    @id @default(cuid())
+  userId        String
+  lessonId      String
+  completed     Boolean   @default(false)
+  score         Int?
+  lastVisitedAt DateTime  @default(now())
+  completedAt   DateTime?
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson        Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
   @@index([userId])
 }
 
@@ -58,6 +143,7 @@ model DictionaryWord {
   favorites  Favorite[]
   viewHistory ViewHistory[]
   auditLogs  AuditLog[]
+  lessons    Lesson[]
 }
 
 model Favorite {
