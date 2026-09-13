@@ -45,8 +45,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Execute with a 2-second timeout by racing against a timeout promise
-    const timeoutMs = 2000
+    // La BD gratuita puede tardar segundos en frío (cold start) y el usuario
+    // está en 2G/3G: mejor esperar hasta 8 s que devolver vacío a los 2 s.
+    // El cliente muestra spinner mientras tanto (HU1.1.4).
+    const timeoutMs = 8000
 
     const timeoutPromise = new Promise<null>((resolve) =>
       setTimeout(() => resolve(null), timeoutMs)
