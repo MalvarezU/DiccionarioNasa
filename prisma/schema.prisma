@@ -72,6 +72,8 @@ model UserGameSession {
 
   @@index([userId, game])
   @@index([sessionKey, game])
+  @@unique([userId, game])
+  @@unique([sessionKey, game])
 }
 
 model Course {

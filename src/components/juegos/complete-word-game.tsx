@@ -1,13 +1,16 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { RefreshCw, CheckCircle2, XCircle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
-import { DEMO_WORDS } from "@/lib/demo-content"
+import {
+  gameWordsOrDemo,
+  reportGameResult,
+  type GameWord,
+} from "@/lib/game-words"
 
 function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr]
@@ -19,28 +22,30 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 const NUM_QUESTIONS = 5
-const HUECOS_POR_NIVEL: Record<string, number> = {
-  facil: 1,
-  medio: 2,
-  dificil: 3,
+// Rango de huecos por nivel (CA-51): fácil 1-2, medio 3-4, difícil 5+
+const HUECOS_POR_NIVEL: Record<string, { min: number; max: number }> = {
+  facil: { min: 1, max: 2 },
+  medio: { min: 3, max: 4 },
+  dificil: { min: 5, max: 7 },
 }
 
 type Nivel = "facil" | "medio" | "dificil"
 
 interface CompleteQuestion {
-  word: typeof DEMO_WORDS[number]
+  word: GameWord
   hiddenIndices: number[]
   display: (string | null)[]
 }
 
-function buildQuestion(
-  word: typeof DEMO_WORDS[number],
-  nivel: Nivel
-): CompleteQuestion {
+function buildQuestion(word: GameWord, nivel: Nivel): CompleteQuestion {
   const text = word.spanish.toLowerCase()
-  const numHuecos = HUECOS_POR_NIVEL[nivel]
+  const { min, max } = HUECOS_POR_NIVEL[nivel]
+  const target = Math.min(
+    Math.max(1, text.length - 1),
+    min + Math.floor(Math.random() * (max - min + 1))
+  )
   const indices: number[] = []
-  while (indices.length < numHuecos && indices.length < text.length - 1) {
+  while (indices.length < target) {
     const idx = Math.floor(Math.random() * text.length)
     if (!indices.includes(idx)) indices.push(idx)
   }
@@ -51,13 +56,37 @@ function buildQuestion(
   return { word, hiddenIndices: indices, display }
 }
 
-export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
+export function CompleteWordGame({
+  nivel = "medio",
+  words: providedWords,
+}: {
+  nivel?: Nivel
+  words?: GameWord[]
+}) {
   const [nivelState, setNivelState] = useState<Nivel>(nivel)
+  const [roundKey, setRoundKey] = useState(0)
+  const [pool, setPool] = useState<GameWord[] | null>(
+    providedWords && providedWords.length >= 4 ? providedWords : null
+  )
+
+  useEffect(() => {
+    if (providedWords && providedWords.length >= 4) return
+    let alive = true
+    gameWordsOrDemo(10).then((words) => {
+      if (alive) setPool(words)
+    })
+    return () => {
+      alive = false
+    }
+  }, [providedWords])
+
   const questions = useMemo(() => {
-    return shuffle(DEMO_WORDS)
+    if (!pool) return null
+    return shuffle(pool)
       .slice(0, NUM_QUESTIONS)
       .map((word) => buildQuestion(word, nivelState))
-  }, [nivelState])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pool, nivelState, roundKey])
 
   const [questionIndex, setQuestionIndex] = useState(0)
   const [inputs, setInputs] = useState<Record<number, string>>({})
@@ -67,6 +96,7 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
   )
   const [correctCount, setCorrectCount] = useState(0)
   const [finished, setFinished] = useState(false)
+  const [reported, setReported] = useState(false)
 
   function handleInputChange(huecoIdx: number, value: string) {
     if (status !== "playing") return
@@ -77,7 +107,8 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
   }
 
   function handleCheck() {
-    const current = questions[questionIndex]
+    const current = questions?.[questionIndex]
+    if (!current) return
     const text = current.word.spanish.toLowerCase()
     let allCorrect = true
     for (const idx of current.hiddenIndices) {
@@ -103,7 +134,7 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
   }
 
   function handleNext() {
-    if (questionIndex + 1 >= questions.length) {
+    if (!questions || questionIndex + 1 >= questions.length) {
       setFinished(true)
     } else {
       setQuestionIndex((i) => i + 1)
@@ -114,13 +145,35 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
   }
 
   function handleRestart() {
-    setNivelState((n) => n)
     setQuestionIndex(0)
     setInputs({})
     setAttempts(0)
     setStatus("playing")
     setCorrectCount(0)
     setFinished(false)
+    setReported(false)
+    setRoundKey((k) => k + 1)
+  }
+
+  // Persiste el resultado al terminar
+  useEffect(() => {
+    if (!finished || reported || !questions || questions.length === 0) return
+    setReported(true)
+    void reportGameResult({
+      game: "complete",
+      won: correctCount >= questions.length * 0.5,
+      score: correctCount * 10,
+      streak: 0,
+    })
+  }, [finished, reported, questions, correctCount])
+
+  if (!questions) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6" aria-busy="true" aria-label="Cargando juego">
+        <div className="h-32 bg-muted/40 rounded-xl animate-pulse" />
+        <p className="text-center text-sm text-muted-foreground">Cargando palabras...</p>
+      </div>
+    )
   }
 
   if (finished) {
@@ -152,37 +205,34 @@ export function CompleteWordGame({ nivel = "medio" }: { nivel?: Nivel }) {
           <span className="text-muted-foreground">
             Palabra {questionIndex + 1} de {questions.length}
           </span>
-          <div className="flex gap-3">
-            <Badge
-              variant="outline"
-              className={
-                nivelState === "facil"
-                  ? "bg-secondary/10 text-secondary border-secondary/30"
-                  : "text-muted-foreground"
-              }
-            >
-              Fácil
-            </Badge>
-            <Badge
-              variant="outline"
-              className={
-                nivelState === "medio"
-                  ? "bg-secondary/10 text-secondary border-secondary/30"
-                  : "text-muted-foreground"
-              }
-            >
-              Medio
-            </Badge>
-            <Badge
-              variant="outline"
-              className={
-                nivelState === "dificil"
-                  ? "bg-secondary/10 text-secondary border-secondary/30"
-                  : "text-muted-foreground"
-              }
-            >
-              Difícil
-            </Badge>
+          <div className="flex gap-3" role="group" aria-label="Dificultad">
+            {(
+              [
+                { value: "facil", label: "Fácil" },
+                { value: "medio", label: "Medio" },
+                { value: "dificil", label: "Difícil" },
+              ] as Array<{ value: Nivel; label: string }>
+            ).map((n) => (
+              <Button
+                key={n.value}
+                variant={nivelState === n.value ? "default" : "outline"}
+                size="sm"
+                aria-pressed={nivelState === n.value}
+                onClick={() => {
+                  if (n.value === nivelState) return
+                  setNivelState(n.value)
+                  setQuestionIndex(0)
+                  setInputs({})
+                  setAttempts(0)
+                  setStatus("playing")
+                  setCorrectCount(0)
+                  setFinished(false)
+                  setReported(false)
+                }}
+              >
+                {n.label}
+              </Button>
+            ))}
           </div>
         </div>
         <Progress

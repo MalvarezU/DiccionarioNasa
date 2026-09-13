@@ -1,6 +1,5 @@
 import { Type } from "lucide-react"
 import { NavBar } from "@/components/navbar"
-import { DemoBadge } from "@/components/demo-badge"
 import { CompleteWordGame } from "@/components/juegos/complete-word-game"
 
 export default function CompletarPage() {
@@ -13,7 +12,6 @@ export default function CompletarPage() {
           <h1 className="text-3xl font-serif font-bold text-primary">
             Completar la palabra
           </h1>
-          <DemoBadge />
         </div>
         <p className="text-muted-foreground mb-8">
           Escribe las letras que faltan. Tienes 3 intentos por palabra.

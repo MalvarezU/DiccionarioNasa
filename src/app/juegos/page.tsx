@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { Gamepad2, Brain, Type, ArrowRight, Lock } from "lucide-react"
 import { NavBar } from "@/components/navbar"
-import { DemoBadge } from "@/components/demo-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,7 +22,7 @@ const JUEGOS = [
     description:
       "Voltea las cartas y encuentra las parejas entre palabras en español y Nasa Yuwe.",
     color: "from-secondary to-secondary-container",
-    locked: true,
+    locked: false,
   },
   {
     href: "/juegos/completar",
@@ -48,7 +47,6 @@ export default function JuegosPage() {
               <h1 className="text-3xl sm:text-4xl font-serif font-bold text-primary">
                 Juegos Didácticos
               </h1>
-              <DemoBadge />
             </div>
             <p className="text-muted-foreground max-w-2xl">
               Aprende vocabulario Nasa Yuwe jugando. Elige un juego y empieza a practicar.

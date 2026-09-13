@@ -1,6 +1,5 @@
 import { Brain } from "lucide-react"
 import { NavBar } from "@/components/navbar"
-import { DemoBadge } from "@/components/demo-badge"
 import { FlashcardGame } from "@/components/juegos/flashcard-game"
 
 export default function FlashcardsPage() {
@@ -13,7 +12,6 @@ export default function FlashcardsPage() {
           <h1 className="text-3xl font-serif font-bold text-primary">
             Flashcards
           </h1>
-          <DemoBadge />
         </div>
         <p className="text-muted-foreground mb-8">
           Elige la traducción correcta. ¡Acumula tu racha de aciertos!
