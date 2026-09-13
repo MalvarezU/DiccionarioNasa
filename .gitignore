@@ -76,3 +76,4 @@ agent-ctx/
 test-results/
 playwright-report/
 playwright/.auth/
+e2e/.auth/
