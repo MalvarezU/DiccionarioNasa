@@ -47,6 +47,10 @@ test.describe("Piiyaak público", () => {
     await expect(page.getByText("Módulo 1", { exact: false })).toBeVisible({
       timeout: 30000,
     });
+    // Numeración persistida "1.1" visible en la primera lección
+    await expect(
+      page.getByRole("button", { name: /1\.1 · Lección/ })
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test("admin sin sesión redirige (no expone panel)", async ({ page }) => {
