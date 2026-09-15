@@ -189,13 +189,3 @@ test.describe("admin Piiyaak", () => {
 
 });
 
-  test("ZZ shot modal", async ({ page }) => {
-    await page.goto("/admin/courses");
-    await expect(page.getByText("Gestión de cursos")).toBeVisible({ timeout: 30000 });
-    await page.getByRole("button", { name: /módulos ·/ }).first().click();
-    await page.getByRole("button", { name: /^Editar lección / }).first().click();
-    await expect(page.locator("#edit-lesson-title")).toBeVisible({ timeout: 15000 });
-    await page.waitForTimeout(2500);
-    await page.screenshot({ path: "/tmp/modal-shot.png" });
-    console.log("shot ok");
-  });
