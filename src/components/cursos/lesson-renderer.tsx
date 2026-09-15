@@ -17,6 +17,8 @@ export interface RealLesson {
   id: string
   title: string
   type: "READ" | "QUIZ" | "COMPLETE"
+  /** Numeración visible "1.1, 1.2…" — persistida en BD (estable al reordenar). */
+  lessonNumber: number | null
   wordId: string | null
   payload: string | null
   word: {

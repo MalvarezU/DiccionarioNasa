@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,13 +15,16 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { EditLessonModal, type LessonForEdit } from "./edit-lesson-modal"
 
 interface Lesson {
   id: string
   title: string
   type: "READ" | "QUIZ" | "COMPLETE"
   order: number
+  lessonNumber: number | null
   wordId: string | null
+  word: { spanish: string } | null
 }
 
 interface Module {
@@ -85,6 +88,13 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
   const [editDesc, setEditDesc] = useState("")
   const [editStatus, setEditStatus] = useState<string>("DRAFT")
   const [newModuleTitle, setNewModuleTitle] = useState("")
+  const [savingModule, setSavingModule] = useState(false)
+  const [savingLesson, setSavingLesson] = useState<Record<string, boolean>>({})
+  // Refs sincrónicas contra doble click: el estado tarda un render en
+  // actualizarse y dos envíos rápidos verían el flag todavía apagado.
+  const savingModuleRef = useRef(false)
+  const savingLessonRef = useRef<Set<string>>(new Set())
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
   const [lessonForms, setLessonForms] = useState<
     Record<string, { title: string; type: string; wordSpanish: string }>
   >({})
@@ -170,7 +180,9 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
 
   async function handleAddModule(e: React.FormEvent) {
     e.preventDefault()
-    if (!detail || !newModuleTitle.trim()) return
+    if (!detail || !newModuleTitle.trim() || savingModuleRef.current) return
+    savingModuleRef.current = true
+    setSavingModule(true)
     try {
       await api("/api/modules", {
         method: "POST",
@@ -180,6 +192,9 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
       await loadDetail(detail.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear módulo")
+    } finally {
+      savingModuleRef.current = false
+      setSavingModule(false)
     }
   }
 
@@ -199,7 +214,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     const idx = ids.indexOf(moduleId)
     const j = idx + dir
     if (idx < 0 || j < 0 || j >= ids.length) return
-    ;[ids[idx], ids[j]] = [ids[idx]!, ids[j]!]
+    ;[ids[idx], ids[j]] = [ids[j]!, ids[idx]!]
     try {
       await api(`/api/courses/${detail.id}/reorder`, {
         method: "POST",
@@ -218,8 +233,11 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
   async function handleAddLesson(e: React.FormEvent, moduleId: string) {
     e.preventDefault()
     if (!detail) return
+    if (savingLessonRef.current.has(moduleId)) return
     const form = lessonForm(moduleId)
     if (!form.title.trim()) return
+    savingLessonRef.current.add(moduleId)
+    setSavingLesson((prev) => ({ ...prev, [moduleId]: true }))
     try {
       await api(`/api/modules/${moduleId}/lessons`, {
         method: "POST",
@@ -236,6 +254,9 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
       await loadDetail(detail.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear lección")
+    } finally {
+      savingLessonRef.current.delete(moduleId)
+      setSavingLesson((prev) => ({ ...prev, [moduleId]: false }))
     }
   }
 
@@ -249,24 +270,53 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     }
   }
 
-  async function moveLesson(moduleId: string, lessonId: string, dir: -1 | 1) {
-    if (!detail) return
+  async function moveLesson(moduleId: string, lessonId: string, dir: -1 | 1): Promise<boolean> {
+    if (!detail) return false
     const mod = detail.modules.find((m) => m.id === moduleId)
-    if (!mod) return
+    if (!mod) return false
     const ids = [...mod.lessons].sort((a, b) => a.order - b.order).map((l) => l.id)
     const idx = ids.indexOf(lessonId)
     const j = idx + dir
-    if (idx < 0 || j < 0 || j >= ids.length) return
-    ;[ids[idx], ids[j]] = [ids[idx]!, ids[j]!]
+    if (idx < 0 || j < 0 || j >= ids.length) return false
+    ;[ids[idx], ids[j]] = [ids[j]!, ids[idx]!]
     try {
       await api(`/api/courses/${detail.id}/reorder`, {
         method: "POST",
         body: JSON.stringify({ lessons: { [moduleId]: ids } }),
       })
       await loadDetail(detail.id)
+      return true
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al reordenar")
+      return false
     }
+  }
+
+  // Lección en edición, derivada del detalle (se refresca sola tras mover/guardar)
+  const editingLesson: LessonForEdit | null = (() => {
+    if (!detail || !editingLessonId) return null
+    for (let mi = 0; mi < detail.modules.length; mi++) {
+      const mod = detail.modules[mi]!
+      const les = mod.lessons.find((l) => l.id === editingLessonId)
+      if (les) {
+        return {
+          id: les.id,
+          moduleId: mod.id,
+          moduleTitle: mod.title,
+          moduleIndex: mi + 1,
+          title: les.title,
+          type: les.type,
+          lessonNumber: les.lessonNumber,
+          wordSpanish: les.word?.spanish ?? "",
+        }
+      }
+    }
+    return null
+  })()
+
+  async function handleMoveFromModal(lessonId: string, moduleId: string, dir: -1 | 1) {
+    const ok = await moveLesson(moduleId, lessonId, dir)
+    if (!ok) throw new Error("move-failed")
   }
 
   return (
@@ -397,13 +447,15 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                     onChange={(e) => setNewModuleTitle(e.target.value)}
                     placeholder="Nuevo módulo..."
                     aria-label="Título del nuevo módulo"
+                    disabled={savingModule}
                   />
-                  <Button type="submit" size="sm" disabled={!newModuleTitle.trim()}>
-                    Añadir
+                  <Button type="submit" size="sm" disabled={!newModuleTitle.trim() || savingModule}>
+                    {savingModule && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {savingModule ? "Añadiendo..." : "Añadir"}
                   </Button>
                 </form>
 
-                {(detail.modules ?? []).map((mod) => (
+                {(detail.modules ?? []).map((mod, modIdx) => (
                   <div key={mod.id} className="rounded-lg border border-outline-variant/20 p-3 space-y-2">
                     <div className="flex items-center gap-2">
                       <p className="flex-1 text-sm font-medium">{mod.title}</p>
@@ -438,17 +490,37 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
 
                     {/* Lecciones */}
                     <div className="pl-2 space-y-1.5">
-                      {mod.lessons.map((les) => (
+                      {[...mod.lessons]
+                        .sort(
+                          (a, b) =>
+                            (a.lessonNumber ?? Number.MAX_SAFE_INTEGER) -
+                              (b.lessonNumber ?? Number.MAX_SAFE_INTEGER) || a.order - b.order
+                        )
+                        .map((les) => (
                         <div
                           key={les.id}
+                          data-testid="lesson-row"
+                          data-lesson-title={les.title}
                           className="flex items-center gap-2 text-sm p-2 rounded bg-muted/30"
                         >
+                          <Badge variant="outline" className="text-[10px] shrink-0">
+                            {modIdx + 1}.{les.lessonNumber ?? "?"}
+                          </Badge>
                           <span className="flex-1">
                             {les.title}{" "}
                             <span className="text-[10px] text-muted-foreground">
                               ({LESSON_LABEL[les.type] ?? les.type})
                             </span>
                           </span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            aria-label={`Editar lección ${les.title}`}
+                            onClick={() => setEditingLessonId(les.id)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
                           <Button
                             size="icon"
                             variant="ghost"
@@ -494,6 +566,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                           placeholder="Nueva lección..."
                           aria-label={`Título de nueva lección en ${mod.title}`}
                           className="flex-1 min-w-[140px] h-8 text-xs"
+                          disabled={!!savingLesson[mod.id]}
                         />
                         <Select
                           value={lessonForm(mod.id).type}
@@ -524,9 +597,16 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                           placeholder="Palabra (español)"
                           aria-label="Palabra en español para la lección"
                           className="w-[140px] h-8 text-xs"
+                          disabled={!!savingLesson[mod.id]}
                         />
-                        <Button type="submit" size="sm" className="h-8 text-xs">
-                          Añadir lección
+                        <Button
+                          type="submit"
+                          size="sm"
+                          className="h-8 text-xs gap-1.5"
+                          disabled={!lessonForm(mod.id).title.trim() || !!savingLesson[mod.id]}
+                        >
+                          {savingLesson[mod.id] && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                          {savingLesson[mod.id] ? "Añadiendo..." : "Añadir lección"}
                         </Button>
                       </form>
                     </div>
@@ -537,6 +617,18 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
           )}
         </CardContent>
       </Card>
+
+      <EditLessonModal
+        lesson={editingLesson}
+        open={editingLesson !== null}
+        onOpenChange={(v) => {
+          if (!v) setEditingLessonId(null)
+        }}
+        onSaved={() => {
+          if (detail) void loadDetail(detail.id)
+        }}
+        onMove={handleMoveFromModal}
+      />
     </div>
   )
 }

@@ -28,7 +28,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
           orderBy: { order: "asc" },
           include: {
             lessons: {
-              orderBy: { order: "asc" },
+              orderBy: [{ lessonNumber: "asc" }, { id: "asc" }],
               include: {
                 word: {
                   select: {

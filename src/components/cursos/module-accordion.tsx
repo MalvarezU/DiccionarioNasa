@@ -99,7 +99,12 @@ export function ModuleAccordion({
                     ) : (
                       <Icon className="h-4 w-4 text-primary shrink-0" />
                     )}
-                    <span className="flex-1 text-sm font-medium">{lesson.title}</span>
+                    <span className="flex-1 text-sm font-medium">
+                      <span className="text-muted-foreground tabular-nums">
+                        {moduleIndex}.{lesson.lessonNumber ?? "?"} ·{" "}
+                      </span>
+                      {lesson.title}
+                    </span>
                     <Badge variant="outline" className="text-[10px]">
                       {lessonTypeLabel(lesson.type)}
                     </Badge>

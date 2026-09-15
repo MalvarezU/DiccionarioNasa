@@ -6,6 +6,7 @@ import { config as dotenv } from "dotenv";
  * - Usuarios e2e-* (cascada: favoritos, historial, progreso, sesiones juego).
  * - Palabras "E2E *" (auditoría queda con entityId huérfano = histórico).
  * - Sesiones de juego anónimas e2e-*.
+ * - Cursos "E2E *" (cascada: módulos, lecciones, progreso).
  */
 async function teardown() {
   dotenv({ path: path.resolve(__dirname, "../.env") });
@@ -21,8 +22,11 @@ async function teardown() {
     const users = await db.user.deleteMany({
       where: { email: { startsWith: "e2e-" } },
     });
+    const courses = await db.course.deleteMany({
+      where: { title: { startsWith: "E2E " } },
+    });
     console.log(
-      `[teardown] sesiones juego: ${sessions.count}, palabras: ${words.count}, usuarios: ${users.count}`
+      `[teardown] sesiones juego: ${sessions.count}, palabras: ${words.count}, usuarios: ${users.count}, cursos: ${courses.count}`
     );
   } finally {
     await db.$disconnect();

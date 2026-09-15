@@ -23,45 +23,67 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     const ops: Array<Promise<unknown>> = []
 
     if (Array.isArray(body?.modules)) {
-      const ids = (body.modules as unknown[]).filter((v): v is string => typeof v === "string")
+      const ids = (body.modules as unknown[]).filter((v): v is string => typeof v === "string");
       // Solo módulos del curso
       const owned = await db.module.findMany({
         where: { courseId: id, id: { in: ids } },
         select: { id: true },
-      })
-      const ownedSet = new Set(owned.map((m) => m.id))
+      });
+      const ownedSet = new Set(owned.map((m) => m.id));
       ids.forEach((mid, order) => {
         if (ownedSet.has(mid)) {
-          ops.push(db.module.update({ where: { id: mid }, data: { order } }))
+          ops.push(db.module.update({ where: { id: mid }, data: { order } }));
         }
-      })
+      });
     }
 
     if (body?.lessons && typeof body.lessons === "object") {
       for (const [moduleId, lessonIds] of Object.entries(
         body.lessons as Record<string, unknown>
       )) {
-        if (!Array.isArray(lessonIds)) continue
+        if (!Array.isArray(lessonIds)) continue;
         const mod = await db.module.findFirst({
           where: { id: moduleId, courseId: id },
           select: { id: true },
-        })
-        if (!mod) continue
-        const ids = lessonIds.filter((v): v is string => typeof v === "string")
+        });
+        if (!mod) continue;
+        const ids = lessonIds.filter((v): v is string => typeof v === "string");
         const owned = await db.lesson.findMany({
           where: { moduleId, id: { in: ids } },
           select: { id: true },
-        })
-        const ownedSet = new Set(owned.map((l) => l.id))
-        ids.forEach((lid, order) => {
-          if (ownedSet.has(lid)) {
-            ops.push(db.lesson.update({ where: { id: lid }, data: { order } }))
+        });
+        const ownedSet = new Set(owned.map((l) => l.id));
+        // Orden resultante: las mandadas primero (en ese orden), el resto del
+        // módulo después por su order actual. Sin huecos en la numeración.
+        const rest = await db.lesson.findMany({
+          where: { moduleId },
+          orderBy: [{ order: "asc" }, { id: "asc" }],
+          select: { id: true },
+        });
+        const seen = new Set<string>();
+        const finalOrder: string[] = [];
+        for (const lid of ids) {
+          if (ownedSet.has(lid) && !seen.has(lid)) {
+            seen.add(lid);
+            finalOrder.push(lid);
           }
-        })
+        }
+        for (const l of rest) {
+          if (!seen.has(l.id)) {
+            seen.add(l.id);
+            finalOrder.push(l.id);
+          }
+        }
+        // Un solo update por lección: order + lessonNumber (1..N) juntos
+        finalOrder.forEach((lid, idx) => {
+          ops.push(
+            db.lesson.update({ where: { id: lid }, data: { order: idx, lessonNumber: idx + 1 } })
+          );
+        });
       }
     }
 
-    await db.$transaction(ops as never)
+    await db.$transaction(ops as never);
 
     return NextResponse.json({ ok: true, updated: ops.length })
   } catch (err) {

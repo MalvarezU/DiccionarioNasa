@@ -105,6 +105,9 @@ model Lesson {
   title    String
   type     LessonType @default(READ)
   order    Int        @default(0)
+  /// Numeración visible ("1.1", "1.2"...). Calculada por el server al crear
+  /// y reasignada al reordenar. Null solo en migración pendiente de backfill.
+  lessonNumber Int?
   wordId   String?
   payload  String?
   module   Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
@@ -112,6 +115,7 @@ model Lesson {
   progress UserLessonProgress[]
 
   @@index([moduleId, order])
+  @@index([moduleId, lessonNumber])
 }
 
 model UserLessonProgress {

@@ -108,4 +108,94 @@ test.describe("admin Piiyaak", () => {
     await readyDashboard(page);
     await expect(page.getByText(/administra los roles/i)).toBeVisible({ timeout: 15000 });
   });
+
+  test("curso: crear módulo, doble click crea una sola lección", async ({ page }) => {
+    const stamp = Date.now();
+    const courseTitle = `E2E Curso ${stamp}`;
+    const lessonTitle = `E2E Lección ${stamp}`;
+
+    await page.goto("/admin/courses");
+    await expect(page.getByText("Gestión de cursos")).toBeVisible({ timeout: 30000 });
+
+    // Crear curso
+    await page.getByLabel("Título del nuevo curso").fill(courseTitle);
+    await page.getByRole("button", { name: "Crear curso" }).click();
+    await expect(page.getByText(courseTitle)).toBeVisible({ timeout: 30000 });
+
+    // Crear módulo
+    await page.getByText(courseTitle).click();
+    await page.getByLabel("Título del nuevo módulo").fill(`E2E Módulo ${stamp}`);
+    await page.getByRole("button", { name: "Añadir", exact: true }).click();
+    await expect(page.getByText(`E2E Módulo ${stamp}`)).toBeVisible({ timeout: 30000 });
+
+    // Doble click rápido en añadir lección → una sola lección
+    await page.getByLabel(/Título de nueva lección/).fill(lessonTitle);
+    await page.getByRole("button", { name: "Añadir lección" }).dblclick();
+    // El botón se bloquea mientras envía
+    await expect(page.getByText(lessonTitle).first()).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(lessonTitle)).toHaveCount(1, { timeout: 15000 });
+  });
+
+  test("curso: editor pre-rellena y reordenar re-numera", async ({ page }) => {
+    const stamp = Date.now();
+    const courseTitle = `E2E Curso Ed ${stamp}`;
+
+    await page.goto("/admin/courses");
+    await expect(page.getByText("Gestión de cursos")).toBeVisible({ timeout: 30000 });
+
+    await page.getByLabel("Título del nuevo curso").fill(courseTitle);
+    await page.getByRole("button", { name: "Crear curso" }).click();
+    await expect(page.getByText(courseTitle)).toBeVisible({ timeout: 30000 });
+    await page.getByText(courseTitle).click();
+    await page.getByLabel("Título del nuevo módulo").fill(`E2E Mod ${stamp}`);
+    await page.getByRole("button", { name: "Añadir", exact: true }).click();
+    await expect(page.getByText(`E2E Mod ${stamp}`)).toBeVisible({ timeout: 30000 });
+
+    // Dos lecciones
+    await page.getByLabel(/Título de nueva lección/).fill(`E2E Primera ${stamp}`);
+    await page.getByRole("button", { name: "Añadir lección" }).click();
+    await expect(page.getByText(`E2E Primera ${stamp}`)).toBeVisible({ timeout: 30000 });
+    await page.getByLabel(/Título de nueva lección/).fill(`E2E Segunda ${stamp}`);
+    await page.getByRole("button", { name: "Añadir lección" }).click();
+    await expect(page.getByText(`E2E Segunda ${stamp}`)).toBeVisible({ timeout: 30000 });
+
+    // Abrir editor: pre-rellena título
+    await page.getByRole("button", { name: `Editar lección E2E Primera ${stamp}` }).click();
+    await expect(page.getByText("Editar lección")).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("#edit-lesson-title")).toHaveValue(`E2E Primera ${stamp}`);
+    const dialog = page.getByRole("dialog");
+
+    // Mover la primera hacia abajo y esperar a que el modal refleje 1.2
+    // (el POST puede tardar con la BD lenta; el botón se bloquea mientras envía)
+    await dialog.getByRole("button", { name: "Bajar lección", exact: true }).click();
+    await expect(dialog.getByText("1.2", { exact: true })).toBeVisible({ timeout: 60000 });
+    // El botón vuelve a habilitarse cuando termina el envío
+    await expect(dialog.getByRole("button", { name: "Bajar lección", exact: true })).toBeEnabled({
+      timeout: 60000,
+    });
+    await page.keyboard.press("Escape");
+
+    // En la lista, la fila de "E2E Segunda" ahora muestra el 1.1
+    const segundaRow = page.locator(
+      `[data-testid="lesson-row"][data-lesson-title="E2E Segunda ${stamp}"]`
+    );
+    await expect(segundaRow.getByText("1.1", { exact: true })).toBeVisible({ timeout: 30000 });
+
+    // Limpieza: eliminar el curso (cascada a módulos y lecciones)
+    page.on("dialog", (d) => void d.accept());
+    await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+    await expect(page.getByText(courseTitle)).toHaveCount(0, { timeout: 30000 });
+  });
+
 });
+
+  test("ZZ shot modal", async ({ page }) => {
+    await page.goto("/admin/courses");
+    await expect(page.getByText("Gestión de cursos")).toBeVisible({ timeout: 30000 });
+    await page.getByRole("button", { name: /módulos ·/ }).first().click();
+    await page.getByRole("button", { name: /^Editar lección / }).first().click();
+    await expect(page.locator("#edit-lesson-title")).toBeVisible({ timeout: 15000 });
+    await page.waitForTimeout(2500);
+    await page.screenshot({ path: "/tmp/modal-shot.png" });
+    console.log("shot ok");
+  });

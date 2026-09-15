@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
         modules: {
           orderBy: { order: "asc" },
           include: {
-            lessons: { orderBy: { order: "asc" }, select: { id: true } },
+            lessons: {
+              orderBy: [{ lessonNumber: "asc" }, { id: "asc" }],
+              select: { id: true, lessonNumber: true },
+            },
           },
         },
       },

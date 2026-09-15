@@ -18,7 +18,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     course: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     module: { count: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
-    lesson: { count: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
+    lesson: { count: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn() },
     dictionaryWord: { findFirst: vi.fn() },
     userLessonProgress: { upsert: vi.fn(), findMany: vi.fn() },
   },
@@ -138,6 +138,7 @@ describe("cursos API [B2.2]", () => {
       expect.objectContaining({ data: expect.objectContaining({ wordId: "w1", type: "READ" }) })
     )
 
+    vi.mocked(db.lesson.findUnique).mockResolvedValue({ id: "l1", moduleId: "m1" } as never)
     vi.mocked(db.lesson.update).mockResolvedValue({ id: "l1" } as never)
     const upd = await lessonPATCH(jsonReq("http://x", { title: "L2" }) as never, params("l1"))
     expect(upd.status).toBe(200)
@@ -201,5 +202,116 @@ describe("cursos API [B2.2]", () => {
     expect(body.pct).toBe(50)
     expect(body.completedIds).toEqual(["l1"])
     expect(body.lastVisitedLessonId).toBe("l1")
+  })
+})
+
+describe("lecciones: numeración y dedupe [admin-cursos]", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("POST asigna lessonNumber = max + 1 del módulo", async () => {
+    allowEditor()
+    vi.mocked(db.module.findUnique).mockResolvedValue({ id: "m1" } as never)
+    vi.mocked(db.lesson.count).mockResolvedValue(2)
+    vi.mocked(db.lesson.create).mockResolvedValue({ id: "l3", lessonNumber: 3 } as never)
+    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+
+    // 1ª llamada (dupe check): nada. 2ª llamada ("last"): la lección 2.
+    vi.mocked(db.lesson.findFirst)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ lessonNumber: 2 } as never)
+
+    const res = await lessonsPOST(
+      jsonReq("http://x/api/modules/m1/lessons", { title: "Nueva" }) as never,
+      params("m1")
+    )
+    expect(res.status).toBe(201)
+    expect(db.lesson.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ lessonNumber: 3 }),
+      })
+    )
+  })
+
+  it("POST rechaza 409 si el título ya existe en el módulo", async () => {
+    allowEditor()
+    vi.mocked(db.module.findUnique).mockResolvedValue({ id: "m1" } as never)
+    vi.mocked(db.lesson.findFirst).mockResolvedValue({ id: "l-existente" } as never)
+
+    const res = await lessonsPOST(
+      jsonReq("http://x/api/modules/m1/lessons", { title: "Bienvenida" }) as never,
+      params("m1")
+    )
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.message).toMatch(/Bienvenida/)
+    expect(db.lesson.create).not.toHaveBeenCalled()
+  })
+
+  it("PATCH edita título y palabra, rechaza duplicado y no toca type", async () => {
+    allowEditor()
+    vi.mocked(db.lesson.findUnique).mockResolvedValue({ id: "l1", moduleId: "m1" } as never)
+    vi.mocked(db.lesson.findFirst).mockResolvedValue(null)
+    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue({ id: "w9" } as never)
+    vi.mocked(db.lesson.update).mockResolvedValue({ id: "l1" } as never)
+
+    const res = await lessonPATCH(
+      jsonReq("http://x/api/lessons/l1", { title: "Nuevo título", wordSpanish: "casa", type: "QUIZ" }) as never,
+      params("l1")
+    )
+    expect(res.status).toBe(200)
+    expect(db.lesson.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ title: "Nuevo título", wordId: "w9" }),
+      })
+    )
+    // type NO debe viajar en el update aunque venga en el body
+    const sentData = vi.mocked(db.lesson.update).mock.calls[0]![0] as {
+      data: Record<string, unknown>
+    }
+    expect(sentData.data).not.toHaveProperty("type")
+  })
+
+  it("PATCH rechaza 409 al renombrar a un título existente del módulo", async () => {
+    allowEditor()
+    vi.mocked(db.lesson.findUnique).mockResolvedValue({ id: "l1", moduleId: "m1" } as never)
+    vi.mocked(db.lesson.findFirst).mockResolvedValue({ id: "l2" } as never)
+
+    const res = await lessonPATCH(
+      jsonReq("http://x/api/lessons/l1", { title: "Bienvenida" }) as never,
+      params("l1")
+    )
+    expect(res.status).toBe(409)
+    expect(db.lesson.update).not.toHaveBeenCalled()
+  })
+
+  it("reorder re-numera 1..N por módulo", async () => {
+    allowEditor()
+    vi.mocked(db.course.findUnique).mockResolvedValue({ id: "c1" } as never)
+    vi.mocked(db.module.findFirst).mockResolvedValue({ id: "m1" } as never)
+    vi.mocked(db.lesson.findMany)
+      .mockResolvedValueOnce([{ id: "l1" }, { id: "l2" }] as never)
+      .mockResolvedValueOnce([
+        { id: "l2", order: 0 },
+        { id: "l1", order: 1 },
+      ] as never)
+    vi.mocked(db.module.update).mockResolvedValue({} as never)
+    vi.mocked(db.lesson.update).mockResolvedValue({} as never)
+    ;(db as unknown as { $transaction: ReturnType<typeof vi.fn> }).$transaction = vi
+      .fn()
+      .mockResolvedValue([])
+
+    const res = await reorderPOST(
+      jsonReq("http://x", { lessons: { m1: ["l2", "l1"] } }) as never,
+      params("c1")
+    )
+    expect(res.status).toBe(200)
+    const updates = vi
+      .mocked(db.lesson.update)
+      .mock.calls.map((c) => c[0] as { where: { id: string }; data: Record<string, unknown> })
+    const byId = Object.fromEntries(updates.map((u) => [u.where.id, u.data]))
+    // order nuevo + lessonNumber reasignado 1..N en el mismo orden, un update por lección
+    expect(Object.keys(byId)).toHaveLength(2)
+    expect(byId["l2"]).toMatchObject({ order: 0, lessonNumber: 1 })
+    expect(byId["l1"]).toMatchObject({ order: 1, lessonNumber: 2 })
   })
 })

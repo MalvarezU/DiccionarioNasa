@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { CourseManager } from "./course-manager"
 
@@ -76,5 +76,41 @@ describe("CourseManager [B2.2]", () => {
 
     await user.click(await screen.findByText("Básico"))
     expect(screen.queryByRole("button", { name: "Eliminar" })).toBeNull()
+  })
+
+  it("doble click en añadir lección crea una sola [admin-cursos]", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(Response.json({ courses: COURSES }))
+      .mockResolvedValueOnce(Response.json({ course: DETAIL }))
+    // POST pendiente: simula red lenta. fireEvent es sincrónico: ambos
+    // clicks llegan antes de cualquier re-render (el race real).
+    let resolvePost!: (v: Response) => void
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((r) => {
+          resolvePost = r
+        })
+    )
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    await user.type(screen.getByLabelText(/Título de nueva lección/), "Doble")
+    const addBtn = screen.getByRole("button", { name: "Añadir lección" })
+    fireEvent.click(addBtn)
+    // Sin esperar a la red, el botón ya debe estar bloqueado...
+    expect(addBtn).toBeDisabled()
+    // ...y un segundo envío no duplica la petición
+    fireEvent.click(addBtn)
+
+    const lessonCalls = vi
+      .mocked(fetch)
+      .mock.calls.filter(([url]) => String(url).includes("/lessons"))
+    expect(lessonCalls).toHaveLength(1)
+
+    resolvePost(Response.json({ lesson: { id: "l2" } }))
+    await waitFor(() => {
+      expect(screen.queryByDisplayValue("Doble")).toBeNull()
+    })
   })
 })
