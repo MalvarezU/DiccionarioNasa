@@ -147,3 +147,22 @@ export class CerrarEditor implements Task {
     await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15000 });
   }
 }
+
+/**
+ * Eliminar el curso abierto (cascada a módulos y lecciones).
+ * Requiere la habilidad AceptarConfirmaciones (la trae actorAdmin).
+ */
+export class EliminarCurso implements Task {
+  descripcion: string;
+  private constructor(private titulo: string) {
+    this.descripcion = `eliminar curso "${titulo}"`;
+  }
+  static titulado(titulo: string): EliminarCurso {
+    return new EliminarCurso(titulo);
+  }
+  async ejecutar(actor: Actor): Promise<void> {
+    const { page } = actor.usa(NavegarLaWeb);
+    await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+    await expect(page.getByText(this.titulo)).toHaveCount(0, { timeout: 30000 });
+  }
+}

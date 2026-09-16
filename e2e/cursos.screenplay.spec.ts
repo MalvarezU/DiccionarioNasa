@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { Actor } from "./screenplay/actor";
-import { NavegarLaWeb } from "./screenplay/habilidades";
+import { actorAdmin } from "./screenplay/actores";
 import {
   IrAGestionDeCursos,
   CrearCurso,
@@ -31,7 +30,7 @@ test("screenplay: doble click crea una sola lección", async ({ page }) => {
   const modulo = `E2E Módulo ${stamp}`;
   const leccion = `E2E Lección ${stamp}`;
 
-  const admin = Actor.llamado("Admin").con(NavegarLaWeb.con(page));
+  const admin = actorAdmin(page);
 
   await admin.intenta(
     IrAGestionDeCursos.ahora(),
@@ -51,7 +50,7 @@ test("screenplay: editor pre-rellena y reordenar re-numera", async ({ page }) =>
   const primera = `E2E Primera ${stamp}`;
   const segunda = `E2E Segunda ${stamp}`;
 
-  const admin = Actor.llamado("Admin").con(NavegarLaWeb.con(page));
+  const admin = actorAdmin(page);
 
   await admin.intenta(
     IrAGestionDeCursos.ahora(),
