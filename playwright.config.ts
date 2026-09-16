@@ -33,6 +33,12 @@ export default defineConfig({
       dependencies: ["setup"],
       use: { storageState: "e2e/.auth/admin.json" },
     },
+    {
+      name: "screenplay",
+      testMatch: /screenplay\.spec\.ts/,
+      dependencies: ["setup"],
+      use: { storageState: "e2e/.auth/admin.json" },
+    },
   ],
   globalTeardown: "./e2e/teardown.ts",
   webServer: process.env.E2E_BASE_URL
