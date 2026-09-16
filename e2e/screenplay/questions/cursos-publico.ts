@@ -46,20 +46,17 @@ export class LeccionNumerada {
   }
 }
 
-/** Texto de progreso "N/..." (primera coincidencia, p.ej. "0/18"). */
-export class ProgresoTexto {
-  static actual(): Question<string> {
+/** El progreso del curso muestra el valor esperado (espera con polling). */
+export class ProgresoEs {
+  static valor(esperado: string): Question<boolean> {
     return {
-      descripcion: "texto de progreso del curso",
-      async responder(actor: Actor): Promise<string> {
+      descripcion: `progreso del curso "${esperado}"`,
+      async responder(actor: Actor): Promise<boolean> {
         const { page } = actor.usa(NavegarLaWeb);
-        const el = page.getByText("0/", { exact: false }).first();
-        // "0/" o "1/": espera cualquiera de los dos como señal de carga
-        await page
-          .getByText(/\d+\//, { exact: false })
-          .first()
-          .waitFor({ timeout: 15000 });
-        return ((await el.textContent()) ?? "").trim() || "0/";
+        await expect(page.getByText(esperado, { exact: false }).first()).toBeVisible({
+          timeout: 15000,
+        });
+        return true;
       },
     };
   }
