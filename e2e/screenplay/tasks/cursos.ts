@@ -96,3 +96,54 @@ export class AnadirLeccion implements Task {
     }
   }
 }
+
+/** Abrir el editor de una lección (pre-rellena título y palabra). */
+export class AbrirEditorDeLeccion implements Task {
+  descripcion: string;
+  private constructor(private titulo: string) {
+    this.descripcion = `abrir editor de "${titulo}"`;
+  }
+  static titulada(titulo: string): AbrirEditorDeLeccion {
+    return new AbrirEditorDeLeccion(titulo);
+  }
+  async ejecutar(actor: Actor): Promise<void> {
+    const { page } = actor.usa(NavegarLaWeb);
+    await page.getByRole("button", { name: `Editar lección ${this.titulo}` }).click();
+    await expect(page.getByText("Editar lección")).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("#edit-lesson-title")).toBeVisible({ timeout: 15000 });
+  }
+}
+
+/**
+ * Mover la lección del editor abierto una posición hacia abajo.
+ * Espera a que el botón se rehabilite (señal de envío terminado);
+ * el número resultante se verifica con NumeroEnModal.
+ */
+export class MoverLeccion {
+  static abajo(): Task {
+    return {
+      descripcion: "mover lección del editor hacia abajo",
+      async ejecutar(actor: Actor): Promise<void> {
+        const { page } = actor.usa(NavegarLaWeb);
+        const dialog = page.getByRole("dialog");
+        const bajar = dialog.getByRole("button", { name: "Bajar lección", exact: true });
+        await bajar.click();
+        // El POST puede tardar con la BD lenta; el botón se bloquea mientras envía
+        await expect(bajar).toBeEnabled({ timeout: 60000 });
+      },
+    };
+  }
+}
+
+/** Cerrar el editor con Escape. */
+export class CerrarEditor implements Task {
+  descripcion = "cerrar editor";
+  static ahora(): CerrarEditor {
+    return new CerrarEditor();
+  }
+  async ejecutar(actor: Actor): Promise<void> {
+    const { page } = actor.usa(NavegarLaWeb);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15000 });
+  }
+}
