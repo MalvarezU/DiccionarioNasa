@@ -11,6 +11,8 @@ export interface CursoSemilla {
   modulos: ModuloSemilla[];
   /** Publicado directo (default: borrador; publicar por UI usa PublicarCursoAbierto). */
   publicado?: boolean;
+  /** Bloqueo secuencial (default true: módulo N exige completar el N-1). */
+  secuencial?: boolean;
 }
 
 /**
@@ -33,6 +35,7 @@ export class PrepararCurso implements Task {
       data: {
         title: this.semilla.titulo,
         status: this.semilla.publicado ? "PUBLISHED" : "DRAFT",
+        sequential: this.semilla.secuencial ?? true,
       },
     });
     if (!rc.ok()) throw new Error(`POST /api/courses → ${rc.status()}`);

@@ -325,6 +325,7 @@ export function FlashcardGame({
               size="lg"
               disabled={showResult}
               onClick={() => handleAnswer(idx)}
+              data-testid="flash-option"
               className={`h-auto py-5 text-lg font-medium transition-all ${
                 showResult
                   ? isCorrect

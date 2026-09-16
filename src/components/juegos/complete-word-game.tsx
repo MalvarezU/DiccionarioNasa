@@ -259,7 +259,10 @@ export function CompleteWordGame({
           <p className="text-sm text-muted-foreground">
             Escribe las letras que faltan:
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+          <div
+            className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2"
+            data-testid="letter-row"
+          >
             {current.display.map((char, idx) => {
               if (char === null) {
                 const isCorrect =

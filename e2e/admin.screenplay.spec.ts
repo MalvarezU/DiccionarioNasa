@@ -24,9 +24,12 @@ import {
   MoverLeccion,
   CerrarEditor,
   PublicarCursoAbierto,
+  ArchivarCursoAbierto,
+  EliminarCurso,
 } from "./screenplay/tasks/cursos";
 import { OpcionDeBusqueda } from "./screenplay/questions/fichas";
 import { PanelMuestra } from "./screenplay/questions/admin";
+import { CursoListado, CursoAusente } from "./screenplay/questions/cursos-publico";
 import {
   CantidadDeLecciones,
   TituloEnEditor,
@@ -112,20 +115,25 @@ test.describe("admin Piiyaak (Screenplay)", () => {
   test("curso: crear módulo, doble click crea una sola lección", async ({ page }) => {
     const stamp = Date.now();
     const curso = `E2E Curso ${stamp}`;
+    const mod1 = `E2E Módulo A ${stamp}`;
+    const mod2 = `E2E Módulo B ${stamp}`;
+    const leccion = `E2E Lección ${stamp}`;
     const admin = actorAdmin(page);
 
     await admin.intenta(
       IrAGestionDeCursos.ahora(),
       CrearCurso.titulado(curso),
       AbrirCurso.titulado(curso),
-      CrearModulo.titulado(`E2E Módulo ${stamp}`),
-      AnadirLeccion.titulada(`E2E Lección ${stamp}`).dosVecesSeguidas()
+      CrearModulo.titulado(mod1),
+      CrearModulo.titulado(mod2),
+      // Doble click en el formulario DEL SEGUNDO módulo
+      AnadirLeccion.aModulo(mod2, leccion).dosVecesSeguidas()
     );
 
-    expect(await admin.pregunta(CantidadDeLecciones.tituladas(`E2E Lección ${stamp}`))).toBe(1);
+    expect(await admin.pregunta(CantidadDeLecciones.tituladas(leccion))).toBe(1);
   });
 
-  test("curso: publicar por UI muestra badge", async ({ page }) => {
+  test("curso: publicar por UI muestra badge y lista en catálogo", async ({ page }) => {
     const stamp = Date.now();
     const curso = `E2E Pub ${stamp}`;
     const admin = actorAdmin(page);
@@ -137,6 +145,29 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       PublicarCursoAbierto.ahora()
     );
     expect(await admin.pregunta(PanelMuestra.texto("Publicado"))).toBe(true);
+
+    // Verificación real: aparece en el catálogo público
+    await admin.intenta(IrA.a("/cursos"));
+    expect(await admin.pregunta(CursoListado.titulado(curso))).toBe(true);
+  });
+
+  test("curso: archivar por UI lo saca del catálogo", async ({ page }) => {
+    const stamp = Date.now();
+    const curso = `E2E Arch ${stamp}`;
+    const admin = actorAdmin(page);
+
+    await admin.intenta(
+      IrAGestionDeCursos.ahora(),
+      CrearCurso.titulado(curso),
+      AbrirCurso.titulado(curso),
+      PublicarCursoAbierto.ahora(),
+      ArchivarCursoAbierto.ahora()
+    );
+    expect(await admin.pregunta(PanelMuestra.texto("Archivado"))).toBe(true);
+
+    // Verificación real: ya no está en el catálogo público
+    await admin.intenta(IrA.a("/cursos"));
+    expect(await admin.pregunta(CursoAusente.titulado(curso))).toBe(true);
   });
 
   test("curso: editor pre-rellena y reordenar re-numera", async ({ page }) => {
@@ -163,8 +194,15 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     await admin.intenta(MoverLeccion.abajo());
     expect(await admin.pregunta(NumeroEnModal.mostrado())).toBe("1.2");
 
-    // ...y en la lista la segunda ahora es 1.1
+    // ...y de vuelta hacia arriba: el modal refleja 1.1
+    await admin.intenta(MoverLeccion.arriba());
+    expect(await admin.pregunta(NumeroEnModal.mostrado())).toBe("1.1");
+
+    // En la lista, todo volvió a su lugar: la segunda es 1.2
     await admin.intenta(CerrarEditor.ahora());
-    expect(await admin.pregunta(NumeroEnFila.titulada(segunda))).toBe("1.1");
+    expect(await admin.pregunta(NumeroEnFila.titulada(segunda))).toBe("1.2");
+
+    // Limpieza explícita (ya estamos en el detalle: cascada a módulos y lecciones)
+    await admin.intenta(EliminarCurso.titulado(curso));
   });
 });

@@ -36,7 +36,7 @@ export class PartidaIniciada {
       descripcion: `partida iniciada (${senal})`,
       async responder(actor: Actor): Promise<boolean> {
         const { page } = actor.usa(NavegarLaWeb);
-        await expect(page.getByText(senal)).toBeVisible({ timeout: 15000 });
+        await expect(page.getByText(senal).first()).toBeVisible({ timeout: 15000 });
         return true;
       },
     };
@@ -67,6 +67,27 @@ export class CartasTapadas {
       async responder(actor: Actor): Promise<number> {
         const { page } = actor.usa(NavegarLaWeb);
         return page.getByLabel(/Carta tapada/).count();
+      },
+    };
+  }
+}
+
+/**
+ * Etiqueta accesible de la carta N (1-based) del tablero.
+ * Recién volteada: "texto (Español|Nasa Yuwe)"; tapada: "Carta tapada N".
+ */
+export class CartaRevelada {
+  static numero(n: number): Question<string> {
+    return {
+      descripcion: `carta ${n} revelada`,
+      async responder(actor: Actor): Promise<string> {
+        const { page } = actor.usa(NavegarLaWeb);
+        const carta = page
+          .getByRole("group", { name: "Tablero de memoria" })
+          .getByRole("button")
+          .nth(n - 1);
+        await carta.waitFor({ timeout: 15000 });
+        return ((await carta.getAttribute("aria-label")) ?? "").trim();
       },
     };
   }

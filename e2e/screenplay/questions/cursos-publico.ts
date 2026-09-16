@@ -16,6 +16,19 @@ export class CursoListado {
   }
 }
 
+/** Un curso NO aparece en el catálogo público (espera con polling). */
+export class CursoAusente {
+  static titulado(titulo: string): Question<boolean> {
+    return {
+      descripcion: `curso "${titulo}" ausente del catálogo`,
+      async responder(actor: Actor): Promise<boolean> {
+        const { page } = actor.usa(NavegarLaWeb);
+        await expect(page.getByText(titulo)).toHaveCount(0, { timeout: 15000 });
+        return true;
+      },
+    };
+  }
+}
 /** Un módulo es visible en el detalle del curso. */
 export class ModuloVisible {
   static conPatron(patron: string | RegExp): Question<boolean> {

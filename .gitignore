@@ -63,6 +63,8 @@ db/*.db
 # Logs
 dev.log
 server.log
+# Salida accidental del dev server (tee mal formado en webServer)
+/3000
 
 # Test audio files (real audio are .wav)
 public/audio/*.mp3

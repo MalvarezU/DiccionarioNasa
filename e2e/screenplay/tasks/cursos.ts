@@ -87,7 +87,9 @@ export class AnadirLeccion implements Task {
     return t;
   }
   dosVecesSeguidas(): AnadirLeccion {
-    const t = new AnadirLeccion(this.titulo);
+    const t = this.modulo
+      ? AnadirLeccion.aModulo(this.modulo, this.titulo)
+      : new AnadirLeccion(this.titulo);
     t.doble = true;
     t.descripcion = `intentar añadir "${this.titulo}" dos veces seguidas`;
     return t;
@@ -132,24 +134,31 @@ export class AbrirEditorDeLeccion implements Task {
 }
 
 /**
- * Mover la lección del editor abierto una posición hacia abajo.
+ * Mover la lección del editor abierto una posición (arriba o abajo).
  * Espera a que el botón se rehabilite (señal de envío terminado);
  * el número resultante se verifica con NumeroEnModal.
  */
 export class MoverLeccion {
   static abajo(): Task {
-    return {
-      descripcion: "mover lección del editor hacia abajo",
-      async ejecutar(actor: Actor): Promise<void> {
-        const { page } = actor.usa(NavegarLaWeb);
-        const dialog = page.getByRole("dialog");
-        const bajar = dialog.getByRole("button", { name: "Bajar lección", exact: true });
-        await bajar.click();
-        // El POST puede tardar con la BD lenta; el botón se bloquea mientras envía
-        await expect(bajar).toBeEnabled({ timeout: 60000 });
-      },
-    };
+    return moverLeccion("Bajar lección", "hacia abajo");
   }
+  static arriba(): Task {
+    return moverLeccion("Subir lección", "hacia arriba");
+  }
+}
+
+function moverLeccion(boton: string, direccion: string): Task {
+  return {
+    descripcion: `mover lección del editor ${direccion}`,
+    async ejecutar(actor: Actor): Promise<void> {
+      const { page } = actor.usa(NavegarLaWeb);
+      const dialog = page.getByRole("dialog");
+      const mover = dialog.getByRole("button", { name: boton, exact: true });
+      await mover.click();
+      // El POST puede tardar con la BD lenta; el botón se bloquea mientras envía
+      await expect(mover).toBeEnabled({ timeout: 60000 });
+    },
+  };
 }
 
 /** Cerrar el editor con Escape. */
@@ -186,7 +195,8 @@ export class EliminarCurso implements Task {
 
 /**
  * Publicar el curso abierto (Estado → Publicado + Guardar).
- * La verificación real la hace el catálogo público (CursoListado).
+ * Espera el PATCH real por red (el texto "Publicado" aparece con solo
+ * seleccionar; no prueba guardado). La verificación real la hace el catálogo.
  */
 export class PublicarCursoAbierto implements Task {
   descripcion = "publicar curso abierto";
@@ -197,8 +207,37 @@ export class PublicarCursoAbierto implements Task {
     const { page } = actor.usa(NavegarLaWeb);
     await page.getByRole("combobox", { name: "Estado del curso" }).click();
     await page.getByRole("option", { name: "Publicado" }).click();
+    const guardado = page.waitForResponse(
+      (r) => /\/api\/courses\/[^/?]+$/.test(r.url()) && r.request().method() === "PATCH",
+      { timeout: 60000 }
+    );
     await page.getByRole("button", { name: "Guardar curso" }).click();
+    await guardado;
     await expect(page.getByText("Publicado").first()).toBeVisible({ timeout: 30000 });
+  }
+}
+
+/**
+ * Archivar el curso abierto (Estado → Archivado + Guardar).
+ * Espera el PATCH real por red, igual que al publicar.
+ * Desaparece del catálogo público (se verifica con CursoAusente).
+ */
+export class ArchivarCursoAbierto implements Task {
+  descripcion = "archivar curso abierto";
+  static ahora(): ArchivarCursoAbierto {
+    return new ArchivarCursoAbierto();
+  }
+  async ejecutar(actor: Actor): Promise<void> {
+    const { page } = actor.usa(NavegarLaWeb);
+    await page.getByRole("combobox", { name: "Estado del curso" }).click();
+    await page.getByRole("option", { name: "Archivado" }).click();
+    const guardado = page.waitForResponse(
+      (r) => /\/api\/courses\/[^/?]+$/.test(r.url()) && r.request().method() === "PATCH",
+      { timeout: 60000 }
+    );
+    await page.getByRole("button", { name: "Guardar curso" }).click();
+    await guardado;
+    await expect(page.getByText("Archivado").first()).toBeVisible({ timeout: 30000 });
   }
 }
 

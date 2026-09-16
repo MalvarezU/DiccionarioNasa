@@ -1,0 +1,40 @@
+name: CI E2E Screenplay
+
+on:
+  workflow_dispatch:
+
+# Requiere estos secrets del repo (Settings → Secrets → Actions):
+#   DATABASE_URL    conexión Postgres (staging; NUNCA prod con datos reales)
+#   ADMIN_EMAIL     email del admin de pruebas
+#   ADMIN_PASSWORD  password del admin de pruebas
+#
+# La suite crea datos "E2E *" y el teardown global los borra.
+# No correr proyectos en paralelo contra la BD gratuita (ver Plan_Screenplay_E2E).
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=screenplay-public
+      - run: npx playwright test --project=screenplay-user
+      - run: npx playwright test --project=screenplay-admin
+      - run: npx playwright test --project=screenplay-multi
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: test-results/

@@ -2,7 +2,15 @@ import { test, expect } from "@playwright/test";
 import { actorVisitante } from "./screenplay/actores";
 import { IrA } from "./screenplay/tasks/acciones";
 import { BuscarPalabra } from "./screenplay/tasks/fichas";
-import { AbrirJuego } from "./screenplay/tasks/juegos";
+import {
+  ResponderFlashcard,
+  AvanzarFlashcard,
+  CambiarDificultadMemoria,
+  VoltearCartaMemoria,
+  AbrirCompletar,
+  CompletarPalabraActual,
+  SiguientePalabra,
+} from "./screenplay/tasks/juegos";
 import { AbrirCursoPublico } from "./screenplay/tasks/cursos-publico";
 import {
   PlaceholderVisible,
@@ -17,6 +25,7 @@ import {
   PartidaIniciada,
   GrupoDificultadVisible,
   CartasTapadas,
+  CartaRevelada,
 } from "./screenplay/questions/juegos";
 import {
   CursoListado,
@@ -47,7 +56,7 @@ test.describe("Piiyaak público (Screenplay)", () => {
 
   test("juegos: hub con 3 juegos desbloqueados", async ({ page }) => {
     const visitante = actorVisitante(page);
-    await visitante.intenta(AbrirJuego.en("/juegos"));
+    await visitante.intenta(IrA.a("/juegos"));
     expect(await visitante.pregunta(HubMuestra.juego(/Flashcards/))).toBe(true);
     expect(await visitante.pregunta(HubMuestra.juego(/Memoria/))).toBe(true);
     expect(await visitante.pregunta(HubMuestra.juego(/Completar/))).toBe(true);
@@ -56,15 +65,50 @@ test.describe("Piiyaak público (Screenplay)", () => {
 
   test("flashcards juega con palabras reales", async ({ page }) => {
     const visitante = actorVisitante(page);
-    await visitante.intenta(AbrirJuego.en("/juegos/flashcards"));
+    await visitante.intenta(IrA.a("/juegos/flashcards"));
     expect(await visitante.pregunta(PartidaIniciada.conSenal(/Pregunta 1 de/))).toBe(true);
+  });
+
+  test("flashcards responde y avanza a la pregunta 2", async ({ page }) => {
+    const visitante = actorVisitante(page);
+    await visitante.intenta(
+      IrA.a("/juegos/flashcards"),
+      ResponderFlashcard.opcion(0),
+      AvanzarFlashcard.ahora()
+    );
+    expect(await visitante.pregunta(PartidaIniciada.conSenal(/Pregunta 2 de/))).toBe(true);
   });
 
   test("memoria muestra tablero por dificultad", async ({ page }) => {
     const visitante = actorVisitante(page);
-    await visitante.intenta(AbrirJuego.en("/juegos/memoria"));
+    await visitante.intenta(IrA.a("/juegos/memoria"));
     expect(await visitante.pregunta(GrupoDificultadVisible.valor())).toBe(true);
     expect(await visitante.pregunta(CartasTapadas.cantidad())).toBe(12);
+  });
+
+  test("memoria cambia dificultad y voltea carta", async ({ page }) => {
+    const visitante = actorVisitante(page);
+    await visitante.intenta(
+      IrA.a("/juegos/memoria"),
+      CambiarDificultadMemoria.a("Difícil"),
+      VoltearCartaMemoria.numero(1)
+    );
+    // 12 pares = 24 cartas, y la primera ya no está tapada
+    expect(await visitante.pregunta(CartasTapadas.cantidad())).toBe(23);
+    const etiqueta = await visitante.pregunta(CartaRevelada.numero(1));
+    expect(etiqueta).toMatch(/\(Español|Nasa Yuwe\)/);
+    expect(etiqueta).not.toMatch(/Carta tapada/);
+  });
+
+  test("completar resuelve la palabra actual", async ({ page }) => {
+    const visitante = actorVisitante(page);
+    await visitante.intenta(
+      AbrirCompletar.ahora(),
+      CompletarPalabraActual.ahora(),
+      SiguientePalabra.ahora()
+    );
+    // Nueva ronda en juego (sin cartel de acierto pendiente)
+    expect(await visitante.pregunta(PartidaIniciada.conSenal(/Escribe las letras/))).toBe(true);
   });
 
   test("cursos lista y detalle con árbol", async ({ page }) => {
@@ -83,7 +127,7 @@ test.describe("Piiyaak público (Screenplay)", () => {
     expect(await visitante.pregunta(UrlActual.valor())).not.toMatch(/\/admin/);
   });
 
-  test("offline page existe", async ({ page }) => {
+  test("offline page existe (offline-real bloqueado: SW no registra en headless, ver plan)", async ({ page }) => {
     const visitante = actorVisitante(page);
     await visitante.intenta(IrA.a("/offline"));
     expect(await visitante.pregunta(TextoVisible.conTexto("Sin conexión"))).toBe(true);

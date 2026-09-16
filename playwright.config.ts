@@ -44,7 +44,9 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: "npm run dev -- -p 3000",
+        // npx directo: `npm run dev -- -p 3000` expande el `| tee dev.log`
+        // del script y crea archivos basura (`-p`, `3000`).
+        command: "npx next dev -p 3000",
         url: "http://localhost:3000",
         reuseExistingServer: true,
         timeout: 120000,

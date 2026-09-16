@@ -167,8 +167,7 @@ test.describe("multi-actor (Screenplay)", () => {
     }
   });
 
-  test("doble editor: el segundo guardado ve 409 sin crash", async ({ browser }) => {
-    const stamp = Date.now();
+  test("doble editor: el segundo guardado ve 409 sin crash", async ({ browser }) => {    const stamp = Date.now();
     const curso = `E2E Duelo ${stamp}`;
     const modulo = `E2E DueM ${stamp}`;
     const base1 = `E2E Base1 ${stamp}`;
@@ -208,6 +207,41 @@ test.describe("multi-actor (Screenplay)", () => {
     } finally {
       await ctxA.close();
       await ctxB.close();
+      await apiCtx.dispose();
+    }
+  });
+
+  test("sin secuencial: todo desbloqueado desde el inicio (visitante)", async ({ browser }) => {
+    const stamp = Date.now();
+    const curso = `E2E Libre ${stamp}`;
+    const mod1 = `E2E LibreM1 ${stamp}`;
+    const mod2 = `E2E LibreM2 ${stamp}`;
+
+    const visitCtx = await browser.newContext();
+    const apiCtx = await apiDeAdmin();
+    try {
+      const visitante = actorVisitante(await visitCtx.newPage());
+
+      await actorPreparador(apiCtx).intenta(
+        PrepararCurso.con({
+          titulo: curso,
+          publicado: true,
+          secuencial: false,
+          modulos: [
+            { titulo: mod1, lecciones: [`E2E LibreL1 ${stamp}`] },
+            { titulo: mod2, lecciones: [`E2E LibreL2 ${stamp}`] },
+          ],
+        })
+      );
+
+      await visitante.intenta(IrA.a("/cursos"));
+      expect(await visitante.pregunta(CursoListado.titulado(curso))).toBe(true);
+      await visitante.intenta(AbrirCursoPublico.titulado(curso));
+      // Sin completar nada, ambos módulos abiertos
+      expect(await visitante.pregunta(EstadoDeModulo.titulado(mod1))).toBe("desbloqueado");
+      expect(await visitante.pregunta(EstadoDeModulo.titulado(mod2))).toBe("desbloqueado");
+    } finally {
+      await visitCtx.close();
       await apiCtx.dispose();
     }
   });
