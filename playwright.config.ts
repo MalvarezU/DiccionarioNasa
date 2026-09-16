@@ -18,28 +18,6 @@ export default defineConfig({
   projects: [
     { name: "setup", testMatch: /setup\.ts/ },
     {
-      name: "public",
-      testMatch: /public\.spec\.ts/,
-    },
-    {
-      name: "user",
-      testMatch: /user\.spec\.ts/,
-      dependencies: ["setup"],
-      use: { storageState: "e2e/.auth/user.json" },
-    },
-    {
-      name: "admin",
-      testMatch: /admin\.spec\.ts/,
-      dependencies: ["setup"],
-      use: { storageState: "e2e/.auth/admin.json" },
-    },
-    {
-      name: "screenplay",
-      testMatch: /cursos\.screenplay\.spec\.ts/,
-      dependencies: ["setup"],
-      use: { storageState: "e2e/.auth/admin.json" },
-    },
-    {
       name: "screenplay-public",
       testMatch: /publico\.screenplay\.spec\.ts/,
     },
