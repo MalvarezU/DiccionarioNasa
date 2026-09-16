@@ -14,6 +14,15 @@ export class IrADashboard implements Task {
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
     await page.goto("/admin");
-    await expect(page.getByText("Total de palabras")).toBeVisible({ timeout: 30000 });
+    await expect(page.getByRole("heading", { name: "Panel de Administración" })).toBeVisible({
+      timeout: 30000,
+    });
+    // Las stats agregadas fallan a veces con la BD saturada: un reintento
+    // (igual que haría un humano con el botón "Reintentar")
+    if (await page.getByText("Error al cargar las estadísticas").isVisible().catch(() => false)) {
+      await page.getByRole("button", { name: "Reintentar" }).click();
+    }
+    // Stats agregadas sobre BD gratuita: hasta 60 s bajo carga
+    await expect(page.getByText("Total de palabras")).toBeVisible({ timeout: 60000 });
   }
 }

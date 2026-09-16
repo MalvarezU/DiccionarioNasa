@@ -14,13 +14,14 @@ export class AbrirCursoPublico implements Task {
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
     await page.getByText(this.titulo).click();
-    await expect(page.getByText("Módulo 1", { exact: false })).toBeVisible({ timeout: 30000 });
+    // Señal estructural (no depende del título de los módulos): el conteo
+    await expect(page.getByText(/lecciones/).first()).toBeVisible({ timeout: 30000 });
   }
 }
 
 /**
  * Marcar completada la primera lección del módulo abierto por defecto.
- * Si la lección 1.1 requiere abrirse primero, la abre (igual que user.spec).
+ * Busca el botón "1.1 · …" (formato público) y lo abre si hace falta.
  */
 export class MarcarPrimeraLeccionCompletada implements Task {
   descripcion = "completar primera lección";
@@ -29,7 +30,7 @@ export class MarcarPrimeraLeccionCompletada implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    const leccion = page.getByRole("button", { name: /lección 1\.1/i }).first();
+    const leccion = page.getByRole("button", { name: /1\.1/ }).first();
     if (await leccion.isVisible().catch(() => false)) {
       await leccion.click();
     }

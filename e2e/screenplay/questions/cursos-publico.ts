@@ -78,3 +78,43 @@ export class PrimerCursoId {
     };
   }
 }
+
+/**
+ * Estado de un módulo en el detalle público, por título.
+ * `.trasCompletar()` espera con polling a que desaparezca el badge
+ * (el árbol tarda un refetch en reflejar el desbloqueo).
+ */
+export class EstadoDeModulo {
+  descripcion: string;
+  private esperaCambio = false;
+  private constructor(private titulo: string) {
+    this.descripcion = `estado del módulo "${titulo}"`;
+  }
+  static titulado(titulo: string): EstadoDeModulo {
+    return new EstadoDeModulo(titulo);
+  }
+  trasCompletar(): EstadoDeModulo {
+    this.esperaCambio = true;
+    return this;
+  }
+  private bloque(page: import("@playwright/test").Page) {
+    return page.locator(
+      `[data-testid="module-block"][data-module-title="${this.titulo}"]`
+    );
+  }
+  async responder(actor: Actor): Promise<"bloqueado" | "desbloqueado"> {
+    const { page } = actor.usa(NavegarLaWeb);
+    const bloque = this.bloque(page);
+    await bloque.waitFor({ timeout: 30000 });
+    const badge = bloque.getByText("Bloqueado", { exact: true });
+    if (!this.esperaCambio) {
+      return (await badge.count()) > 0 ? "bloqueado" : "desbloqueado";
+    }
+    try {
+      await expect(badge).toHaveCount(0, { timeout: 20000 });
+      return "desbloqueado";
+    } catch {
+      return "bloqueado";
+    }
+  }
+}

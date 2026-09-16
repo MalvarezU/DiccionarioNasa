@@ -412,7 +412,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                 <div className="grid gap-2">
                   <Label>Estado</Label>
                   <Select value={editStatus} onValueChange={setEditStatus}>
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger className="w-[200px]" aria-label="Estado del curso">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

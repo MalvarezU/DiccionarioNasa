@@ -23,6 +23,7 @@ import {
   AbrirEditorDeLeccion,
   MoverLeccion,
   CerrarEditor,
+  PublicarCursoAbierto,
 } from "./screenplay/tasks/cursos";
 import { OpcionDeBusqueda } from "./screenplay/questions/fichas";
 import { PanelMuestra } from "./screenplay/questions/admin";
@@ -122,6 +123,20 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     );
 
     expect(await admin.pregunta(CantidadDeLecciones.tituladas(`E2E Lección ${stamp}`))).toBe(1);
+  });
+
+  test("curso: publicar por UI muestra badge", async ({ page }) => {
+    const stamp = Date.now();
+    const curso = `E2E Pub ${stamp}`;
+    const admin = actorAdmin(page);
+
+    await admin.intenta(
+      IrAGestionDeCursos.ahora(),
+      CrearCurso.titulado(curso),
+      AbrirCurso.titulado(curso),
+      PublicarCursoAbierto.ahora()
+    );
+    expect(await admin.pregunta(PanelMuestra.texto("Publicado"))).toBe(true);
   });
 
   test("curso: editor pre-rellena y reordenar re-numera", async ({ page }) => {

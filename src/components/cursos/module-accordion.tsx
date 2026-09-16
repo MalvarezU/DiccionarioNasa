@@ -48,7 +48,11 @@ export function ModuleAccordion({
   const done = module.lessons.filter((l) => completedLessons.includes(l.id)).length
 
   return (
-    <Card className={!isUnlocked ? "opacity-70" : ""}>
+    <Card
+      data-testid="module-block"
+      data-module-title={module.title}
+      className={!isUnlocked ? "opacity-70" : ""}
+    >
       <CardHeader
         className={`cursor-pointer hover:bg-muted/40 transition-colors ${!isUnlocked ? "pointer-events-none" : ""}`}
         onClick={() => isUnlocked && setOpen((o) => !o)}

@@ -17,16 +17,16 @@ export class AbrirLogCompleto implements Task {
 
 /**
  * Exportar la bitácora a CSV.
- * SIDE EFFECT declarado: captura el evento `download`. Devuelve nombre y
- * si el archivo existe, para que el spec aserte sin tocar locators.
+ * SIDE EFFECT declarado: captura el evento `download`. Devuelve nombre, ruta
+ * y si el archivo existe, para que el spec aserte sin tocar locators.
  */
 export async function descargarBitacora(
   actor: Actor
-): Promise<{ nombre: string; hayArchivo: boolean }> {
+): Promise<{ nombre: string; ruta: string | null; hayArchivo: boolean }> {
   const { page } = actor.usa(NavegarLaWeb);
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /exportar csv/i }).click();
   const download = await downloadPromise;
   const path = await download.path();
-  return { nombre: download.suggestedFilename(), hayArchivo: Boolean(path) };
+  return { nombre: download.suggestedFilename(), ruta: path, hayArchivo: Boolean(path) };
 }

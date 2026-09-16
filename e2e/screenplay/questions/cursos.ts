@@ -62,3 +62,18 @@ export class NumeroEnFila {
     };
   }
 }
+
+/** Mensaje de error mostrado en el editor abierto (p.ej. 409 por duplicado). */
+export class ErrorEnModal {
+  static valor(): Question<string> {
+    return {
+      descripcion: "error mostrado en el editor",
+      async responder(actor: Actor): Promise<string> {
+        const { page } = actor.usa(NavegarLaWeb);
+        const msg = page.getByRole("dialog").locator("p.text-destructive").first();
+        await msg.waitFor({ timeout: 15000 });
+        return ((await msg.textContent()) ?? "").trim();
+      },
+    };
+  }
+}

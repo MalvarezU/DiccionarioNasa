@@ -10,6 +10,19 @@ const AUTH_DIR = path.resolve(__dirname, ".auth");
 // Setup con bcrypt cost 12 + BD gratuita lenta: margen amplio
 setup.describe.configure({ timeout: 180000 });
 
+/**
+ * Gate de salud: si la BD no responde, aborta en segundos con mensaje claro
+ * en vez de dejar 25 min de rojos confusos (los dependientes se skippean).
+ */
+setup("verifica salud del backend", async ({ request }) => {
+  const res = await request.get("/api/courses", { timeout: 30000 }).catch(() => null);
+  if (!res || !res.ok()) {
+    throw new Error(
+      "Backend/BD no responde (GET /api/courses falló). La BD gratuita suele recuperarse en minutos: reintenta la suite más tarde."
+    );
+  }
+});
+
 /** Registro + login de usuario de prueba por UI; verificación directa en BD. */
 setup("autentica usuario de prueba", async ({ page }) => {
   fs.mkdirSync(AUTH_DIR, { recursive: true });
@@ -87,8 +100,9 @@ setup("autentica admin", async ({ page }) => {
   await page.getByPlaceholder("tu@email.com").fill(email!);
   await page.getByPlaceholder("Tu contraseña").fill(password!);
   await page.getByRole("button", { name: /^iniciar sesión$/i }).click();
+  // Login con bcrypt cost 12 + BD gratuita: hasta 60 s bajo carga
   await expect(page.getByRole("button", { name: /iniciar sesión/i })).toBeHidden({
-    timeout: 15000,
+    timeout: 60000,
   });
   await page.context().storageState({ path: path.join(AUTH_DIR, "admin.json") });
 });

@@ -40,11 +40,16 @@ export class EstadoFavorita {
       async responder(actor: Actor): Promise<"guardar" | "quitar"> {
         const { page } = actor.usa(NavegarLaWeb);
         const quitar = page.getByRole("button", { name: /quitar de favoritos/i });
+        // El estado llega con un fetch: "guardar" puede verse primero aunque
+        // esté marcada. Se espera "quitar" (como el clásico) y solo su
+        // ausencia sostenida significa "guardar".
         if (await quitar.isVisible().catch(() => false)) return "quitar";
-        await expect(page.getByRole("button", { name: /guardar en favoritos/i })).toBeVisible({
-          timeout: 20000,
-        });
-        return "guardar";
+        try {
+          await expect(quitar).toBeVisible({ timeout: 20000 });
+          return "quitar";
+        } catch {
+          return "guardar";
+        }
       },
     };
   }

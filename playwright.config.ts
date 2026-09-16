@@ -33,6 +33,12 @@ export default defineConfig({
       dependencies: ["setup"],
       use: { storageState: "e2e/.auth/admin.json" },
     },
+    {
+      // Sin sesión global: cada test crea sus contextos (admin/user/visitante)
+      name: "screenplay-multi",
+      testMatch: /multiactor\.screenplay\.spec\.ts/,
+      dependencies: ["setup"],
+    },
   ],
   globalTeardown: "./e2e/teardown.ts",
   webServer: process.env.E2E_BASE_URL

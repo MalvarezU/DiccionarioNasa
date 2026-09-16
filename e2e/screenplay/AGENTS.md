@@ -18,6 +18,10 @@ Actor/Task/Question sobre Playwright, nombres de negocio en español.
 6. `setup.ts`/`teardown.ts` NO se migran (infra).
 7. Side effects inevitables (descarga de CSV, `waitForEvent`) se encapsulan en
    la Task/Question con comentario que lo declare.
+8. El DADO pesado va por API (`tasks/preparar.ts`), el CUANDO/ENTONCES por UI.
+   Cada POST por UI con la BD lenta cuesta 10-30 s; plantar 2 módulos por UI
+   agota el timeout. La publicación por UI (PublicarCursoAbierto) SÍ se prueba
+   por UI: es comportamiento, no setup.
 
 ## Dónde va cada cosa
 
