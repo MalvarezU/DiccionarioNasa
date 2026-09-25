@@ -189,7 +189,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Search Input */}
         <div className="relative">
           <Search
-            className={`absolute left-3 top-1/2 -translate-y-1/2 ${isHero ? "text-muted-foreground h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
+            className={`absolute left-3 top-1/2 -translate-y-1/2 ${isHero ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
             aria-hidden="true"
           />
           <Input
@@ -209,7 +209,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               }
             }}
             onKeyDown={handleKeyDown}
-            className={`pl-10 w-full bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 transition-colors ${isHero ? "h-14 text-lg rounded-xl pr-10 shadow-sm focus-visible:shadow-md text-foreground placeholder:text-muted-foreground" : "h-10 pr-9"}`}
+            className={`pl-10 w-full transition-colors ${isHero ? "h-14 text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-white placeholder:text-white/70 border-white/30 hover:border-white/60 focus-visible:border-white focus-visible:ring-white/30" : "h-10 pr-9 bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:shadow-md"}`}
             aria-label="Buscar palabras en el diccionario"
             aria-expanded={showDropdown}
             aria-controls="search-results-list"
@@ -219,7 +219,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           />
           {isLoading && (
             <Loader2
-              className={`absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin ${isHero ? "h-5 w-5" : "h-4 w-4"}`}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 animate-spin ${isHero ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
             />
           )}
         </div>

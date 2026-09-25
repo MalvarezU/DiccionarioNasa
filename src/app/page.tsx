@@ -131,7 +131,7 @@ function HomeContent() {
         <DownloadBanner />
 
         {/* Hero Section with Search Bar */}
-        <section className="relative pb-12 sm:pb-16 pt-16 sm:pt-24">
+        <section className="relative isolate pb-12 sm:pb-16 pt-16 sm:pt-24">
           {/* Dark overlay base */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/50 z-10" />
           

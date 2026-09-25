@@ -42,7 +42,7 @@ export function NavBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
           {/* Logo / App Name — links to home */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
