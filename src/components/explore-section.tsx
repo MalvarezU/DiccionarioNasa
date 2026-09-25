@@ -1,7 +1,5 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useSyncExternalStore, useRef } from "react"
-import { useVirtualizer } from "@tanstack/react-virtual"
 import {
   BookOpen,
   Volume2,
@@ -16,176 +14,12 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { useOnlineStatus } from "@/hooks/use-online-status"
+import { useExploreWords } from "./use-explore-words"
 import {
-  getAllLocalWords,
-  isLocalDBReady,
-  getNormalizedInitial,
-} from "@/lib/local-db"
-
-// ─── Hydration-safe mount guard ─────────────────────────────────────────────
-
-const emptySubscribe = () => () => {}
-function useMounted(): boolean {
-  return useSyncExternalStore(emptySubscribe, () => true, () => false)
-}
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-interface ExploreWord {
-  id: string
-  spanish: string
-  nasaYuwe: string
-  pronunciation: string | null
-  category: string | null
-  culturalContext: string | null
-}
-
-interface LetterGroup {
-  letter: string
-  words: ExploreWord[]
-  /** Starting index of this group in the flat list */
-  startIndex: number
-}
-
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-const SPANISH_ALPHABET = [
-  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-  "N", "Ñ", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-]
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-/**
- * Parse category string into an array of lowercase trimmed category keys.
- * Supports comma-separated categories: "sustantivo, verbo" → ["sustantivo", "verbo"]
- */
-function parseCategories(category: string | null): string[] {
-  if (!category) return []
-  return category
-    .split(",")
-    .map((c) => c.trim().toLowerCase())
-    .filter(Boolean)
-}
-
-/**
- * Extract unique categories from all words, sorted alphabetically.
- */
-function extractCategories(words: ExploreWord[]): string[] {
-  const set = new Set<string>()
-  for (const word of words) {
-    for (const cat of parseCategories(word.category)) {
-      set.add(cat)
-    }
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b, "es"))
-}
-
-/**
- * Category display labels (Spanish)
- */
-const CATEGORY_LABELS: Record<string, string> = {
-  sustantivo: "Sustantivo",
-  verbo: "Verbo",
-  adjetivo: "Adjetivo",
-  numeral: "Numeral",
-  adverbio: "Adverbio",
-  pronombre: "Pronombre",
-  preposicion: "Preposición",
-  conjuncion: "Conjunción",
-  interjeccion: "Interjección",
-}
-
-function getCategoryDisplay(cat: string): string {
-  return CATEGORY_LABELS[cat] || cat.charAt(0).toUpperCase() + cat.slice(1)
-}
-
-/**
- * Group words by their normalized initial letter, with startIndex tracking
- * for virtualizer scroll-to-letter functionality.
- */
-function groupByLetter(words: ExploreWord[]): LetterGroup[] {
-  const map = new Map<string, ExploreWord[]>()
-
-  for (const word of words) {
-    const letter = getNormalizedInitial(word.spanish)
-    const existing = map.get(letter)
-    if (existing) {
-      existing.push(word)
-    } else {
-      map.set(letter, [word])
-    }
-  }
-
-  let runningIndex = 0
-  return Array.from(map.entries())
-    .sort(([a], [b]) => a.localeCompare(b, "es"))
-    .map(([letter, groupWords]) => {
-      const startIndex = runningIndex
-      runningIndex += groupWords.length
-      return { letter, words: groupWords, startIndex }
-    })
-}
-
-/**
- * Get the set of letters that have words.
- */
-function getActiveLetters(groups: LetterGroup[]): Set<string> {
-  return new Set(groups.map((g) => g.letter))
-}
-
-// ─── Virtual list row types ─────────────────────────────────────────────────
-
-interface HeaderRow {
-  type: "header"
-  letter: string
-  count: number
-  id: string
-}
-
-interface WordRow {
-  type: "word"
-  word: ExploreWord
-  id: string
-}
-
-type VirtualRow = HeaderRow | WordRow
-
-/**
- * Build virtual rows from letter groups: interleaves letter headers and word items.
- */
-function buildVirtualRows(groups: LetterGroup[]): VirtualRow[] {
-  const rows: VirtualRow[] = []
-  for (const group of groups) {
-    rows.push({
-      type: "header",
-      letter: group.letter,
-      count: group.words.length,
-      id: `header-${group.letter}`,
-    })
-    for (const word of group.words) {
-      rows.push({ type: "word", word, id: `word-${word.id}` })
-    }
-  }
-  return rows
-}
-
-/**
- * Build a lookup map from letter → virtual row index (for scroll-to-letter).
- */
-function buildLetterIndexMap(rows: VirtualRow[]): Map<string, number> {
-  const map = new Map<string, number>()
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]
-    if (row.type === "header") {
-      map.set(row.letter, i)
-    }
-  }
-  return map
-}
-
-// ─── Component ──────────────────────────────────────────────────────────────
+  SPANISH_ALPHABET,
+  getCategoryDisplay,
+  parseCategories,
+} from "./explore-data"
 
 interface ExploreSectionProps {
   /** Callback when a word is selected — parent opens the detail card */
@@ -193,156 +27,26 @@ interface ExploreSectionProps {
 }
 
 export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
-  const mounted = useMounted()
-  const isOnline = useOnlineStatus()
-
-  const [allWords, setAllWords] = useState<ExploreWord[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [localReady, setLocalReady] = useState<boolean | null>(null)
-
-  // Category filter state
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
-
-  // Ref for the scrollable container used by the virtualizer
-  const scrollRef = useRef<HTMLDivElement>(null)
-
-  // ─── Load words ──────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    const loadWords = async () => {
-      setIsLoading(true)
-      try {
-        if (!isOnline) {
-          const ready = await isLocalDBReady()
-          setLocalReady(ready)
-          if (ready) {
-            const localWords = await getAllLocalWords()
-            setAllWords(
-              localWords.map((w) => ({
-                id: w.id,
-                spanish: w.spanish,
-                nasaYuwe: w.nasaYuwe,
-                pronunciation: w.pronunciation,
-                category: w.category,
-                culturalContext: w.culturalContext,
-              }))
-            )
-          } else {
-            setAllWords([])
-          }
-        } else {
-          const res = await fetch("/api/dictionary/export?page=1&pageSize=1000")
-          if (res.ok) {
-            const data = await res.json()
-            const apiWords: ExploreWord[] = (data.words ?? []).map(
-              (w: Record<string, unknown>) => ({
-                id: w.id as string,
-                spanish: w.spanish as string,
-                nasaYuwe: w.nasaYuwe as string,
-                pronunciation: (w.pronunciation as string) ?? null,
-                category: (w.category as string) ?? null,
-                culturalContext: (w.culturalContext as string) ?? null,
-              })
-            )
-            setAllWords(apiWords)
-            setLocalReady(true)
-          } else {
-            const ready = await isLocalDBReady()
-            setLocalReady(ready)
-            if (ready) {
-              const localWords = await getAllLocalWords()
-              setAllWords(
-                localWords.map((w) => ({
-                  id: w.id,
-                  spanish: w.spanish,
-                  nasaYuwe: w.nasaYuwe,
-                  pronunciation: w.pronunciation,
-                  category: w.category,
-                  culturalContext: w.culturalContext,
-                }))
-              )
-            }
-          }
-        }
-      } catch {
-        try {
-          const ready = await isLocalDBReady()
-          setLocalReady(ready)
-          if (ready) {
-            const localWords = await getAllLocalWords()
-            setAllWords(
-              localWords.map((w) => ({
-                id: w.id,
-                spanish: w.spanish,
-                nasaYuwe: w.nasaYuwe,
-                pronunciation: w.pronunciation,
-                category: w.category,
-                culturalContext: w.culturalContext,
-              }))
-            )
-          }
-        } catch {
-          // Nothing works
-        }
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadWords()
-  }, [isOnline])
-
-  // ─── Derived data ────────────────────────────────────────────────────────
-
-  const categories = useMemo(() => extractCategories(allWords), [allWords])
-
-  const filteredWords = useMemo(() => {
-    if (!selectedCategory) return allWords
-    return allWords.filter((word) =>
-      parseCategories(word.category).includes(selectedCategory.toLowerCase())
-    )
-  }, [allWords, selectedCategory])
-
-  const letterGroups = useMemo(() => groupByLetter(filteredWords), [filteredWords])
-  const activeLetters = useMemo(() => getActiveLetters(letterGroups), [letterGroups])
-
-  // Virtual rows for the virtualizer
-  const virtualRows = useMemo(() => buildVirtualRows(letterGroups), [letterGroups])
-  const letterIndexMap = useMemo(() => buildLetterIndexMap(virtualRows), [virtualRows])
-
-  const totalFiltered = filteredWords.length
-
-  // ─── Virtualizer ─────────────────────────────────────────────────────────
-
-  const virtualizer = useVirtualizer({
-    count: virtualRows.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => {
-      const row = virtualRows[index]
-      if (!row) return 48
-      return row.type === "header" ? 52 : 56
-    },
-    overscan: 20,
-  })
-
-  // ─── Handlers ────────────────────────────────────────────────────────────
-
-  const scrollToLetter = useCallback((letter: string) => {
-    const index = letterIndexMap.get(letter)
-    if (index !== undefined) {
-      virtualizer.scrollToIndex(index, { align: "start", behavior: "smooth" })
-    }
-  }, [letterIndexMap, virtualizer])
-
-  const handleWordClick = useCallback((wordId: string) => {
-    onWordSelect?.(wordId)
-  }, [onWordSelect])
-
-  const handleCategorySelect = useCallback((category: string | null) => {
-    setSelectedCategory(category)
-    setFilterDropdownOpen(false)
-  }, [])
+  const {
+    mounted,
+    isOnline,
+    allWords,
+    isLoading,
+    localReady,
+    selectedCategory,
+    filterDropdownOpen,
+    setFilterDropdownOpen,
+    scrollRef,
+    categories,
+    filteredWords,
+    activeLetters,
+    virtualRows,
+    totalFiltered,
+    virtualizer,
+    scrollToLetter,
+    handleWordClick,
+    handleCategorySelect,
+  } = useExploreWords(onWordSelect)
 
   // ─── Don't render during SSR ────────────────────────────────────────────
 
