@@ -10,7 +10,7 @@ import { type useWordAudio } from "./use-word-audio"
 type Audio = ReturnType<typeof useWordAudio>
 
 /** Sección de audio de la ficha (dropzone + estado + errores). */
-export function EditWordAudio({ audio }: { audio: Audio }) {
+export function EditWordAudio({ audio, variant = "edit" }: { audio: Audio; variant?: "edit" | "create" }) {
   const {
     audioUrl,
     audioFile,
@@ -33,10 +33,10 @@ export function EditWordAudio({ audio }: { audio: Audio }) {
       <Label className="flex items-center gap-2">
         <Volume2 className="h-4 w-4 text-primary" />
         Audio
-        {originalAudioUrl && !audioChanged && (
+        {variant === "edit" && originalAudioUrl && !audioChanged && (
           <Badge variant="secondary" className="text-[10px] ml-1">Archivo actual</Badge>
         )}
-        {audioChanged && (
+        {variant === "edit" && audioChanged && (
           <Badge variant="outline" className="text-[10px] ml-1 text-tertiary bg-tertiary/10">Reemplazado</Badge>
         )}
       </Label>
@@ -58,7 +58,7 @@ export function EditWordAudio({ audio }: { audio: Audio }) {
                   {audioUrl && !isUploadingAudio && (audioChanged ? " — Subido (guarda la ficha para conservarlo)" : " — Guardado")}
                 </p>
               </div>
-              {(audioChanged || originalAudioUrl) && (
+              {(variant === "create" ? !!audioFile : (audioChanged || !!originalAudioUrl)) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -95,31 +95,48 @@ export function EditWordAudio({ audio }: { audio: Audio }) {
         </Card>
       )}
 
-      <div
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onClick={() => fileInputRef.current?.click()}
-        className={`
-          relative cursor-pointer rounded-lg border-2 border-dashed p-4 text-center transition-colors
-          ${isDragOver
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30"
-          }
-        `}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".mp3,.wav,.ogg"
-          onChange={handleFileInputChange}
-          className="sr-only"
-        />
-        <Upload className="mx-auto h-6 w-6 text-muted-foreground/50" />
-        <p className="mt-1 text-xs text-muted-foreground">
-          {audioUrl ? "Reemplazar audio" : "Subir audio"} — MP3, WAV, OGG (máx. 10 MB)
-        </p>
-      </div>
+      {(variant === "edit" || (!audioFile && !audioUrl)) && (
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => fileInputRef.current?.click()}
+          className={`
+            relative cursor-pointer rounded-lg border-2 border-dashed text-center transition-colors
+            ${variant === "create" ? "p-6" : "p-4"}
+            ${isDragOver
+              ? "border-primary bg-primary/5"
+              : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30"
+            }
+          `}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".mp3,.wav,.ogg"
+            onChange={handleFileInputChange}
+            className="sr-only"
+          />
+          {variant === "create" ? (
+            <>
+              <Upload className="mx-auto h-8 w-8 text-muted-foreground/50" />
+              <p className="mt-2 text-sm text-muted-foreground">
+                Arrastra un archivo aquí o <span className="text-primary underline">selecciona</span>
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground/60">
+                MP3, WAV u OGG — Máximo 10 MB
+              </p>
+            </>
+          ) : (
+            <>
+              <Upload className="mx-auto h-6 w-6 text-muted-foreground/50" />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {audioUrl ? "Reemplazar audio" : "Subir audio"} — MP3, WAV, OGG (máx. 10 MB)
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {audioError && (
         <div className="flex items-start gap-2">

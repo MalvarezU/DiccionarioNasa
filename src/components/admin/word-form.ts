@@ -18,6 +18,15 @@ export interface WordForm {
   status: string
 }
 
+export const EMPTY_WORD_FORM: WordForm = {
+  spanish: "",
+  nasaYuwe: "",
+  pronunciation: "",
+  culturalContext: "",
+  category: "",
+  status: "DRAFT",
+}
+
 export function toWordForm(word: WordForEdit): WordForm {
   return {
     spanish: word.spanish || "",
