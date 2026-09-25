@@ -21,7 +21,11 @@
     "db:clean-quotes:apply": "bun run prisma/clean-quotes.ts -- --apply",
     "db:clean-quotes:source": "bun run prisma/clean-quotes-source.ts",
     "db:migrate-audio-urls": "bun run prisma/migrate-audio-urls.ts",
-    "db:migrate-audio-urls:apply": "bun run prisma/migrate-audio-urls.ts -- --apply"
+    "db:migrate-audio-urls:apply": "bun run prisma/migrate-audio-urls.ts -- --apply",
+    "db:test:up": "podman compose -f docker-compose.test.yml up -d",
+    "db:test:migrate": "set -a; . ./.env.test; set +a; prisma migrate deploy",
+    "db:test:seed": "set -a; . ./.env.test; set +a; bun run prisma/seed-test.ts",
+    "test:e2e:local": "./scripts/e2e-local.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",

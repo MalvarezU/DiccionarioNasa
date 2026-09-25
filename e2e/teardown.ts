@@ -9,7 +9,17 @@ import { config as dotenv } from "dotenv";
  * - Cursos "E2E *" (cascada: módulos, lecciones, progreso).
  */
 async function teardown() {
+  // Sin DATABASE_URL exportado (p.ej. corrida manual sin e2e-local.sh),
+  // se intenta .env.test antes que .env: jamás tocar prod por defecto.
+  if (!process.env.DATABASE_URL) {
+    dotenv({ path: path.resolve(__dirname, "../.env.test") });
+  }
   dotenv({ path: path.resolve(__dirname, "../.env") });
+  // Fusible: si ni así la URL es local, no se borra nada.
+  if (!/localhost|127\.0\.0\.1|piiyaak_test/.test(process.env.DATABASE_URL ?? "")) {
+    console.log("[teardown] omitido: DATABASE_URL no es local");
+    return;
+  }
   const { PrismaClient } = await import("@prisma/client");
   const db = new PrismaClient();
   try {

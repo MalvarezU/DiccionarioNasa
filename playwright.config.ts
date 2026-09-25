@@ -44,9 +44,10 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        // npx directo: `npm run dev -- -p 3000` expande el `| tee dev.log`
-        // del script y crea archivos basura (`-p`, `3000`).
-        command: "npx next dev -p 3000",
+        // NODE_ENV explícito: Playwright lo fuerza a `test` y `next dev`
+        // se niega a correr fuera de development (antes andaba solo porque
+        // reusaba un dev server ya abierto).
+        command: "NODE_ENV=development npx next dev -p 3000",
         url: "http://localhost:3000",
         reuseExistingServer: true,
         timeout: 120000,

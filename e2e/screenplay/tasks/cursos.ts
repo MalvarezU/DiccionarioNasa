@@ -28,7 +28,9 @@ export class CrearCurso implements Task {
     const { page } = actor.usa(NavegarLaWeb);
     await page.getByLabel("Título del nuevo curso").fill(this.titulo);
     await page.getByRole("button", { name: "Crear curso" }).click();
-    await expect(page.getByText(this.titulo)).toBeVisible({ timeout: 30000 });
+    // first(): el detalle abierto muestra el mismo título en su header;
+    // en local (rápido) ambos ya están visibles y el matcher estricto falla.
+    await expect(page.getByText(this.titulo).first()).toBeVisible({ timeout: 30000 });
   }
 }
 

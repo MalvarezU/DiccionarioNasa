@@ -11,14 +11,22 @@ const AUTH_DIR = path.resolve(__dirname, ".auth");
 setup.describe.configure({ timeout: 180000 });
 
 /**
- * Gate de salud: si la BD no responde, aborta en segundos con mensaje claro
- * en vez de dejar 25 min de rojos confusos (los dependientes se skippean).
+ * Gates de setup:
+ * 1. Fusible anti-prod: la suite SOLO corre contra BD local. Si DATABASE_URL
+ *    no es local, se aborta antes de tocar nada (los dependientes se skippean).
+ * 2. Salud: si la BD no responde, aborta en segundos con mensaje claro.
  */
-setup("verifica salud del backend", async ({ request }) => {
+setup("verifica entorno local", async ({ request }) => {
+  const dbUrl = process.env.DATABASE_URL ?? "";
+  if (!/localhost|127\.0\.0\.1|piiyaak_test/.test(dbUrl)) {
+    throw new Error(
+      "E2E bloqueado: DATABASE_URL no es local. Corre con ./scripts/e2e-local.sh (usa .env.test)."
+    );
+  }
   const res = await request.get("/api/courses", { timeout: 30000 }).catch(() => null);
   if (!res || !res.ok()) {
     throw new Error(
-      "Backend/BD no responde (GET /api/courses falló). La BD gratuita suele recuperarse en minutos: reintenta la suite más tarde."
+      "Backend/BD no responde (GET /api/courses falló). Revisa que el pg local esté arriba: npm run db:test:up."
     );
   }
 });
