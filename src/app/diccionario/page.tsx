@@ -143,7 +143,7 @@ function DiccionarioContent() {
             </p>
 
             <div className="mt-8 sm:mt-10">
-              <SearchBar variant="hero" />
+              <SearchBar variant="hero-light" />
             </div>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm sm:text-base text-muted-foreground">

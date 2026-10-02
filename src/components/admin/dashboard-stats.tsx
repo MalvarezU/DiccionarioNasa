@@ -27,7 +27,7 @@ interface DashboardStatsProps {
 export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWithAudio }: DashboardStatsProps) {
   return (
     <>
-      <Card className="mb-6 border border-outline-variant/30 bg-white shadow-sm">
+      <Card className="mb-6 border border-outline-variant/20">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
@@ -49,7 +49,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card className="border border-secondary/30 bg-white shadow-sm">
+        <Card className="border border-secondary/20">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
@@ -79,7 +79,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
           </CardContent>
         </Card>
 
-        <Card className="border border-tertiary/30 bg-white shadow-sm">
+        <Card className="border border-tertiary/20">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
@@ -109,7 +109,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
           </CardContent>
         </Card>
 
-        <Card className="border border-outline-variant/30 bg-white shadow-sm">
+        <Card className="border border-outline-variant/20">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>

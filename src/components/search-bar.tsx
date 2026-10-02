@@ -22,7 +22,12 @@ interface SearchResult {
 
 interface SearchBarProps {
   /** "hero" = large centered bar for main area, "inline" = compact for headers */
-  variant?: "hero" | "inline";
+  /**
+   * - inline: campo compacto (navbar, paneles).
+   * - hero: campo grande SOBRE IMAGEN oscura → texto y borde blancos.
+   * - hero-light: campo grande sobre fondo claro (hero del diccionario).
+   */
+  variant?: "hero" | "hero-light" | "inline";
   /** Callback when a word is selected — used by parent components */
   onWordSelect?: (wordId: string) => void;
 }
@@ -43,7 +48,10 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const isHero = variant === "hero";
+  /** Campo grande (presencia de hero), sea sobre imagen o sobre fondo claro. */
+  const esGrande = variant !== "inline";
+  /** El texto solo va blanco cuando el fondo real es oscuro (imagen). */
+  const sobreOscuro = variant === "hero";
   const showDropdown = isOpen && debouncedQuery.length >= 2;
   const hasNoResults = showDropdown && !isLoading && results.length === 0;
   const [localDBReady, setLocalDBReady] = useState<boolean | null>(null);
@@ -184,12 +192,12 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
     <>
       <div
         ref={containerRef}
-        className={isHero ? "relative w-full max-w-2xl mx-auto" : "relative w-full max-w-xl"}
+        className={esGrande ? "relative w-full max-w-2xl mx-auto" : "relative w-full max-w-xl"}
       >
         {/* Search Input */}
         <div className="relative">
           <Search
-            className={`absolute left-3 top-1/2 -translate-y-1/2 ${isHero ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
+            className={`absolute left-3 top-1/2 -translate-y-1/2 ${sobreOscuro ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
             aria-hidden="true"
           />
           <Input
@@ -209,7 +217,13 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               }
             }}
             onKeyDown={handleKeyDown}
-            className={`pl-10 w-full transition-colors ${isHero ? "h-14 text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-white placeholder:text-white/70 border-white/30 hover:border-white/60 focus-visible:border-white focus-visible:ring-white/30" : "h-10 pr-9 bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:shadow-md"}`}
+            className={`pl-10 w-full transition-colors ${
+              sobreOscuro
+                ? "h-14 text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-white placeholder:text-white/70 border-white/30 hover:border-white/60 focus-visible:border-white focus-visible:ring-white/30"
+                : esGrande
+                  ? "h-14 text-lg rounded-xl pr-10 bg-surface-container-low border shadow-md focus-visible:border-primary/60 focus-visible:ring-primary/20 text-foreground placeholder:text-muted-foreground focus-visible:shadow-lg"
+                  : "h-10 pr-9 bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:shadow-md"
+            }`}
             aria-label="Buscar palabras en el diccionario"
             aria-expanded={showDropdown}
             aria-controls="search-results-list"
@@ -219,7 +233,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           />
           {isLoading && (
             <Loader2
-              className={`absolute right-3 top-1/2 -translate-y-1/2 animate-spin ${isHero ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 animate-spin ${sobreOscuro ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
             />
           )}
         </div>
@@ -235,10 +249,10 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         )}
 
         {/* Online indicator */}
-        {isOnline && isHero && (
+        {isOnline && esGrande && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <Cloud className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-            <span className="text-xs font-medium text-foreground/80 [text-shadow:0_1px_8px_rgb(0_0_0/0.6)]">
+            <span className="text-xs font-medium text-muted-foreground">
               Búsqueda en línea
             </span>
           </div>
@@ -248,7 +262,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {showDropdown && (
           <div
             className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200 ${
-              isHero ? "mt-2 rounded-xl" : "mt-1"
+              esGrande ? "mt-2 rounded-xl" : "mt-1"
             }`}
           >
             {/* Offline banner — context-aware for local DB readiness */}
@@ -297,7 +311,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               <ul
                 ref={listRef}
                 id="search-results-list"
-                className={isHero ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
+                className={esGrande ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
                 role="listbox"
                 aria-label="Resultados de búsqueda"
               >
@@ -310,7 +324,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                     aria-selected={index === highlightedIndex}
                     className={`
                       flex items-center gap-3 cursor-pointer transition-all
-                      ${isHero ? "px-4 py-3" : "px-3 py-2.5"}
+                      ${esGrande ? "px-4 py-3" : "px-3 py-2.5"}
                       ${
                         index === highlightedIndex
                           ? "bg-surface-container-high text-foreground border-l-4 border-primary"
@@ -322,10 +336,10 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={`font-medium ${isHero ? "text-base" : "text-sm"}`}>
+                        <span className={`font-medium ${esGrande ? "text-base" : "text-sm"}`}>
                           {result.nasaYuwe}
                         </span>
-                        <span className={`text-muted-foreground ${isHero ? "text-sm" : "text-xs"}`}>
+                        <span className={`text-muted-foreground ${esGrande ? "text-sm" : "text-xs"}`}>
                           — {result.spanish}
                         </span>
                       </div>

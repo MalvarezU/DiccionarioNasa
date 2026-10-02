@@ -18,6 +18,12 @@ export default defineConfig({
   projects: [
     { name: "setup", testMatch: /setup\.ts/ },
     {
+      // Guardas de paleta: sin sesión ni datos. Corre primero para que una
+      // regresión de color se reporte antes que la suite pesada.
+      name: "paleta",
+      testMatch: /paleta\.screenplay\.spec\.ts/,
+    },
+    {
       name: "screenplay-public",
       testMatch: /publico\.screenplay\.spec\.ts/,
     },

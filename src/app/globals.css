@@ -57,10 +57,13 @@
   --background: oklch(0.97 0.02 85);
   --foreground: oklch(0.20 0.02 55);
   
-  /* Surface Hierarchy (vellum sheets) - más amarillento opaco */
-  --surface-container-low: oklch(0.96 0.025 85);
-  --surface-container-high: oklch(0.94 0.03 85);
-  --surface-container-highest: oklch(0.92 0.035 85);
+  /* Surface Hierarchy (vellum sheets) - rampa con escalón perceptible (0.03 L).
+     Antes los tres niveles vivían con 0.02 de diferencia: los cards no se
+     separaban del fondo y el relieve tenía que inventarlo el adorno
+     (border + shadow por todas partes). */
+  --surface-container-low: oklch(0.95 0.025 85);
+  --surface-container-high: oklch(0.92 0.03 85);
+  --surface-container-highest: oklch(0.89 0.035 85);
   
   /* Cards & Popovers */
   --card: var(--surface-container-low);
@@ -94,9 +97,15 @@
   /* Destructive */
   --destructive: oklch(0.55 0.2 25);
   
-  /* Borders (Ghost Border Rule) */
-  --border: oklch(0.88 0.02 85);
-  --outline-variant: oklch(0.85 0.03 25);
+  /* Borders — WCAG 1.4.11 pide 3:1 para el contorno de un control (input,
+     checkbox, select). Medido contra la SUPERFICIE MÁS CLARA donde puede
+     apoyarse, no contra el fondo de la página: por eso L=0.56 y no 0.62.
+     L=0.62 daba 3.16:1 sobre surface-low pero caía a 2.63 sobre
+     surface-highest; 0.56 da 4.02 / 3.68 / 3.35 sobre las tres.
+     --outline-variant es decorativo (separadores, cantos de card) y se
+     mantiene claro a propósito. */
+  --border: oklch(0.56 0.02 85);
+  --outline-variant: oklch(0.82 0.03 25);
   --input: var(--border);
   --ring: var(--primary);
   

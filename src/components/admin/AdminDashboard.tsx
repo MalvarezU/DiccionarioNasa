@@ -107,7 +107,7 @@ export function AdminDashboard({ canBulkArchive = true }: { canBulkArchive?: boo
         </div>
       </div>
 
-      <Card className="mb-6 border border-outline-variant/30 bg-white shadow-sm">
+      <Card className="mb-6 border border-outline-variant/20">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Acciones rápidas
