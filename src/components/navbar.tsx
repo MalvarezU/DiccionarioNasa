@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock, Gamepad2, GraduationCap } from "lucide-react"
 import { useOnlineStatus } from "@/hooks/use-online-status"
@@ -28,8 +29,16 @@ function dispatchOpenPanel(tab: "favorites" | "history") {
   window.dispatchEvent(new CustomEvent("open-panel", { detail: { tab } }))
 }
 
+/** Los 3 módulos de la plataforma Piiyaak. */
+const NAV_ITEMS = [
+  { href: "/diccionario", label: "Diccionario", icon: BookOpen },
+  { href: "/juegos", label: "Juegos", icon: Gamepad2 },
+  { href: "/cursos", label: "Cursos", icon: GraduationCap },
+] as const
+
 export function NavBar() {
   const isOnline = useOnlineStatus()
+  const pathname = usePathname()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const { data: session } = useSession()
@@ -39,6 +48,10 @@ export function NavBar() {
   const canUsePanel = userRole === "admin" || userRole === "editor"
 
   const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "Usuario"
+
+  /** Ruta activa: prefijo exacto (o "/" para la portada). SSR: pathname es null. */
+  const isActive = (href: string) =>
+    !pathname ? false : href === "/" ? pathname === "/" : pathname.startsWith(href)
 
   return (
     <>
@@ -52,41 +65,47 @@ export function NavBar() {
             </span>
           </Link>
 
-          {/* Center nav links */}
-          <nav className="hidden md:flex items-center gap-1 ml-6">
-            <Link
-              href="/juegos"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-            >
-              <Gamepad2 className="h-4 w-4" />
-              Juegos
-            </Link>
-            <Link
-              href="/cursos"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-            >
-              <GraduationCap className="h-4 w-4" />
-              Cursos
-            </Link>
-          </nav>
+          {/* Center nav links — en la portada la elección de módulo se hace
+              desde el hero, así que acá no se duplican */}
+          {pathname !== "/" && (
+            <>
+              <nav className="hidden md:flex items-center gap-1 ml-6">
+                {NAV_ITEMS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={isActive(item.href) ? "page" : undefined}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      isActive(item.href)
+                        ? "text-primary bg-primary/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
 
-          {/* Mobile nav links */}
-          <nav className="flex md:hidden items-center gap-1">
-            <Link
-              href="/juegos"
-              className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-              aria-label="Juegos"
-            >
-              <Gamepad2 className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/cursos"
-              className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-              aria-label="Cursos"
-            >
-              <GraduationCap className="h-4 w-4" />
-            </Link>
-          </nav>
+              <nav className="flex md:hidden items-center gap-0.5">
+                {NAV_ITEMS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-label={item.label}
+                    aria-current={isActive(item.href) ? "page" : undefined}
+                    className={`flex items-center justify-center h-8 w-8 rounded-md transition-colors ${
+                      isActive(item.href)
+                        ? "text-primary bg-primary/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                  </Link>
+                ))}
+              </nav>
+            </>
+          )}
 
           {/* Right side: connection + auth + settings */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">

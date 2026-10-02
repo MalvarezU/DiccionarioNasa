@@ -69,7 +69,7 @@ test.describe("multi-actor (Screenplay)", () => {
       );
 
       // El visitante la encuentra en el buscador
-      await visitante.intenta(IrA.a("/"), BuscarPalabra.conTermino(palabra));
+      await visitante.intenta(IrA.a("/diccionario"), BuscarPalabra.conTermino(palabra));
       expect(
         await visitante.pregunta(OpcionDeBusqueda.conPatron(new RegExp(palabra, "i")))
       ).toBe(true);
@@ -84,7 +84,7 @@ test.describe("multi-actor (Screenplay)", () => {
       );
 
       // ...y el visitante ya no la ve
-      await visitante.intenta(IrA.a("/"), BuscarPalabra.conTermino(palabra));
+      await visitante.intenta(IrA.a("/diccionario"), BuscarPalabra.conTermino(palabra));
       expect(
         await visitante.pregunta(OpcionDeBusqueda.ausente(new RegExp(palabra, "i")))
       ).toBe(true);

@@ -1,151 +1,66 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Leaf,
   BookOpen,
   Volume2,
   Globe,
+  GraduationCap,
+  Gamepad2,
   Heart,
   Users,
-  Star,
-  List,
+  Sparkles,
 } from "lucide-react";
 import { NavBar } from "@/components/navbar";
-import { SearchBar } from "@/components/search-bar";
-import { WordDetailCard } from "@/components/word-detail-card";
+import { SiteFooter } from "@/components/site-footer";
 import { DownloadBanner } from "@/components/download-banner";
-import { ExploreSection } from "@/components/explore-section";
 import { WordOfDayCard } from "@/components/word-of-day-card";
-import { FavoritesHistoryPanel } from "@/components/favorites-history-panel";
-import { recordLocalHistory } from "@/lib/demo-storage";
+import { WordDetailCard } from "@/components/word-detail-card";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-interface FeaturedWord {
-  id: string;
-  spanish: string;
-  nasaYuwe: string;
-  pronunciation: string | null;
-  category: string | null;
-  culturalContext: string | null;
-}
-
-type TabType = "featured" | "explore";
+/** Los 3 módulos de la plataforma: se eligen desde el hero. */
+const MODULES = [
+  {
+    href: "/diccionario",
+    icon: BookOpen,
+    title: "Diccionario",
+    cta: "Explorar diccionario",
+  },
+  { href: "/juegos", icon: Gamepad2, title: "Juegos", cta: "Jugar ahora" },
+  {
+    href: "/cursos",
+    icon: GraduationCap,
+    title: "Cursos",
+    cta: "Ver cursos",
+  },
+] as const;
 
 function HomeContent() {
-  const { data: session } = useSession();
-  const isAuthenticated = !!session?.user;
-
-  const [featuredWords, setFeaturedWords] = useState<FeaturedWord[]>([]);
-  const [totalWords, setTotalWords] = useState<number>(0);
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>("featured");
-
-  // Favorites/History panel
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [panelTab, setPanelTab] = useState<"favorites" | "history">("favorites");
-
-  // Fetch featured words
-  useEffect(() => {
-    const fetchFeatured = async () => {
-      try {
-        const res = await fetch("/api/dictionary/featured");
-        if (res.ok) {
-          const data = await res.json();
-          setFeaturedWords(data.words ?? []);
-          setTotalWords(data.totalWords ?? 0);
-        }
-      } catch {
-        // Silently fail
-      }
-    };
-    fetchFeatured();
-  }, []);
-
-  const handleWordClick = (word: FeaturedWord) => {
-    setSelectedWordId(word.id);
-    setDetailOpen(true);
-  };
 
   const handleWordSelect = useCallback((wordId: string) => {
     setSelectedWordId(wordId);
     setDetailOpen(true);
   }, []);
 
-  // Record view history when a word detail is opened
-  useEffect(() => {
-    if (!selectedWordId || !detailOpen || !isAuthenticated) return;
-
-    const userId = (session?.user as any)?.id || 'demo-user';
-
-    const recordHistory = async () => {
-      try {
-        const res = await fetch("/api/dictionary/history", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wordId: selectedWordId }),
-        });
-        if (!res.ok) throw new Error('API error')
-      } catch {
-        // Fallback to localStorage for demo mode
-        recordLocalHistory(userId, selectedWordId);
-      }
-    };
-    recordHistory();
-  }, [selectedWordId, detailOpen, isAuthenticated, session]);
-
-  // Open favorites/history panel
-  const openPanel = useCallback((tab: "favorites" | "history") => {
-    setPanelTab(tab);
-    setPanelOpen(true);
-  }, []);
-
-  // Listen for custom events from NavBar to open the panel
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const customEvent = e as CustomEvent<{ tab: "favorites" | "history" }>;
-      openPanel(customEvent.detail.tab);
-    };
-    window.addEventListener("open-panel", handler);
-    return () => window.removeEventListener("open-panel", handler);
-  }, [openPanel]);
-
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
 
       <main className="flex-1">
-        {/* Download Banner */}
-        <DownloadBanner />
-
-        {/* Hero Section with Search Bar */}
+        {/* Hero — bienvenida a la plataforma */}
         <section className="relative isolate pb-12 sm:pb-16 pt-16 sm:pt-24">
-          {/* Dark overlay base */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/50 z-10" />
-          
-          {/* Decorative pattern */}
           <div
             className="absolute inset-0 opacity-[0.06] z-0"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232563eb' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-              backgroundRepeat: 'repeat',
+              backgroundRepeat: "repeat",
             }}
             aria-hidden="true"
           />
-          
-          {/* Background image */}
           <Image
             src="/banner.webp"
             alt=""
@@ -154,37 +69,78 @@ function HomeContent() {
             className="object-cover opacity-[0.6] z-0"
             aria-hidden="true"
             onError={(e) => {
-              e.currentTarget.style.display = 'none';
+              e.currentTarget.style.display = "none";
             }}
           />
 
-          {/* Content */}
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 text-center z-20">            
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)' }}>
-              Piiyaak
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 text-center z-20">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur"
+              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}
+            >
+              <Sparkles className="h-3 w-3" aria-hidden="true" />
+              Plataforma de la lengua Nasa Yuwe
+            </span>
+            <h1
+              className="mt-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white"
+              style={{ textShadow: "0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)" }}
+            >
+              Bienvenido a Piiyaak
             </h1>
-            <p className="mt-3 text-lg sm:text-xl text-white font-medium" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
-              Proyecto de preservación de la lengua Nasa Yuwe · Diccionario bilingüe
+            <p
+              className="mt-3 text-lg sm:text-xl text-white font-medium"
+              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.7)" }}
+            >
+              Diccionario, juegos y cursos para aprender y preservar el Nasa Yuwe
             </p>
-            <p className="mt-4 max-w-xl mx-auto text-base sm:text-lg text-white/90 leading-relaxed" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-              Preservando y compartiendo la lengua del pueblo Nasa (Páez) de Colombia.
-              Busca palabras, pronunciaciones y contexto cultural.
+            <p
+              className="mt-4 max-w-2xl mx-auto text-base sm:text-lg text-white/90 leading-relaxed"
+              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}
+            >
+              Tres caminos en un solo lugar: consulta el diccionario bilingüe,
+              practica con juegos didácticos y sigue una ruta de aprendizaje paso
+              a paso.
             </p>
 
-            <div className="mt-8 sm:mt-10">
-              <SearchBar variant="hero" />
+            {/* Los 3 módulos de la plataforma, integrados en el banner */}
+            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+              {MODULES.map((m, i) => {
+                const Icon = m.icon;
+                const principal = i === 0;
+                return (
+                  <Link
+                    key={m.href}
+                    href={m.href}
+                    className={`group inline-flex items-center justify-center gap-2.5 rounded-xl px-5 py-3 text-sm font-medium transition-all duration-200 backdrop-blur-md ${
+                      principal
+                        ? "bg-white/95 text-primary shadow-lg hover:bg-white hover:shadow-xl sm:px-6"
+                        : "border border-white/35 bg-black/25 text-white hover:bg-white/15 hover:border-white/60"
+                    }`}
+                  >
+                    <Icon
+                      className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+                        principal ? "" : "group-hover:scale-110"
+                      }`}
+                    />
+                    {principal ? m.cta : m.title}
+                  </Link>
+                );
+              })}
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
-              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+            <div
+              className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8"
+              style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
+            >
+              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90">
                 <BookOpen className="h-4 w-4 text-white" />
-                <span>{totalWords > 0 ? `${totalWords} palabras` : "Palabras"}</span>
+                <span>Diccionario bilingüe</span>
               </div>
-              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90">
                 <Volume2 className="h-4 w-4 text-white" />
                 <span>Pronunciación guiada</span>
               </div>
-              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90">
                 <Globe className="h-4 w-4 text-white" />
                 <span>Español ↔ Nasa Yuwe</span>
               </div>
@@ -192,90 +148,12 @@ function HomeContent() {
           </div>
         </section>
 
+        {/* Download para uso sin conexión */}
+        <DownloadBanner />
+
         {/* Word of the Day */}
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-8 sm:pb-10">
           <WordOfDayCard onWordSelect={handleWordSelect} />
-        </section>
-
-        {/* Tabbed Section: Featured | Explore */}
-        <section id="explorar" className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)} className="w-full">
-            <div className="flex items-center justify-center mb-8">
-              <TabsList className="gap-2">
-                <TabsTrigger value="featured" className="gap-2">
-                  <Star className="h-4 w-4" />
-                  Destacadas
-                </TabsTrigger>
-                <TabsTrigger value="explore" className="gap-2">
-                  <List className="h-4 w-4" />
-                  Explorar A-Z
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="featured">
-              <div className="text-center mb-8">
-                <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-primary">
-                  Palabras Destacadas
-                </h2>
-                <p className="mt-2 text-sm sm:text-base text-muted-foreground">
-                  Descubre algunas de las palabras fundamentales del Nasa Yuwe
-                </p>
-              </div>
-
-              {featuredWords.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {featuredWords.map((word) => (
-                    <Card
-                      key={word.id}
-                      className="group cursor-pointer transition-all duration-200 bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
-                      onClick={() => handleWordClick(word)}
-                    >
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="font-serif text-lg text-primary group-hover:text-primary/80 transition-colors">
-                            {word.nasaYuwe}
-                          </CardTitle>
-                          {word.category && (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] shrink-0 bg-tertiary/10 text-tertiary border border-tertiary/20 hover:bg-tertiary-fixed hover:text-foreground transition-colors"
-                            >
-                              {word.category}
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <p className="text-sm font-medium text-foreground">
-                          {word.spanish}
-                        </p>
-                        {word.pronunciation && (
-                          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                            <Volume2 className="h-3 w-3 text-secondary" />
-                            [{word.pronunciation}]
-                          </p>
-                        )}
-                        {word.culturalContext && (
-                          <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                            {word.culturalContext}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">Cargando palabras...</p>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="explore">
-              <ExploreSection onWordSelect={handleWordSelect} />
-            </TabsContent>
-          </Tabs>
         </section>
 
         {/* About Section */}
@@ -302,8 +180,8 @@ function HomeContent() {
                   Comunidad Nasa
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                  Diccionario creado en colaboración con hablantes nativos y
-                  lingüistas especializados en lenguas indígenas.
+                  Creado en colaboración con hablantes nativos y lingüistas
+                  especializados en lenguas indígenas.
                 </p>
               </div>
               <div className="text-center">
@@ -323,92 +201,14 @@ function HomeContent() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="mt-auto bg-black text-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Logo + Brand */}
-            <div className="flex flex-col items-center md:items-start gap-3">
-              <div className="flex items-center gap-4">
-                <Image
-                  src="/ybc.jpg"
-                  alt="YBC Logo"
-                  width={72}
-                  height={72}
-                  className="rounded-full border-2 border-white/30"
-                />
-                <div>
-                  <p className="font-serif text-lg font-bold text-white">
-                    Grupo YBC
-                  </p>
-                  <p className="text-xs text-white/70">
-                    Piiyaak · Diccionario Nasa Yuwe
-                  </p>
-                </div>
-              </div>
-            </div>
+      <SiteFooter />
 
-            {/* Navigation Links */}
-            <div className="flex flex-col items-center gap-3">
-              <p className="text-xs font-semibold text-white uppercase tracking-wider mb-1">
-                Navegación
-              </p>
-              <nav className="flex flex-col items-center gap-2">
-                <Link
-                  href="/#explorar"
-                  className="text-xs text-white/70 hover:text-white transition-colors duration-200"
-                >
-                  Explorar A-Z
-                </Link>
-                <Link
-                  href="/#acerca"
-                  className="text-xs text-white/70 hover:text-white transition-colors duration-200"
-                >
-                  Acerca del proyecto
-                </Link>
-                <Link
-                  href="/admin"
-                  className="text-xs text-white/70 hover:text-white transition-colors duration-200"
-                >
-                  Administración
-                </Link>
-              </nav>
-            </div>
-
-            {/* Acknowledgment + Version */}
-            <div className="flex flex-col items-center md:items-end gap-3">
-              <p className="text-xs text-white/70 text-center md:text-right max-w-xs leading-relaxed">
-                Este diccionario es una herramienta de preservación lingüística y cultural.
-              </p>
-              <p className="text-[10px] text-white/50">
-                Versión 1.0.0
-              </p>
-            </div>
-          </div>
-
-          {/* Bottom bar */}
-          <div className="mt-8 pt-6 border-t border-white/20">
-            <p className="text-center text-[10px] text-white/50" suppressHydrationWarning>
-              © {new Date().getFullYear()} Piiyaak · Proyecto de preservación de la lengua Nasa Yuwe
-            </p>
-          </div>
-        </div>
-      </footer>
-
-      {/* Word detail card */}
+      {/* Ficha de palabra (desde la palabra del día) */}
       <WordDetailCard
         key={selectedWordId ?? "none"}
         wordId={selectedWordId}
         open={detailOpen}
         onOpenChange={setDetailOpen}
-      />
-
-      {/* Favorites & History panel */}
-      <FavoritesHistoryPanel
-        open={panelOpen}
-        onOpenChange={setPanelOpen}
-        initialTab={panelTab}
-        onWordSelect={handleWordSelect}
       />
     </div>
   );

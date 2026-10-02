@@ -20,7 +20,7 @@ test.describe("usuario Piiyaak (Screenplay)", () => {
   test("favorita persiste al recargar", async ({ page }) => {
     const usuario = actorUsuario(page);
     await usuario.intenta(
-      IrA.a("/"),
+      IrA.a("/diccionario"),
       AbrirFicha.conTermino("Casa", /casa/i),
       MarcarFavorita.ahora(),
       Recargar.ahora(),
@@ -36,7 +36,7 @@ test.describe("usuario Piiyaak (Screenplay)", () => {
   test("historial registra la visita", async ({ page }) => {
     const usuario = actorUsuario(page);
     await usuario.intenta(
-      IrA.a("/"),
+      IrA.a("/diccionario"),
       AbrirFicha.conTermino("Agua", /agua/i),
       // Cerrar la ficha (el overlay tapa el menú de usuario)
       CerrarOverlay.ahora(),

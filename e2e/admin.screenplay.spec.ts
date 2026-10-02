@@ -63,7 +63,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     );
 
     // Visible en búsqueda pública
-    await admin.intenta(IrA.a("/"), BuscarPalabra.conTermino(palabra));
+    await admin.intenta(IrA.a("/diccionario"), BuscarPalabra.conTermino(palabra));
     expect(await admin.pregunta(OpcionDeBusqueda.conPatron(new RegExp(palabra, "i")))).toBe(true);
 
     // Archivar desde el modal de edición
@@ -76,7 +76,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     );
 
     // Ya no aparece en búsqueda pública
-    await admin.intenta(IrA.a("/"), BuscarPalabra.conTermino(palabra));
+    await admin.intenta(IrA.a("/diccionario"), BuscarPalabra.conTermino(palabra));
     expect(await admin.pregunta(OpcionDeBusqueda.ausente(new RegExp(palabra, "i")))).toBe(true);
   });
 

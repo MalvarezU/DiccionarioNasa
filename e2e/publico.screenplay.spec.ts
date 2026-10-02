@@ -41,16 +41,37 @@ test.describe("Piiyaak público (Screenplay)", () => {
   // BD gratuita lenta: timeouts amplios
   test.describe.configure({ timeout: 180000 });
 
-  test("portada carga con buscador y palabra del día", async ({ page }) => {
+  test("portada da la bienvenida a la plataforma", async ({ page }) => {
     const visitante = actorVisitante(page);
     await visitante.intenta(IrA.a("/"));
+    expect(
+      await visitante.pregunta(EncabezadoVisible.conNombre("Bienvenido a Piiyaak"))
+    ).toBe(true);
+  });
+
+  test("portada enlaza a los 3 módulos", async ({ page }) => {
+    const visitante = actorVisitante(page);
+    await visitante.intenta(IrA.a("/"));
+    for (const modulo of ["Diccionario", "Juegos", "Cursos"]) {
+      const enlace = page.getByRole("link").filter({ hasText: modulo }).first();
+      expect(await enlace.getAttribute("href")).toMatch(
+        new RegExp(`^/(diccionario|juegos|cursos)`),
+      );
+    }
+  });
+
+  test("diccionario carga con buscador y palabra del día", async ({ page }) => {
+    const visitante = actorVisitante(page);
+    await visitante.intenta(IrA.a("/diccionario"));
     expect(await visitante.pregunta(PlaceholderVisible.conPatron(/Buscar/))).toBe(true);
-    expect(await visitante.pregunta(EncabezadoVisible.conNombre("Piiyaak"))).toBe(true);
+    expect(
+      await visitante.pregunta(EncabezadoVisible.conNombre(/Diccionario Nasa Yuwe/))
+    ).toBe(true);
   });
 
   test("buscar y abrir ficha", async ({ page }) => {
     const visitante = actorVisitante(page);
-    await visitante.intenta(IrA.a("/"), BuscarPalabra.conTermino("casa"));
+    await visitante.intenta(IrA.a("/diccionario"), BuscarPalabra.conTermino("casa"));
     expect(await visitante.pregunta(OpcionDeBusqueda.conPatron(/Casa/))).toBe(true);
   });
 
