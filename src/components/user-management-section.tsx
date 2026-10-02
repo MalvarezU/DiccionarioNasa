@@ -322,7 +322,7 @@ export function UserManagementSection() {
                             </>
                           )}
                           {user.id === currentUserId && (
-                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                            <Badge variant="outline" className="text-2xs text-muted-foreground">
                               Tú
                             </Badge>
                           )}

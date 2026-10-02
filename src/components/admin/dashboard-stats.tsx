@@ -71,7 +71,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
                     style={{ width: `${(stats.publishedCount / stats.totalWords) * 100}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-2xs text-muted-foreground mt-1">
                   {((stats.publishedCount / stats.totalWords) * 100).toFixed(0)}% del total
                 </p>
               </div>
@@ -101,7 +101,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
                     style={{ width: `${(stats.draftCount / stats.totalWords) * 100}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-2xs text-muted-foreground mt-1">
                   {stats.draftCount > 0 ? `${((stats.draftCount / stats.totalWords) * 100).toFixed(0)}% del total` : "Sin borradores"}
                 </p>
               </div>
@@ -131,7 +131,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
                     style={{ width: `${(stats.archivedCount / stats.totalWords) * 100}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-2xs text-muted-foreground mt-1">
                   {stats.archivedCount > 0 ? `${((stats.archivedCount / stats.totalWords) * 100).toFixed(0)}% del total` : "Sin archivadas"}
                 </p>
               </div>
@@ -195,7 +195,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
                     style={{ width: `${(stats.publishedWithoutAudio / stats.publishedCount) * 100}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-2xs text-muted-foreground mt-1">
                   {stats.publishedWithoutAudio === 0 ? "Tienen audio" : `${((stats.publishedWithoutAudio / stats.publishedCount) * 100).toFixed(0)}% de publicadas`}
                 </p>
               </div>
@@ -221,7 +221,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
                     style={{ width: `${(publishedWithAudio / stats.publishedCount) * 100}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-2xs text-muted-foreground mt-1">
                   {stats.publishedCount > 0 ? `${((publishedWithAudio / stats.publishedCount) * 100).toFixed(0)}% de publicadas` : "Sin publicadas"}
                 </p>
               </div>

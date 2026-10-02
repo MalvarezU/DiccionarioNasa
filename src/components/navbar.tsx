@@ -113,7 +113,7 @@ export function NavBar() {
             {isOnline ? (
               <Badge
                 variant="secondary"
-                className="gap-1.5 text-[11px] font-normal bg-secondary/10 text-secondary border border-secondary/20"
+                className="gap-1.5 text-2xs font-normal bg-secondary/10 text-secondary border border-secondary/20"
               >
                 <Wifi className="h-3 w-3" />
                 <span className="hidden sm:inline">En línea</span>
@@ -121,7 +121,7 @@ export function NavBar() {
             ) : (
               <Badge
                 variant="secondary"
-                className="gap-1.5 text-[11px] font-normal bg-tertiary/10 text-tertiary border border-tertiary/20"
+                className="gap-1.5 text-2xs font-normal bg-tertiary/10 text-tertiary border border-tertiary/20"
               >
                 <WifiOff className="h-3 w-3" />
                 <span className="hidden sm:inline">Sin conexión</span>
@@ -138,7 +138,7 @@ export function NavBar() {
                     className="gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground"
                   >
                     <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary shrink-0">
-                      <span className="text-[11px] font-bold uppercase">
+                      <span className="text-2xs font-bold uppercase">
                         {userName.charAt(0)}
                       </span>
                     </div>

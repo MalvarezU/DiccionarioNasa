@@ -100,7 +100,7 @@ export function AdminDashboard({ canBulkArchive = true }: { canBulkArchive?: boo
             {isRefreshing ? "Actualizando..." : "Actualizar"}
           </Button>
           {lastRefreshed && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-2xs text-muted-foreground">
               Última actualización: {lastRefreshed.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}

@@ -261,7 +261,7 @@ export default function CursoDetailPage({
 
         {!isAuthed && (
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-2xs">
               Inicia sesión para sincronizar tu avance entre dispositivos
             </Badge>
           </p>

@@ -1,6 +1,18 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Piso tipográfico para micro-textos: captions, labels de badge y metadatos.
+   Antes vivían en text-[9px] / text-[10px] / text-[11px] (58 sitios en 25
+   archivos), donde 9px era ilegible y el conjunto era ingobernable. El texto
+   que se lee en frase usa text-xs (12px) o más.
+
+   Tiene que estar en @theme (no en @theme inline, que solo mapea tokens a
+   otros tokens) y declararse como rem para que Tailwind registre el nombre
+   de la utilidad .text-2xs. */
+@theme {
+  --text-2xs: 0.6875rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

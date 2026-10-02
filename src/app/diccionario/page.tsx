@@ -210,7 +210,7 @@ function DiccionarioContent() {
                           {word.category && (
                             <Badge
                               variant="secondary"
-                              className="text-[10px] shrink-0 bg-tertiary/10 text-tertiary border border-tertiary/20 hover:bg-tertiary-fixed hover:text-foreground transition-colors"
+                              className="text-2xs shrink-0 bg-tertiary/10 text-tertiary border border-tertiary/20 hover:bg-tertiary-fixed hover:text-foreground transition-colors"
                             >
                               {word.category}
                             </Badge>

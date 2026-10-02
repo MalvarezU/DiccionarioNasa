@@ -244,7 +244,7 @@ export function ImportCorpusModal({
                     <Badge
                       key={c.header}
                       variant={c.mapped ? "secondary" : "outline"}
-                      className="text-[10px]"
+                      className="text-2xs"
                     >
                       {c.header} → {c.mapped ?? "ignorada"}
                     </Badge>
@@ -253,7 +253,7 @@ export function ImportCorpusModal({
                 {preview.errors.length > 0 && (
                   <div className="space-y-1">
                     {preview.errors.map((err, i) => (
-                      <p key={i} className="text-[11px] text-destructive">
+                      <p key={i} className="text-2xs text-destructive">
                         Fila {err.row}: {err.reason}
                       </p>
                     ))}

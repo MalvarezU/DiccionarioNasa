@@ -76,14 +76,14 @@ export function SiteFooter() {
               Piiyaak es una herramienta de preservación lingüística y cultural
               del pueblo Nasa (Páez) de Colombia.
             </p>
-            <p className="text-[10px] text-white/50">Versión 1.0.0</p>
+            <p className="text-2xs text-white/50">Versión 1.0.0</p>
           </div>
         </div>
 
         {/* Bottom bar */}
         <div className="mt-8 pt-6 border-t border-white/20">
           <p
-            className="text-center text-[10px] text-white/50"
+            className="text-center text-2xs text-white/50"
             suppressHydrationWarning
           >
             © {new Date().getFullYear()} Piiyaak · Proyecto de preservación de

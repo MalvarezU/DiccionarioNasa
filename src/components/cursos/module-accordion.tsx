@@ -73,7 +73,7 @@ export function ModuleAccordion({
               className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
             />
           ) : (
-            <Badge variant="outline" className="gap-1 text-[10px]">
+            <Badge variant="outline" className="gap-1 text-2xs">
               <Lock className="h-3 w-3" />
               Bloqueado
             </Badge>
@@ -109,7 +109,7 @@ export function ModuleAccordion({
                       </span>
                       {lesson.title}
                     </span>
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-2xs">
                       {lessonTypeLabel(lesson.type)}
                     </Badge>
                   </button>

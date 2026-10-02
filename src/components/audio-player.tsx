@@ -179,7 +179,7 @@ function AudioPlayerInner({ src, wordLabel, isCached }: { src: string; wordLabel
           Pronunciación en Nasa Yuwe: <span className="font-medium text-foreground">{wordLabel}</span>
         </p>
         {isCached && (
-          <Badge variant="secondary" className="h-5 gap-1 text-[10px] px-1.5 bg-primary/10 text-primary border-primary/20">
+          <Badge variant="secondary" className="h-5 gap-1 text-2xs px-1.5 bg-primary/10 text-primary border-primary/20">
             <CloudOff className="h-3 w-3" />
             Offline
           </Badge>

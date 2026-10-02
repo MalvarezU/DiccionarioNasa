@@ -126,7 +126,7 @@ export function EditLessonModal({
           <DialogTitle className="flex items-center gap-2">
             <Pencil className="h-4 w-4 text-primary" />
             Editar lección
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-2xs">
               {displayNumber}
             </Badge>
           </DialogTitle>

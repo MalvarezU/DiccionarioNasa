@@ -41,7 +41,7 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
                   <CardTitle className="text-lg font-serif">
                     {course.title}
                   </CardTitle>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-2xs text-muted-foreground">
                     {course.modules} módulos · {course.lessons} lecciones
                   </span>
                 </div>
@@ -55,7 +55,7 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
             {course.progressPct !== null && (
               <div className="mb-4 space-y-1">
                 <Progress value={course.progressPct} className="h-2" aria-label={`Avance: ${course.progressPct}%`} />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-2xs text-muted-foreground">
                   {course.progressPct}% completado
                 </p>
               </div>
@@ -83,7 +83,7 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
                   <CardTitle className="text-lg font-serif text-muted-foreground">
                     {course.title}
                   </CardTitle>
-                  <Badge variant="outline" className="mt-1 text-[10px]">
+                  <Badge variant="outline" className="mt-1 text-2xs">
                     Próximamente
                   </Badge>
                 </div>

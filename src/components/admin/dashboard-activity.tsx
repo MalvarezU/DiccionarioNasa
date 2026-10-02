@@ -160,11 +160,11 @@ export function DashboardActivity({ stats, statusSum, onViewAll }: DashboardActi
                 <TableBody>
                   {stats.recentAuditLogs.map((log) => (
                     <TableRow key={log.id}>
-                      <TableCell className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      <TableCell className="text-2xs text-muted-foreground whitespace-nowrap">
                         <span title={formatDate(log.createdAt)}>{formatTimeAgo(log.createdAt)}</span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 h-5 shrink-0 ${getActionColor(log.action)}`}>
+                        <Badge variant="outline" className={`text-2xs px-1.5 py-0.5 h-5 shrink-0 ${getActionColor(log.action)}`}>
                           {getActionLabel(log.action)}
                         </Badge>
                       </TableCell>
@@ -174,7 +174,7 @@ export function DashboardActivity({ stats, statusSum, onViewAll }: DashboardActi
                           <span className="text-muted-foreground ml-1">#{log.entityId.slice(0, 8)}</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-[11px]">
+                      <TableCell className="text-2xs">
                         <span className="inline-flex items-center gap-1 text-muted-foreground">
                           <User className="h-3 w-3" />
                           {getResponsible(log.userId)}

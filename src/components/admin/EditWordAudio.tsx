@@ -34,10 +34,10 @@ export function EditWordAudio({ audio, variant = "edit" }: { audio: Audio; varia
         <Volume2 className="h-4 w-4 text-primary" />
         Audio
         {variant === "edit" && originalAudioUrl && !audioChanged && (
-          <Badge variant="secondary" className="text-[10px] ml-1">Archivo actual</Badge>
+          <Badge variant="secondary" className="text-2xs ml-1">Archivo actual</Badge>
         )}
         {variant === "edit" && audioChanged && (
-          <Badge variant="outline" className="text-[10px] ml-1 text-tertiary bg-tertiary/10">Reemplazado</Badge>
+          <Badge variant="outline" className="text-2xs ml-1 text-tertiary bg-tertiary/10">Reemplazado</Badge>
         )}
       </Label>
 
@@ -52,7 +52,7 @@ export function EditWordAudio({ audio, variant = "edit" }: { audio: Audio; varia
                 <p className="text-sm font-medium text-foreground truncate">
                   {audioFile ? audioFile.name : "Audio actual"}
                 </p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-2xs text-muted-foreground">
                   {audioFile ? `${(audioFile.size / 1024 / 1024).toFixed(2)} MB` : audioUrl?.split("/").pop()}
                   {isUploadingAudio && " — Subiendo..."}
                   {audioUrl && !isUploadingAudio && (audioChanged ? " — Subido (guarda la ficha para conservarlo)" : " — Guardado")}
@@ -123,7 +123,7 @@ export function EditWordAudio({ audio, variant = "edit" }: { audio: Audio; varia
               <p className="mt-2 text-sm text-muted-foreground">
                 Arrastra un archivo aquí o <span className="text-primary underline">selecciona</span>
               </p>
-              <p className="mt-1 text-[11px] text-muted-foreground/60">
+              <p className="mt-1 text-2xs text-muted-foreground/60">
                 MP3, WAV u OGG — Máximo 10 MB
               </p>
             </>

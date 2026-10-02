@@ -61,13 +61,13 @@ interface WordListModalProps {
 function getStatusBadge(status: string) {
   switch (status) {
     case "PUBLISHED":
-      return <Badge variant="outline" className="text-[10px] text-secondary bg-secondary/10">Publicada</Badge>
+      return <Badge variant="outline" className="text-2xs text-secondary bg-secondary/10">Publicada</Badge>
     case "DRAFT":
-      return <Badge variant="outline" className="text-[10px] text-tertiary bg-tertiary/10">Borrador</Badge>
+      return <Badge variant="outline" className="text-2xs text-tertiary bg-tertiary/10">Borrador</Badge>
     case "ARCHIVED":
-      return <Badge variant="outline" className="text-[10px] text-muted-foreground bg-muted/50">Archivada</Badge>
+      return <Badge variant="outline" className="text-2xs text-muted-foreground bg-muted/50">Archivada</Badge>
     default:
-      return <Badge variant="outline" className="text-[10px]">{status}</Badge>
+      return <Badge variant="outline" className="text-2xs">{status}</Badge>
   }
 }
 
@@ -116,7 +116,7 @@ export function WordListModal({
             {statusFilter !== "all" && (
               <>
                 <span className="text-muted-foreground">·</span>
-                <Badge variant="outline" className="text-[10px] gap-1">
+                <Badge variant="outline" className="text-2xs gap-1">
                   {statusFilterLabel}: {formatNumber(total)}
                 </Badge>
               </>

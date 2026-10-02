@@ -353,7 +353,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                         {result.category && (
                           <Badge
                             variant="secondary"
-                            className="text-[10px] px-1.5 py-0 h-4 bg-tertiary/10 text-tertiary border border-tertiary/20"
+                            className="text-2xs px-1.5 py-0 h-4 bg-tertiary/10 text-tertiary border border-tertiary/20"
                           >
                             {result.category}
                           </Badge>

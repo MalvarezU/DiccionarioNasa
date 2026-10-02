@@ -75,7 +75,7 @@ export default function JuegosPage() {
                       <Icon className="h-7 w-7 text-white" />
                     </div>
                     {juego.locked && (
-                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                      <Badge variant="outline" className="shrink-0 text-2xs">
                         <Lock className="h-3 w-3 mr-1" />
                         Próximamente
                       </Badge>

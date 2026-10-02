@@ -172,7 +172,7 @@ export function WordContent({
             {storageInfo && storageInfo.percentUsed > 50 && (
               <div className="flex items-center gap-2 mt-1 pt-1 border-t border-border/30">
                 <HardDrive className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className={`text-[10px] ${storageInfo.percentUsed > 80 ? "text-destructive" : "text-muted-foreground"}`}>
+                <span className={`text-2xs ${storageInfo.percentUsed > 80 ? "text-destructive" : "text-muted-foreground"}`}>
                   Almacenamiento: {storageInfo.usedMB.toFixed(1)} MB / {storageInfo.quotaMB.toFixed(0)} MB ({storageInfo.percentUsed.toFixed(0)}%)
                 </span>
               </div>

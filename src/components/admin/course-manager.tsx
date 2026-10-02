@@ -95,10 +95,10 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                 >
                   <p className="text-sm font-medium">{c.title}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-2xs">
                       {STATUS_LABEL[c.status] ?? c.status}
                     </Badge>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-2xs text-muted-foreground">
                       {c.modules} módulos · {c.lessons} lecciones
                     </span>
                   </div>
@@ -239,12 +239,12 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                           data-lesson-title={les.title}
                           className="flex items-center gap-2 text-sm p-2 rounded bg-muted/30"
                         >
-                          <Badge variant="outline" className="text-[10px] shrink-0">
+                          <Badge variant="outline" className="text-2xs shrink-0">
                             {modIdx + 1}.{les.lessonNumber ?? "?"}
                           </Badge>
                           <span className="flex-1">
                             {les.title}{" "}
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-2xs text-muted-foreground">
                               ({LESSON_LABEL[les.type] ?? les.type})
                             </span>
                           </span>

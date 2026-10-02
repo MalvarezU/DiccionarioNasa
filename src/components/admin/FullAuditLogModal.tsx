@@ -281,13 +281,13 @@ export function FullAuditLogModal({
                   <TableBody>
                     {logs.map((log) => (
                       <TableRow key={log.id}>
-                        <TableCell className="text-[11px] text-muted-foreground whitespace-nowrap">
+                        <TableCell className="text-2xs text-muted-foreground whitespace-nowrap">
                           {formatDate(log.createdAt)}
                         </TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className={`text-[10px] px-1.5 py-0.5 h-5 shrink-0 ${getActionColor(log.action)}`}
+                            className={`text-2xs px-1.5 py-0.5 h-5 shrink-0 ${getActionColor(log.action)}`}
                           >
                             {getActionLabel(log.action)}
                           </Badge>
@@ -302,13 +302,13 @@ export function FullAuditLogModal({
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="text-[11px]">
+                        <TableCell className="text-2xs">
                           <span className="inline-flex items-center gap-1 text-muted-foreground">
                             <User className="h-3 w-3" />
                             {getResponsible(log.userId)}
                           </span>
                         </TableCell>
-                        <TableCell className="text-[11px] text-muted-foreground max-w-[200px] truncate">
+                        <TableCell className="text-2xs text-muted-foreground max-w-[200px] truncate">
                           {log.changes || "—"}
                         </TableCell>
                       </TableRow>

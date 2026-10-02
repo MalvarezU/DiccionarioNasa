@@ -137,7 +137,7 @@ export function PanelContent({
                       {fav.word.category && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] shrink-0 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
+                          className="text-2xs shrink-0 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
                         >
                           {fav.word.category}
                         </Badge>
@@ -154,7 +154,7 @@ export function PanelContent({
                         [{fav.word.pronunciation}]
                       </p>
                     )}
-                    <p className="mt-2 text-[10px] text-muted-foreground">
+                    <p className="mt-2 text-2xs text-muted-foreground">
                       Guardada el{" "}
                       {new Date(fav.createdAt).toLocaleDateString("es-CO", {
                         day: "numeric",
@@ -224,7 +224,7 @@ export function PanelContent({
                             {item.word.category && (
                               <Badge
                                 variant="secondary"
-                                className="text-[10px] shrink-0 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
+                                className="text-2xs shrink-0 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
                               >
                                 {item.word.category}
                               </Badge>
@@ -241,7 +241,7 @@ export function PanelContent({
                               [{item.word.pronunciation}]
                             </p>
                           )}
-                          <p className="mt-2 text-[10px] text-muted-foreground">
+                          <p className="mt-2 text-2xs text-muted-foreground">
                             Consultada a las{" "}
                             {new Date(item.createdAt).toLocaleTimeString(
                               "es-CO",

@@ -240,14 +240,14 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
             {isFromCache && (
               <Badge
                 variant="outline"
-                className="text-[10px] gap-1 text-tertiary bg-surface-container-highest border-outline-variant/20"
+                className="text-2xs gap-1 text-tertiary bg-surface-container-highest border-outline-variant/20"
               >
                 <WifiOff className="h-2.5 w-2.5" />
                 sin conexión
               </Badge>
             )}
             {wordDate && (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-2xs text-muted-foreground">
                 {new Date(wordDate + "T00:00:00").toLocaleDateString("es-CO", {
                   day: "numeric",
                   month: "short",
@@ -279,7 +279,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
                 </span>
               )}
               {wordData.category && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors">
+                <Badge variant="secondary" className="text-2xs px-1.5 py-0 h-4 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors">
                   {wordData.category}
                 </Badge>
               )}
