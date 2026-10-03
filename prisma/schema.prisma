@@ -142,6 +142,22 @@ model UserLessonProgress {
   @@index([userId])
 }
 
+model MediaAsset {
+  /// Imágenes guardadas EN POSTGRES (columna bytea), no en Supabase Storage.
+  /// Se sirven por /api/media/[id] con caché inmutable. Ventaja lateral: al ser
+  /// mismo origen, el service worker del PWA sí las puede cachear offline.
+  id         String   @id @default(cuid())
+  filename   String
+  /// MIME detectado por firma binaria, no el que declara el cliente.
+  mimeType   String
+  size       Int
+  data       Bytes
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model DictionaryWord {
   id              String   @id @default(cuid())
   spanish         String   // Word in Spanish

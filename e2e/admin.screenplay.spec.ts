@@ -205,4 +205,50 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     // Limpieza explícita (ya estamos en el detalle: cascada a módulos y lecciones)
     await admin.intenta(EliminarCurso.titulado(curso));
   });
+
+  // Fase 1 de cursos: las imágenes van a Postgres (bytea) y se sirven por
+  // /api/media/[id]. Prueba de ida y vuelta contra el server real.
+  const PNG_1X1 = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+    "base64"
+  );
+
+  test("imagen de curso: sube a Postgres y vuelve idéntica", async ({ page }) => {
+    const subida = await page.request.post("/api/admin/upload-image", {
+      multipart: {
+        file: { name: "e2e-curso.png", mimeType: "image/png", buffer: PNG_1X1 },
+      },
+    });
+    expect(subida.status()).toBe(200);
+    const body = await subida.json();
+    expect(body.url).toMatch(/^\/api\/media\//);
+    expect(body.mimeType).toBe("image/png");
+
+    const servida = await page.request.get(body.url);
+    expect(servida.status()).toBe(200);
+    expect(servida.headers()["content-type"]).toBe("image/png");
+    expect(servida.headers()["cache-control"]).toContain("immutable");
+    expect(servida.headers()["x-content-type-options"]).toBe("nosniff");
+
+    // Los bytes vuelven EXACTOS: es lo que prueba que el bytea está sano.
+    expect((await servida.body()).equals(PNG_1X1)).toBe(true);
+  });
+
+  test("imagen de curso: rechaza SVG disfrazado de PNG", async ({ page }) => {
+    const svg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
+    );
+    const res = await page.request.post("/api/admin/upload-image", {
+      multipart: {
+        file: { name: "e2e-malicioso.png", mimeType: "image/png", buffer: svg },
+      },
+    });
+    expect(res.status()).toBe(400);
+    expect((await res.json()).message).toMatch(/SVG/);
+  });
+
+  test("imagen inexistente devuelve 404", async ({ page }) => {
+    const res = await page.request.get("/api/media/no-existe-esta-imagen");
+    expect(res.status()).toBe(404);
+  });
 });

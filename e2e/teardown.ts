@@ -7,6 +7,8 @@ import { config as dotenv } from "dotenv";
  * - Palabras "E2E *" (auditoría queda con entityId huérfano = histórico).
  * - Sesiones de juego anónimas e2e-*.
  * - Cursos "E2E *" (cascada: módulos, lecciones, progreso).
+ * - Imágenes subidas por la suite, con nombre "e2e-*" (van a Postgres como
+ *   bytea: sin esta limpieza cada corrida acumularía binarios).
  */
 async function teardown() {
   // Sin DATABASE_URL exportado (p.ej. corrida manual sin e2e-local.sh),
@@ -35,8 +37,11 @@ async function teardown() {
     const courses = await db.course.deleteMany({
       where: { title: { startsWith: "E2E " } },
     });
+    const media = await db.mediaAsset.deleteMany({
+      where: { filename: { startsWith: "e2e-" } },
+    });
     console.log(
-      `[teardown] sesiones juego: ${sessions.count}, palabras: ${words.count}, usuarios: ${users.count}, cursos: ${courses.count}`
+      `[teardown] sesiones juego: ${sessions.count}, palabras: ${words.count}, usuarios: ${users.count}, cursos: ${courses.count}, imágenes: ${media.count}`
     );
   } finally {
     await db.$disconnect();

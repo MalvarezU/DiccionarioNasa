@@ -153,4 +153,17 @@ test.describe("Piiyaak público (Screenplay)", () => {
     await visitante.intenta(IrA.a("/offline"));
     expect(await visitante.pregunta(TextoVisible.conTexto("Sin conexión"))).toBe(true);
   });
+
+  test("sin sesión no se puede subir imagen al contenido de cursos", async ({ page }) => {
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+      "base64"
+    );
+    const res = await page.request.post("/api/admin/upload-image", {
+      multipart: {
+        file: { name: "e2e-anonimo.png", mimeType: "image/png", buffer: png },
+      },
+    });
+    expect(res.status()).toBe(401);
+  });
 });
