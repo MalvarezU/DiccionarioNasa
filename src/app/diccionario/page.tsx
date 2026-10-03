@@ -121,7 +121,7 @@ function DiccionarioContent() {
 
       <main className="flex-1">
         {/* Hero del diccionario */}
-        <section className="relative isolate overflow-hidden bg-gradient-to-b from-primary-container/40 via-surface-container-high to-background pb-12 sm:pb-16 pt-12 sm:pt-16">
+        <section className="relative isolate overflow-hidden bg-background pb-12 sm:pb-16 pt-12 sm:pt-16">
           <div
             className="absolute inset-0 opacity-[0.05]"
             style={{
