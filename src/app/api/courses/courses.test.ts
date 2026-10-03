@@ -33,7 +33,7 @@ import { GET as detailGET, PATCH as coursePATCH, DELETE as courseDELETE } from "
 import { POST as modulesPOST } from "../modules/route"
 import { PATCH as modulePATCH } from "../modules/[id]/route"
 import { POST as lessonsPOST } from "../modules/[id]/lessons/route"
-import { PATCH as lessonPATCH } from "../lessons/[id]/route"
+import { PATCH as lessonPATCH, PUT as lessonPUT } from "../lessons/[id]/route"
 import { POST as reorderPOST } from "./[id]/reorder/route"
 import { POST as progressPOST } from "../progress/route"
 import { GET as progressGET } from "./[id]/progress/route"
@@ -374,5 +374,133 @@ describe("lecciones: numeración y dedupe [admin-cursos]", () => {
     expect(Object.keys(byId)).toHaveLength(2)
     expect(byId["l2"]).toMatchObject({ order: 0, lessonNumber: 1 })
     expect(byId["l1"]).toMatchObject({ order: 1, lessonNumber: 2 })
+  })
+})
+
+// Fase 2 de cursos: el endpoint que guarda el documento de bloques.
+describe("PUT /api/lessons/[id] — guardar contenido [cursos-fase2]", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const contenidoValido = {
+    version: 1,
+    blocks: [{ id: "b1", type: "text", markdown: "Hola" }],
+  }
+
+  function leccionExiste() {
+    vi.mocked(db.lesson.findUnique).mockResolvedValue({ moduleId: "m1" } as never)
+  }
+
+  it("exige rol editor", async () => {
+    const denegado = Response.json({ message: "Acceso denegado" }, { status: 403 })
+    vi.mocked(requireRole).mockResolvedValue({ session: null, error: denegado } as never)
+
+    const res = await lessonPUT(
+      jsonReq("http://x/api/lessons/l1", { content: contenidoValido }, "PUT") as never,
+      params("l1")
+    )
+    expect(res.status).toBe(403)
+    expect(db.lesson.update).not.toHaveBeenCalled()
+  })
+
+  it("404 si la lección no existe", async () => {
+    allowEditor()
+    vi.mocked(db.lesson.findUnique).mockResolvedValue(null as never)
+
+    const res = await lessonPUT(
+      jsonReq("http://x/api/lessons/nope", { content: contenidoValido }, "PUT") as never,
+      params("nope")
+    )
+    expect(res.status).toBe(404)
+  })
+
+  it("guarda título y contenido válidos", async () => {
+    allowEditor()
+    leccionExiste()
+    vi.mocked(db.lesson.findFirst).mockResolvedValue(null)
+    vi.mocked(db.lesson.update).mockResolvedValue({ id: "l1" } as never)
+
+    const res = await lessonPUT(
+      jsonReq(
+        "http://x/api/lessons/l1",
+        { title: "  Lección nueva  ", content: contenidoValido },
+        "PUT"
+      ) as never,
+      params("l1")
+    )
+
+    expect(res.status).toBe(200)
+    const arg = vi.mocked(db.lesson.update).mock.calls[0]![0] as unknown as {
+      data: { title: string; content: { version: number; blocks: unknown[] } }
+    }
+    expect(arg.data.title).toBe("Lección nueva")
+    expect(arg.data.content.version).toBe(1)
+    expect(arg.data.content.blocks).toHaveLength(1)
+  })
+
+  it("rechaza contenido inválido y NO guarda nada", async () => {
+    allowEditor()
+    leccionExiste()
+
+    const res = await lessonPUT(
+      jsonReq(
+        "http://x/api/lessons/l1",
+        { content: { version: 1, blocks: [{ id: "b1", type: "image", url: "javascript:alert(1)", alt: "x" }] } },
+        "PUT"
+      ) as never,
+      params("l1")
+    )
+
+    const body = await res.json()
+    expect(res.status).toBe(400)
+    expect(body.errors.join(" ")).toMatch(/blocks\[0\]\.url/)
+    expect(db.lesson.update).not.toHaveBeenCalled()
+  })
+
+  it("rechaza content null (vaciar es mandar blocks: [])", async () => {
+    allowEditor()
+    leccionExiste()
+
+    const res = await lessonPUT(
+      jsonReq("http://x/api/lessons/l1", { content: null }, "PUT") as never,
+      params("l1")
+    )
+    expect(res.status).toBe(400)
+    expect(db.lesson.update).not.toHaveBeenCalled()
+  })
+
+  it("acepta vaciar la lección con blocks: []", async () => {
+    allowEditor()
+    leccionExiste()
+    vi.mocked(db.lesson.update).mockResolvedValue({ id: "l1" } as never)
+
+    const res = await lessonPUT(
+      jsonReq("http://x/api/lessons/l1", { content: { version: 1, blocks: [] } }, "PUT") as never,
+      params("l1")
+    )
+    expect(res.status).toBe(200)
+  })
+
+  it("409-equivalente: rechaza título duplicado en el módulo", async () => {
+    allowEditor()
+    leccionExiste()
+    vi.mocked(db.lesson.findFirst).mockResolvedValue({ id: "l-otra" } as never)
+
+    const res = await lessonPUT(
+      jsonReq("http://x/api/lessons/l1", { title: "Repetida" }, "PUT") as never,
+      params("l1")
+    )
+    expect(res.status).toBe(400)
+    expect(db.lesson.update).not.toHaveBeenCalled()
+  })
+
+  it("400 si no hay nada que actualizar", async () => {
+    allowEditor()
+    leccionExiste()
+
+    const res = await lessonPUT(
+      jsonReq("http://x/api/lessons/l1", {}, "PUT") as never,
+      params("l1")
+    )
+    expect(res.status).toBe(400)
   })
 })
