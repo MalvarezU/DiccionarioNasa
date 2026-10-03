@@ -203,6 +203,67 @@ describe("cursos API [B2.2]", () => {
     expect(body.completedIds).toEqual(["l1"])
     expect(body.lastVisitedLessonId).toBe("l1")
   })
+
+  // Regresión: abrir una lección ya completada la des-completaba, porque la
+  // API calculaba `completed = body?.completed === true` y guardaba ese false
+  // en el update. El ping de visita NO manda `completed`.
+  it("progreso: un ping de visita no des-completa la lección", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({
+      session: { user: { id: "u1", role: "user" }, expires: "2099-01-01T00:00:00Z" },
+      error: null,
+    })
+    vi.mocked(db.lesson.findUnique).mockResolvedValue({ id: "l1" } as never)
+    vi.mocked(db.userLessonProgress.upsert).mockResolvedValue({ id: "p1" } as never)
+
+    const res = await progressPOST(
+      jsonReq("http://x/api/progress", { lessonId: "l1" }) as never
+    )
+    expect(res.status).toBe(200)
+
+    const arg = vi.mocked(db.userLessonProgress.upsert).mock.calls[0]![0] as {
+      update: Record<string, unknown>
+    }
+    expect(arg.update).not.toHaveProperty("completed")
+    expect(arg.update).not.toHaveProperty("completedAt")
+    expect(arg.update).toHaveProperty("lastVisitedAt")
+  })
+
+  it("progreso: completed=false explícito sí des-completa", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({
+      session: { user: { id: "u1", role: "user" }, expires: "2099-01-01T00:00:00Z" },
+      error: null,
+    })
+    vi.mocked(db.lesson.findUnique).mockResolvedValue({ id: "l1" } as never)
+    vi.mocked(db.userLessonProgress.upsert).mockResolvedValue({ id: "p1" } as never)
+
+    await progressPOST(
+      jsonReq("http://x/api/progress", { lessonId: "l1", completed: false }) as never
+    )
+
+    const arg = vi.mocked(db.userLessonProgress.upsert).mock.calls[0]![0] as {
+      update: Record<string, unknown>
+    }
+    expect(arg.update).toMatchObject({ completed: false, completedAt: null })
+  })
+
+  it("progreso: completed=true marca y sella la fecha", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({
+      session: { user: { id: "u1", role: "user" }, expires: "2099-01-01T00:00:00Z" },
+      error: null,
+    })
+    vi.mocked(db.lesson.findUnique).mockResolvedValue({ id: "l1" } as never)
+    vi.mocked(db.userLessonProgress.upsert).mockResolvedValue({ id: "p1" } as never)
+
+    await progressPOST(
+      jsonReq("http://x/api/progress", { lessonId: "l1", completed: true, score: 80 }) as never
+    )
+
+    const arg = vi.mocked(db.userLessonProgress.upsert).mock.calls[0]![0] as {
+      update: Record<string, unknown>
+    }
+    expect(arg.update).toMatchObject({ completed: true, score: 80 })
+    expect(arg.update.completedAt).toBeInstanceOf(Date)
+  })
 })
 
 describe("lecciones: numeración y dedupe [admin-cursos]", () => {

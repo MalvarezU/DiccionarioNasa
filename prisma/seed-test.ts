@@ -6,6 +6,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { blocksForLegacyLesson } from "../src/lib/courses/legacy-migration";
 
 const db = new PrismaClient();
 
@@ -131,6 +132,14 @@ async function seedCourse() {
         });
         wordId = w?.id ?? null;
       }
+      // El seed genera el documento de bloques con el MISMO mapeo que el
+      // backfill (src/lib/courses/legacy-migration.ts), para que una base
+      // nueva quede idéntica a una migrada.
+      const payloadJson = les.payload ? JSON.stringify(les.payload) : null;
+      const blocks = blocksForLegacyLesson(
+        { id: `seed_${mi}_${li}`, type: les.type, wordId, payload: payloadJson },
+        (_, i) => `blk_seed_${mi}_${li}_${i}`
+      );
       await db.lesson.create({
         data: {
           moduleId: created.id,
@@ -139,7 +148,8 @@ async function seedCourse() {
           order: li,
           lessonNumber: li + 1,
           wordId,
-          payload: les.payload ? JSON.stringify(les.payload) : null,
+          payload: payloadJson,
+          content: { version: 1, blocks },
         },
       });
     }

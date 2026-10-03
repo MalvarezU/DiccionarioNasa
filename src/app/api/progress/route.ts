@@ -25,6 +25,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Lección no encontrada" }, { status: 404 })
     }
 
+    // `completed` solo cambia si el cliente lo manda explícitamente.
+    // Antes se calculaba `body?.completed === true`, así que un ping de
+    // visita (que no manda el campo) guardaba `completed: false` y
+    // des-completaba una lección ya aprobada al reabrirla.
+    const completedProvided = typeof body?.completed === "boolean"
     const completed = body?.completed === true
     const score =
       Number.isFinite(Number(body?.score)) && body?.score !== undefined && body?.score !== null
@@ -42,9 +47,10 @@ export async function POST(request: NextRequest) {
         lastVisitedAt: new Date(),
       },
       update: {
-        completed,
+        ...(completedProvided
+          ? { completed, completedAt: completed ? new Date() : null }
+          : {}),
         ...(score !== undefined ? { score } : {}),
-        completedAt: completed ? new Date() : null,
         lastVisitedAt: new Date(),
       },
     })

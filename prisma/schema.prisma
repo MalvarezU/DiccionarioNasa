@@ -80,6 +80,8 @@ model Course {
   id          String        @id @default(cuid())
   title       String
   description String?
+  /// Imagen de portada del catálogo (URL pública de Supabase Storage).
+  coverImage  String?
   status      ContentStatus @default(DRAFT)
   sequential  Boolean       @default(true)
   createdAt   DateTime      @default(now())
@@ -103,13 +105,20 @@ model Lesson {
   id       String     @id @default(cuid())
   moduleId String
   title    String
+  /// DEPRECATED: el tipo vive ahora en cada bloque de `content`.
+  /// Se conserva para el backfill y hasta la limpieza posterior.
   type     LessonType @default(READ)
   order    Int        @default(0)
   /// Numeración visible ("1.1", "1.2"...). Calculada por el server al crear
   /// y reasignada al reordenar. Null solo en migración pendiente de backfill.
   lessonNumber Int?
+  /// DEPRECATED junto con `type`: solo lo usan las lecciones legacy.
   wordId   String?
+  /// DEPRECATED junto con `type`: payload legacy de QUIZ/COMPLETE.
   payload  String?
+  /// Documento de bloques de la lección: { version, blocks[] }.
+  /// Ver src/lib/courses/blocks.ts para el contrato y la validación.
+  content  Json?
   module   Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   word     DictionaryWord? @relation(fields: [wordId], references: [id], onDelete: SetNull)
   progress UserLessonProgress[]
