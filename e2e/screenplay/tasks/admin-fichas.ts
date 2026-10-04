@@ -64,6 +64,16 @@ export class BuscarFichaEnGestion implements Task {
     const search = page.getByPlaceholder(/buscar/i);
     if (await search.isVisible().catch(() => false)) {
       await search.fill(this.termino);
+      // La búsqueda del modal es BAJO DEMANDA (botón Buscar o Enter): si solo
+      // llenábamos el input y seguíamos, la lista podía seguir sin filtrar.
+      // Entonces "AbrirPrimeraEdicion" abría la PRIMERA fila de la lista
+      // completa ("Agua", alfabético) y el archivar le pegaba a la palabra
+      // seed — dos corridas la dejaron ARCHIVED. Señal estable: la fila
+      // filtrada tiene que estar visible antes de seguir.
+      await page.getByRole("button", { name: "Buscar" }).click();
+      await expect(
+        page.getByRole("cell", { name: this.termino }).first()
+      ).toBeVisible({ timeout: 30000 });
     }
   }
 }

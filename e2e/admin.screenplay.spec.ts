@@ -265,6 +265,31 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     expect(await admin.pregunta(PortadaEnCatalogo.delCurso(curso))).toBe(true);
   });
 
+  // Fase 6: stats de progreso + preview como estudiante en el panel.
+  test("curso: stats de progreso y preview como estudiante", async ({ page }) => {
+    const stamp = Date.now();
+    const curso = `E2E Stats ${stamp}`;
+    const admin = actorAdmin(page);
+
+    await admin.intenta(
+      IrAGestionDeCursos.ahora(),
+      CrearCurso.titulado(curso)
+    );
+
+    // La fila de stats siempre está (aunque sea en cero); es un question:
+    // verifica visible y Parsing de las piezas.
+    const stats = page.getByTestId("curso-stats");
+    await expect(stats).toBeVisible({ timeout: 15000 });
+    await expect(stats).toContainText("alumno");
+    await expect(stats).toContainText("lección");
+
+    // El vínculo apunta al curso público (borradores lo ven los editores).
+    const preview = page.getByRole("link", { name: /Ver como estudiante/i });
+    await expect(preview).toBeVisible({ timeout: 15000 });
+    const href = await preview.getAttribute("href");
+    expect(href).toMatch(/^\/cursos\//);
+  });
+
   // Fase 1 de cursos: las imágenes van a Postgres (bytea) y se sirven por
   // /api/media/[id]. Prueba de ida y vuelta contra el server real.
   const PNG_1X1 = Buffer.from(

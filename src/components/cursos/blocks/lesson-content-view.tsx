@@ -103,7 +103,8 @@ export function LessonContentView({
           onClick={() => onCompleta?.(null)}
         >
           <CheckCircle2 className="size-4" />
-          Marcar lección como completada
+          {/* mismo label que el renderer clásico: misma acción, misma palabra */}
+          Marcar como completada
         </Button>
       ) : null}
     </div>

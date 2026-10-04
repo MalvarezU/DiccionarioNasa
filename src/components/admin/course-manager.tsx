@@ -1,6 +1,6 @@
 "use client"
 
-import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, FileText } from "lucide-react"
+import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, FileText, Eye } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -44,6 +44,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     editingLesson,
     editCover,
     setEditCover,
+    stats,
     contentLessonId,
     setContentLessonId,
     contentLesson,
@@ -193,6 +194,17 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                     <Pencil className="h-3.5 w-3.5" />
                     Guardar curso
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    asChild
+                    title="La vista previa abre el curso como lo vería el estudiante (los borradores son visibles para editores)."
+                  >
+                    <a href={`/cursos/${detail.id}`} target="_blank" rel="noopener noreferrer">
+                      <Eye className="h-3.5 w-3.5" />
+                      Ver como estudiante
+                    </a>
+                  </Button>
                   {canDelete && (
                     <Button size="sm" variant="destructive" onClick={handleDeleteCourse} className="gap-1.5">
                       <Trash2 className="h-3.5 w-3.5" />
@@ -200,6 +212,15 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                     </Button>
                   )}
                 </div>
+                {stats ? (
+                  <p className="text-2xs text-muted-foreground mt-2" data-testid="curso-stats">
+                    {stats.alumnos} alumno{stats.alumnos === 1 ? "" : "s"}
+                    {stats.promedioPct !== null && ` · avance promedio ${stats.promedioPct}%`}
+                    {" · "}
+                    {stats.completadas} lección{stats.completadas === 1 ? "" : "es"} completada
+                    {stats.completadas === 1 ? "" : "s"} en total
+                  </p>
+                ) : null}
               </div>
 
               <Separator />

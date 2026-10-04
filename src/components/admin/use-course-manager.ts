@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { type LessonForEdit } from "./edit-lesson-modal"
 import { parseLessonContent, type LessonContent } from "@/lib/courses/blocks"
+import { type CourseStats } from "./course-types"
 import {
   api,
   EMPTY_LESSON_FORM,
@@ -32,6 +33,8 @@ export function useCourseManager() {
   const [editStatus, setEditStatus] = useState<string>("DRAFT")
   /** Portada: undefined = sin cambios; string/null = setear/quitar. */
   const [editCover, setEditCover] = useState<string | null | undefined>(undefined)
+  /** Stats de progreso (solo editor+). */
+  const [stats, setStats] = useState<CourseStats | null>(null)
   const [newModuleTitle, setNewModuleTitle] = useState("")
   const [savingModule, setSavingModule] = useState(false)
   const [savingLesson, setSavingLesson] = useState<Record<string, boolean>>({})
@@ -64,6 +67,7 @@ export function useCourseManager() {
     try {
       const data = await api(`/api/courses/${id}`)
       setDetail(data.course)
+      setStats((data as { stats?: CourseStats }).stats ?? null)
       setEditTitle(data.course.title)
       setEditDesc(data.course.description ?? "")
       setEditStatus(data.course.status)
@@ -316,6 +320,7 @@ export function useCourseManager() {
     setEditStatus,
     editCover,
     setEditCover,
+    stats,
     newModuleTitle,
     setNewModuleTitle,
     savingModule,

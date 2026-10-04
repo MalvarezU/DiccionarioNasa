@@ -93,12 +93,54 @@ describe("cursos API [B2.2]", () => {
 
   it("detalle oculta borrador al público y lo muestra al editor", async () => {
     vi.mocked(getServerSession).mockResolvedValue(null)
-    vi.mocked(db.course.findUnique).mockResolvedValue({ id: "c1", status: "DRAFT" } as never)
+    vi.mocked(db.course.findUnique).mockResolvedValue({ id: "c1", status: "DRAFT", modules: [] } as never)
     expect((await detailGET({} as never, params("c1"))).status).toBe(404)
 
     vi.mocked(getServerSession).mockResolvedValue({ user: { role: "editor" } } as never)
-    vi.mocked(db.course.findUnique).mockResolvedValue({ id: "c1", status: "DRAFT" } as never)
+    vi.mocked(db.course.findUnique).mockResolvedValue({ id: "c1", status: "DRAFT", modules: [] } as never)
+    vi.mocked(db.userLessonProgress.findMany).mockResolvedValue([] as never)
     expect((await detailGET({} as never, params("c1"))).status).toBe(200)
+  })
+
+  it("detalle con stats de progreso (solo editor+)", async () => {
+    allowEditor()
+    vi.mocked(db.course.findUnique).mockResolvedValue({
+      id: "c1",
+      status: "PUBLISHED",
+      modules: [
+        { id: "m1", lessons: [{ id: "l1" }, { id: "l2" }] },
+      ],
+    } as never)
+    // Dos usuarios: u1 completó ambas, u2 solo una (pero visitó dos).
+    vi.mocked(db.userLessonProgress.findMany).mockResolvedValue([
+      { userId: "u1", lessonId: "l1", completed: true },
+      { userId: "u1", lessonId: "l2", completed: true },
+      { userId: "u2", lessonId: "l1", completed: true },
+      { userId: "u2", lessonId: "l2", completed: false },
+    ] as never)
+
+    const res = await detailGET({} as never, params("c1"))
+    const body = await res.json()
+    // alumnos = los que interactuaron (2); completadas = 3 en total;
+    // promedio solo entre quienes completaron ALGO:
+    //   u1: 2/2, u2: 1/2 -> (2+1)/(2x2) = 75%
+    expect(body.stats).toEqual({ alumnos: 2, promedioPct: 75, completadas: 3 })
+  })
+
+  it("detalle sin progreso: alumnos 0 y promedio null", async () => {
+    allowEditor()
+    vi.mocked(db.course.findUnique).mockResolvedValue({
+      id: "c1",
+      status: "PUBLISHED",
+      modules: [
+        { id: "m1", lessons: [{ id: "l1" }] },
+      ],
+    } as never)
+    vi.mocked(db.userLessonProgress.findMany).mockResolvedValue([] as never)
+
+    const res = await detailGET({} as never, params("c1"))
+    const body = await res.json()
+    expect(body.stats).toEqual({ alumnos: 0, promedioPct: null, completadas: 0 })
   })
 
   it("PATCH valida y DELETE exige admin", async () => {

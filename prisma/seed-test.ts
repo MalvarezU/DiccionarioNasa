@@ -133,18 +133,31 @@ async function seedAdmin() {
 }
 
 async function seedWords() {
+  // Idempotente y auto-regenerante: si un e2e ARCHIVÓ una palabra seed,
+  // aquí se rehabilita en vez de crear otra fila duplicada (antes las
+  // corridas acumulaban dos "Agua" ARCHIVED y la búsqueda público no
+  // mostraba ninguna: dos tests del usuario morían por eso).
+  let consolidados = 0
   for (const w of WORDS) {
-    const existing = await db.dictionaryWord.findFirst({
-      where: { spanish: w.spanish, status: "PUBLISHED" },
+    const filas = await db.dictionaryWord.findMany({
+      where: { spanish: w.spanish },
+      orderBy: { createdAt: "asc" },
       select: { id: true },
-    });
-    if (!existing) {
-      await db.dictionaryWord.create({
-        data: { ...w, examples: null, audioUrl: null, status: "PUBLISHED" },
-      });
+    })
+    // Conserva la primera (publicándola); el resto, si es duplicado, fuera.
+    for (const [i, fila] of filas.entries()) {
+      if (i === 0) {
+        await db.dictionaryWord.update({
+          where: { id: fila.id },
+          data: { status: "PUBLISHED", nasaYuwe: w.nasaYuwe, category: w.category ?? null },
+        })
+      } else {
+        await db.dictionaryWord.delete({ where: { id: fila.id } })
+      }
     }
+    if (filas.length > 1) consolidados++
   }
-  console.log(`✓ palabras: ${WORDS.length}`);
+  console.log(`✓ palabras: ${WORDS.length} (duplicadas consolidadas: ${consolidados})`)
 }
 
 async function seedCourse() {

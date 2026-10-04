@@ -307,7 +307,7 @@ describe("modo estudiante — los interactivos son jugables", () => {
         onCompleta={onCompleta}
       />
     )
-    await user.click(screen.getByRole("button", { name: /Marcar lección como completada/i }))
+    await user.click(screen.getByRole("button", { name: /Marcar como completada/i }))
     expect(onCompleta).toHaveBeenCalledWith(null)
   })
 })

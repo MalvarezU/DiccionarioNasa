@@ -20,8 +20,11 @@ export class AbrirCursoPublico implements Task {
 }
 
 /**
- * Marcar completada la primera lección del módulo abierto por defecto.
- * Busca el botón "1.1 · …" (formato público) y lo abre si hace falta.
+ * Marcar completada la lección 1.1 del primer módulo.
+ *
+ * La fila existe siempre; si está colapsada el clic la expande. La señal de
+ * "ya está abierta" es aria-expanded=true. Luego espera al botón de
+ * completar (el contenido RENDERIZA asincónicamente).
  */
 export class MarcarPrimeraLeccionCompletada implements Task {
   descripcion = "completar primera lección";
@@ -31,10 +34,16 @@ export class MarcarPrimeraLeccionCompletada implements Task {
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
     const leccion = page.getByRole("button", { name: /1\.1/ }).first();
-    if (await leccion.isVisible().catch(() => false)) {
+    await leccion.waitFor({ timeout: 30000 });
+    // click si está cerrada (expandir). Si ya está abierta, no hace nada.
+    if ((await leccion.getAttribute("aria-expanded")) !== "true") {
       await leccion.click();
     }
-    await page.getByRole("button", { name: /marcar como completada/i }).first().click();
+    // El contenido se renderiza async: esperar al botón con timeout.
+    await page
+      .getByRole("button", { name: /marcar como completada/i })
+      .first()
+      .click();
   }
 }
 

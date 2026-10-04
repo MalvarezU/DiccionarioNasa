@@ -42,6 +42,16 @@ export interface LessonForm {
 
 export const EMPTY_LESSON_FORM: LessonForm = { title: "", type: "READ", wordSpanish: "" }
 
+/** Estadísticas de progreso del curso (GET detail, solo editor+). */
+export interface CourseStats {
+  /** Usuarios con alguna interacción (visita o avance). */
+  alumnos: number
+  /** Promedio de avance entre los usuarios que completaron algo. */
+  promedioPct: number | null
+  /** Total de lecciones completadas (todas las cuentas sumadas). */
+  completadas: number
+}
+
 export async function api(path: string, init?: RequestInit) {
   const res = await fetch(path, {
     headers: { "Content-Type": "application/json" },

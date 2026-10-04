@@ -53,7 +53,52 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
     if (course.status !== "PUBLISHED" && !(await isEditor())) {
       return NextResponse.json({ message: "Curso no encontrado" }, { status: 404 })
     }
-    return NextResponse.json({ course })
+    // Solo para editor+: estadísticas de progreso (los alumnos compiten contra
+    // nadie: es una vista de gobierno, no contenido).
+    let stats: {
+      alumnos: number
+      promedioPct: number | null
+      completadas: number
+    } | null = null
+    if (await isEditor()) {
+      const lessonIds = course.modules.flatMap((m) =>
+        m.lessons.map((l) => l.id)
+      )
+      const rows =
+        lessonIds.length > 0
+          ? await db.userLessonProgress.findMany({
+              where: { lessonId: { in: lessonIds } },
+              select: { userId: true, lessonId: true, completed: true },
+            })
+          : []
+      // Usuarios con AL MENOS una lección completada: la promedio se mide
+      // sobre ellos (sobre visitadores casual daría 0% engañoso).
+      const completadasPorUsuario = new Map<string, number>()
+      for (const r of rows) {
+        if (r.completed) {
+          completadasPorUsuario.set(
+            r.userId,
+            (completadasPorUsuario.get(r.userId) ?? 0) + 1
+          )
+        }
+      }
+      const usuarios = [...completadasPorUsuario.keys()]
+      stats = {
+        // Los que INTERACTUARON (visita o progreso), no los completadores
+        alumnos: new Set(rows.map((r) => r.userId)).size,
+        promedioPct:
+          usuarios.length > 0 && lessonIds.length > 0
+            ? Math.round(
+                (usuarios.reduce((a, u) => a + (completadasPorUsuario.get(u) ?? 0), 0) /
+                  (usuarios.length * lessonIds.length)) *
+                  100
+              )
+            : null,
+        completadas: rows.filter((r) => r.completed).length,
+      }
+    }
+
+    return NextResponse.json({ course, stats })
   } catch (error) {
     console.error("Course detail error:", error)
     return NextResponse.json({ message: "Error interno del servidor" }, { status: 500 })
