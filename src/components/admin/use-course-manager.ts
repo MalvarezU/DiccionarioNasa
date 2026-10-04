@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { type LessonForEdit } from "./edit-lesson-modal"
+import { parseLessonContent, type LessonContent } from "@/lib/courses/blocks"
 import {
   api,
   EMPTY_LESSON_FORM,
@@ -35,6 +36,8 @@ export function useCourseManager() {
   const savingModuleRef = useRef(false)
   const savingLessonRef = useRef<Set<string>>(new Set())
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
+  /** Modal de contenido (bloques) — separado del modal de metadatos. */
+  const [contentLessonId, setContentLessonId] = useState<string | null>(null)
   const [lessonForms, setLessonForms] = useState<Record<string, LessonForm>>({})
 
   const loadCourses = useCallback(async () => {
@@ -259,6 +262,34 @@ export function useCourseManager() {
     return null
   })()
 
+  /**
+   * Lección con contenido (bloques) para el editor. Es el mismo detalle, así
+   * que se refresca solo tras guardar — igual que editingLesson. El content se
+   * PARSEA con el contrato: si la base tuviera un documento inválido, el
+   * editor arranca con null (estado vacío) en vez de con datos envenenados.
+   */
+  const contentLesson: (LessonForEdit & { content: LessonContent | null }) | null = (() => {
+    if (!detail || !contentLessonId) return null
+    for (const mod of detail.modules) {
+      const les = mod.lessons.find((l) => l.id === contentLessonId)
+      if (les) {
+        const parse = parseLessonContent((les as { content?: unknown }).content)
+        return {
+          id: les.id,
+          moduleId: mod.id,
+          moduleTitle: mod.title,
+          moduleIndex: detail.modules.indexOf(mod) + 1,
+          title: les.title,
+          type: les.type,
+          lessonNumber: les.lessonNumber,
+          wordSpanish: les.word?.spanish ?? "",
+          content: parse.ok ? parse.content : null,
+        }
+      }
+    }
+    return null
+  })()
+
   async function handleMoveFromModal(lessonId: string, moduleId: string, dir: -1 | 1) {
     const ok = await moveLesson(moduleId, lessonId, dir)
     if (!ok) throw new Error("move-failed")
@@ -286,6 +317,9 @@ export function useCourseManager() {
     editingLessonId,
     setEditingLessonId,
     editingLesson,
+    contentLessonId,
+    setContentLessonId,
+    contentLesson,
     lessonForm,
     setLessonForm,
     loadDetail,

@@ -283,3 +283,109 @@ export class GuardarLeccionEnEditor implements Task {
       .not.toBe("esperando");
   }
 }
+
+// -------------------------------------------------------------------------- 
+// Fase 3: editor de contenido (bloques) con vista previa del estudiante.
+// --------------------------------------------------------------------------
+
+/** Abrir el editor de contenido (bloques) de una lección. */
+export class AbrirContenidoDeLeccion implements Task {
+  descripcion: string;
+  private constructor(private titulo: string) {
+    this.descripcion = `abrir contenido de "${titulo}"`;
+  }
+  static titulada(titulo: string): AbrirContenidoDeLeccion {
+    return new AbrirContenidoDeLeccion(titulo);
+  }
+  async ejecutar(actor: Actor): Promise<void> {
+    const { page } = actor.usa(NavegarLaWeb);
+    await page.getByRole("button", { name: `Contenido de lección ${this.titulo}` }).click();
+    // El header del dialog: "Contenido · N. título". first(): el título
+    // también está en la fila de fondo.
+    await expect(page.getByText("Contenido ·").first()).toBeVisible({ timeout: 15000 });
+    // Señal de editor listo: vale para lección VACÍA (mostraría "Agregá el
+    // primer bloque") y para lección CON contenido (mostraría sus bloques).
+    await expect(
+      page.getByRole("button", { name: "Guardar lección" })
+    ).toBeVisible({ timeout: 15000 });
+  }
+}
+
+/** Agregar un bloque de texto con el markdown dado. */
+export class AgregarBloqueDeTexto implements Task {
+  descripcion: string;
+  private constructor(private markdown: string) {
+    this.descripcion = "agregar bloque de texto";
+  }
+  static conTexto(markdown: string): AgregarBloqueDeTexto {
+    return new AgregarBloqueDeTexto(markdown);
+  }
+  async ejecutar(actor: Actor): Promise<void> {
+    const { page } = actor.usa(NavegarLaWeb);
+    // Botón del estante "Agregar bloque" (exact: los badges de tipo no son botones)
+    await page.getByRole("button", { name: "Texto", exact: true }).click();
+    const area = page.getByLabel(/Texto de la lección/i).last();
+    await expect(area).toBeVisible({ timeout: 10000 });
+    await area.fill(this.markdown);
+  }
+}
+
+/** Agregar un bloque de vocabulario con UNA palabra buscada por su español. */
+export class AgregarBloqueDeVocabulario implements Task {
+  descripcion: string;
+  private constructor(private espanol: string) {
+    this.descripcion = `agregar vocabulario con "${espanol}"`;
+  }
+  static conUnaPalabra(espanol: string): AgregarBloqueDeVocabulario {
+    return new AgregarBloqueDeVocabulario(espanol);
+  }
+  async ejecutar(actor: Actor): Promise<void> {
+    const { page } = actor.usa(NavegarLaWeb);
+    await page.getByRole("button", { name: "Vocabulario", exact: true }).click();
+    const buscador = page.getByLabel("Buscar palabra en el diccionario");
+    await expect(buscador).toBeVisible({ timeout: 10000 });
+    await buscador.fill(this.espanol);
+    // Resultado de la búsqueda: botón con la palabra elegida
+    const resultado = page.getByRole("button", { name: new RegExp(this.espanol) }).first();
+    await expect(resultado).toBeVisible({ timeout: 30000 });
+    await resultado.click();
+  }
+}
+
+/** Guardar la lección y esperar la confirmación. */
+export class GuardarContenido {
+  static deLaLeccion(): Task {
+    const tarea: Task = {
+      descripcion: "guardar la lección",
+      ejecutar: async (actor: Actor) => {
+        const { page } = actor.usa(NavegarLaWeb);
+        await page.getByRole("button", { name: "Guardar lección" }).click();
+        // first(): el toast puede aparecer más de una vez (reintento del
+        // guardado). Un solo elemento es la señal.
+        await expect(page.getByText("Lección guardada").first()).toBeVisible({ timeout: 30000 });
+      },
+    };
+    return tarea;
+  }
+}
+
+/** Cerrar el editor de contenido. */
+export class CerrarContenido {
+  static ahora(): Task {
+    const tarea: Task = {
+      descripcion: "cerrar el editor de contenido",
+      ejecutar: async (actor: Actor) => {
+        const { page } = actor.usa(NavegarLaWeb);
+        // OJO: mientras el toast "Lección guardada" está visible, Escape no
+        // cierra el dialog (la capa del toast consume la tecla). Usamos el
+        // botón X (sr-only "Close" en el DialogContent del editor).
+        const dialogo = page
+          .locator(".bg-background[data-state='open'], [data-slot='dialog-content']")
+          .filter({ hasText: "Contenido ·" });
+        await dialogo.locator('[data-slot="dialog-close"]').click();
+        await expect(page.getByText("Contenido ·")).toHaveCount(0, { timeout: 15000 });
+      },
+    };
+    return tarea;
+  }
+}

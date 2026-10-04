@@ -26,8 +26,14 @@ import {
   PublicarCursoAbierto,
   ArchivarCursoAbierto,
   EliminarCurso,
+  AbrirContenidoDeLeccion,
+  AgregarBloqueDeTexto,
+  AgregarBloqueDeVocabulario,
+  GuardarContenido,
+  CerrarContenido,
 } from "./screenplay/tasks/cursos";
 import { OpcionDeBusqueda } from "./screenplay/questions/fichas";
+import { BloquesDeLeccion } from "./screenplay/questions/cursos";
 import { PanelMuestra } from "./screenplay/questions/admin";
 import { CursoListado, CursoAusente } from "./screenplay/questions/cursos-publico";
 import {
@@ -204,6 +210,36 @@ test.describe("admin Piiyaak (Screenplay)", () => {
 
     // Limpieza explícita (ya estamos en el detalle: cascada a módulos y lecciones)
     await admin.intenta(EliminarCurso.titulado(curso));
+  });
+
+  // Fase 3 de cursos: el editor de contenido (bloques) con vista previa.
+  test("curso: el editor de contenido arma y guarda la lección", async ({ page }) => {
+    const stamp = Date.now();
+    const curso = `E2E Contenido ${stamp}`;
+    const modulo = `E2E Módulo C ${stamp}`;
+    const leccion = `E2E Lección ${stamp}`;
+    const admin = actorAdmin(page);
+
+    await admin.intenta(
+      IrAGestionDeCursos.ahora(),
+      CrearCurso.titulado(curso),
+      AbrirCurso.titulado(curso),
+      CrearModulo.titulado(modulo),
+      AnadirLeccion.aModulo(modulo, leccion),
+      AbrirContenidoDeLeccion.titulada(leccion),
+      AgregarBloqueDeTexto.conTexto(
+        "# El saludo\n\nEn Nasa Yuwe el saludo cambia según la hora."
+      ),
+      AgregarBloqueDeVocabulario.conUnaPalabra("Casa"),
+      GuardarContenido.deLaLeccion()
+    );
+
+    // Verificación REAL: cerrar, reabrir y encontrar los bloques guardados
+    await admin.intenta(CerrarContenido.ahora());
+    await admin.intenta(AbrirContenidoDeLeccion.titulada(leccion));
+    expect(
+      await admin.pregunta(BloquesDeLeccion.guardados(["Texto", "Vocabulario"]))
+    ).toBe(true);
   });
 
   // Fase 1 de cursos: las imágenes van a Postgres (bytea) y se sirven por

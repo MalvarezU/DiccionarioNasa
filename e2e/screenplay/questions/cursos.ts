@@ -77,3 +77,19 @@ export class ErrorEnModal {
     };
   }
 }
+
+/** ¿El editor de contenido abierto tiene EXACTAMENTE estos tipos de bloque? */
+export class BloquesDeLeccion {
+  static guardados(tipos: string[]): Question<boolean> {
+    return {
+      descripcion: `la lección tiene bloques ${tipos.join(", ")}`,
+      async responder(actor: Actor): Promise<boolean> {
+        const { page } = actor.usa(NavegarLaWeb);
+        // El encabezado de cada tarjeta muestra el tipo en un Badge.
+        const badges = page.locator("[data-testid^='block-card-'] [data-slot='badge']");
+        const textos = (await badges.allTextContents()).map((t) => t.trim());
+        return JSON.stringify(textos) === JSON.stringify(tipos);
+      },
+    };
+  }
+}
