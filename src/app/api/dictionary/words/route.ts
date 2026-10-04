@@ -18,12 +18,29 @@ export async function GET(request: NextRequest) {
     ? Math.min(500, Math.max(1, Math.floor(rawPageSize)))
     : 100
 
+  // Modo por lote: ?ids=a,b,c — usado por los bloques de contenido de cursos
+  // (vocabulary / quiz / game) que referencian varias palabras por id.
+  const rawIds = searchParams.get('ids')
+  const ids = rawIds
+    ? [
+        ...new Set(
+          rawIds
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => /^[A-Za-z0-9_-]+$/.test(s))
+        ),
+      ].slice(0, 60)
+    : null
+
   try {
-    // Solo contenido publicado en el endpoint público
-    const where = { status: 'PUBLISHED' as const }
+    // Solo contenido publicado en el endpoint público.
+    // Modo por lote (?ids=): además filtra por los ids pedidos.
+    const where = ids
+      ? { status: 'PUBLISHED' as const, id: { in: ids } }
+      : { status: 'PUBLISHED' as const }
     const [words, total] = await Promise.all([
       db.dictionaryWord.findMany({
-        where,
+        where: where as never,
         skip: (page - 1) * pageSize,
         take: pageSize,
         select: {
