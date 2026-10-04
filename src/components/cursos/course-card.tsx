@@ -10,6 +10,7 @@ export interface CourseSummary {
   title: string
   description: string | null
   status?: string
+  coverImage?: string | null
   modules: number
   lessons: number
   progressPct: number | null
@@ -34,9 +35,19 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-container">
-                  <GraduationCap className="h-6 w-6 text-white" />
-                </div>
+                {/* Portada si hay; ícono genérico si no (o al revés el rubro queda plano) */}
+                {course.coverImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={course.coverImage}
+                    alt={`Portada de ${course.title}`}
+                    className="w-12 h-12 rounded-xl object-cover border border-outline-variant/20 shrink-0"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-container">
+                    <GraduationCap className="h-6 w-6 text-white" />
+                  </div>
+                )}
                 <div>
                   <CardTitle className="text-lg font-serif">
                     {course.title}

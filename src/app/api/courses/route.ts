@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         title: c.title,
         description: c.description,
         status: c.status,
+        coverImage: c.coverImage,
         modules: c.modules.length,
         lessons: c.modules.reduce((a, m) => a + m.lessons.length, 0),
         progressPct: progressByCourse[c.id] ?? null,

@@ -30,6 +30,8 @@ export function useCourseManager() {
   const [editTitle, setEditTitle] = useState("")
   const [editDesc, setEditDesc] = useState("")
   const [editStatus, setEditStatus] = useState<string>("DRAFT")
+  /** Portada: undefined = sin cambios; string/null = setear/quitar. */
+  const [editCover, setEditCover] = useState<string | null | undefined>(undefined)
   const [newModuleTitle, setNewModuleTitle] = useState("")
   const [savingModule, setSavingModule] = useState(false)
   const [savingLesson, setSavingLesson] = useState<Record<string, boolean>>({})
@@ -65,6 +67,7 @@ export function useCourseManager() {
       setEditTitle(data.course.title)
       setEditDesc(data.course.description ?? "")
       setEditStatus(data.course.status)
+      setEditCover(undefined)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al cargar el curso")
     }
@@ -98,6 +101,7 @@ export function useCourseManager() {
           title: editTitle.trim(),
           description: editDesc.trim(),
           status: editStatus,
+          coverImage: editCover === undefined ? undefined : editCover,
         }),
       })
       await loadCourses()
@@ -310,6 +314,8 @@ export function useCourseManager() {
     setEditDesc,
     editStatus,
     setEditStatus,
+    editCover,
+    setEditCover,
     newModuleTitle,
     setNewModuleTitle,
     savingModule,

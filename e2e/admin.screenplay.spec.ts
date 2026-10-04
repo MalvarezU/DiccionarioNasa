@@ -31,9 +31,11 @@ import {
   AgregarBloqueDeVocabulario,
   GuardarContenido,
   CerrarContenido,
+  SubirPortadaDelCurso,
+  GuardarCursoMeta,
 } from "./screenplay/tasks/cursos";
 import { OpcionDeBusqueda } from "./screenplay/questions/fichas";
-import { BloquesDeLeccion } from "./screenplay/questions/cursos";
+import { BloquesDeLeccion, PortadaEnCatalogo } from "./screenplay/questions/cursos";
 import { PanelMuestra } from "./screenplay/questions/admin";
 import { CursoListado, CursoAusente } from "./screenplay/questions/cursos-publico";
 import {
@@ -240,6 +242,27 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     expect(
       await admin.pregunta(BloquesDeLeccion.guardados(["Texto", "Vocabulario"]))
     ).toBe(true);
+  });
+
+  // Fase 5: portada del curso — se sube, se guarda, se publica y el catálogo
+  // la muestra. Creamos módulo+lección para que la ficha sea navegable (una
+  // sin lecciones es "Próximamente" a propósito y la muted no muestra cover).
+  test("curso: la portada se sube y el catálogo la muestra", async ({ page }) => {
+    const stamp = Date.now();
+    const curso = `E2E Portada ${stamp}`;
+    const admin = actorAdmin(page);
+
+    await admin.intenta(
+      IrAGestionDeCursos.ahora(),
+      CrearCurso.titulado(curso),
+      CrearModulo.titulado("Módulo P"),
+      AnadirLeccion.aModulo("Módulo P", "Lección P"),
+      SubirPortadaDelCurso.ahora(),
+      GuardarCursoMeta.ahora(),
+      PublicarCursoAbierto.ahora()
+    );
+
+    expect(await admin.pregunta(PortadaEnCatalogo.delCurso(curso))).toBe(true);
   });
 
   // Fase 1 de cursos: las imágenes van a Postgres (bytea) y se sirven por

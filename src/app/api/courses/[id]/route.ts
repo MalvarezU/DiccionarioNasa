@@ -77,6 +77,21 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
     if (typeof body?.status === "string" && (VALID_STATUS as readonly string[]).includes(body.status))
       data.status = body.status
     if (typeof body?.sequential === "boolean") data.sequential = body.sequential
+    // Portada: SOLO URL de nuestro servidor de media (/api/media/<id>). No se
+    // acepta cualquier URL — es la misma política de seguridad de los bloques
+    // (javascript:/data: no pueden entrar). null/"" la quita.
+    if (body?.coverImage !== undefined) {
+      if (body.coverImage === null || body.coverImage === "") {
+        data.coverImage = null
+      } else if (typeof body.coverImage === "string" && body.coverImage.startsWith("/api/media/") && !/\s/.test(body.coverImage)) {
+        data.coverImage = body.coverImage.trim()
+      } else {
+        return NextResponse.json(
+          { message: "coverImage tiene que ser una imagen subida (/api/media/...)" },
+          { status: 400 }
+        )
+      }
+    }
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ message: "Nada que actualizar" }, { status: 400 })

@@ -30,6 +30,7 @@ export interface Course {
   description: string | null
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
   sequential: boolean
+  coverImage?: string | null
   modules: Module[]
 }
 

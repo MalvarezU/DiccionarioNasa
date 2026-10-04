@@ -93,3 +93,20 @@ export class BloquesDeLeccion {
     };
   }
 }
+
+/** El curso muestra SU portada en el catálogo público (/cursos). */
+export class PortadaEnCatalogo {
+  static delCurso(titulo: string): Question<boolean> {
+    return {
+      descripcion: `portada del curso "${titulo}" visible en /cursos`,
+      async responder(actor: Actor): Promise<boolean> {
+        const { page } = actor.usa(NavegarLaWeb);
+        await page.goto("/cursos");
+        const img = page.getByAltText(`Portada de ${titulo}`);
+        await img.waitFor({ timeout: 30000 });
+        const src = await img.getAttribute("src");
+        return Boolean(src && src.startsWith("/api/media/"));
+      },
+    };
+  }
+}

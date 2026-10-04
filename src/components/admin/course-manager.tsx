@@ -16,6 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { EditLessonModal } from "./edit-lesson-modal"
 import { LessonContentModal } from "./lesson-editor/lesson-content-modal"
+import { MediaPicker } from "./lesson-editor/media-picker"
 import { LESSON_LABEL, STATUS_LABEL } from "./course-types"
 import { useCourseManager } from "./use-course-manager"
 
@@ -41,6 +42,8 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     savingLesson,
     setEditingLessonId,
     editingLesson,
+    editCover,
+    setEditCover,
     contentLessonId,
     setContentLessonId,
     contentLesson,
@@ -161,6 +164,29 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                       <SelectItem value="ARCHIVED">Archivado</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                {/* Portada del catálogo (fase 5): sube a Postgres, se muestra en /cursos */}
+                <div className="grid gap-2">
+                  <Label>Portada</Label>
+                  {editCover ? (
+                    <div className="flex items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={editCover} alt="Portada del curso" className="h-14 w-24 rounded-md object-cover border border-outline-variant/30" />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditCover(null)}
+                      >
+                        Quitar portada
+                      </Button>
+                    </div>
+                  ) : (
+                    <MediaPicker
+                      etiqueta="Imagen de portada del curso"
+                      onSubida={(url) => setEditCover(url)}
+                    />
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleSaveCourse} className="gap-1.5">

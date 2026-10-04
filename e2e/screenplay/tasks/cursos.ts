@@ -389,3 +389,44 @@ export class CerrarContenido {
     return tarea;
   }
 }
+
+/** Subir la imagen de portada del curso abierto (input del MediaPicker). */
+export class SubirPortadaDelCurso {
+  static ahora(): Task {
+    const tarea: Task = {
+      descripcion: "subir portada del curso",
+      ejecutar: async (actor: Actor) => {
+        const { page } = actor.usa(NavegarLaWeb);
+        const input = page.getByLabel("Elegir imagen del dispositivo");
+        await input.setInputFiles({
+          name: "e2e-portada.png",
+          mimeType: "image/png",
+          // URL de prueba 1x1 (buffer directo: no requiere archivo en disco)
+          buffer: Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+            "base64"
+          ),
+        });
+        // La subida comprime en el cliente y después patchea: señal = preview
+        await expect(page.getByAltText("Portada del curso")).toBeVisible({ timeout: 30000 });
+      },
+    };
+    return tarea;
+  }
+}
+
+/** Guardar los metadatos del curso (nessuno: PATCH + refresh del detalle). */
+export class GuardarCursoMeta {
+  static ahora(): Task {
+    const tarea: Task = {
+      descripcion: "guardar curso",
+      ejecutar: async (actor: Actor) => {
+        const { page } = actor.usa(NavegarLaWeb);
+        await page.getByRole("button", { name: "Guardar curso" }).click();
+        // El PATCH + reload del detalle; señal estable: el botón sigue
+        await expect(page.getByRole("button", { name: "Guardar curso" })).toBeVisible({ timeout: 30000 });
+      },
+    };
+    return tarea;
+  }
+}
