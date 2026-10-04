@@ -131,3 +131,22 @@ export class EstadoDeModulo {
     }
   }
 }
+
+/** Una lección del acordeón está completada (data-completed en la fila). */
+export class LeccionCompleta {
+  static es(patron: RegExp): Question<boolean> {
+    return {
+      descripcion: `lección ${patron} completada`,
+      async responder(actor: Actor): Promise<boolean> {
+        const { page } = actor.usa(NavegarLaWeb);
+        const fila = page.getByRole("button", { name: patron }).first();
+        await fila.waitFor({ timeout: 30000 });
+        // Polling interno: el progreso llega del backend tras recargar.
+        await expect(fila).toHaveAttribute("data-completed", "true", {
+          timeout: 30000,
+        });
+        return true;
+      },
+    };
+  }
+}

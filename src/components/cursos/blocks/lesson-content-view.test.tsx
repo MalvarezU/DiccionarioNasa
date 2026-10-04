@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { describe, it, expect, vi } from "vitest"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { LessonContentView } from "./lesson-content-view"
 import type { LessonBlock } from "@/lib/courses/blocks"
 import type { CourseWordData } from "@/lib/courses/word-data"
@@ -188,8 +189,8 @@ describe("bloques interactivos en vista previa y estudiante", () => {
     ],
   }
 
-  it("quiz muestra cantidad y puntaje de aprobación", () => {
-    render(<LessonContentView content={contenido([quiz])} words={new Map()} />)
+  it("quiz muestra cantidad y puntaje de aprobación (vista previa)", () => {
+    render(<LessonContentView content={contenido([quiz])} words={new Map()} interactive={false} />)
     expect(screen.getByText(/2 preguntas/)).toBeDefined()
     expect(screen.getByText(/80%/)).toBeDefined()
   })
@@ -205,7 +206,7 @@ describe("bloques interactivos en vista previa y estudiante", () => {
     expect(screen.queryByText("¿Cómo se dice agua?")).toBeNull()
   })
 
-  it("listening y game muestran su panel", () => {
+  it("listening y game muestran su panel (vista previa)", () => {
     render(
       <LessonContentView
         content={contenido([
@@ -219,6 +220,7 @@ describe("bloques interactivos en vista previa y estudiante", () => {
           { id: "b3", type: "game", game: "memory", wordIds: ["w1", "w2"], difficulty: "easy" },
         ])}
         words={new Map()}
+        interactive={false}
       />
     )
     expect(screen.getByText(/Ejercicio de escucha/)).toBeDefined()
@@ -233,9 +235,79 @@ describe("bloques interactivos en vista previa y estudiante", () => {
           { id: "b5", type: "legacy-complete-word", wordId: "w1" },
         ])}
         words={new Map()}
+        interactive={false}
       />
     )
     expect(screen.getByText(/Quiz con palabras/)).toBeDefined()
     expect(screen.getByText(/completa la palabra/i)).toBeDefined()
+  })
+})
+
+describe("modo estudiante — los interactivos son jugables", () => {
+  const quiz = {
+    id: "b1",
+    type: "quiz",
+    passScore: 80,
+    questions: [
+      { prompt: "¿Cómo se dice agua?", options: [{ text: "yu", correct: true }, { text: "kwe", correct: false }] },
+      { prompt: "¿Y sol?", options: [{ text: "sok", correct: true }, { text: "pa", correct: false }] },
+    ],
+  }
+
+  it("responder bien y revisar aprueba y notifica a la lección", async () => {
+    const user = userEvent.setup()
+    const onCompleta = vi.fn()
+    render(
+      <LessonContentView content={contenido([quiz])} words={new Map()} onCompleta={onCompleta} />
+    )
+
+    await user.click(screen.getByLabelText("Opción 1 de la pregunta 1")) // yu (correcta)
+    await user.click(screen.getByLabelText("Opción 1 de la pregunta 2")) // sok (correcta)
+    await user.click(screen.getByRole("button", { name: "Revisar" }))
+
+    expect(screen.getByText(/Aprobaste con 100%/)).toBeDefined()
+    await waitFor(() => expect(onCompleta).toHaveBeenCalledWith(100))
+  })
+
+  it("fallar muestra el puntaje y permite reintentar; no notifica", async () => {
+    const user = userEvent.setup()
+    const onCompleta = vi.fn()
+    render(
+      <LessonContentView content={contenido([quiz])} words={new Map()} onCompleta={onCompleta} />
+    )
+
+    await user.click(screen.getByLabelText("Opción 2 de la pregunta 1")) // kwe (incorrecta)
+    await user.click(screen.getByLabelText("Opción 1 de la pregunta 2")) // sok (correcta)
+    await user.click(screen.getByRole("button", { name: "Revisar" }))
+
+    expect(screen.getByText(/50%/)).toBeDefined()
+    expect(onCompleta).not.toHaveBeenCalled()
+
+    // Reintentar limpia las respuestas
+    await user.click(screen.getByRole("button", { name: /Reintentar/ }))
+    expect(screen.getByRole("button", { name: "Revisar" }).hasAttribute("disabled")).toBe(true)
+  })
+
+  it("no se puede revisar hasta responder todo", async () => {
+    const user = userEvent.setup()
+    render(
+      <LessonContentView content={contenido([quiz])} words={new Map()} />
+    )
+    await user.click(screen.getByLabelText("Opción 1 de la pregunta 1"))
+    expect(screen.getByRole("button", { name: "Revisar" }).hasAttribute("disabled")).toBe(true)
+  })
+
+  it("lección sin actividad muestra el botón manual y notifica", async () => {
+    const user = userEvent.setup()
+    const onCompleta = vi.fn()
+    render(
+      <LessonContentView
+        content={contenido([{ id: "b9", type: "text", markdown: "Solo lectura" }])}
+        words={new Map()}
+        onCompleta={onCompleta}
+      />
+    )
+    await user.click(screen.getByRole("button", { name: /Marcar lección como completada/i }))
+    expect(onCompleta).toHaveBeenCalledWith(null)
   })
 })

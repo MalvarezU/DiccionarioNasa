@@ -1,10 +1,17 @@
 "use client"
 
 import Image from "next/image"
+import { useEffect, useRef, useState } from "react"
+import { CheckCircle2 } from "lucide-react"
 import { parseInline, parseMarkdownLite } from "@/lib/courses/markdown-lite"
-import type { LessonBlock, LessonContent } from "@/lib/courses/blocks"
+import { isInteractive, type LessonBlock, type LessonContent } from "@/lib/courses/blocks"
 import type { CourseWordData } from "@/lib/courses/word-data"
 import { BlockWordCard } from "./block-word-card"
+import { YoutubeEmbed } from "./block-media"
+import { QuizInteractivo } from "./block-quiz"
+import { EscuchaInteractivo } from "./block-listening"
+import { JuegoEmbebido } from "./block-game"
+import { Button } from "@/components/ui/button"
 
 /**
  * El render de la lección. LO USAN DOS CARAS:
@@ -13,16 +20,24 @@ import { BlockWordCard } from "./block-word-card"
  * Ser el mismo componente es una decisión contra la falla clásica de Moodle:
  * el docente ve una cosa y el alumno otra. La vista previa ES este render.
  *
- * `interactive={false}` es el modo vista previa: los bloques interactivos se
- * muestran como resumen estático, sin estado de juego. La versión completa
- * para el estudiante llega en la fase 4.
+ * - `interactive={false}`: modo vista previa — los interactivos se muestran
+ *   como resumen estático.
+ * - `interactive={true}` + `onCompleta`: modo estudiante — quiz, escucha y
+ *   juego son jugables; la lección se marca completa cuando TODOS los
+ *   bloques interactivos están aprobados (score = el mejor de los quiz).
+ *
+ * Los bloques legacy (legacy-quiz-words / legacy-complete-word) NO se juegan
+ * acá: la lección que los contiene renderiza por el renderer clásico (ver
+ * ModuleAccordion). Preserva el comportamiento exacto de lo que ya existía.
  */
 
 export interface LessonContentViewProps {
   content: LessonContent | null
   words: Map<string, CourseWordData>
-  /** false = vista previa (admin); true = estudiante (fase 4). */
+  /** false = vista previa (admin); true = estudiante. */
   interactive?: boolean
+  /** Modo estudiante: se llama cuando todos los interactivos están aprobados. */
+  onCompleta?: (score: number | null) => void
 }
 
 const ETIQUETA_LEGACY: Record<string, string> = {
@@ -34,7 +49,29 @@ export function LessonContentView({
   content,
   words,
   interactive = true,
+  onCompleta,
 }: LessonContentViewProps) {
+  // Aprobación por bloque: { [bloqueId]: score }. La lección se completa
+  // cuando TODOS los interactivos tienen score.
+  const [aprobados, setAprobados] = useState<Record<string, number>>({})
+  const avisoEnviado = useRef(false)
+
+  const interactivos = content ? content.blocks.filter(isInteractive) : []
+  const todosAprobados =
+    interactivos.length > 0 && interactivos.every((b) => aprobados[b.id] !== undefined)
+
+  const marcarAprobado = (id: string, score: number) =>
+    setAprobados((prev) => ({ ...prev, [id]: score }))
+
+  // Reglas de hooks ANTES de cualquier return temprano.
+  useEffect(() => {
+    if (!interactive || !onCompleta || !todosAprobados) return
+    if (avisoEnviado.current) return
+    avisoEnviado.current = true
+    const scores = Object.values(aprobados)
+    onCompleta(scores.length > 0 ? Math.max(...scores) : null)
+  }, [interactive, onCompleta, todosAprobados, aprobados])
+
   if (!content || content.blocks.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-outline-variant/40 px-4 py-6 text-center text-sm text-muted-foreground">
@@ -43,11 +80,32 @@ export function LessonContentView({
     )
   }
 
+  // Lección rica sin actividad: se completa a mano (igual que una READ legacy).
+  const sinActividad = interactive && onCompleta && interactivos.length === 0
+
   return (
     <div className="flex flex-col gap-5" data-testid="lesson-content">
       {content.blocks.map((block) => (
-        <BlockView key={block.id} block={block} words={words} interactive={interactive} />
+        <BlockView
+          key={block.id}
+          block={block}
+          words={words}
+          interactive={interactive}
+          onBloqueAprobado={marcarAprobado}
+        />
       ))}
+
+      {sinActividad ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="self-start"
+          onClick={() => onCompleta?.(null)}
+        >
+          <CheckCircle2 className="size-4" />
+          Marcar lección como completada
+        </Button>
+      ) : null}
     </div>
   )
 }
@@ -56,11 +114,15 @@ function BlockView({
   block,
   words,
   interactive,
+  onBloqueAprobado,
 }: {
   block: LessonBlock
   words: Map<string, CourseWordData>
   interactive: boolean
+  onBloqueAprobado: (id: string, score: number) => void
 }) {
+  const jugable = interactive && onBloqueAprobado !== undefined
+
   switch (block.type) {
     case "text":
       return <RenderText markdown={block.markdown} />
@@ -106,7 +168,7 @@ function BlockView({
           </div>
         )
       }
-      return <AvisoÁcido texto="El audio aún no tiene fuente." />
+      return <AvisoFalta texto="El audio aún no tiene fuente." />
     }
 
     case "video":
@@ -122,7 +184,7 @@ function BlockView({
 
     case "vocabulary": {
       if (block.wordIds.length === 0) {
-        return <AvisoÁcido texto="La lista de vocabulario está vacía." />
+        return <AvisoFalta texto="La lista de vocabulario está vacía." />
       }
       return (
         <ul className="grid gap-3" data-testid="vocabulary-list">
@@ -138,15 +200,22 @@ function BlockView({
       )
     }
 
-    case "quiz": {
-      const total = block.questions.length
+    case "quiz":
+      if (jugable) {
+        return (
+          <QuizInteractivo
+            block={block}
+            onAprobado={(score) => onBloqueAprobado(block.id, score)}
+          />
+        )
+      }
       return (
         <div data-testid="quiz-preview">
           <PanelInteractivo
             titulo="Quiz"
-            detalle={`${total} pregunta${total === 1 ? "" : "s"} · aprueba con ${block.passScore}%`}
+            detalle={`${block.questions.length} pregunta${block.questions.length === 1 ? "" : "s"} · aprueba con ${block.passScore}%`}
           />
-          {!interactive && total > 0 ? (
+          {!interactive && block.questions.length > 0 ? (
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
               {block.questions.map((q, i) => (
                 <li key={`${block.id}-q${i}`}>{q.prompt}</li>
@@ -155,29 +224,46 @@ function BlockView({
           ) : null}
         </div>
       )
-    }
 
     case "listening":
+      if (jugable) {
+        return (
+          <EscuchaInteractivo
+            block={block}
+            onAprobado={(score) => onBloqueAprobado(block.id, score)}
+          />
+        )
+      }
       return (
         <div data-testid="listening-preview">
           <PanelInteractivo titulo="Ejercicio de escucha" detalle={block.question} />
         </div>
       )
 
-    case "game": {
-      const juego = block.game === "memory" ? "Memoria" : "Flashcards"
-      return (
-        <div data-testid="game-preview">
-          <PanelInteractivo
-            titulo={`Juego embebido: ${juego}`}
-            detalle={`${block.wordIds.length} palabras · dificultad ${block.difficulty}`}
+    case "game":
+      if (jugable) {
+        return (
+          <JuegoEmbebido
+            block={block}
+            words={words}
+            onAprobado={(score) => onBloqueAprobado(block.id, score)}
           />
-        </div>
-      )
-    }
+        )
+      }
+      {
+        const juego = block.game === "memory" ? "Memoria" : "Flashcards"
+        return (
+          <div data-testid="game-preview">
+            <PanelInteractivo
+              titulo={`Juego embebido: ${juego}`}
+              detalle={`${block.wordIds.length} palabras · dificultad ${block.difficulty}`}
+            />
+          </div>
+        )
+      }
 
-    // Legacy: solo salen del backfill. En el estudiante seguirán renderizando
-    // igual que antes vía el renderer clásico; acá, como resumen.
+    // Legacy: en el estudiante van por el renderer clásico (ver ModuleAccordion);
+    // acá quedan como resumen para la vista previa del editor.
     case "legacy-quiz-words":
       return (
         <div data-testid="legacy-quiz-preview">
@@ -257,20 +343,6 @@ function renderInline(text: string): React.ReactNode[] {
   })
 }
 
-function YoutubeEmbed({ youtubeId, title }: { youtubeId: string; title: string }) {
-  return (
-    <div className="aspect-video w-full overflow-hidden rounded-lg border border-outline-variant/20">
-      <iframe
-        src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
-        title={title}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        className="h-full w-full"
-      />
-    </div>
-  )
-}
-
 function PanelInteractivo({ titulo, detalle }: { titulo: string; detalle: string }) {
   return (
     <div className="rounded-lg border border-outline-variant/40 bg-surface-container-high/60 px-4 py-3">
@@ -280,7 +352,7 @@ function PanelInteractivo({ titulo, detalle }: { titulo: string; detalle: string
   )
 }
 
-function AvisoÁcido({ texto }: { texto: string }) {
+function AvisoFalta({ texto }: { texto: string }) {
   return (
     <p className="rounded-lg border border-dashed border-destructive/40 px-4 py-3 text-sm text-destructive">
       {texto}

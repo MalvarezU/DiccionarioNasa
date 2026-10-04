@@ -4,7 +4,7 @@
  * curso demo "Nasa Yuwe Básico" con lessonNumber 1..N por módulo.
  * Idempotente: re-ejecutable sin duplicar. Uso: bun run prisma/seed-test.ts
  */
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { blocksForLegacyLesson } from "../src/lib/courses/legacy-migration";
 
@@ -42,6 +42,8 @@ const MODULES: Array<{
     type: "READ" | "QUIZ" | "COMPLETE";
     spanish?: string;
     payload?: unknown;
+    /** Lección rica: documento de bloques directo (fase 4). */
+    content?: { version: number; blocks: unknown[] };
   }>;
 }> = [
   {
@@ -52,6 +54,44 @@ const MODULES: Array<{
         title: "Lección 1.2: Quiz básico",
         type: "QUIZ",
         payload: { questions: [{ wordSpanish: "Casa" }, { wordSpanish: "Agua" }] },
+      },
+      {
+        // Lección RICA (fase 4): texto + quiz propio. No depende del
+        // diccionario, así que la e2e puede completarla siempre.
+        title: "Lección 1.3: El saludo (contenido)",
+        type: "READ",
+        content: {
+          version: 1,
+          blocks: [
+            {
+              id: "blk_rich_t",
+              type: "text",
+              markdown:
+                "# El saludo\n\nEn Nasa Yuwe el saludo cambia según la hora del día.\n\n- *wii* — mañana\n- *yuwe* — tarde",
+            },
+            {
+              id: "blk_rich_q",
+              type: "quiz",
+              passScore: 70,
+              questions: [
+                {
+                  prompt: "¿Cómo se dice agua en Nasa Yuwe?",
+                  options: [
+                    { text: "yu", correct: true },
+                    { text: "kwe", correct: false },
+                  ],
+                },
+                {
+                  prompt: "¿Cómo se dice sol en Nasa Yuwe?",
+                  options: [
+                    { text: "sok", correct: true },
+                    { text: "pa", correct: false },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
       },
     ],
   },
@@ -132,14 +172,17 @@ async function seedCourse() {
         });
         wordId = w?.id ?? null;
       }
-      // El seed genera el documento de bloques con el MISMO mapeo que el
-      // backfill (src/lib/courses/legacy-migration.ts), para que una base
-      // nueva quede idéntica a una migrada.
+      // El seed genera el documento de bloques: las lecciones ricas lo traen
+      // directo; el resto usa el MISMO mapeo que el backfill
+      // (src/lib/courses/legacy-migration.ts), para que una base nueva quede
+      // idéntica a una migrada.
       const payloadJson = les.payload ? JSON.stringify(les.payload) : null;
-      const blocks = blocksForLegacyLesson(
-        { id: `seed_${mi}_${li}`, type: les.type, wordId, payload: payloadJson },
-        (_, i) => `blk_seed_${mi}_${li}_${i}`
-      );
+      const blocks =
+        les.content?.blocks ??
+        blocksForLegacyLesson(
+          { id: `seed_${mi}_${li}`, type: les.type, wordId, payload: payloadJson },
+          (_, i) => `blk_seed_${mi}_${li}_${i}`
+        );
       await db.lesson.create({
         data: {
           moduleId: created.id,
@@ -149,7 +192,7 @@ async function seedCourse() {
           lessonNumber: li + 1,
           wordId,
           payload: payloadJson,
-          content: { version: 1, blocks },
+          content: { version: 1, blocks } as unknown as Prisma.InputJsonValue,
         },
       });
     }

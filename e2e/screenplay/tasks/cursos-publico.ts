@@ -37,3 +37,52 @@ export class MarcarPrimeraLeccionCompletada implements Task {
     await page.getByRole("button", { name: /marcar como completada/i }).first().click();
   }
 }
+
+/**
+ * Abrir una lección por su número (p.ej. 1.3) en el detalle público.
+ * El acordeón del módulo ya está abierto por defecto (módulo 1).
+ */
+export class AbrirLeccionNumerada implements Task {
+  descripcion: string;
+  private constructor(private patron: RegExp) {
+    this.descripcion = `abrir lección ${patron}`;
+  }
+  static conPatron(patron: RegExp): AbrirLeccionNumerada {
+    return new AbrirLeccionNumerada(patron);
+  }
+  async ejecutar(actor: Actor): Promise<void> {
+    const { page } = actor.usa(NavegarLaWeb);
+    const fila = page.getByRole("button", { name: this.patron }).first();
+    await fila.waitFor({ timeout: 30000 });
+    // Solo clic si está cerrada; si está abierta, no hace nada (idempotente)
+    if ((await fila.getAttribute("aria-expanded")) !== "true") {
+      await fila.click();
+    }
+    // Señal de contenido listo: el quiz del bloque
+    await expect(page.getByTestId("quiz-interactivo")).toBeVisible({ timeout: 30000 });
+  }
+}
+
+/** Resolver el quiz interactivo de la lección abierta, respondiendo todo bien. */
+export class ResolverQuizInteractivo {
+  static delBloque(): Task {
+    const tarea: Task = {
+      descripcion: "resolver el quiz respondiendo las opciones correctas",
+      ejecutar: async (actor: Actor) => {
+        const { page } = actor.usa(NavegarLaWeb);
+        // Responde la PRIMERA opción de cada pregunta: en el seed, la correcta
+        // de las dos es la primera. Preguntas por la marca aria-pressed.
+        const preguntas = page.getByTestId("quiz-interactivo").locator("li");
+        const total = await preguntas.count();
+        for (let i = 0; i < total; i++) {
+          await page
+            .getByRole("button", { name: `Opción 1 de la pregunta ${i + 1}` })
+            .click();
+        }
+        await page.getByRole("button", { name: "Revisar" }).click();
+        await expect(page.getByText(/Aprobaste/)).toBeVisible({ timeout: 15000 });
+      },
+    };
+    return tarea;
+  }
+}

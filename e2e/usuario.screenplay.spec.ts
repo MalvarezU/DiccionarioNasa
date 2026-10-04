@@ -7,6 +7,8 @@ import { MarcarPrimeraLeccionCompletada } from "./screenplay/tasks/cursos-public
 import { EstadoFavorita, HistorialContiene } from "./screenplay/questions/fichas";
 import { SesionCerrada } from "./screenplay/questions/sesion";
 import { PrimerCursoId, ProgresoEs } from "./screenplay/questions/cursos-publico";
+import { AbrirLeccionNumerada, ResolverQuizInteractivo } from "./screenplay/tasks/cursos-publico";
+import { LeccionCompleta } from "./screenplay/questions/cursos-publico";
 
 /**
  * Flujos de usuario autenticado (migración de user.spec.ts).
@@ -55,6 +57,24 @@ test.describe("usuario Piiyaak (Screenplay)", () => {
     expect(await usuario.pregunta(ProgresoEs.valor("1/"))).toBe(true);
     await usuario.intenta(Recargar.ahora());
     expect(await usuario.pregunta(ProgresoEs.valor("1/"))).toBe(true);
+  });
+
+  // Fase 4 de cursos: la lección rica (bloques) se juega y se completa.
+  // Va DESPUÉS del test de progreso: el counter es por curso, así que acá no
+  // se afirma el contador sino la lección misma (señal por fila).
+  test("curso: la lección con quiz propio se completa y persiste", async ({ page, request }) => {
+    const usuario = actorUsuario(page, request);
+    const courseId = await usuario.pregunta(PrimerCursoId.valor());
+    await usuario.intenta(
+      IrA.a(`/cursos/${courseId}`),
+      AbrirLeccionNumerada.conPatron(/1\.3/),
+      ResolverQuizInteractivo.delBloque()
+    );
+    // La fila quedó marcada como completada...
+    expect(await usuario.pregunta(LeccionCompleta.es(/1\.3/))).toBe(true);
+    // ...y el progreso persiste en el backend: al recargar sigue.
+    await usuario.intenta(Recargar.ahora());
+    expect(await usuario.pregunta(LeccionCompleta.es(/1\.3/))).toBe(true);
   });
 
   // ÚLTIMO: mata su propia sesión (no afecta el storageState global).

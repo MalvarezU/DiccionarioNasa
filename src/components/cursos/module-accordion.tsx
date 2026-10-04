@@ -1,11 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { BookOpen, HelpCircle, Lock, CheckCircle2, ChevronDown, PenLine } from "lucide-react"
+import { BookOpen, HelpCircle, Lock, CheckCircle2, ChevronDown, PenLine, Blocks } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LessonRenderer, type RealLesson } from "./lesson-renderer"
+import { LessonContentView } from "./blocks/lesson-content-view"
+import { parseLessonContent, type LessonContent } from "@/lib/courses/blocks"
+import type { CourseWordData } from "@/lib/courses/word-data"
 
 export interface RealModule {
   id: string
@@ -18,8 +21,10 @@ interface ModuleAccordionProps {
   moduleIndex: number
   isUnlocked: boolean
   completedLessons: string[]
-  onLessonComplete: (lessonId: string) => void
+  onLessonComplete: (lessonId: string, score?: number | null) => void
   onLessonOpen?: (lessonId: string) => void
+  /** Datos de las palabras referenciadas por los bloques (vocabulary/game). */
+  words?: Map<string, CourseWordData>
 }
 
 function lessonIcon(type: string) {
@@ -34,6 +39,25 @@ function lessonTypeLabel(type: string) {
   return "Lectura"
 }
 
+/**
+ * ¿La lección renderiza por el documento de bloques?
+ *
+ * Solo si tiene `content` y NO contiene bloques legacy interactivos: esos los
+ * ejecuta el renderer clásico, que ya sabe correrlos y su comportamiento no
+ * puede cambiar. El backfill produce documentos con un solo bloque legacy
+ * (o [word]); una lección editada con el editor nuevo no los tiene.
+ */
+function esLeccionRica(les: RealLesson): { content: LessonContent } | null {
+  const raw = (les as { content?: unknown }).content
+  const parse = parseLessonContent(raw)
+  if (!parse.ok) return null
+  const tieneLegacy = parse.content.blocks.some(
+    (b) => b.type === "legacy-quiz-words" || b.type === "legacy-complete-word"
+  )
+  if (tieneLegacy) return null
+  return { content: parse.content }
+}
+
 export function ModuleAccordion({
   module,
   moduleIndex,
@@ -41,6 +65,7 @@ export function ModuleAccordion({
   completedLessons,
   onLessonComplete,
   onLessonOpen,
+  words,
 }: ModuleAccordionProps) {
   const [open, setOpen] = useState(moduleIndex === 1 && isUnlocked)
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null)
@@ -97,6 +122,7 @@ export function ModuleAccordion({
                     }}
                     className="w-full flex items-center gap-2 p-3 text-left hover:bg-muted/40 transition-colors"
                     aria-expanded={active}
+                    data-completed={isComplete ? "true" : "false"}
                   >
                     {isComplete ? (
                       <CheckCircle2 className="h-4 w-4 text-secondary shrink-0" />
@@ -115,11 +141,27 @@ export function ModuleAccordion({
                   </button>
                   {active && (
                     <div className="p-3 pt-0">
-                      <LessonRenderer
-                        lesson={lesson}
-                        isComplete={isComplete}
-                        onComplete={onLessonComplete}
-                      />
+                      {(() => {
+                        const rica = esLeccionRica(lesson)
+                        if (rica && words !== undefined) {
+                          return (
+                            <LessonContentView
+                              key={lesson.id}
+                              content={rica.content}
+                              words={words}
+                              interactive
+                              onCompleta={(score) => onLessonComplete(lesson.id, score)}
+                            />
+                          )
+                        }
+                        return (
+                          <LessonRenderer
+                            lesson={lesson}
+                            isComplete={isComplete}
+                            onComplete={onLessonComplete}
+                          />
+                        )
+                      })()}
                     </div>
                   )}
                 </div>

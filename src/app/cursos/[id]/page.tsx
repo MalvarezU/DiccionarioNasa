@@ -10,6 +10,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { ModuleAccordion, type RealModule } from "@/components/cursos/module-accordion"
+import {
+  fetchWordsByIds,
+  wordIdsUsedByContent,
+  type CourseWordData,
+} from "@/lib/courses/word-data"
+import { parseLessonContent } from "@/lib/courses/blocks"
 
 interface CourseDetail {
   id: string
@@ -55,6 +61,8 @@ export default function CursoDetailPage({
   const [notFoundFlag, setNotFoundFlag] = useState(false)
   const [completedLessons, setCompletedLessons] = useState<string[]>([])
   const [lastVisited, setLastVisited] = useState<string | null>(null)
+  /** Datos de las palabras referenciadas por los bloques de todas las lecciones. */
+  const [words, setWords] = useState<Map<string, CourseWordData>>(() => new Map())
 
   // Curso + progreso (backend si hay sesión, local si no)
   useEffect(() => {
@@ -71,6 +79,20 @@ export default function CursoDetailPage({
       .then((data) => {
         if (!alive || !data?.course) return
         setCourse(data.course as CourseDetail)
+
+        // Los bloques de las lecciones referencian palabras por id
+        // (vocabulary / game): las traigo en un solo lote. El documento se
+        // valida antes de leerlo: corrupto en la base => sin lote.
+        const ids: string[] = []
+        for (const mod of data.course.modules ?? []) {
+          for (const les of mod.lessons ?? []) {
+            const parse = parseLessonContent((les as { content?: unknown }).content)
+            if (parse.ok) ids.push(...wordIdsUsedByContent(parse.content.blocks))
+          }
+        }
+        fetchWordsByIds(ids).then((m) => {
+          if (alive) setWords(m)
+        })
       })
       .catch(() => {
         if (alive) setNotFoundFlag(true)
@@ -101,7 +123,7 @@ export default function CursoDetailPage({
   }, [course, isAuthed])
 
   const handleLessonComplete = useCallback(
-    async (lessonId: string) => {
+    async (lessonId: string, score?: number | null) => {
       setCompletedLessons((prev) => (prev.includes(lessonId) ? prev : [...prev, lessonId]))
       if (!course) return
       if (isAuthed) {
@@ -109,7 +131,11 @@ export default function CursoDetailPage({
           await fetch("/api/progress", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lessonId, completed: true }),
+            body: JSON.stringify({
+              lessonId,
+              completed: true,
+              ...(typeof score === "number" ? { score } : {}),
+            }),
           })
         } catch {
           // el estado local ya quedó; reintentará al reabrir
@@ -241,6 +267,7 @@ export default function CursoDetailPage({
               completedLessons={completedLessons}
               onLessonComplete={handleLessonComplete}
               onLessonOpen={handleLessonOpen}
+              words={words}
             />
           ))}
         </div>
