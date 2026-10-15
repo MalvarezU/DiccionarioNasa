@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import {
   ScrollText,
   Download,
-  Loader2,
   Clock,
   User,
 } from "lucide-react"
@@ -16,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
+import { WordTableSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
@@ -261,10 +261,7 @@ export function FullAuditLogModal({
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 text-primary animate-spin" />
-              <span className="ml-2 text-sm text-muted-foreground">Cargando...</span>
-            </div>
+            <WordTableSkeleton rows={5} />
           ) : logs.length > 0 ? (
             <>
               <div className="max-h-[50vh] overflow-auto rounded-md border">

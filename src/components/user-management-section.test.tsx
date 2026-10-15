@@ -51,10 +51,14 @@ describe("UserManagementSection", () => {
     })
   })
 
-  it("shows loading spinner initially", () => {
+  it("shows a users-table skeleton initially", () => {
     vi.mocked(fetch).mockImplementationOnce(() => new Promise(() => {}))
     renderSection()
-    expect(document.querySelector(".animate-spin")).toBeTruthy()
+    // Filas fantasma con la forma de la tabla real, para que la tarjeta no
+    // encoja cuando lleguen los datos.
+    expect(document.querySelector('[data-slot="skeleton-users-table"]')).toBeTruthy()
+    expect(document.querySelectorAll('[data-slot="skeleton-table-row"]').length)
+      .toBeGreaterThan(0)
   })
 
   it("renders users table after loading", async () => {

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Shield, Loader2, RefreshCw, Plus, BookOpen, Upload, ScrollText } from "lucide-react"
+import { Shield, RefreshCw, Plus, BookOpen, Upload, ScrollText } from "lucide-react"
+import { AdminDashboardSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { type WordForEdit } from "./EditWordModal"
@@ -50,10 +51,7 @@ export function AdminDashboard({ canBulkArchive = true }: { canBulkArchive?: boo
             Estadísticas y estado del diccionario
           </p>
         </div>
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          <span className="ml-3 text-muted-foreground">Cargando estadísticas...</span>
-        </div>
+        <AdminDashboardSkeleton />
       </div>
     )
   }

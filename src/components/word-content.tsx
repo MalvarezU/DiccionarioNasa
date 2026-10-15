@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { WordDetailSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AudioPlayer } from "@/components/audio-player";
@@ -53,11 +54,7 @@ export function WordContent({
   onLoginClick,
 }: WordContentProps) {
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 text-primary animate-spin" />
-      </div>
-    );
+    return <WordDetailSkeleton />;
   }
 
   if (!word) {

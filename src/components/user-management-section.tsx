@@ -22,6 +22,7 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { UsersTableSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -220,9 +221,7 @@ export function UserManagementSection() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
-            </div>
+            <UsersTableSkeleton />
           ) : users.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
               <Users className="h-10 w-10 text-muted-foreground/30" />

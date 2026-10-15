@@ -123,10 +123,14 @@ describe("FavoritesHistoryPanel", () => {
     expect(sheets.length).toBeGreaterThan(0)
   })
 
-  it("shows loading spinner for favorites", () => {
+  it("shows a favorites skeleton while loading", () => {
     vi.mocked(fetch).mockImplementationOnce(() => new Promise(() => {}))
     renderPanel()
-    expect(document.querySelector(".animate-spin")).toBeTruthy()
+    // El skeleton conserva la rejilla de dos columnas del contenido real,
+    // asi el panel no colapsa al llegar el dato.
+    expect(document.querySelector('[data-slot="skeleton-favorites-grid"]')).toBeTruthy()
+    expect(document.querySelectorAll('[data-slot="skeleton-favorite-card"]').length)
+      .toBeGreaterThan(0)
   })
 
   it("shows login prompt when not authenticated", async () => {
@@ -283,9 +287,8 @@ describe("FavoritesHistoryPanel", () => {
 
     await userEvent.setup().click(screen.getByText("Historial"))
 
-    // While fetch is pending, we should see the spinner, not the empty state
-    const spinner = document.querySelector(".animate-spin")
-    expect(spinner).toBeTruthy()
+    // While fetch is pending, we see the history skeleton, not the empty state
+    expect(document.querySelector('[data-slot="skeleton-history"]')).toBeTruthy()
     expect(
       screen.queryByText("No tienes historial de consultas")
     ).toBeNull()
@@ -360,11 +363,13 @@ describe("FavoritesHistoryPanel", () => {
       update: vi.fn(),
     })
     renderPanel()
-    // Should show login prompt, no infinite spinner
+    // Should show login prompt, no skeleton colgado para siempre
     expect(
       await screen.findByText("Inicia sesión para ver tus favoritos")
     ).toBeDefined()
-    expect(document.querySelector(".animate-spin")).toBeNull()
+    expect(
+      document.querySelector('[data-slot="skeleton-favorites-grid"]')
+    ).toBeNull()
   })
 
   it("clears stale isLoading state on tab change", async () => {
@@ -386,8 +391,7 @@ describe("FavoritesHistoryPanel", () => {
     await userEvent.setup().click(screen.getByText("Historial"))
 
     // The history tab is loading
-    const historySpinner = document.querySelector(".animate-spin")
-    expect(historySpinner).toBeTruthy()
+    expect(document.querySelector('[data-slot="skeleton-history"]')).toBeTruthy()
 
     // Now switch back to favorites before history resolves
     vi.mocked(fetch).mockResolvedValue(

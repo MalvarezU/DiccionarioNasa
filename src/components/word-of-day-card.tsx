@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useSyncExternalStore } from "react"
 import {
   Sparkles,
   Volume2,
-  Loader2,
   WifiOff,
   BookOpen,
   ChevronRight,
@@ -16,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { WordDetailSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import {
@@ -179,10 +179,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-6 w-6 text-primary animate-spin" />
-            <span className="ml-2 text-sm text-muted-foreground">Cargando...</span>
-          </div>
+          <WordDetailSkeleton />
         </CardContent>
       </Card>
     )

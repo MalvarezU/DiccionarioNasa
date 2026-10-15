@@ -101,10 +101,12 @@ describe("WordDetailCard", () => {
     vi.mocked(isLocalDBReady).mockResolvedValue(false)
   })
 
-  it("shows loading spinner initially", () => {
+  it("shows a word-detail skeleton initially", () => {
     vi.mocked(fetch).mockImplementationOnce(() => new Promise(() => {}))
     renderCard()
-    expect(document.querySelector(".animate-spin")).toBeTruthy()
+    // El skeleton replica la ficha (titulo, audio, grilla de atributos), no un
+    // spinner centrado: es lo que evita el salto de layout al cargar.
+    expect(document.querySelector('[data-slot="skeleton-word-detail"]')).toBeTruthy()
   })
 
   it("shows word after loading from API", async () => {

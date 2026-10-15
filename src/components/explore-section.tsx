@@ -3,7 +3,6 @@
 import {
   BookOpen,
   Volume2,
-  Loader2,
   CloudOff,
   Download,
   List,
@@ -12,6 +11,7 @@ import {
   ChevronDown,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { ExploreListSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useExploreWords } from "./use-explore-words"
@@ -66,10 +66,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
             Todas las palabras ordenadas de la A a la Z
           </p>
         </div>
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          <span className="ml-3 text-muted-foreground">Cargando diccionario...</span>
-        </div>
+        <ExploreListSkeleton />
       </div>
     )
   }

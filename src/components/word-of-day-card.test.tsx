@@ -43,11 +43,11 @@ describe("WordOfDayCard", () => {
     vi.mocked(setCachedWordOfDay).mockResolvedValue(undefined)
   })
 
-  it("shows loading state initially", () => {
+  it("muestra el skeleton de la ficha mientras carga", () => {
     // Keep fetch unresolved so loading persists
     global.fetch = vi.fn((): Promise<Response> => new Promise(() => {}))
-    render(<WordOfDayCard />)
-    expect(screen.getByText("Cargando...")).toBeDefined()
+    const { container } = render(<WordOfDayCard />)
+    expect(container.querySelector('[data-slot="skeleton-word-detail"]')).toBeTruthy()
   })
 
   it("renders word from server", async () => {
@@ -104,8 +104,11 @@ describe("WordOfDayCard", () => {
     vi.mocked(getCachedWordOfDay).mockResolvedValue(null)
 
     const { container } = render(<WordOfDayCard />)
-    await vi.waitFor(() => expect(screen.queryByText("Cargando...")).toBeNull())
-    // Component returns null when online and no data available
+    // El skeleton desaparece cuando el fetch resuelve sin datos: el componente
+    // devuelve null y no queda nada colgado en pantalla.
+    await vi.waitFor(() =>
+      expect(container.querySelector('[data-slot="skeleton-word-detail"]')).toBeNull(),
+    )
     expect(container.innerHTML).toBe("")
   })
 
@@ -114,7 +117,9 @@ describe("WordOfDayCard", () => {
     vi.mocked(getCachedWordOfDay).mockResolvedValue(null)
 
     const { container } = render(<WordOfDayCard />)
-    await vi.waitFor(() => expect(screen.queryByText("Cargando...")).toBeNull())
+    await vi.waitFor(() =>
+      expect(container.querySelector('[data-slot="skeleton-word-detail"]')).toBeNull(),
+    )
     expect(container.innerHTML).toBe("")
   })
 

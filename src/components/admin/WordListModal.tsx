@@ -24,6 +24,7 @@ import {
   CardContent,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { WordTableSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -219,10 +220,7 @@ export function WordListModal({
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 text-primary animate-spin" />
-              <span className="ml-2 text-sm text-muted-foreground">Cargando...</span>
-            </div>
+            <WordTableSkeleton rows={5} />
           ) : words.length > 0 ? (
             <>
               <div className="rounded-md border overflow-x-auto">

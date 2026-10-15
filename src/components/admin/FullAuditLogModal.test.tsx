@@ -63,10 +63,14 @@ describe("FullAuditLogModal", () => {
     expect(screen.getByText(/audit/i)).toBeDefined()
   })
 
-  it("shows loading state initially", () => {
+  it("muestra un skeleton de filas mientras carga", () => {
     vi.mocked(global.fetch).mockImplementationOnce(() => new Promise(() => {}))
     renderModal()
-    expect(document.querySelector(".animate-spin")).toBeTruthy()
+    // Filas fantasma con la forma de la tabla real: el modal no colapsa
+    // cuando llegan los datos.
+    expect(document.querySelector('[data-slot="skeleton-word-table"]')).toBeTruthy()
+    expect(document.querySelectorAll('[data-slot="skeleton-table-row"]').length)
+      .toBeGreaterThan(0)
   })
 
   it("renders logs after loading", async () => {

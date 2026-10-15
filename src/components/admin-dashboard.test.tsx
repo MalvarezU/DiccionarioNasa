@@ -45,10 +45,15 @@ describe("AdminDashboard", () => {
   // Main dashboard
   // ═══════════════════════════════════════
 
-  it("shows loading state initially", () => {
+  it("muestra un skeleton con la silueta del panel mientras carga", () => {
     vi.mocked(fetch).mockImplementationOnce(() => new Promise(() => {}))
     render(<AdminDashboard />)
-    expect(screen.getByText("Cargando estadísticas...")).toBeDefined()
+    // El skeleton reemplaza al spinner: se afirma la estructura que se va a
+    // ver, no un texto transitorio. Un spinner central colapsaria el layout
+    // al llegar el dato.
+    expect(screen.getByTestId("skeleton-admin-dashboard")).toBeDefined()
+    expect(screen.getByTestId("skeleton-stats-grid")).toBeDefined()
+    expect(screen.queryByText("Cargando estadísticas...")).toBeNull()
   })
 
   it("renders dashboard stats after loading", async () => {

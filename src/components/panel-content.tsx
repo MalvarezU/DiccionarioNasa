@@ -5,7 +5,6 @@ import {
   Clock,
   Volume2,
   Trash2,
-  Loader2,
   LogIn,
 } from "lucide-react";
 import {
@@ -15,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FavoritesGridSkeleton, HistorySkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AuthModal } from "@/components/auth-modal";
@@ -118,9 +118,7 @@ export function PanelContent({
       {activeTab === "favorites" && (
         <div className="flex-1 overflow-y-auto max-h-[60vh] pr-1">
           {isLoadingFavorites ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
-            </div>
+            <FavoritesGridSkeleton />
           ) : favorites.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {favorites.map((fav) => (
@@ -186,9 +184,7 @@ export function PanelContent({
       {activeTab === "history" && (
         <div className="flex-1 overflow-y-auto max-h-[60vh] pr-1">
           {isLoadingHistory ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
-            </div>
+            <HistorySkeleton />
           ) : history.length > 0 ? (
             <div className="space-y-6">
               {/* Clear button */}

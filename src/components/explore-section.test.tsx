@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("@tanstack/react-virtual", () => ({
@@ -72,10 +72,17 @@ describe("ExploreSection", () => {
     mockVirtualizer(virtualRows)
   })
 
-  it("shows loading state", async () => {
+  it("muestra un skeleton del listado mientras carga", async () => {
     vi.mocked(fetch).mockImplementationOnce(() => new Promise(() => {}))
-    render(<ExploreSection onWordSelect={vi.fn()} />)
-    expect(await screen.findByText("Cargando diccionario...")).toBeDefined()
+    const { container } = render(<ExploreSection onWordSelect={vi.fn()} />)
+    // Filas fantasma con la forma del listado, no un spinner centrado.
+    const lista = await waitFor(() =>
+      container.querySelector('[data-slot="skeleton-explore-list"]'),
+    )
+    expect(lista).toBeTruthy()
+    expect(container.querySelectorAll('[data-slot="skeleton-table-row"], [data-slot="skeleton-explore-list"] > div').length)
+      .toBeGreaterThan(0)
+    expect(screen.queryByText("Cargando diccionario...")).toBeNull()
   })
 
   it("shows list after loading from API", async () => {
