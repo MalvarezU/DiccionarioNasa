@@ -5,6 +5,7 @@ import { RefreshCw, CheckCircle2, Target, Timer, HelpCircle } from "lucide-react
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   gameWordsOrDemo,
   reportGameResult,
@@ -308,7 +309,7 @@ export function MemoryGame({ words: providedWords, initialPairs = 6 }: MemoryGam
       <div className="max-w-2xl mx-auto space-y-6" aria-busy="true" aria-label="Cargando juego">
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
           {Array.from({ length: numPairs * 2 }).map((_, i) => (
-            <div key={i} className="aspect-[3/4] rounded-xl bg-muted/40 animate-pulse" />
+            <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
           ))}
         </div>
         <p className="text-center text-sm text-muted-foreground">Cargando palabras...</p>

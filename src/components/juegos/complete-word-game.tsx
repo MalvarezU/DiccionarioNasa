@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   gameWordsOrDemo,
   reportGameResult,
@@ -173,7 +174,7 @@ export function CompleteWordGame({
   if (!questions) {
     return (
       <div className="max-w-2xl mx-auto space-y-6" aria-busy="true" aria-label="Cargando juego">
-        <div className="h-32 bg-muted/40 rounded-xl animate-pulse" />
+        <Skeleton className="h-32 rounded-xl" />
         <p className="text-center text-sm text-muted-foreground">Cargando palabras...</p>
       </div>
     )

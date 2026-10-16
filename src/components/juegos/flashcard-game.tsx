@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Skeleton } from "@/components/ui/skeleton"
 import { type DemoWord } from "@/lib/demo-content"
 import {
   gameWordsOrDemo,
@@ -212,14 +213,14 @@ export function FlashcardGame({
   if (!questionList || !current) {
     return (
       <div className="max-w-2xl mx-auto space-y-6" aria-busy="true" aria-label="Cargando juego">
-        <div className="space-y-2 animate-pulse">
-          <div className="h-4 bg-muted rounded w-1/3" />
-          <div className="h-2 bg-muted rounded" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/3 rounded" />
+          <Skeleton className="h-2 rounded" />
         </div>
         <Card className="border-primary/20">
           <CardContent className="pt-8 pb-6 flex flex-col items-center gap-6">
-            <div className="h-4 w-48 bg-muted rounded" />
-            <div className="h-10 w-56 bg-muted rounded" />
+            <Skeleton className="h-4 w-48 rounded" />
+            <Skeleton className="h-10 w-56 rounded" />
           </CardContent>
         </Card>
         <p className="text-center text-sm text-muted-foreground">Cargando palabras...</p>

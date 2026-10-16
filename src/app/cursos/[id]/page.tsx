@@ -9,6 +9,7 @@ import { NavBar } from "@/components/navbar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ModuleAccordion, type RealModule } from "@/components/cursos/module-accordion"
 import {
   fetchWordsByIds,
@@ -180,9 +181,9 @@ export default function CursoDetailPage({
       <div className="min-h-screen flex flex-col">
         <NavBar />
         <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8" aria-busy="true" aria-label="Cargando curso">
-          <div className="h-10 w-2/3 bg-muted/40 rounded animate-pulse" />
-          <div className="h-4 w-full bg-muted/40 rounded animate-pulse mt-4" />
-          <div className="h-40 bg-muted/40 rounded-xl animate-pulse mt-8" />
+          <Skeleton className="h-10 w-2/3 rounded" />
+          <Skeleton className="mt-4 h-4 w-full rounded" />
+          <Skeleton className="mt-8 h-40 rounded-xl" />
         </main>
       </div>
     )

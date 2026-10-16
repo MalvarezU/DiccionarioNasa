@@ -57,11 +57,25 @@ describe("skeletons", () => {
     expect(tabla.querySelectorAll('[data-slot="skeleton-table-row"]')).toHaveLength(5)
   })
 
-  it("usa la misma clase de animación que el primitivo de UI", () => {
-    // Si el skeleton no late, el usuario no percibe que algo está pasando.
+  it("es estático: no usa clases animate-* (decisión explícita del usuario)", () => {
+    // El barrido de luz se descartó: la animación no se leía. Los skeletons
+    // quedan quietos. Si algún día se quiere movimiento, hay que revertir
+    // este bloque y la decisión del usuario que lo originó.
     const { container } = render(<CourseCardSkeleton />)
-    const barras = container.querySelectorAll(".animate-pulse")
-    expect(barras.length).toBeGreaterThan(0)
+    const markup = container.innerHTML
+    expect(markup).not.toMatch(/animate-/)
+  })
+
+  it("rellena con el token muted de la paleta (arena cálida), no con verde ni blanco", () => {
+    // El relleno es --muted: queda un tono por debajo del card, suficiente
+    // para leerse como hueco, y es un color que ya existía en la paleta.
+    // Fija el contrato para que nadie vuelva al bg-accent (verde moss).
+    const { container } = render(<WordDetailSkeleton />)
+    const bloque = container.querySelector('[data-slot="skeleton"]')
+    expect(bloque?.className).toContain("bg-muted")
+    expect(bloque?.className).toContain("border-outline-variant")
+    expect(bloque?.className).not.toContain("bg-accent")
+    expect(bloque?.className).not.toContain("bg-white")
   })
 
   it("el skeleton de la ficha replica los bloques que el usuario va a leer", () => {
