@@ -37,6 +37,7 @@ import {
 } from "@/lib/admin-utils"
 import { WordPreviewModal } from "./WordPreviewModal"
 import { EditWordAudio } from "./EditWordAudio"
+import { EditWordIllustration } from "./EditWordIllustration"
 import { useCreateWord } from "./use-create-word"
 
 interface CreateWordModalProps {
@@ -59,6 +60,7 @@ export function CreateWordModal({
     setPreviewOpen,
     isSubmitting,
     audio,
+    illustration,
     previewWord,
     handleChange,
     handleSubmit,
@@ -169,6 +171,7 @@ export function CreateWordModal({
 
           <Separator />
           <EditWordAudio audio={audio} variant="create" />
+          <EditWordIllustration illustration={illustration} variant="create" />
 
           {submitError && (
             <div className="flex items-start gap-2">

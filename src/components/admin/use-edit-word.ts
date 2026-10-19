@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react"
 import { WORD_STATUSES } from "@/lib/admin-utils"
 import { type PreviewWordData } from "./WordPreviewModal"
 import { useWordAudio } from "./use-word-audio"
+import { useWordIllustration } from "./use-word-illustration"
 import {
   buildWordPayload,
   hasWordChanges,
@@ -39,7 +40,9 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
   const [previewOpen, setPreviewOpen] = useState(false)
 
   const audio = useWordAudio()
+  const illustration = useWordIllustration()
   const { audioUrl, audioChanged, resetAudio } = audio
+  const { illustrationUrl, illustrationChanged, resetIllustration } = illustration
 
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [showPublishNoAudioWarning, setShowPublishNoAudioWarning] = useState(false)
@@ -50,8 +53,9 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
       setForm(toWordForm(word))
       setOriginalForm(toWordForm(word))
       resetAudio(word.audioUrl)
+      resetIllustration(word.illustrationUrl ?? null)
     }
-  }, [word, open, resetAudio])
+  }, [word, open, resetAudio, resetIllustration])
 
   const handleChange = useCallback(
     (field: string, value: string) => {
@@ -66,14 +70,14 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
     []
   )
 
-  const hasChanges = hasWordChanges(form, originalForm, audioChanged)
+  const hasChanges = hasWordChanges(form, originalForm, audioChanged, illustrationChanged)
 
   const handleSubmit = useCallback(async () => {
     const errors = validateWordForm(form)
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0 || !word) return
 
-    if (!hasWordChanges(form, originalForm, audioChanged)) {
+    if (!hasWordChanges(form, originalForm, audioChanged, illustrationChanged)) {
       setSubmitError("No se detectaron cambios")
       return
     }
@@ -85,7 +89,7 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
       const res = await fetch(`/api/admin/words/${word.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildWordPayload(form, audioUrl)),
+        body: JSON.stringify(buildWordPayload(form, audioUrl, illustrationUrl)),
       })
 
       const data = await res.json()
@@ -116,7 +120,7 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
     } finally {
       setIsSubmitting(false)
     }
-  }, [form, word, originalForm, audioUrl, audioChanged, onOpenChange, onSaved])
+  }, [form, word, originalForm, audioUrl, audioChanged, illustrationUrl, illustrationChanged, onOpenChange, onSaved])
 
   const handleClose = useCallback(() => {
     if (!isSubmitting && !isTransitioning) {
@@ -182,6 +186,7 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
     culturalContext: form.culturalContext || null,
     category: form.category || null,
     audioUrl: audio.audioUrl || audio.audioPreview || null,
+    illustrationUrl: illustration.illustrationUrl,
     status: form.status,
   }
 
@@ -199,6 +204,7 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
     pendingStatusTransition,
     hasChanges,
     audio,
+    illustration,
     previewWord,
     handleChange,
     handleSubmit,

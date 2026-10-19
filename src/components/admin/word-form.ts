@@ -4,6 +4,7 @@ export interface WordForEdit {
   nasaYuwe: string
   pronunciation: string | null
   audioUrl: string | null
+  illustrationUrl?: string | null
   culturalContext: string | null
   category: string | null
   status: string
@@ -45,8 +46,13 @@ export function validateWordForm(form: WordForm): Record<string, string> {
   return errors
 }
 
-export function hasWordChanges(form: WordForm, original: WordForm, audioChanged: boolean): boolean {
-  if (audioChanged) return true
+export function hasWordChanges(
+  form: WordForm,
+  original: WordForm,
+  audioChanged: boolean,
+  illustrationChanged = false
+): boolean {
+  if (audioChanged || illustrationChanged) return true
   return (
     form.spanish !== original.spanish ||
     form.nasaYuwe !== original.nasaYuwe ||
@@ -57,7 +63,11 @@ export function hasWordChanges(form: WordForm, original: WordForm, audioChanged:
   )
 }
 
-export function buildWordPayload(form: WordForm, audioUrl: string | null): Record<string, unknown> {
+export function buildWordPayload(
+  form: WordForm,
+  audioUrl: string | null,
+  illustrationUrl: string | null = null
+): Record<string, unknown> {
   return {
     spanish: form.spanish.trim(),
     nasaYuwe: form.nasaYuwe.trim(),
@@ -66,5 +76,8 @@ export function buildWordPayload(form: WordForm, audioUrl: string | null): Recor
     category: form.category.trim() || null,
     status: form.status,
     audioUrl: audioUrl || null,
+    // Se manda siempre el valor vigente (el existente si no se tocó), igual
+    // que audioUrl: así el PUT nunca ve un null espurio y no borra la imagen.
+    illustrationUrl: illustrationUrl || null,
   }
 }

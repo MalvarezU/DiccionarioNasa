@@ -49,6 +49,7 @@ import {
 } from "@/lib/admin-utils"
 import { WordPreviewModal } from "./WordPreviewModal"
 import { EditWordAudio } from "./EditWordAudio"
+import { EditWordIllustration } from "./EditWordIllustration"
 import { useEditWord } from "./use-edit-word"
 import { type WordForEdit } from "./word-form"
 
@@ -80,6 +81,7 @@ export function EditWordModal({
     setShowPublishNoAudioWarning,
     pendingStatusTransition,
     audio,
+    illustration,
     previewWord,
     handleChange,
     handleSubmit,
@@ -193,6 +195,7 @@ export function EditWordModal({
 
           <Separator />
           <EditWordAudio audio={audio} />
+          <EditWordIllustration illustration={illustration} />
 
           {submitError && (
             <div className="flex items-start gap-2">

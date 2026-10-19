@@ -15,6 +15,7 @@ function toWordDetail(localWord: {
   nasaYuwe: string;
   pronunciation?: string | null;
   audioUrl?: string | null;
+  illustrationUrl?: string | null;
   culturalContext?: string | null;
   category?: string | null;
   examples?: string | null;
@@ -25,6 +26,7 @@ function toWordDetail(localWord: {
     nasaYuwe: localWord.nasaYuwe,
     pronunciation: localWord.pronunciation ?? null,
     audioUrl: localWord.audioUrl ?? null,
+    illustrationUrl: localWord.illustrationUrl ?? null,
     culturalContext: localWord.culturalContext ?? null,
     category: localWord.category ?? null,
     examples: localWord.examples ? JSON.parse(localWord.examples) : null,

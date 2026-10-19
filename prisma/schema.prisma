@@ -164,6 +164,11 @@ model DictionaryWord {
   nasaYuwe        String   // Word in Nasa Yuwe
   pronunciation   String?  // Written pronunciation guide
   audioUrl        String?  // URL to native speaker audio
+  /// URL pública de la ilustración de la palabra (/api/media/[id]).
+  /// Igual que audioUrl, es un string y no una relación: el binario vive en
+  /// MediaAsset (Postgres) y se sirve por el mismo origen, así el service
+  /// worker del PWA lo puede cachear sin conexión.
+  illustrationUrl String?
   culturalContext String?  // Cultural context of use
   category        String?  // Grammatical category (noun, verb, adj, etc.)
   examples        String?  // Usage examples (JSON string)

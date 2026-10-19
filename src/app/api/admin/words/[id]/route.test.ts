@@ -53,6 +53,7 @@ const existingWord = {
   nasaYuwe: "ya:t",
   pronunciation: "yaat",
   audioUrl: null,
+  illustrationUrl: null,
   culturalContext: "Vivienda",
   category: "sustantivo",
   examples: null,

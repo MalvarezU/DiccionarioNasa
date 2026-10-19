@@ -82,6 +82,7 @@ export async function PUT(
       'nasaYuwe',
       'pronunciation',
       'audioUrl',
+      'illustrationUrl',
       'culturalContext',
       'category',
       'examples',

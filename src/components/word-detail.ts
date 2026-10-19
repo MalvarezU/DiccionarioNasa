@@ -4,6 +4,8 @@ export interface WordDetail {
   nasaYuwe: string;
   pronunciation: string | null;
   audioUrl: string | null;
+  /** Opcional a propósito: los datos locales viejos no la traen. */
+  illustrationUrl?: string | null;
   culturalContext: string | null;
   category: string | null;
   examples: Array<{ spanish: string; nasaYuwe: string }> | null;

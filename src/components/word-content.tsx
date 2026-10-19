@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { WordDetailSkeleton } from "@/components/skeletons"
+import { WordIllustration } from "@/components/dictionary/word-illustration"
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AudioPlayer } from "@/components/audio-player";
@@ -67,6 +68,15 @@ export function WordContent({
 
   return (
     <>
+      {/* Ilustración de la palabra: un solo componente reutilizable
+          (dictionary/word-illustration.tsx). El ancho máximo es el único
+          knob de tamaño; hoy la ficha es la única que la muestra. */}
+      <WordIllustration
+        url={word.illustrationUrl}
+        alt={word.spanish}
+        className="mx-auto mb-4 w-full max-w-[16rem]"
+      />
+
       {/* Category badges */}
       {categories.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 mb-2">

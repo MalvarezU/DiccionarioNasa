@@ -140,6 +140,8 @@ function WordDetailSkeleton() {
       data-testid="skeleton-word-detail"
       className="space-y-6 rounded-xl border border-outline-variant/20 p-6"
     >
+      {/* La ficha real abre con la ilustración cuadrada; el skeleton copia esa silueta. */}
+      <Skeleton className="mx-auto aspect-square w-full max-w-[16rem] rounded-xl" />
       <div className="space-y-3">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-32" />

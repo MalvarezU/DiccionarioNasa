@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react"
 import { type PreviewWordData } from "./WordPreviewModal"
 import { useWordAudio } from "./use-word-audio"
+import { useWordIllustration } from "./use-word-illustration"
 import {
   EMPTY_WORD_FORM,
   validateWordForm,
@@ -28,7 +29,9 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
   const [previewOpen, setPreviewOpen] = useState(false)
 
   const audio = useWordAudio()
+  const illustration = useWordIllustration()
   const { audioUrl, audioPreview, isUploadingAudio, removeAudio } = audio
+  const { illustrationUrl, resetIllustration } = illustration
 
   const handleChange = useCallback(
     (field: string, value: string) => {
@@ -46,7 +49,8 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
   const resetForm = useCallback(() => {
     setForm({ ...EMPTY_WORD_FORM })
     removeAudio()
-  }, [removeAudio])
+    resetIllustration(null)
+  }, [removeAudio, resetIllustration])
 
   const handleSubmit = useCallback(
     async (targetStatus: "DRAFT" | "PUBLISHED") => {
@@ -62,6 +66,7 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
           ...form,
           status: targetStatus,
           audioUrl: audioUrl || undefined,
+          illustrationUrl: illustrationUrl || undefined,
         }
 
         const res = await fetch("/api/admin/words", {
@@ -92,7 +97,7 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
         setIsSubmitting(false)
       }
     },
-    [form, audioUrl, resetForm, onOpenChange, onCreated]
+    [form, audioUrl, illustrationUrl, resetForm, onOpenChange, onCreated]
   )
 
   const handleClose = useCallback(() => {
@@ -112,6 +117,7 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
     culturalContext: form.culturalContext || null,
     category: form.category || null,
     audioUrl: audioUrl || audioPreview || null,
+    illustrationUrl: illustrationUrl || null,
     status: form.status,
   }
 
@@ -124,6 +130,7 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
     setPreviewOpen,
     isSubmitting,
     audio,
+    illustration,
     previewWord,
     handleChange,
     handleSubmit,

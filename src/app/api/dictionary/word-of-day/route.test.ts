@@ -25,6 +25,7 @@ const mockWord = {
   nasaYuwe: "ya:t",
   pronunciation: "yaat",
   audioUrl: "/audio/casa.mp3",
+  illustrationUrl: null,
   culturalContext: "Vivienda",
   category: "sustantivo",
   examples: null,
