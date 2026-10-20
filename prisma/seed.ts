@@ -15,17 +15,30 @@ async function createAdmin() {
 
   if (existing) {
     if (existing.role === 'admin') {
-      console.log('✓ Admin user already exists')
+      // B1.2: el admin del seed debe estar verificado para poder entrar.
+      // El callback signIn rechaza credenciales con emailVerified nulo.
+      if (!existing.emailVerified) {
+        await prisma.user.update({
+          where: { email },
+          data: { emailVerified: new Date(), verifyToken: null, verifyExpires: null },
+        })
+        console.log('✓ Admin user already exists (email verified)')
+      } else {
+        console.log('✓ Admin user already exists')
+      }
       return
     }
-    await prisma.user.update({ where: { email }, data: { role: 'admin' } })
+    await prisma.user.update({
+      where: { email },
+      data: { role: 'admin', emailVerified: new Date(), verifyToken: null, verifyExpires: null },
+    })
     console.log('✓ Existing user promoted to admin')
     return
   }
 
   const hashedPassword = await bcrypt.hash(password, 12)
   await prisma.user.create({
-    data: { email, password: hashedPassword, name, role: 'admin' },
+    data: { email, password: hashedPassword, name, role: 'admin', emailVerified: new Date() },
   })
   console.log('✓ Admin user created: admin@nasayuwe.com / AdminNasa2024!')
 }
