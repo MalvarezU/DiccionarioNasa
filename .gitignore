@@ -34,6 +34,7 @@ yarn-error.log*
 .env*
 !.env.example
 !.env.test.example
+!.env.test.mysql.example
 
 # vercel
 .vercel
@@ -71,7 +72,8 @@ server.log
 public/audio/*.mp3
 
 # Generated reports, agent context, and project docs (artifacts, not source)
-docs/
+docs/*
+!docs/database.md
 worklog.md
 agent-ctx/
 

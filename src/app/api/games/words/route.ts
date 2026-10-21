@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 /**
  * GET /api/games/words?count=&exclude=
  * Palabras PUBLISHED aleatorias para los juegos (nunca toda la tabla en
- * memoria: ORDER BY RANDOM() LIMIT en DB). Público, sin auth.
+ * memoria: ORDER BY RAND() LIMIT en DB). Público, sin auth.
  */
 const DEFAULT_COUNT = 12
 const MAX_COUNT = 24
@@ -23,14 +23,13 @@ export async function GET(request: NextRequest) {
       .slice(0, MAX_COUNT)
 
     const words = (await db.$queryRawUnsafe(
-      `SELECT id, spanish, "nasaYuwe", pronunciation
-       FROM "DictionaryWord"
+      `SELECT id, spanish, \`nasaYuwe\`, pronunciation
+       FROM DictionaryWord
        WHERE status = 'PUBLISHED'
-       ${exclude.length > 0 ? `AND id NOT IN (${exclude.map((_, i) => `$${i + 2}`).join(",")})` : ""}
-       ORDER BY RANDOM()
-       LIMIT $1`,
-      count,
-      ...exclude
+       ${exclude.length > 0 ? `AND id NOT IN (${exclude.map(() => "?").join(",")})` : ""}
+       ORDER BY RAND()
+       LIMIT ?`,
+      ...(exclude.length > 0 ? [...exclude, count] : [count])
     )) as Array<{
       id: string
       spanish: string

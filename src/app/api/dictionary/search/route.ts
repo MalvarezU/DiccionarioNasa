@@ -55,9 +55,8 @@ export async function GET(request: NextRequest) {
     )
 
     // Fetch more candidates than needed so we can rank and trim
-    // We use raw SQL with Postgres `unaccent` extension for accent-insensitive search
-    // (the extension must be enabled in Supabase: Database → Extensions → unaccent)
-    // Note: "nasaYuwe" is quoted because Postgres folds unquoted identifiers to lowercase
+    // MySQL/MariaDB: la collation utf8mb4_unicode_ci ya es case- y accent-insensitive,
+    // así que reemplaza al `unaccent` de Postgres. `nasaYuwe` va entre backticks.
     const searchPromise = db.$queryRaw<
       Array<{
         id: string
@@ -67,12 +66,12 @@ export async function GET(request: NextRequest) {
         category: string | null
       }>
     >`
-      SELECT id, spanish, "nasaYuwe", pronunciation, category
-      FROM "DictionaryWord"
+      SELECT id, spanish, \`nasaYuwe\`, pronunciation, category
+      FROM DictionaryWord
       WHERE status = 'PUBLISHED'
         AND (
-          lower(unaccent(spanish)) LIKE '%' || lower(unaccent(${query})) || '%'
-          OR lower(unaccent("nasaYuwe")) LIKE '%' || lower(unaccent(${query})) || '%'
+          spanish LIKE CONCAT('%', ${query}, '%')
+          OR \`nasaYuwe\` LIKE CONCAT('%', ${query}, '%')
         )
       LIMIT 50
     `

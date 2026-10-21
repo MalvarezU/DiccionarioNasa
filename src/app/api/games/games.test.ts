@@ -45,15 +45,18 @@ describe("GET /api/games/words [B2.1]", () => {
     const [sql, count] = vi.mocked(db.$queryRawUnsafe).mock.calls[0] as unknown as [string, number]
     expect(count).toBe(8)
     expect(sql).toContain("PUBLISHED")
-    expect(sql).toContain("RANDOM()")
+    expect(sql).toContain("RAND()")
   })
 
   it("limita count a 1..24 y excluye ids", async () => {
     vi.mocked(db.$queryRawUnsafe).mockResolvedValue([])
     await wordsGET(new Request("http://x/api/games/words?count=99&exclude=a,b") as never)
-    const [, count, ...rest] = vi.mocked(db.$queryRawUnsafe).mock.calls[0] as unknown as [string, number, ...string[]]
-    expect(count).toBe(24)
-    expect(rest).toEqual(["a", "b"])
+    const [, ...args] = vi.mocked(db.$queryRawUnsafe).mock.calls[0] as unknown as [
+      string,
+      ...Array<string | number>,
+    ]
+    // MySQL enlaza parámetros por posición: los `?` de NOT IN van antes que el `?` de LIMIT
+    expect(args).toEqual(["a", "b", 24])
   })
 })
 

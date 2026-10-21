@@ -20,7 +20,7 @@ function asPayload(value: unknown): string | null {
 async function resolveWordId(wordSpanish: unknown): Promise<string | null> {
   if (typeof wordSpanish !== "string" || !wordSpanish.trim()) return null
   const word = await db.dictionaryWord.findFirst({
-    where: { spanish: { equals: wordSpanish.trim(), mode: "insensitive" }, status: "PUBLISHED" },
+    where: { spanish: { equals: wordSpanish.trim() }, status: "PUBLISHED" },
     select: { id: true },
   })
   return word?.id ?? null
@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
       const dupe = await db.lesson.findFirst({
         where: {
           moduleId: current.moduleId,
-          title: { equals: title, mode: "insensitive" },
+          title: { equals: title },
           NOT: { id },
         },
         select: { id: true },
@@ -117,7 +117,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
         const dupe = await db.lesson.findFirst({
           where: {
             moduleId: current.moduleId,
-            title: { equals: title, mode: "insensitive" },
+            title: { equals: title },
             NOT: { id },
           },
           select: { id: true },

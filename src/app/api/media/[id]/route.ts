@@ -4,7 +4,8 @@ import { db } from "@/lib/db"
 type Ctx = { params: Promise<{ id: string }> }
 
 /**
- * GET /api/media/[id] — sirve una imagen guardada en Postgres.
+ * GET /api/media/[id] — sirve una imagen guardada en la BD
+ * (BYTEA en Postgres, LONGBLOB en MariaDB).
  *
  * Es pública a propósito: las imágenes de curso las ve cualquier visitante.
  * El contenido es inmutable (un id, un contenido), así que se cachea para
