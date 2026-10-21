@@ -142,15 +142,15 @@ model UserLessonProgress {
 }
 
 model MediaAsset {
-  /// Imágenes guardadas EN LA BD (columna LONGBLOB en MySQL/MariaDB), no en Supabase Storage.
-  /// Se sirven por /api/media/[id] con caché inmutable. Ventaja lateral: al ser
-  /// mismo origen, el service worker del PWA sí las puede cachear offline.
+  /// Metadatos de archivos guardados en Cloudflare R2 (rama feat/r2-media).
+  /// `data` (LONGBLOB) se eliminó: el binario vive en el bucket y acá solo
+  /// la clave. Las URLs públicas se derivan con publicUrl(objectKey).
   id         String   @id @default(cuid())
+  objectKey  String   @unique // "images/<uuid>.png" | "audios/<wordId>/..."
   filename   String
   /// MIME detectado por firma binaria, no el que declara el cliente.
   mimeType   String
   size       Int
-  data       Bytes
   uploadedBy String?
   createdAt  DateTime @default(now())
 

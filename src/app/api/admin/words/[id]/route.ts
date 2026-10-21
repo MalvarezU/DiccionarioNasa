@@ -1,11 +1,8 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { requireAdmin, requireRole } from '@/lib/auth'
-import {
-  getSupabaseServer,
-  AUDIO_BUCKET,
-  audioUrlToObjectPath,
-} from '@/lib/supabase-server'
+import { audioRefToKey } from '@/lib/media/storage'
+import { deleteObject } from '@/lib/r2'
 
 // Valid status values
 const VALID_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED']
@@ -195,19 +192,13 @@ export async function DELETE(
       )
     }
 
-    // Limpiar audio en Storage antes de borrar la ficha (best-effort)
-    const objectPath = existingWord.audioUrl
-      ? audioUrlToObjectPath(existingWord.audioUrl)
+    // Limpiar audio en R2 antes de borrar la ficha (best-effort)
+    const key = existingWord.audioUrl
+      ? audioRefToKey(existingWord.audioUrl)
       : null
-    if (objectPath) {
+    if (key) {
       try {
-        const supabase = getSupabaseServer()
-        const { error: storageError } = await supabase.storage
-          .from(AUDIO_BUCKET)
-          .remove([objectPath])
-        if (storageError) {
-          console.error('Error eliminando audio de la palabra:', storageError)
-        }
+        await deleteObject(key)
       } catch (storageException) {
         console.error('Error eliminando audio de la palabra:', storageException)
       }

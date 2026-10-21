@@ -14,8 +14,8 @@ import {
  *
  * Comprime en el cliente (canvas, ~1600px) ANTES de mandar: una foto de
  * celular baja de 3-6 MB a cientos de KB y entra en el límite de 3 MB que el
- * servidor valida. Devuelve la URL pública /api/media/[id] que ya sirve la
- * API de la fase 1.
+ * servidor valida. Devuelve la URL pública R2 que ya sirve para bloques,
+ * portadas e ilustraciones.
  */
 
 export function MediaPicker({

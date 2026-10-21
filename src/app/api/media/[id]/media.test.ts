@@ -10,7 +10,10 @@ import { GET } from "./route"
 const params = (id: string) => ({ params: Promise.resolve({ id }) })
 
 describe("GET /api/media/[id]", () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.R2_PUBLIC_BASE_URL = "https://cdn.test"
+  })
 
   it("404 si no existe", async () => {
     vi.mocked(db.mediaAsset.findUnique).mockResolvedValue(null as never)
@@ -18,24 +21,25 @@ describe("GET /api/media/[id]", () => {
     expect(res.status).toBe(404)
   })
 
-  it("sirve los bytes con el MIME guardado y caché inmutable", async () => {
-    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  it("302 a la URL pública R2 del objeto", async () => {
     vi.mocked(db.mediaAsset.findUnique).mockResolvedValue({
-      data: Buffer.from(bytes),
-      mimeType: "image/png",
-      size: bytes.byteLength,
+      objectKey: "images/abc.png",
     } as never)
 
     const res = await GET({} as never, params("m1"))
 
-    expect(res.status).toBe(200)
-    expect(res.headers.get("Content-Type")).toBe("image/png")
-    expect(res.headers.get("Content-Length")).toBe(String(bytes.byteLength))
-    expect(res.headers.get("Cache-Control")).toContain("immutable")
-    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff")
+    expect(res.status).toBe(302)
+    expect(res.headers.get("Location")).toBe("https://cdn.test/images/abc.png")
+  })
 
-    const devuelto = new Uint8Array(await res.arrayBuffer())
-    expect(Array.from(devuelto)).toEqual(Array.from(bytes))
+  it("503 si R2 no está configurado", async () => {
+    delete process.env.R2_PUBLIC_BASE_URL
+    vi.mocked(db.mediaAsset.findUnique).mockResolvedValue({
+      objectKey: "images/abc.png",
+    } as never)
+
+    const res = await GET({} as never, params("m1"))
+    expect(res.status).toBe(503)
   })
 
   it("500 si la base falla", async () => {

@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server"
+import { randomUUID } from "crypto"
 import { requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { validateImageUpload } from "@/lib/media/image"
+import { putObject, deleteObject, publicUrl } from "@/lib/r2"
 
 /**
  * POST /api/admin/upload-image (editor+)
  *
- * Guarda la imagen EN POSTGRES (MediaAsset.data, bytea) y devuelve la URL
- * pública `/api/media/[id]` para usar en un bloque de imagen.
+ * Valida la imagen por firma binaria, la sube a Cloudflare R2
+ * (`images/<uuid>.<ext>`) y guarda solo los metadatos en MariaDB.
+ * Devuelve la URL pública permanente para usar en bloques e ilustraciones.
  *
- * El MIME que declara el cliente se ignora: se detecta por firma binaria.
- * Ver src/lib/media/image.ts.
+ * Si el insert en BD falla después del upload, el objeto se borra de R2
+ * para no dejar huérfanos.
  */
 export async function POST(request: Request) {
   const { session, error } = await requireRole("editor")
@@ -35,20 +38,42 @@ export async function POST(request: Request) {
 
   try {
     const userId = (session!.user as { id?: string }).id ?? null
-    const asset = await db.mediaAsset.create({
-      data: {
-        filename: file.name,
-        mimeType: check.mimeType,
-        size: bytes.byteLength,
-        data: Buffer.from(bytes),
-        uploadedBy: userId,
-      },
-      select: { id: true, filename: true, mimeType: true, size: true },
-    })
+    const key = `images/${randomUUID()}.${check.ext}`
+
+    try {
+      await putObject(key, Buffer.from(bytes), check.mimeType)
+    } catch (uploadError) {
+      console.error("R2 upload error:", uploadError)
+      return NextResponse.json(
+        { message: "Error al subir la imagen al almacenamiento" },
+        { status: 500 }
+      )
+    }
+
+    let asset
+    try {
+      asset = await db.mediaAsset.create({
+        data: {
+          objectKey: key,
+          filename: file.name,
+          mimeType: check.mimeType,
+          size: bytes.byteLength,
+          uploadedBy: userId,
+        },
+        select: { id: true, objectKey: true, filename: true, mimeType: true, size: true },
+      })
+    } catch (dbError) {
+      // Compensación: el binario ya está en R2 pero sin fila que lo
+      // referencie; se borra para no acumular huérfanos.
+      await deleteObject(key).catch((cleanupError) =>
+        console.error("R2 cleanup error:", cleanupError)
+      )
+      throw dbError
+    }
 
     return NextResponse.json({
       ...asset,
-      url: `/api/media/${asset.id}`,
+      url: publicUrl(key),
       message: "Imagen subida correctamente",
     })
   } catch (err) {

@@ -8,7 +8,7 @@ import { useState, useCallback } from "react"
  *
  * Espejo de use-word-audio, con una diferencia: acá el archivo no se sube
  * desde el hook, lo sube MediaPicker (comprime en el cliente y devuelve la
- * URL pública de /api/media/[id]). El estado siempre guarda la URL vigente
+ * URL pública R2). El estado siempre guarda la URL vigente
  * —la existente si no se tocó— para que el PUT nunca reciba un null espurio.
  */
 export function useWordIllustration() {
