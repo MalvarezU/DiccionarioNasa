@@ -242,3 +242,14 @@ Escaneo manual sin hallazgos en `src/`.
 ### H-33 — Comunicación solo HTTPS (OK por diseño)
 
 `API_BASE_URL` default https; verificar no allowlist HTTP en prod.
+
+## 12. Bitácora de remediación (2026-10-22, commit 6fa70a2)
+
+| Hallazgo | Acción | Estado |
+|---|---|---|
+| H-14 score manipulation | Cap a 1.000.000 en score/streak | Mitigado (parcial) |
+| H-20 audioUrl import | Validación URL http/https en import-helpers | Mitigado |
+| CSV injection (export) | Prefijo `'` en celdas que inician con =,+,-,@ | Mitigado |
+| H-27 admin noindex | `src/app/admin/layout.tsx` metadata robots noindex; robots.txt Disallow /admin/ /api/ | Mitigado |
+
+Pendiente: H-15 (passwordChangedAt requiere migración), H-04 xlsx (sin fix upstream), H-12 móvil, DAST, IDOR dinámico.
