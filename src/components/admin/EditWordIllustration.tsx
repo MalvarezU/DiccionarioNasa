@@ -5,7 +5,7 @@ import { ImageIcon, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { MediaPicker } from "./lesson-editor/media-picker"
+import { MediaPicker } from "@/components/media/media-picker"
 import { type useWordIllustration } from "./use-word-illustration"
 
 type Illustration = ReturnType<typeof useWordIllustration>
@@ -60,7 +60,11 @@ export function EditWordIllustration({
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <MediaPicker onSubida={handleIllustrationChange} etiqueta="Reemplazar ilustración" />
+            <MediaPicker
+              variant="illustration"
+              onSubida={handleIllustrationChange}
+              etiqueta="Reemplazar ilustración"
+            />
             {illustrationChanged && (
               <Button
                 type="button"
@@ -76,7 +80,11 @@ export function EditWordIllustration({
           </div>
         </div>
       ) : (
-        <MediaPicker onSubida={handleIllustrationChange} etiqueta="Subir ilustración (cuadrada 1:1)" />
+        <MediaPicker
+          variant="illustration"
+          onSubida={handleIllustrationChange}
+          etiqueta="Subir ilustración (cuadrada 1:1)"
+        />
       )}
     </div>
   )

@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import type { LessonBlock, MediaRef } from "@/lib/courses/blocks"
 import { WordPicker, type PalabraEncontrada } from "./word-picker"
-import { MediaPicker } from "./media-picker"
+import { MediaPicker } from "@/components/media/media-picker"
 
 /**
  * Formularios de los bloques PRESENTACIONALES del editor:

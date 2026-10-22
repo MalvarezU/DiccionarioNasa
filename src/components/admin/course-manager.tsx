@@ -16,7 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { EditLessonModal } from "./edit-lesson-modal"
 import { LessonContentModal } from "./lesson-editor/lesson-content-modal"
-import { MediaPicker } from "./lesson-editor/media-picker"
+import { MediaPicker } from "@/components/media/media-picker"
 import { LESSON_LABEL, STATUS_LABEL } from "./course-types"
 import { useCourseManager } from "./use-course-manager"
 
