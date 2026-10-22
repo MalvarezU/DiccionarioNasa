@@ -16,10 +16,14 @@ export type BulkUnmatched = { file: FileRef; reason: "sin coincidencia" | "ambig
 function normalizeStem(name: string): string {
   const dot = name.lastIndexOf(".")
   const stem = (dot === -1 ? name : name.slice(0, dot)).trim()
-  return stem
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
+  return (
+    stem
+      // Los archivos suelen usar -/_ donde la palabra lleva espacios
+      .replace(/[-_]+/g, " ")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+  )
 }
 
 export function matchIllustrationFiles(

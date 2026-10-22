@@ -22,6 +22,13 @@ describe("matchIllustrationFiles", () => {
     expect(matched[0]).toMatchObject({ wordId: "w3" })
   })
 
+  it("guiones y guiones bajos valen como espacios (nombres de archivo)", () => {
+    const { matched } = matchIllustrationFiles([{ name: "e2e-casa-grande_1.png" }], [
+      { id: "w1", spanish: "E2E Casa Grande 1", nasaYuwe: "Yat" },
+    ])
+    expect(matched).toHaveLength(1)
+  })
+
   it("sin coincidencia no se adivina", () => {
     const { matched, unmatched } = matchIllustrationFiles([{ name: "perro.png" }], WORDS)
     expect(matched).toEqual([])

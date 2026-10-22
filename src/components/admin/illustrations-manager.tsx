@@ -73,28 +73,42 @@ export function IllustrationsManager() {
   const [bulkDone, setBulkDone] = useState<{ ok: number; errores: number } | null>(null)
   const bulkInputRef = useRef<HTMLInputElement>(null)
 
+  // Filtros vivos en un ref: load() es estable y siempre lee lo vigente.
+  // (Si leyera del closure, un refresh disparado por un upload anterior
+  // usaría el filtro viejo y pisaría la lista con datos obsoletos.)
+  const filtersRef = useRef({ page: 1, search: "", filter: "all" as typeof filter, category: "" })
+  filtersRef.current = { page, search, filter, category }
+
+  const loadSeq = useRef(0)
   const load = useCallback(async () => {
+    // Guarda anti-carrera: si otro load() se emite mientras este vuela,
+    // la respuesta vieja se descarta (si no, un refresh anterior puede
+    // pisar datos más nuevos al llegar último).
+    const seq = ++loadSeq.current
+    const f = filtersRef.current
     setLoading(true)
     setError(null)
     try {
-      const params: Record<string, string> = { page: String(page) }
-      if (search.trim()) params.search = search.trim()
-      if (filter !== "all") params.illustration = filter
-      if (category.trim()) params.category = category.trim()
+      const params: Record<string, string> = { page: String(f.page) }
+      if (f.search.trim()) params.search = f.search.trim()
+      if (f.filter !== "all") params.illustration = f.filter
+      if (f.category.trim()) params.category = f.category.trim()
       const body = await fetchWords(params)
+      if (seq !== loadSeq.current) return
       setWords(body.words)
       setTotal(body.total)
       setTotalPages(body.totalPages)
     } catch (err) {
+      if (seq !== loadSeq.current) return
       setError(err instanceof Error ? err.message : "Error al cargar")
     } finally {
-      setLoading(false)
+      if (seq === loadSeq.current) setLoading(false)
     }
-  }, [page, search, filter, category])
+  }, [])
 
   useEffect(() => {
     void load()
-  }, [load])
+  }, [page, search, filter, category, load])
 
   function resetPage() {
     setPage(1)
