@@ -87,3 +87,32 @@ asume tabla vacía; con filas hay que partirla):
   huérfanas, barrido de secretos limpio (nada sensible en trackeados),
   suite final 885 unit + 45 E2E, `r2-prune` deja el bucket en 0 huérfanos.
 - Para prod, ver §5: la migración de schema de esta rama asume tabla vacía.
+
+## 8. Ilustraciones de fichas (rama `feat/ilustraciones-fichas`)
+
+Flujo completo: `MediaPicker` (variante `illustration`: crop 1:1 → 512px
+WebP en cliente) → `POST /api/admin/upload-image` → R2 (`images/<uuid>.webp`)
+→ `illustrationUrl` en la ficha → render `WordIllustration` (512×512,
+`next/image` vía `/_next/image`) → cacheable offline por el SW (origen R2)
+→ incluida en `export` y `sync` (móvil + IndexedDB).
+
+- **Uploader unificado** (`src/components/media/media-picker.tsx`,
+  variante `block` 1600px libre | `illustration` 512px WebP). Lo usan
+  fichas, portadas y bloques.
+- **Panel** `/admin/illustrations`: filtros (búsqueda, con/sin
+  ilustración, categoría exacta), paginación, subida individual,
+  quitar (PUT `null` limpia el asset server-side) y **lote** con matching
+  nombre-archivo ≈ español/nasaYuwe normalizado (0 o 2+ candidatos nunca
+  se adivinan; `-`/`_` valen como espacio).
+- **Reemplazo sin huérfanos**: el PUT borra el asset anterior server-side;
+  `DELETE /api/media/[id]` (editor+) para borrado explícito con
+  `storageDeleted` transparente. `r2-prune` como red.
+- **Robustez del panel**: `load()` estable vía ref + número de secuencia
+  (un refresh viejo nunca pisa datos nuevos).
+- **E2E** (`admin.screenplay.spec.ts`, proyecto `screenplay-admin`):
+  panel lista/filtra, subir y ver en ficha, reemplazo borra la anterior
+  de R2 (404 verificado), lote con matching. Requieren R2 real
+  (`.env.r2.test`) y `E2E_R2_IMAGE_URL` para offline-media. Convención de
+  teardown: archivos de test con prefijo minúsculo `e2e-` (el match es
+  case-sensitive).
+- Rama pendiente de merge a `main` (E2E 49/49, unit 914+).
