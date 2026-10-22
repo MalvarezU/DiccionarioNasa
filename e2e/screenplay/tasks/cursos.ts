@@ -45,7 +45,9 @@ export class AbrirCurso implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.getByText(this.titulo).click();
+    // Preciso por rol: el título también aparece en el card de detalle y
+    // getByText rompe en strict mode cuando ambos están visibles.
+    await page.getByRole("button", { name: this.titulo }).click();
     await expect(page.getByLabel("Título del nuevo módulo")).toBeVisible({ timeout: 15000 });
   }
 }

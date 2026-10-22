@@ -290,14 +290,14 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     expect(href).toMatch(/^\/cursos\//);
   });
 
-  // Fase 1 de cursos: las imágenes van a Postgres (bytea) y se sirven por
-  // /api/media/[id]. Prueba de ida y vuelta contra el server real.
+  // Las imágenes van a R2 (objectKey en BD) y se sirven por su URL pública
+  // (con 302 de compat en /api/media/[id]). Prueba de ida y vuelta real.
   const PNG_1X1 = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
     "base64"
   );
 
-  test("imagen de curso: sube a Postgres y vuelve idéntica", async ({ page }) => {
+  test("imagen de curso: sube a R2 y vuelve idéntica", async ({ page }) => {
     const subida = await page.request.post("/api/admin/upload-image", {
       multipart: {
         file: { name: "e2e-curso.png", mimeType: "image/png", buffer: PNG_1X1 },
@@ -305,17 +305,20 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     });
     expect(subida.status()).toBe(200);
     const body = await subida.json();
-    expect(body.url).toMatch(/^\/api\/media\//);
+    expect(body.objectKey).toMatch(/^images\/.+\.png$/);
     expect(body.mimeType).toBe("image/png");
+    expect(body.url).toMatch(/^https?:\/\/.+\/images\/.+\.png$/);
 
+    // Los bytes vuelven EXACTOS desde la URL pública R2.
     const servida = await page.request.get(body.url);
     expect(servida.status()).toBe(200);
     expect(servida.headers()["content-type"]).toBe("image/png");
-    expect(servida.headers()["cache-control"]).toContain("immutable");
-    expect(servida.headers()["x-content-type-options"]).toBe("nosniff");
-
-    // Los bytes vuelven EXACTOS: es lo que prueba que el bytea está sano.
     expect((await servida.body()).equals(PNG_1X1)).toBe(true);
+
+    // Compat: /api/media/[id] redirige a la URL pública.
+    const legado = await page.request.get(`/api/media/${body.id}`, { maxRedirects: 0 });
+    expect(legado.status()).toBe(302);
+    expect(legado.headers()["location"]).toBe(body.url);
   });
 
   test("imagen de curso: rechaza SVG disfrazado de PNG", async ({ page }) => {

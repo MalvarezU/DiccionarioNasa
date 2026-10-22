@@ -14,6 +14,12 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 set -a; . "./$ENV_FILE"; set +a
+# R2 test (Fase 5-6): si existe .env.r2.test se suma al entorno para que el
+# dev server de Playwright suba al bucket de test. Sin él, los uploads 500.
+if [ -f ".env.r2.test" ]; then
+  echo "→ R2 test env (.env.r2.test)..."
+  set -a; . ./.env.r2.test; set +a
+fi
 
 COMPOSE_FILE="docker-compose.test.yml"
 case "${DATABASE_URL:-}" in
