@@ -191,3 +191,16 @@ Auth (M1), RBAC (M2), admin (M3), diccionario (M4), cursos (M5), juegos (M6), me
 - **Ubicación:** `src/app/api/sync/route.ts`, `sync/seed`.
 - **Evidencia:** requiere auth; revisar validación de `cursor`/`since` y límites.
 - **Remediación:** validar formato de cursor y `since` ISO; limitar pageSize.
+
+## 9. Bitácora de remediación (2026-10-22, commit dc53a67)
+
+| Hallazgo | Acción | Estado |
+|---|---|---|
+| H-01 demo endpoint | Gate con `NODE_ENV !== production` (404 en prod); password removido de respuesta | Mitigado |
+| H-02 seed admin default | Requiere `ADMIN_PASSWORD` en prod; warn en dev; no imprime password | Mitigado |
+| H-03 headers HTTP | X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, HSTS, CSP-Report-Only | Mitigado (CSP en report-only) |
+| H-10 ignoreBuildErrors | `false`; build completo OK (0 errores) | Mitigado |
+| H-18 NaN paginación | Guard `Number.isFinite` en `/api/admin/words` | Mitigado |
+| H-19 status no validado | Enum validation en POST words | Mitigado |
+
+Pendiente: H-04 (xlsx sin fix), H-05/H-06/H-07 (SCA), H-12 (móvil), H-14 (score), H-15 (session invalidation), M9-M10, MM1-MM5, DAST.
