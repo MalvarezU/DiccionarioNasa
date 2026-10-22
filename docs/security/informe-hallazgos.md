@@ -204,3 +204,41 @@ Auth (M1), RBAC (M2), admin (M3), diccionario (M4), cursos (M5), juegos (M6), me
 | H-19 status no validado | Enum validation en POST words | Mitigado |
 
 Pendiente: H-04 (xlsx sin fix), H-05/H-06/H-07 (SCA), H-12 (móvil), H-14 (score), H-15 (session invalidation), M9-M10, MM1-MM5, DAST.
+
+## 10. Revisión manual M9–M10 e Infraestructura (2026-10-22)
+
+### H-26 — Sin headers de seguridad (Mitigado en dc53a67)
+
+CSP en report-only; pendiente promover a enforced tras validar en staging.
+
+### H-27 — `robots.txt` y noindex en `/admin` (Severidad: Bajo)
+
+- **Ubicación:** `public/robots.txt`.
+- **Acción:** verificar que `/admin` esté disallowed; añadir meta noindex en layout admin.
+
+### H-28 — Supabase RLS no verificado (Severidad: Medio)
+
+- **Acción:** documentar si RLS está habilitado; si no, justificar (app usa service role server-side).
+
+### H-29 — Backups y retención (Severidad: Informativo)
+
+- **Acción:** documentar política de backups de Supabase y retención de audit logs.
+
+## 11. Revisión manual App Móvil (2026-10-22)
+
+### H-30 — 4 vulnerabilidades críticas en dependencias Expo (Severidad: Alto)
+
+- **Ubicación:** `piiyaak-app` (expo-router/expo-constants chain, vite).
+- **Acción:** planificar upgrade de Expo SDK; auditar impacto runtime.
+
+### H-31 — Cookie de sesión solo en memoria (Severidad: Bajo/Informativo)
+
+- **Decisión de producto:** persistencia vs seguridad; si se persiste, usar SecureStore.
+
+### H-32 — Sin secretos hardcodeados (OK)
+
+Escaneo manual sin hallazgos en `src/`.
+
+### H-33 — Comunicación solo HTTPS (OK por diseño)
+
+`API_BASE_URL` default https; verificar no allowlist HTTP en prod.
