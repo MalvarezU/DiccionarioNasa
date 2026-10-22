@@ -171,3 +171,23 @@ Auth (M1), RBAC (M2), admin (M3), diccionario (M4), cursos (M5), juegos (M6), me
 - **Ubicación:** `src/app/api/dictionary/export/route.ts`.
 - **Evidencia:** `pageSize` max 1000, sin auth; solo PUBLISHED. Aceptable pero vigilar abuso.
 - **Remediación:** documentar; considerar rate-limit si se abusa.
+
+## 8. Hallazgos adicionales (revisión manual M5–M8, 2026-10-22)
+
+### H-23 — Cursos/lecciones: autorización y validación consistentes (OK)
+
+- **Ubicación:** `courses/[id]`, `modules`, `lessons`.
+- **Evidencia:** GET filtra por status PUBLISHED salvo editor+; PATCH valida status enum; coverImage con allowlist (`isAllowedCoverImageUrl`); DELETE solo admin.
+- **Conclusión:** sin hallazgos críticos/altos. Pendiente prueba dinámica de IDOR en progress por usuario.
+
+### H-24 — Media: path traversal protegido (OK)
+
+- **Ubicación:** `src/lib/media/storage.ts` (`audioRefToKey`, `isSafeKey`, `sanitizeFileName`).
+- **Evidencia:** rechaza `..` y caracteres fuera de `[\w.\-/]`; delete-audio valida clave.
+- **Conclusión:** OK. Bucket R2 público por diseño (H-11).
+
+### H-25 — Sync: cursor/since validados parcialmente (Severidad: Bajo)
+
+- **Ubicación:** `src/app/api/sync/route.ts`, `sync/seed`.
+- **Evidencia:** requiere auth; revisar validación de `cursor`/`since` y límites.
+- **Remediación:** validar formato de cursor y `since` ISO; limitar pageSize.
