@@ -74,3 +74,16 @@ asume tabla vacía; con filas hay que partirla):
 ✅ Datos legacy migrables con script idempotente + backup previo.
 ✅ `@supabase/supabase-js` fuera de la rama.
 ✅ Suite unit (879) + E2E (45) verde.
+
+## 7. Cambios recientes y auditoría
+
+- `e2e-local.sh` suma `.env.r2.test` al entorno (sin él, los uploads 500).
+- `AbrirCurso` clickea por rol `button` (el título aparece también en el
+  card de detalle y `getByText` rompía en strict mode).
+- `offline-media`: el auto-registro del SW en `load` llega tarde en tests;
+  el spec registra explícito + reload, con timeout de 30 s para compilación
+  en frío.
+- Auditoría: `tsc` + `eslint` limpios, `migrate status` in-sync, cero filas
+  huérfanas, barrido de secretos limpio (nada sensible en trackeados),
+  suite final 885 unit + 45 E2E, `r2-prune` deja el bucket en 0 huérfanos.
+- Para prod, ver §5: la migración de schema de esta rama asume tabla vacía.
