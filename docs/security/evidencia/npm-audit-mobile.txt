@@ -1,0 +1,320 @@
+# npm audit report
+
+@vitest/mocker  <=4.1.11
+Severity: moderate
+Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock - https://github.com/advisories/GHSA-82fw-gwwq-j7x9
+Vitest: Code injection via unauthenticated manual mock registration - https://github.com/advisories/GHSA-qxg6-89mg-rqv8
+fix available via `npm audit fix --force`
+Will install vitest@5.0.5, which is a breaking change
+node_modules/@vitest/mocker
+  vitest  0.0.95 - 4.1.10
+  Depends on vulnerable versions of @vitest/mocker
+  Depends on vulnerable versions of tinypool
+  node_modules/vitest
+
+@xmldom/xmldom  <=0.8.14
+Severity: high
+xmldom: XML injection via unsafe CDATA serialization allows attacker-controlled markup insertion - https://github.com/advisories/GHSA-wh4c-j3r5-mjhp
+xmldom: Uncontrolled recursion in XML serialization leads to DoS - https://github.com/advisories/GHSA-2v35-w6hq-6mfw
+xmldom has XML injection through unvalidated DocumentType serialization - https://github.com/advisories/GHSA-f6ww-3ggp-fr8h
+xmldom has XML node injection through unvalidated processing instruction serialization - https://github.com/advisories/GHSA-x6wf-f3px-wcqx
+xmldom has XML node injection through unvalidated comment serialization - https://github.com/advisories/GHSA-j759-j44w-7fr8
+xmldom: XML fragment injection via invalid EntityReference.nodeName during requireWellFormed serialization - https://github.com/advisories/GHSA-6gmq-8vp8-gcm6
+xmldom: Element name injection via createElement() bypasses requireWellFormed - https://github.com/advisories/GHSA-w2rr-34g9-rvrj
+xmldom: Attribute name injection via setAttribute() bypasses requireWellFormed - https://github.com/advisories/GHSA-4w3w-2rp5-g8jm
+xmldom: Processing Instruction Target Injection Bypasses requireWellFormed - https://github.com/advisories/GHSA-c7q8-3ch8-vqpv
+xmldom: DocType `name` Injection Bypasses requireWellFormed - https://github.com/advisories/GHSA-27p8-2357-5qqv
+xmldom: Parser silently accepts a not-well-formed end tag whose name is followed by a line break and trailing content - https://github.com/advisories/GHSA-6h8r-xr42-gp59
+xmldom: Quadratic-time attribute deduplication - https://github.com/advisories/GHSA-8344-3jmq-59r6
+xmldom: End-tag Whitespace-Trim Regex ReDoS — quadratic backtracking in the 0.8.x end-tag parser - https://github.com/advisories/GHSA-x4fp-j954-r2f4
+xmldom: Quadratic-memory consumption - https://github.com/advisories/GHSA-965w-775f-mr7g
+xmldom: Quadratic-time parsing via the malformed-input recovery path — `parseElementStartPart` re-scan and `normalize()` adjacent-text merge - https://github.com/advisories/GHSA-93r5-fhx6-vmg9
+fix available via `npm audit fix`
+node_modules/@xmldom/xmldom
+  @expo/plist  <=0.0.1-canary-20240418-8d74597 || 0.0.14 - 0.2.2
+  Depends on vulnerable versions of @xmldom/xmldom
+  node_modules/@expo/plist
+
+brace-expansion  <=1.1.20 || 2.0.0 - 2.1.6
+Severity: high
+brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service - https://github.com/advisories/GHSA-q2hr-2g5m-vwhr
+brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service - https://github.com/advisories/GHSA-q2hr-2g5m-vwhr
+brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion - https://github.com/advisories/GHSA-qhr7-859c-m2p7
+brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion - https://github.com/advisories/GHSA-qhr7-859c-m2p7
+brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion - https://github.com/advisories/GHSA-6j4f-fj2g-mc7p
+brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion - https://github.com/advisories/GHSA-6j4f-fj2g-mc7p
+fix available via `npm audit fix`
+node_modules/brace-expansion
+node_modules/glob/node_modules/brace-expansion
+
+braces  *
+Severity: high
+braces vulnerable to stack-exhaustion denial of service through deeply nested patterns - https://github.com/advisories/GHSA-vfj7-8cjw-p6xm
+fix available via `npm audit fix --force`
+Will install expo@44.0.6, which is a breaking change
+node_modules/braces
+  micromatch  >=0.2.0
+  Depends on vulnerable versions of braces
+  node_modules/micromatch
+    @jest/transform  <=30.2.0
+    Depends on vulnerable versions of jest-haste-map
+    Depends on vulnerable versions of micromatch
+    node_modules/@jest/transform
+      babel-jest  24.2.0-alpha.0 - 30.2.0
+      Depends on vulnerable versions of @jest/transform
+      node_modules/babel-jest
+        react-native  <=0.0.0-ffdfbbec0 || 0.71.0-rc.0 - 0.85.0-rc.7 || >=0.89.0-nightly-20260909-b830082cf
+        Depends on vulnerable versions of @react-native/codegen
+        Depends on vulnerable versions of @react-native/community-cli-plugin
+        Depends on vulnerable versions of babel-jest
+        Depends on vulnerable versions of jest-environment-node
+        node_modules/react-native
+    fast-glob  *
+    Depends on vulnerable versions of micromatch
+    node_modules/fast-glob
+      @expo/cli  <=0.0.0-canary-20231123-1b19f96-4 || >=0.0.1-canary-20231125-d600e44
+      Depends on vulnerable versions of @expo/code-signing-certificates
+      Depends on vulnerable versions of @expo/config
+      Depends on vulnerable versions of @expo/config-plugins
+      Depends on vulnerable versions of @expo/metro-config
+      Depends on vulnerable versions of @expo/prebuild-config
+      Depends on vulnerable versions of @expo/rudder-sdk-node
+      Depends on vulnerable versions of @react-native/dev-middleware
+      Depends on vulnerable versions of cacache
+      Depends on vulnerable versions of fast-glob
+      Depends on vulnerable versions of node-forge
+      Depends on vulnerable versions of tar
+      Depends on vulnerable versions of tempy
+      node_modules/@expo/cli
+        expo  >=41.0.0-alpha.0
+        Depends on vulnerable versions of @expo/cli
+        Depends on vulnerable versions of @expo/config
+        Depends on vulnerable versions of @expo/config-plugins
+        Depends on vulnerable versions of @expo/metro-config
+        Depends on vulnerable versions of babel-preset-expo
+        Depends on vulnerable versions of expo-asset
+        Depends on vulnerable versions of expo-constants
+        Depends on vulnerable versions of expo-modules-autolinking
+        node_modules/expo
+      expo-modules-autolinking  <=2.1.0-canary-20250221-ef26fed
+      Depends on vulnerable versions of fast-glob
+      node_modules/expo-modules-autolinking
+      globby  >=8.0.0
+      Depends on vulnerable versions of fast-glob
+      node_modules/globby
+        del  >=5.0.0
+        Depends on vulnerable versions of globby
+        node_modules/del
+          tempy  0.7.0 - 2.0.0
+          Depends on vulnerable versions of del
+          node_modules/tempy
+    jest-haste-map  18.1.0 - 30.2.0
+    Depends on vulnerable versions of micromatch
+    node_modules/jest-haste-map
+    jest-message-util  18.5.0-alpha.7da3df39 - 30.2.0
+    Depends on vulnerable versions of micromatch
+    node_modules/jest-message-util
+      @jest/fake-timers  <=30.2.0
+      Depends on vulnerable versions of jest-message-util
+      node_modules/@jest/fake-timers
+        @jest/environment  <=30.2.0
+        Depends on vulnerable versions of @jest/fake-timers
+        node_modules/@jest/environment
+          jest-environment-node  24.2.0-alpha.0 - 30.2.0
+          Depends on vulnerable versions of @jest/environment
+          Depends on vulnerable versions of @jest/fake-timers
+          node_modules/jest-environment-node
+    jscodeshift  0.3.20 - 17.3.0
+    Depends on vulnerable versions of micromatch
+    node_modules/jscodeshift
+      @react-native/codegen  <=0.77.0-rc.7
+      Depends on vulnerable versions of jscodeshift
+      node_modules/@react-native/codegen
+        @react-native/babel-plugin-codegen  0.73.0-nightly-20230603-fd9e295be - 0.73.0-nightly-20231002-0371014a3 || 0.73.2 - 0.74.0-nightly-20240220-e9351f0f8 || 0.74.1 - 0.77.0-rc.7
+        Depends on vulnerable versions of @react-native/codegen
+        node_modules/@react-native/babel-plugin-codegen
+          @react-native/babel-preset  <=0.73.0-nightly-20231002-0371014a3 || 0.73.19 - 0.74.0-nightly-20240220-e9351f0f8 || 0.74.1 - 0.77.0-rc.7
+          Depends on vulnerable versions of @react-native/babel-plugin-codegen
+          node_modules/@react-native/babel-preset
+            @react-native/metro-babel-transformer  <=0.73.0-nightly-20231002-0371014a3 || 0.73.13 - 0.74.0-nightly-20240220-e9351f0f8 || 0.74.1 - 0.77.0-rc.7
+            Depends on vulnerable versions of @react-native/babel-preset
+            node_modules/@react-native/metro-babel-transformer
+              @react-native/community-cli-plugin  *
+              Depends on vulnerable versions of @react-native/dev-middleware
+              Depends on vulnerable versions of @react-native/metro-babel-transformer
+              Depends on vulnerable versions of metro
+              Depends on vulnerable versions of metro-config
+              node_modules/@react-native/community-cli-plugin
+            babel-preset-expo  <=0.0.1-canary-20240418-8d74597 || 11.0.0 - 12.1.0-canary-20250221-ef26fed
+            Depends on vulnerable versions of @react-native/babel-preset
+            node_modules/babel-preset-expo
+    metro-file-map  *
+    Depends on vulnerable versions of micromatch
+    node_modules/metro-file-map
+      metro  >=0.71.0
+      Depends on vulnerable versions of metro-config
+      Depends on vulnerable versions of metro-file-map
+      Depends on vulnerable versions of metro-transform-worker
+      node_modules/metro
+        metro-config  >=0.71.0
+        Depends on vulnerable versions of metro
+        node_modules/metro-config
+        metro-transform-worker  >=0.71.0
+        Depends on vulnerable versions of metro
+        node_modules/metro-transform-worker
+
+decode-uri-component  <=0.4.2
+Severity: moderate
+decode-uri-component: Denial of service via exponential decoding of malformed percent-encoded input - https://github.com/advisories/GHSA-vcc3-ghjq-m6fr
+fix available via `npm audit fix`
+node_modules/decode-uri-component
+  query-string  5.0.0 - 9.4.1
+  Depends on vulnerable versions of decode-uri-component
+  node_modules/query-string
+    @react-navigation/core  <=7.22.0 || 8.0.0-alpha.0 - 8.0.0-alpha.9
+    Depends on vulnerable versions of query-string
+    node_modules/@react-navigation/core
+
+fast-uri  3.0.0 - 3.1.7
+Severity: moderate
+fast-uri vulnerable to inconsistent host case normalization via percent-encoded octets - https://github.com/advisories/GHSA-hrr3-gc8f-f4qj
+fix available via `npm audit fix`
+node_modules/fast-uri
+
+image-size  0.6.3 - 2.0.2
+Severity: high
+image-size: JXL and HEIF parsers allow denial of service through infinite loops - https://github.com/advisories/GHSA-5p2g-fcmc-qvqq
+image-size: ICNS parser allows denial of service through an infinite loop - https://github.com/advisories/GHSA-w3rx-r6r6-pgpr
+fix available via `npm audit fix`
+node_modules/image-size
+
+node-forge  *
+Severity: high
+node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements - https://github.com/advisories/GHSA-86w9-cpqp-85rv
+fix available via `npm audit fix --force`
+Will install expo@44.0.6, which is a breaking change
+node_modules/node-forge
+  @expo/code-signing-certificates  *
+  Depends on vulnerable versions of node-forge
+  node_modules/@expo/code-signing-certificates
+  selfsigned  1.1.1 - 4.0.1
+  Depends on vulnerable versions of node-forge
+  node_modules/selfsigned
+    @react-native/dev-middleware  0.74.0-nightly-20231003-5dedf277c - 0.74.0-nightly-20240220-e9351f0f8 || 0.74.1 - 0.79.0-rc.4
+    Depends on vulnerable versions of selfsigned
+    node_modules/@react-native/dev-middleware
+
+postcss  <=8.5.22
+Severity: high
+PostCSS has XSS via Unescaped </style> in its CSS Stringify Output - https://github.com/advisories/GHSA-qx2v-qp2m-jg93
+PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments - https://github.com/advisories/GHSA-6g55-p6wh-862q
+PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset - https://github.com/advisories/GHSA-fxqj-rqcc-2cmp
+PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure - https://github.com/advisories/GHSA-r28c-9q8g-f849
+fix available via `npm audit fix --force`
+Will install expo@44.0.6, which is a breaking change
+node_modules/postcss
+  @expo/metro-config  <=0.0.1-canary-20240418-8d74597 || 0.1.49-alpha.0 - 55.0.21 || 56.0.0-canary-20260212-4f61309 - 56.0.5 || 56.0.14-canary-20260526-6cd5e37 - 56.0.14-canary-20260701-9100865 || 57.0.0-canary-20260526-13e89ca - 57.0.0-canary-20260723-64edab9 || 58.0.0-canary-20260806-8c2d007 - 58.0.0-canary-20260909-ea7a89a
+  Depends on vulnerable versions of @expo/config
+  Depends on vulnerable versions of postcss
+  node_modules/@expo/metro-config
+
+shell-quote  1.8.4 - 1.10.0
+Severity: critical
+shell-quote: `quote()` command injection via a line terminator in a token after a `{ comment }` token - https://github.com/advisories/GHSA-pqg4-j6r4-53mv
+fix available via `npm audit fix`
+node_modules/shell-quote
+
+source-map-js  1.0.0 - 1.2.1
+Severity: high
+source-map-js allows event-loop denial of service through indexed source-map section offsets - https://github.com/advisories/GHSA-68fv-2mgg-jv7q
+fix available via `npm audit fix`
+node_modules/source-map-js
+
+tar  <=7.5.20
+Severity: critical
+node-tar Vulnerable to Arbitrary File Creation/Overwrite via Hardlink Path Traversal - https://github.com/advisories/GHSA-34x7-hfp2-rc4v
+node-tar is Vulnerable to Arbitrary File Overwrite and Symlink Poisoning via Insufficient Path Sanitization - https://github.com/advisories/GHSA-8qq5-rm4j-mr97
+Arbitrary File Read/Write via Hardlink Target Escape Through Symlink Chain in node-tar Extraction - https://github.com/advisories/GHSA-83g3-92jg-28cx
+tar has Hardlink Path Traversal via Drive-Relative Linkpath - https://github.com/advisories/GHSA-qffp-2rhf-9h96
+node-tar Symlink Path Traversal via Drive-Relative Linkpath - https://github.com/advisories/GHSA-9ppj-qmqm-q256
+Race Condition in node-tar Path Reservations via Unicode Ligature Collisions on macOS APFS - https://github.com/advisories/GHSA-r6q2-hw4h-h46w
+node-tar applies PAX size override to intermediary GNU long-name/long-link headers, causing tar parser interpretation differential (file smuggling) - https://github.com/advisories/GHSA-vmf3-w455-68vh
+node-tar: Process crash via PAX numeric path type confusion - https://github.com/advisories/GHSA-w8wr-v893-vjvp
+node-tar: Decompression/parse DoS via unlimited input - https://github.com/advisories/GHSA-23hp-3jrh-7fpw
+node-tar: Negative tar entry size causes infinite loop in archive replace - https://github.com/advisories/GHSA-8x88-c5mf-7j5w
+node-tar: Uncaught Exception DoS via NUL byte in PAX path/linkpath records - https://github.com/advisories/GHSA-gvwx-54wh-qm9j
+node-tar: Uncontrolled recursion in mapHas/filesFilter allows uncatchable stack-overflow DoS via crafted long-path tar with member selection - https://github.com/advisories/GHSA-r292-9mhp-454m
+fix available via `npm audit fix --force`
+Will install expo@44.0.6, which is a breaking change
+node_modules/tar
+  cacache  14.0.0 - 18.0.4
+  Depends on vulnerable versions of tar
+  node_modules/cacache
+
+tinypool  <=2.1.1
+Severity: critical
+Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution - https://github.com/advisories/GHSA-5gmw-xhrv-c9v3
+Tinypool: Prototype Pollution Gadget to RCE in run() options - https://github.com/advisories/GHSA-85c8-ppgw-ccpr
+fix available via `npm audit fix --force`
+Will install vitest@5.0.5, which is a breaking change
+node_modules/tinypool
+
+uuid  <11.1.1
+Severity: moderate
+uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided - https://github.com/advisories/GHSA-w5hq-g745-h8pq
+fix available via `npm audit fix --force`
+Will install expo@44.0.6, which is a breaking change
+node_modules/uuid
+node_modules/xcode/node_modules/uuid
+  @expo/bunyan  >=3.0.0
+  Depends on vulnerable versions of uuid
+  node_modules/@expo/bunyan
+    @expo/rudder-sdk-node  *
+    Depends on vulnerable versions of @expo/bunyan
+    Depends on vulnerable versions of uuid
+    node_modules/@expo/rudder-sdk-node
+  xcode  0.9.2 - 3.0.2-nightly.20251125002453809.sha.e6b981ec
+  Depends on vulnerable versions of uuid
+  node_modules/xcode
+    @expo/config-plugins  <=54.0.5 || 54.1.0-canary-20250930-9dc59d3 - 55.0.11 || 56.0.0-canary-20260212-4f61309 - 56.0.16 || 57.0.0-canary-20260526-13e89ca - 57.0.10 || 58.0.0-canary-20260806-8c2d007 - 58.0.9
+    Depends on vulnerable versions of xcode
+    node_modules/@expo/config-plugins
+      @expo/config  <=0.0.1-canary-20240418-8d74597 || 3.3.23-alpha.0 - 12.0.7 || 12.0.9-canary-20250912-b5ce2a8 || 12.0.10-canary-20250919-7a31b96 - 12.0.10-canary-20250930-9dc59d3 || 12.0.11-canary-20251003-7b9d7ff - 12.0.11-canary-20251127-587bc53 || 12.0.12-canary-20251205-756eb7a - 12.0.12-canary-20251210-1f163e3 || 12.0.13-canary-20251211-7da85ea - 12.0.13-canary-20251216-6e1f9a7 || 12.0.14-canary-20251223-b83b31e - 12.0.14-canary-20260121-a63c0dd || 55.0.0-canary-20260223-05214f1 || 55.0.4-canary-20260128-67ce8d5 || 55.0.9-canary-20260424-7bedc9d - 55.0.9-canary-20260429-a5e59cf || 55.0.12-canary-20260327-0789fbc - 55.0.12-canary-20260402-9da566b || 56.0.0-canary-20260212-4f61309 - 56.0.0 || 56.0.10-canary-20260526-6cd5e37 - 56.0.10-canary-20260701-9100865 || 57.0.0-canary-20260526-13e89ca - 57.0.0-canary-20260723-64edab9 || 58.0.0-canary-20260806-8c2d007 - 58.0.0-canary-20260909-ea7a89a
+      Depends on vulnerable versions of @expo/config-plugins
+      node_modules/@expo/config
+        @expo/prebuild-config  <=10.0.8 || 54.0.2-canary-20250912-b5ce2a8 || 54.0.4-canary-20250919-7a31b96 - 54.0.4-canary-20250930-9dc59d3 || 54.0.5-canary-20251003-7b9d7ff - 54.0.5-canary-20251009-9919e08 || 54.0.6-canary-20251013-623c5a6 - 54.0.6-canary-20251015-a6a1272 || 54.0.7-canary-20251023-4c86f95 - 54.0.7-canary-20251127-587bc53 || 54.0.8-canary-20251205-756eb7a - 54.0.8-canary-20251216-6e1f9a7 || 54.0.9-canary-20251223-b83b31e - 54.0.9-canary-20260119-17896bf || 55.0.0-canary-20260114-d8e19f5 - 55.0.0-canary-20260223-05214f1 || 55.0.4-canary-20260128-67ce8d5 || 55.0.8-canary-20260424-7bedc9d - 55.0.8-canary-20260429-a5e59cf || 55.0.12-canary-20260327-0789fbc - 55.0.12-canary-20260402-9da566b || 56.0.0-canary-20260212-4f61309 - 56.0.0 || 56.0.13-canary-20260526-6cd5e37 - 56.0.13-canary-20260701-9100865 || 57.0.0-canary-20260526-13e89ca - 57.0.0-canary-20260723-64edab9 || 58.0.0-canary-20260806-8c2d007 - 58.0.0-canary-20260909-ea7a89a
+        Depends on vulnerable versions of @expo/config
+        Depends on vulnerable versions of @expo/config-plugins
+        node_modules/@expo/prebuild-config
+        expo-constants  <=0.0.1-canary-20240418-8d74597 || 10.1.2 - 18.0.0-canary-20250404-87e2506 || 18.0.5-canary-20250826-f475166 || 18.0.6-canary-20250830-81bb199 || 18.0.9-canary-20250912-b5ce2a8 || 18.0.10-canary-20250919-7a31b96 - 18.0.10-canary-20251015-a6a1272 || 18.0.11-canary-20251023-4c86f95 || 18.0.14-canary-20260119-17896bf || 18.1.0-canary-20251031-b135dff - 55.0.0-canary-20260223-05214f1 || 55.0.3-canary-20260128-67ce8d5 || 55.0.10-canary-20260327-0789fbc - 55.0.10-canary-20260402-9da566b || 56.0.0-canary-20260212-4f61309 - 56.0.0-canary-20260506-964f25d
+        Depends on vulnerable versions of @expo/config
+        node_modules/expo-constants
+          expo-asset  <=0.0.1-canary-20240418-8d74597 || 8.6.1 - 12.0.0-canary-20250404-87e2506 || 12.0.5-canary-20250826-f475166 || 12.0.6-canary-20250830-81bb199 || 12.0.9-canary-20250912-b5ce2a8 || 12.0.10-canary-20250919-7a31b96 - 12.0.10-canary-20251031-b135dff || 12.0.11-canary-20251118-4ca99d5 - 12.0.11-canary-20251127-587bc53 || 12.0.12-canary-20251205-756eb7a - 12.0.12-canary-20251216-6e1f9a7 || 12.0.13-canary-20251223-b83b31e - 12.0.13-canary-20260121-a63c0dd || 55.0.0-canary-20260223-05214f1 || 55.0.3-canary-20260128-67ce8d5 || 55.0.11-canary-20260327-0789fbc - 55.0.11-canary-20260402-9da566b || 56.0.0-canary-20260212-4f61309 - 56.0.0-canary-20260506-964f25d
+          Depends on vulnerable versions of expo-constants
+          node_modules/expo/node_modules/expo-asset
+          expo-linking  <=0.0.1-canary-20240418-8d74597 || 2.2.2 - 7.1.8-canary-20250811-5c940c0 || 8.0.4-canary-20250826-f475166 || 8.0.6-canary-20250830-81bb199 || 8.0.9-canary-20250912-b5ce2a8 - 8.0.9-canary-20251031-b135dff || 8.0.10-canary-20251118-4ca99d5 - 8.0.10-canary-20251127-587bc53 || 8.0.11-canary-20251205-756eb7a - 8.0.11-canary-20251216-6e1f9a7 || 8.0.12-canary-20251223-b83b31e - 8.0.12-canary-20260121-a63c0dd || 55.0.0-canary-20260223-05214f1 || 55.0.4-canary-20260128-67ce8d5 || 55.0.10-canary-20260327-0789fbc - 55.0.10-canary-20260402-9da566b || 56.0.0-canary-20260212-4f61309 - 56.0.0-canary-20260506-964f25d || 57.0.0-canary-20260526-13e89ca - 57.0.0-canary-20260623-1c70a78 || 58.0.0-canary-20260806-8c2d007 - 58.0.0-canary-20260908-e343e6e
+          Depends on vulnerable versions of expo-constants
+          node_modules/expo-linking
+            expo-router  <=0.0.33 || 4.0.13-canary-20241211-61c49bd || 4.0.18-canary-20250124-42fe332 - 4.0.18-canary-20250306-d9d3e02 || 4.0.20-canary-20250320-7a205d3 || 4.0.21 - 5.0.2-preview.6 || 5.2.0-canary-20250611-f0afe80 - 6.0.0-preview.16 || 6.0.2-canary-20250912-b5ce2a8 || 6.0.8-canary-20250919-7a31b96 || 6.0.22-canary-20260119-17896bf || 6.1.0-canary-20250930-9dc59d3 - 55.0.0-canary-20260223-05214f1 || 55.0.9-canary-20260327-0789fbc - 55.0.9-canary-20260402-9da566b || 56.0.0-canary-20260212-4f61309 - 56.0.0-canary-20260506-964f25d
+            Depends on vulnerable versions of expo-constants
+            Depends on vulnerable versions of expo-linking
+            node_modules/expo-router
+
+vite  7.0.0 - 7.3.6
+Severity: high
+launch-editor: escapeCmdArgs() omits % escaping on Windows - https://github.com/advisories/GHSA-698v-4r3x-3vcv
+launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors - https://github.com/advisories/GHSA-r825-w8mm-5pxw
+launch-editor: `fs.existsSync()` existence check can be bypassed on Windows - https://github.com/advisories/GHSA-587h-7wmj-h5pm
+Vite: Cross origin script execution through Vite custom middleware - https://github.com/advisories/GHSA-9jrq-w75r-8gcw
+Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine - https://github.com/advisories/GHSA-rq7h-c2jc-7f22
+fix available via `npm audit fix`
+node_modules/vite
+
+
+61 vulnerabilities (18 moderate, 39 high, 4 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force

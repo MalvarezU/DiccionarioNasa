@@ -1,0 +1,117 @@
+# Informe de Hallazgos — Evaluación de Seguridad (Fase 1: Automatizado)
+
+> Rama: `security/evaluacion-seguridad` · Fecha: 2026-10-22 · Entorno: local (staging pendiente)
+
+## 1. Resumen ejecutivo
+
+| Fuente | Resultado |
+|---|---|
+| `npm audit` (web) | 33 vulnerabilidades (1 low, 6 moderate, 24 high, 2 critical) |
+| `npm audit` (móvil) | 61 vulnerabilidades (18 moderate, 39 high, 4 critical) |
+| `tsc --noEmit` (web) | 0 errores |
+| `vitest run` (web) | 914 passed, 1 skipped (95 archivos) |
+| Escaneo manual de secretos | 2 hallazgos (demo endpoint, seed default admin) |
+| Headers de seguridad HTTP | No configurados (CSP/HSTS/X-Frame-Options/etc.) |
+| gitleaks/semgrep | No instalados (pendiente) |
+
+## 2. Hallazgos
+
+### H-01 — Endpoint `/api/auth/demo` expone credenciales y crea usuario demo (Severidad: Alto)
+
+- **Ubicación:** `src/app/api/auth/demo/route.ts`
+- **Vector:** Información sensible en respuesta + creación de cuenta demo sin guard.
+- **Evidencia:** respuesta incluye `email: 'demo@nasayuwe.com'`, `password: 'demo123'`.
+- **Impacto:** enumeración/uso de cuenta demo en producción; escalación si el rol cambia.
+- **Remediación:** deshabilitar en producción (`NODE_ENV !== 'production'` o flag), o remover; no exponer password en respuesta.
+
+### H-02 — Seed con contraseña admin por defecto (Severidad: Alto)
+
+- **Ubicación:** `prisma/seed.ts` líneas 10-11, 43.
+- **Evidencia:** `ADMIN_PASSWORD || 'AdminNasa2024!'`, email `admin@nasayuwe.com`.
+- **Impacto:** si se ejecuta seed en prod sin env vars, cuenta admin predecible.
+- **Remediación:** fallar si `ADMIN_PASSWORD` no está definido en prod; no imprimir credenciales.
+
+### H-03 — Sin headers de seguridad HTTP (Severidad: Medio)
+
+- **Ubicación:** `next.config.ts`, `vercel.json`, `src/proxy.ts`.
+- **Evidencia:** no hay CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy.
+- **Impacto:** XSS/clickjacking/MIME-sniffing más probables.
+- **Remediación:** configurar headers en `next.config.ts` (o `vercel.json`) y revisar CSP por rutas.
+
+### H-04 — `xlsx` (SheetJS) con vulnerabilidades sin fix (Severidad: Alto)
+
+- **Ubicación:** `node_modules/xlsx` (importación/exportación de corpus).
+- **Evidencia:** GHSA-4r6h-8v6p-xvw6 (prototype pollution), GHSA-5pgg-2g8v-p4x9 (ReDoS). No fix disponible.
+- **Impacto:** procesamiento de archivos no confiables (admin import) → DoS/prototype pollution.
+- **Remediación:** validar/sanitizar CSV antes de parsear; considerar librería alternativa; limitar tamaño; ejecutar en worker aislado.
+
+### H-05 — `vite` vulnerable (dev/build dependency) (Severidad: Medio/Bajo en prod)
+
+- **Ubicación:** `node_modules/vite` (web y móvil).
+- **Impacto:** principalmente dev server; en prod no se sirve vite. Riesgo bajo en producción, pero SCA lo reporta.
+- **Remediación:** actualizar a versión parcheada cuando sea compatible.
+
+### H-06 — `uuid < 11.1.1` vía next-auth (Severidad: Medio)
+
+- **Ubicación:** `node_modules/next-auth/node_modules/uuid`.
+- **Impacto:** bounds check faltante en v3/v5/v6 cuando se pasa `buf`.
+- **Remediación:** actualizar next-auth a versión que use uuid ≥11.1.1.
+
+### H-07 — `undici` DoS (Severidad: Bajo/Medio)
+
+- **Ubicación:** `node_modules/undici`.
+- **Remediación:** `npm audit fix`.
+
+### H-08 — Audit logs accesibles por editor (Severidad: Bajo)
+
+- **Ubicación:** `src/app/api/admin/audit-logs/route.ts`, `export/route.ts` usan `requireRole("editor")`.
+- **Impacto:** principio de mínimo privilegio; bitácora de auditoría idealmente solo admin.
+- **Remediación:** evaluar restringir a `admin` (decisión de negocio).
+
+### H-09 — Rate-limit y lockout en memoria (Severidad: Medio, aceptado)
+
+- **Ubicación:** `src/lib/rate-limit.ts`, `src/lib/login-lockout.ts`.
+- **Impacto:** aproximado bajo múltiples instancias serverless (R-03 del SDD).
+- **Remediación:** documentar; migrar a Upstash Redis si se exige estricto.
+
+### H-10 — `ignoreBuildErrors: true` en Next (Severidad: Medio)
+
+- **Ubicación:** `next.config.ts`.
+- **Impacto:** errores de tipo no bloquean build (F6.3.3 pendiente).
+- **Remediación:** eliminar flag y dejar build en verde.
+
+### H-11 — Bucket R2 público por diseño (Severidad: Informativo)
+
+- **Ubicación:** `src/app/api/admin/upload-audio/route.ts` (comentario).
+- **Impacto:** audios accesibles sin firma; aceptado por diseño (reproductor/offline). Asegurar que no se suban datos sensibles.
+- **Remediación:** documentar política; validar que solo audio se suba (ya se hace).
+
+### H-12 — App móvil: 4 vulnerabilidades críticas (Severidad: Alto)
+
+- **Ubicación:** `piiyaak-app` (expo-router/expo-constants chain, vite).
+- **Impacto:** dependencias de toolchain; evaluar si afectan runtime móvil.
+- **Remediación:** `npm audit` detallado + actualizar Expo SDK cuando sea viable.
+
+### H-13 — App móvil: cookie de sesión solo en memoria (Severidad: Bajo/Informativo)
+
+- **Ubicación:** `piiyaak-app/src/auth.tsx`, `src/api.ts`.
+- **Impacto:** la sesión se pierde al cerrar la app; UX. Si se persiste, usar almacenamiento seguro (SecureStore).
+- **Remediación:** decidir política de persistencia; si se persiste, usar SecureStore + cifrado.
+
+## 3. Pruebas manuales pendientes (Fases F2–F6)
+
+Auth (M1), RBAC (M2), admin (M3), diccionario (M4), cursos (M5), juegos (M6), media (M7), sync (M8), infra (M9), privacidad (M10), móvil (MM1–MM5). Ver plan.
+
+## 4. Evidencia
+
+- `docs/security/evidencia/npm-audit-web.txt` (pendiente guardar)
+- `docs/security/evidencia/npm-audit-mobile.txt` (pendiente guardar)
+- `docs/security/evidencia/tsc.txt`, `vitest.txt`
+
+## 5. Próximos pasos
+
+1. Guardar outputs de auditoría en `evidencia/`.
+2. Ejecutar pruebas manuales M1–M4.
+3. Remediación de H-01, H-02, H-03, H-04 (prioridad).
+4. DAST con ZAP contra staging.
+5. Re-test y cierre.

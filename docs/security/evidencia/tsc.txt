@@ -1,0 +1,2 @@
+npm notice run nextjs_tailwind_shadcn_ts@0.2.0 npx
+npm notice run 'tsc' --noEmit
