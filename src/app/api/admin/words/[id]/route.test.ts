@@ -9,6 +9,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     dictionaryWord: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     auditLog: { create: vi.fn() },
+    mediaAsset: { findUnique: vi.fn(), findFirst: vi.fn(), delete: vi.fn() },
   },
 }))
 
@@ -94,6 +95,67 @@ describe("PUT /api/admin/words/[id]", () => {
       params
     )
     expect(res.status).toBe(404)
+  })
+
+  it("reemplazar ilustración borra el asset anterior sin bloquear el PUT", async () => {
+    allow()
+    mockDeleteObject.mockResolvedValue(undefined)
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      illustrationUrl: "/api/media/vieja",
+    })
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({
+      ...existingWord,
+      illustrationUrl: "/api/media/nueva",
+    })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    vi.mocked(db.mediaAsset.findUnique).mockResolvedValue({
+      id: "vieja",
+      objectKey: "images/vieja.png",
+    } as never)
+    vi.mocked(db.mediaAsset.delete).mockResolvedValue({ id: "vieja" } as never)
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ illustrationUrl: "/api/media/nueva" }),
+      }),
+      params
+    )
+
+    expect(res.status).toBe(200)
+    expect(db.mediaAsset.delete).toHaveBeenCalledWith({ where: { id: "vieja" } })
+    expect(mockDeleteObject).toHaveBeenCalledWith("images/vieja.png")
+  })
+
+  it("si la limpieza de la ilustración falla, el PUT igual responde 200", async () => {
+    allow()
+    mockDeleteObject.mockRejectedValue(new Error("R2 caído"))
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      illustrationUrl: "/api/media/vieja",
+    })
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({
+      ...existingWord,
+      illustrationUrl: "/api/media/nueva",
+    })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    vi.mocked(db.mediaAsset.findUnique).mockResolvedValue({
+      id: "vieja",
+      objectKey: "images/vieja.png",
+    } as never)
+    vi.mocked(db.mediaAsset.delete).mockResolvedValue({ id: "vieja" } as never)
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ illustrationUrl: "/api/media/nueva" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(200)
   })
 
   it("returns 400 for empty required fields", async () => {

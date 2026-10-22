@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { deleteMediaAssetById } from "@/lib/media/delete-asset"
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -32,6 +34,32 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
     return NextResponse.redirect(`${base}/${asset.objectKey}`, 302)
   } catch (err) {
     console.error("Media serve error:", err)
+    return NextResponse.json({ message: "Error interno del servidor" }, { status: 500 })
+  }
+}
+
+/**
+ * DELETE /api/media/[id] (editor+): borra la fila y el objeto en R2.
+ * Best-effort en R2: si falla, la fila ya está borrada y `r2-prune` recoge
+ * el huérfano. Responde `storageDeleted` para transparencia.
+ */
+export async function DELETE(_request: NextRequest, { params }: Ctx) {
+  const { error } = await requireRole("editor")
+  if (error) return error
+
+  try {
+    const { id } = await params
+    const result = await deleteMediaAssetById(id)
+    if (!result.deleted) {
+      return NextResponse.json({ message: "Imagen no encontrada" }, { status: 404 })
+    }
+    return NextResponse.json({
+      message: "Imagen eliminada",
+      id,
+      storageDeleted: result.storageDeleted,
+    })
+  } catch (err) {
+    console.error("Media delete error:", err)
     return NextResponse.json({ message: "Error interno del servidor" }, { status: 500 })
   }
 }
