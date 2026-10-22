@@ -11,7 +11,7 @@
  */
 import { PrismaClient } from "@prisma/client"
 import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3"
-import { getR2Client, r2Bucket, publicUrl } from "../src/lib/r2"
+import { getR2Client, r2Bucket } from "../src/lib/r2"
 import { audioRefToKey } from "../src/lib/media/storage"
 
 const db = new PrismaClient()
@@ -48,15 +48,8 @@ async function referencedKeys(): Promise<Set<string>> {
   const words = (await db.$queryRawUnsafe(
     `SELECT audioUrl FROM DictionaryWord WHERE audioUrl IS NOT NULL`
   )) as Array<{ audioUrl: string }>
-  const base = (() => {
-    try {
-      return publicUrl("x").replace(/\/x$/, "")
-    } catch {
-      return null
-    }
-  })()
   for (const w of words) {
-    const key = audioRefToKey(w.audioUrl, base)
+    const key = audioRefToKey(w.audioUrl)
     if (key) refs.add(key)
   }
   return refs

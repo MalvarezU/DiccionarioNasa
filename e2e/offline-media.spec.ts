@@ -26,9 +26,10 @@ test.describe("offline media R2 (Fase 5)", () => {
       if (regs.length === 0) await navigator.serviceWorker.register("/sw.js")
     })
     await page.reload()
+    // En frío (compilación dev) el registro + claim puede tardar: margen amplio.
     await expect
       .poll(() => page.evaluate(() => (navigator.serviceWorker.controller ? "ok" : "")), {
-        timeout: 15000,
+        timeout: 30000,
       })
       .toBe("ok")
 
