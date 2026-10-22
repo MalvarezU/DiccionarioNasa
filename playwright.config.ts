@@ -18,6 +18,12 @@ export default defineConfig({
   projects: [
     { name: "setup", testMatch: /setup\.ts/ },
     {
+      // Medios offline (Fase 5 R2): página pública, sin sesión ni datos.
+      // Requiere E2E_R2_IMAGE_URL (imagen real en el bucket de test).
+      name: "offline-media",
+      testMatch: /offline-media\.spec\.ts/,
+    },
+    {
       // Guardas de paleta: sin sesión ni datos. Corre primero para que una
       // regresión de color se reporte antes que la suite pesada.
       name: "paleta",

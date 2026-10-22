@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireRole } from "@/lib/auth"
-import {
-  getSupabaseServer,
-  AUDIO_BUCKET,
-  audioObjectPath,
-  getPublicAudioUrl,
-} from "@/lib/supabase-server"
+import { audioKey } from "@/lib/media/storage"
+import { putObject, publicUrl } from "@/lib/r2"
 
 const VALID_MIME_TYPES = [
   "audio/mpeg",
@@ -17,6 +13,12 @@ const VALID_MIME_TYPES = [
 ]
 
 const VALID_EXTENSIONS = [".mp3", ".wav", ".ogg"]
+
+const MIME_BY_EXTENSION: Record<string, string> = {
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".ogg": "audio/ogg",
+}
 
 export async function POST(request: Request) {
   const { error } = await requireRole("editor")
@@ -36,34 +38,28 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = getSupabaseServer()
     const buffer = Buffer.from(await file.arrayBuffer())
-    const objectPath = audioObjectPath("temp", file.name)
+    const key = audioKey("temp", file.name)
+    const contentType = MIME_BY_EXTENSION[extensionOf(file.name)] ?? "audio/mpeg"
 
-    const { error: uploadError } = await supabase.storage
-      .from(AUDIO_BUCKET)
-      .upload(objectPath, buffer, {
-        contentType: file.type,
-        cacheControl: "3600",
-        upsert: false,
-      })
-
-    if (uploadError) {
-      console.error("Supabase upload error:", uploadError)
+    try {
+      await putObject(key, buffer, contentType)
+    } catch (uploadError) {
+      console.error("R2 upload error:", uploadError)
       return NextResponse.json(
         { message: "Error al subir el audio al servidor" },
         { status: 500 }
       )
     }
 
-    // URL pública permanente (el bucket `audios` debe ser público).
-    // No usar signed URLs aquí: expiran en 1h y romperían el reproductor,
+    // URL pública permanente: el bucket es público a propósito, igual que
+    // antes. No usar signed URLs: expiran y romperían el reproductor,
     // favoritos, palabra del día y caché offline.
-    const audioUrl = getPublicAudioUrl(objectPath)
+    const audioUrl = publicUrl(key)
 
     return NextResponse.json({
       audioUrl,
-      objectPath,
+      objectKey: key,
       fileName: file.name,
       size: file.size,
       message: "Audio subido correctamente",
@@ -88,9 +84,13 @@ async function extractFile(request: Request): Promise<File | null> {
   }
 }
 
+function extensionOf(name: string): string {
+  const dotIndex = name.lastIndexOf(".")
+  return dotIndex === -1 ? "" : name.substring(dotIndex).toLowerCase()
+}
+
 function validateAudio(file: File): string | null {
-  const dotIndex = file.name.lastIndexOf(".")
-  const ext = dotIndex === -1 ? "" : file.name.substring(dotIndex).toLowerCase()
+  const ext = extensionOf(file.name)
 
   // La extensión es obligatoria (el MIME lo puede falsear el cliente)
   if (!VALID_EXTENSIONS.includes(ext)) {

@@ -12,16 +12,12 @@ vi.mock("@/lib/db", () => ({
   },
 }))
 
-const mockRemove = vi.fn()
+const mockDeleteObject = vi.fn()
 
-vi.mock("@/lib/supabase-server", () => ({
-  getSupabaseServer: vi.fn(() => ({
-    storage: { from: vi.fn(() => ({ remove: mockRemove })) },
-  })),
-  AUDIO_BUCKET: "audios",
-  audioUrlToObjectPath: vi.fn((url: string) =>
-    url.includes("supabase.co") ? "temp/audio.mp3" : null
-  ),
+vi.mock("@/lib/r2", () => ({
+  putObject: vi.fn(),
+  deleteObject: (...args: unknown[]) => mockDeleteObject(...args),
+  publicUrl: (key: string) => `https://cdn.test/${key}`,
 }))
 
 import { requireAdmin, requireRole } from "@/lib/auth"
@@ -286,7 +282,8 @@ describe("PATCH /api/admin/words/[id]", () => {
 describe("DELETE /api/admin/words/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockRemove.mockReset()
+    allow()
+    mockDeleteObject.mockReset()
   })
 
   it("deletes word without audio", async () => {
@@ -304,10 +301,10 @@ describe("DELETE /api/admin/words/[id]", () => {
     expect(res.status).toBe(200)
     expect(body.id).toBe("w1")
     expect(db.dictionaryWord.delete).toHaveBeenCalledWith({ where: { id: "w1" } })
-    expect(mockRemove).not.toHaveBeenCalled()
+    expect(mockDeleteObject).not.toHaveBeenCalled()
   })
 
-  it("deletes word and its audio from Storage", async () => {
+  it("deletes word and its audio from R2", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
       ...existingWord,
@@ -315,7 +312,7 @@ describe("DELETE /api/admin/words/[id]", () => {
     })
     vi.mocked(db.dictionaryWord.delete).mockResolvedValue(existingWord)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
-    mockRemove.mockResolvedValue({ error: null })
+    mockDeleteObject.mockResolvedValue(undefined)
 
     const res = await DELETE(
       new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),
@@ -323,10 +320,10 @@ describe("DELETE /api/admin/words/[id]", () => {
     )
 
     expect(res.status).toBe(200)
-    expect(mockRemove).toHaveBeenCalledWith(["temp/audio.mp3"])
+    expect(mockDeleteObject).toHaveBeenCalledWith("audios/temp/audio.mp3")
   })
 
-  it("deletes word even if Storage cleanup fails", async () => {
+  it("deletes word even if R2 cleanup fails", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
       ...existingWord,
@@ -334,7 +331,7 @@ describe("DELETE /api/admin/words/[id]", () => {
     })
     vi.mocked(db.dictionaryWord.delete).mockResolvedValue(existingWord)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
-    mockRemove.mockResolvedValue({ error: new Error("boom") })
+    mockDeleteObject.mockRejectedValue(new Error("boom"))
 
     const res = await DELETE(
       new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),

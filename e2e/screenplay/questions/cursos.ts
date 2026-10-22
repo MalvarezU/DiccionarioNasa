@@ -105,7 +105,11 @@ export class PortadaEnCatalogo {
         const img = page.getByAltText(`Portada de ${titulo}`);
         await img.waitFor({ timeout: 30000 });
         const src = await img.getAttribute("src");
-        return Boolean(src && src.startsWith("/api/media/"));
+        if (!src) return false;
+        // Igual que la allowlist del servidor: legacy /api/media o base R2.
+        if (src.startsWith("/api/media/")) return true;
+        const base = (process.env.R2_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+        return !!base && src.startsWith(`${base}/`);
       },
     };
   }

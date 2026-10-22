@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { db } from "@/lib/db"
 import { requireAdmin, requireRole } from "@/lib/auth"
+import { isAllowedCoverImageUrl } from "@/lib/media/storage"
 
 const VALID_STATUS = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const
 
@@ -122,17 +123,18 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
     if (typeof body?.status === "string" && (VALID_STATUS as readonly string[]).includes(body.status))
       data.status = body.status
     if (typeof body?.sequential === "boolean") data.sequential = body.sequential
-    // Portada: SOLO URL de nuestro servidor de media (/api/media/<id>). No se
-    // acepta cualquier URL — es la misma política de seguridad de los bloques
-    // (javascript:/data: no pueden entrar). null/"" la quita.
+    // Portada: SOLO URL de media propia (redirect legacy /api/media/<id>
+    // o URL pública R2). No se acepta cualquier URL — es la misma política
+    // de seguridad de los bloques (javascript:/data: no pueden entrar).
+    // null/"" la quita.
     if (body?.coverImage !== undefined) {
       if (body.coverImage === null || body.coverImage === "") {
         data.coverImage = null
-      } else if (typeof body.coverImage === "string" && body.coverImage.startsWith("/api/media/") && !/\s/.test(body.coverImage)) {
+      } else if (typeof body.coverImage === "string" && isAllowedCoverImageUrl(body.coverImage)) {
         data.coverImage = body.coverImage.trim()
       } else {
         return NextResponse.json(
-          { message: "coverImage tiene que ser una imagen subida (/api/media/...)" },
+          { message: "coverImage tiene que ser una imagen subida (media propia)" },
           { status: 400 }
         )
       }

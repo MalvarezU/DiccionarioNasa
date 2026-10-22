@@ -19,7 +19,7 @@ function asPayload(value: unknown): string | null {
 async function resolveWordId(wordSpanish: unknown): Promise<string | null> {
   if (typeof wordSpanish !== "string" || !wordSpanish.trim()) return null
   const word = await db.dictionaryWord.findFirst({
-    where: { spanish: { equals: wordSpanish.trim(), mode: "insensitive" }, status: "PUBLISHED" },
+    where: { spanish: { equals: wordSpanish.trim() }, status: "PUBLISHED" },
     select: { id: true },
   })
   return word?.id ?? null
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       return NextResponse.json({ message: "El título es obligatorio" }, { status: 400 })
     }
     const dupe = await db.lesson.findFirst({
-      where: { moduleId: id, title: { equals: title, mode: "insensitive" } },
+      where: { moduleId: id, title: { equals: title } },
       select: { id: true },
     })
     if (dupe) {

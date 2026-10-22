@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     if (valid.length > 0) {
       const names = [...new Set(valid.map((w) => w.data.spanish))]
       const existing = await db.dictionaryWord.findMany({
-        where: { spanish: { in: names, mode: "insensitive" } },
+        where: { spanish: { in: names } },
         select: { spanish: true },
       })
       for (const w of existing) taken.add(w.spanish.trim().toLowerCase())

@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     for (const row of rows) {
       // Re-chequeo de duplicado (pudo entrar algo entre preview y confirm)
       const dup = await db.dictionaryWord.findFirst({
-        where: { spanish: { equals: row.spanish, mode: "insensitive" } },
+        where: { spanish: { equals: row.spanish } },
       });
       if (dup) {
         skipped++;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireRole } from "@/lib/auth"
-import { getSupabaseServer, AUDIO_BUCKET, audioUrlToObjectPath } from "@/lib/supabase-server"
+import { audioRefToKey } from "@/lib/media/storage"
+import { deleteObject } from "@/lib/r2"
 
 export async function POST(request: Request) {
   const { error } = await requireRole("editor")
@@ -8,33 +9,33 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    // Acepta URL pública, signed URL legacy o objectPath directo
-    const { audioUrl, objectPath: directPath } = body
-    const rawRef = typeof directPath === "string" && directPath ? directPath : audioUrl
+    // Acepta URL pública R2, URL legacy de Supabase (pública o firmada)
+    // o clave directa.
+    const { audioUrl, objectPath: directPath, objectKey: directKey } = body
+    const rawRef =
+      (typeof directKey === "string" && directKey ? directKey : null) ??
+      (typeof directPath === "string" && directPath ? directPath : null) ??
+      audioUrl
 
     if (!rawRef || typeof rawRef !== "string") {
       return NextResponse.json(
-        { message: "Se requiere audioUrl u objectPath del audio" },
+        { message: "Se requiere audioUrl u objectKey del audio" },
         { status: 400 }
       )
     }
 
-    const objectPath = audioUrlToObjectPath(rawRef)
-    if (!objectPath) {
+    const key = audioRefToKey(rawRef)
+    if (!key) {
       return NextResponse.json(
-        { message: "No se pudo determinar la ruta del audio en Storage" },
+        { message: "No se pudo determinar la clave del audio en el storage" },
         { status: 400 }
       )
     }
 
-    const supabase = getSupabaseServer()
-
-    const { error: deleteError } = await supabase.storage
-      .from(AUDIO_BUCKET)
-      .remove([objectPath])
-
-    if (deleteError) {
-      console.error("Supabase delete error:", deleteError)
+    try {
+      await deleteObject(key)
+    } catch (deleteError) {
+      console.error("R2 delete error:", deleteError)
       return NextResponse.json(
         { message: "Error al eliminar el audio" },
         { status: 500 }
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: "Audio eliminado",
-      objectPath,
+      objectKey: key,
     })
   } catch (error) {
     console.error("Delete audio error:", error)
