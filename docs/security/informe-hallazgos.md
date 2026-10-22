@@ -115,3 +115,27 @@ Auth (M1), RBAC (M2), admin (M3), diccionario (M4), cursos (M5), juegos (M6), me
 3. Remediación de H-01, H-02, H-03, H-04 (prioridad).
 4. DAST con ZAP contra staging.
 5. Re-test y cierre.
+
+## 6. Hallazgos adicionales (revisión manual M1–M2, 2026-10-22)
+
+### H-14 — Manipulación de puntaje en juegos (Severidad: Medio)
+
+- **Ubicación:** `src/app/api/games/result/route.ts` (POST).
+- **Evidencia:** `score` proviene del cliente sin cota superior; `bestScore = Math.max(existing.bestScore, score)`. Racha igual.
+- **Impacto:** inflado de marcadores/leaderboard.
+- **Remediación:** validar rango por juego, o calcular score server-side a partir de respuestas; firmar/verificar sesión anónima.
+
+### H-15 — Sesiones no invalidadas al cambiar contraseña (Severidad: Bajo)
+
+- **Ubicación:** `src/app/api/auth/reset/route.ts`.
+- **Evidencia:** reset actualiza password y marca token usado, pero no revoca JWT existentes (NextAuth JWT stateless).
+- **Impacto:** un atacante con sesión robada mantiene acceso hasta expiración.
+- **Remediación:** incluir `passwordChangedAt` en JWT y rechazar tokens anteriores; o documentar limitación.
+
+### H-16 — Tokens de verificación/reset con buena entropía (Severidad: Informativo/OK)
+
+- **Ubicación:** `verify-request`, `recover` usan `randomUUID()` (v4, ~122 bits). Single-use y TTL correctos. Anti-enumeración (siempre 200). OK.
+
+### H-17 — IDOR en progress/favoritos/historial (Severidad: OK tras revisión)
+
+- **Ubicación:** `progress/route.ts`, `favorites`, `history` usan `userId` de sesión. OK. Pendiente prueba dinámica (E2E) para confirmar.
