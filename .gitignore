@@ -74,6 +74,7 @@ public/audio/*.mp3
 # Generated reports, agent context, and project docs (artifacts, not source)
 docs/*
 !docs/database.md
+!docs/media.md
 worklog.md
 agent-ctx/
 
