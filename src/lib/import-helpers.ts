@@ -45,6 +45,17 @@ function pick(values: Record<string, unknown>, ...names: string[]): unknown {
   return undefined;
 }
 
+const safeUrl = (v: unknown): string | null => {
+  const s = str(v)
+  if (!s) return null
+  try {
+    const u = new URL(s)
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null
+    return s
+  } catch {
+    return null
+  }
+}
 const str = (v: unknown): string | null => {
   if (v === undefined || v === null) return null;
   const s = String(v).trim();
@@ -116,7 +127,7 @@ export function validateRow(values: Record<string, unknown>): RowResult {
       spanish,
       nasaYuwe,
       pronunciation: str(pick(values, "pronunciation", "pronunciacion", "pronunciación")),
-      audioUrl: str(pick(values, "audioUrl", "audio_url", "audio")),
+      audioUrl: safeUrl(pick(values, "audioUrl", "audio_url", "audio")),
       culturalContext: str(
         pick(values, "culturalContext", "cultural_context", "contexto", "contexto cultural")
       ),
