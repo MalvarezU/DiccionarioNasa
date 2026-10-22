@@ -139,3 +139,35 @@ Auth (M1), RBAC (M2), admin (M3), diccionario (M4), cursos (M5), juegos (M6), me
 ### H-17 — IDOR en progress/favoritos/historial (Severidad: OK tras revisión)
 
 - **Ubicación:** `progress/route.ts`, `favorites`, `history` usan `userId` de sesión. OK. Pendiente prueba dinámica (E2E) para confirmar.
+
+## 7. Hallazgos adicionales (revisión manual M3–M4, 2026-10-22)
+
+### H-18 — Paginación con NaN en `/api/admin/words` (Severidad: Bajo)
+
+- **Ubicación:** `src/app/api/admin/words/route.ts` GET.
+- **Evidencia:** `parseInt` sin guardia `Number.isFinite`; `Math.max(1, NaN)` = NaN → `skip: NaN` puede error de Prisma.
+- **Remediación:** aplicar el patrón de `/api/admin/users` (Number + isFinite + floor).
+
+### H-19 — `status` no validado en creación de palabra (Severidad: Bajo)
+
+- **Ubicación:** `src/app/api/admin/words/route.ts` POST.
+- **Evidencia:** `status: status || "DRAFT"` acepta cualquier string.
+- **Remediación:** validar contra enum (DRAFT/PUBLISHED/ARCHIVED) o default DRAFT.
+
+### H-20 — `audioUrl` en importación no validado (Severidad: Bajo)
+
+- **Ubicación:** `src/lib/import-helpers.ts` (validateRow) + import routes.
+- **Evidencia:** `audioUrl` se acepta como string sin validar host/formato.
+- **Remediación:** validar URL (https + host allowlist R2/Supabase) o null.
+
+### H-21 — Sugerencias almacenan input sin sanitizar en audit log (Severidad: Bajo)
+
+- **Ubicación:** `src/app/api/dictionary/suggest/route.ts`.
+- **Evidencia:** `term`/`comment` se guardan vía JSON.stringify; riesgo si el panel admin renderiza sin escape.
+- **Remediación:** asegurar escape en UI; limitar charset.
+
+### H-22 — Export público con pageSize hasta 1000 (Severidad: Informativo)
+
+- **Ubicación:** `src/app/api/dictionary/export/route.ts`.
+- **Evidencia:** `pageSize` max 1000, sin auth; solo PUBLISHED. Aceptable pero vigilar abuso.
+- **Remediación:** documentar; considerar rate-limit si se abusa.
