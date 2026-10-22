@@ -8,7 +8,14 @@ const prisma = new PrismaClient()
 
 async function createAdmin() {
   const email = process.env.ADMIN_EMAIL || 'admin@nasayuwe.com'
-  const password = process.env.ADMIN_PASSWORD || 'AdminNasa2024!'
+  let password = process.env.ADMIN_PASSWORD
+  if (!password) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ADMIN_PASSWORD es obligatorio en producción (no usar default)')
+    }
+    console.warn('⚠ ADMIN_PASSWORD no definido: usando password de desarrollo (NO usar en prod)')
+    password = 'AdminNasa2024!'
+  }
   const name = process.env.ADMIN_NAME || 'Administrador'
 
   const existing = await prisma.user.findUnique({ where: { email } })
@@ -40,7 +47,7 @@ async function createAdmin() {
   await prisma.user.create({
     data: { email, password: hashedPassword, name, role: 'admin', emailVerified: new Date() },
   })
-  console.log('✓ Admin user created: admin@nasayuwe.com / AdminNasa2024!')
+  console.log('✓ Admin user created:', email)
 }
 
 function parseCSV(content: string) {

@@ -9,6 +9,9 @@ import { db } from '@/lib/db'
  * Only works if the demo user doesn't already exist.
  */
 export async function POST() {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ message: "No disponible en producción" }, { status: 404 })
+  }
   try {
     const existing = await db.user.findUnique({
       where: { email: 'demo@nasayuwe.com' },
@@ -18,7 +21,6 @@ export async function POST() {
       return NextResponse.json({
         message: 'Demo user already exists',
         email: 'demo@nasayuwe.com',
-        password: 'demo123',
       })
     }
 
@@ -37,7 +39,6 @@ export async function POST() {
     return NextResponse.json({
       message: 'Demo user created',
       email: 'demo@nasayuwe.com',
-      password: 'demo123',
     })
   } catch (error) {
     console.error('Demo user creation error:', error)

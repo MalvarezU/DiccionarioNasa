@@ -15,8 +15,12 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url)
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
-    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "20")))
+    const rawPage = Number(searchParams.get("page") ?? "1")
+    const rawPageSize = Number(searchParams.get("pageSize") ?? "20")
+    const page = Number.isFinite(rawPage) ? Math.max(1, Math.floor(rawPage)) : 1
+    const pageSize = Number.isFinite(rawPageSize)
+      ? Math.min(100, Math.max(1, Math.floor(rawPageSize)))
+      : 20
     const status = searchParams.get("status") || undefined
     const search = searchParams.get("search") || undefined
     const illustration = searchParams.get("illustration")
@@ -96,7 +100,13 @@ export async function POST(request: Request) {
       status,
     } = body
 
-    // Validate required fields
+    const VALID_STATUSES = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const
+    if (status !== undefined && status !== null && !VALID_STATUSES.includes(status)) {
+      return NextResponse.json(
+        { message: 'Estado inválido. Valores: DRAFT, PUBLISHED, ARCHIVED' },
+        { status: 400 }
+      )
+    }
     if (!spanish || !nasaYuwe) {
       return NextResponse.json(
         { message: "Los campos «español» y «nasa yuwe» son obligatorios" },
