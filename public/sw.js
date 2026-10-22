@@ -1,14 +1,19 @@
 /// <reference lib="webworker" />
 
-// Piiyaak v2: app shell + offline + audios.
+// Piiyaak v3: app shell + offline + audios + imágenes R2.
 // - Navegaciones: network-first con fallback a /offline.
 // - Estáticos mismo origen: stale-while-revalidate.
 // - API: network-first (IndexedDB cubre la búsqueda offline).
-// - Audios: cache-first con tope (evita llenar el dispositivo).
+// - Audios e imágenes (mismo origen u otros, p. ej. R2): cache-first con tope.
+//   OJO opacas: <audio>/<img> piden en modo no-cors y la respuesta es opaca
+//   (status 0, ok === false). Si solo se guarda `res.ok`, el caché nunca se
+//   llena: se acepta también `res.type === "opaque"`, con tope para acotar.
 
 const SHELL_CACHE = "piiyaak-shell-v2"
 const AUDIO_CACHE = "piiyaak-audio-v1"
 const AUDIO_MAX_ENTRIES = 50
+const IMAGE_CACHE = "piiyaak-image-v1"
+const IMAGE_MAX_ENTRIES = 100
 
 const SHELL_ASSETS = ["/", "/offline", "/manifest.webmanifest", "/icon-192.png"]
 
@@ -31,7 +36,7 @@ self.addEventListener("activate", (event) => {
       .then((names) =>
         Promise.all(
           names
-            .filter((n) => n !== SHELL_CACHE && n !== AUDIO_CACHE && !n.startsWith("nasa-yuwe-audio"))
+            .filter((n) => n !== SHELL_CACHE && n !== AUDIO_CACHE && n !== IMAGE_CACHE && !n.startsWith("nasa-yuwe-audio"))
             .map((n) => caches.delete(n))
         )
       )
@@ -39,16 +44,21 @@ self.addEventListener("activate", (event) => {
   )
 })
 
-async function trimAudioCache() {
+async function trimCache(cacheName, maxEntries) {
   try {
-    const cache = await caches.open(AUDIO_CACHE)
+    const cache = await caches.open(cacheName)
     const keys = await cache.keys()
-    if (keys.length > AUDIO_MAX_ENTRIES) {
+    if (keys.length > maxEntries) {
       await cache.delete(keys[0])
     }
   } catch {
-    // ignorar: el audio sigue funcionando online
+    // ignorar: el contenido sigue funcionando online
   }
+}
+
+/** Guarda respuestas ok Y opacas (ver nota arriba). */
+function isCacheable(res) {
+  return res.ok || res.type === "opaque"
 }
 
 self.addEventListener("fetch", (event) => {
@@ -57,7 +67,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url)
   if (!url.protocol.startsWith("http")) return
 
-  // Audios (mismo origen u otros, p. ej. Supabase): cache-first con tope
+  // Audios (mismo origen u otros, p. ej. R2): cache-first con tope
   const isAudio =
     req.destination === "audio" ||
     /\.(mp3|wav|ogg)(\?|$)/.test(url.pathname)
@@ -68,13 +78,42 @@ self.addEventListener("fetch", (event) => {
         if (hit) return hit
         try {
           const res = await fetch(req)
-          if (res.ok) {
+          if (isCacheable(res)) {
             await cache.put(req, res.clone())
-            void trimAudioCache()
+            void trimCache(AUDIO_CACHE, AUDIO_MAX_ENTRIES)
           }
           return res
         } catch {
           return new Response("Audio no disponible sin conexión", {
+            status: 503,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          })
+        }
+      })
+    )
+    return
+  }
+
+  // Imágenes (mismo origen u otros, p. ej. R2; incluye /_next/image que pide
+  // el componente WordIllustration): cache-first con tope.
+  const isImage =
+    req.destination === "image" ||
+    /\.(png|jpe?g|webp|avif)(\?|$)/.test(url.pathname)
+  if (isImage) {
+    event.respondWith(
+      caches.open(IMAGE_CACHE).then(async (cache) => {
+        const hit = await cache.match(req)
+        if (hit) return hit
+        try {
+          const res = await fetch(req)
+          if (isCacheable(res)) {
+            await cache.put(req, res.clone())
+            void trimCache(IMAGE_CACHE, IMAGE_MAX_ENTRIES)
+          }
+          return res
+        } catch {
+          // Sin imagen offline: el componente muestra su fallback.
+          return new Response("Imagen no disponible sin conexión", {
             status: 503,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
           })
