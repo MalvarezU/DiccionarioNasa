@@ -1,11 +1,11 @@
 "use client"
 
-import Image from "next/image"
 import { ImageIcon, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { MediaPicker } from "@/components/media/media-picker"
+import { IllustrationLightbox } from "@/components/media/illustration-lightbox"
 import { type useWordIllustration } from "./use-word-illustration"
 
 type Illustration = ReturnType<typeof useWordIllustration>
@@ -49,15 +49,7 @@ export function EditWordIllustration({
 
       {illustrationUrl ? (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="relative aspect-square w-32 shrink-0 overflow-hidden rounded-lg border border-outline-variant/30 bg-muted">
-            <Image
-              src={illustrationUrl}
-              alt="Ilustración de la ficha"
-              width={128}
-              height={128}
-              className="h-full w-full object-cover"
-            />
-          </div>
+          <IllustrationLightbox url={illustrationUrl} alt="la ficha" thumbSize={128} />
 
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <MediaPicker

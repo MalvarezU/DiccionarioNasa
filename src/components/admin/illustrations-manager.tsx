@@ -1,12 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import Image from "next/image"
 import { ImagePlus, Loader2, Search, Trash2, UploadCloud } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { MediaPicker } from "@/components/media/media-picker"
+import { IllustrationLightbox } from "@/components/media/illustration-lightbox"
 import { compressToIllustration } from "@/lib/media/compress-image"
 import { matchIllustrationFiles, type BulkMatch } from "@/lib/media/bulk-match"
 
@@ -261,21 +261,13 @@ export function IllustrationsManager() {
       <ul className="divide-y divide-border rounded-lg border">
         {words.map((w) => (
           <li key={w.id} className="flex items-center gap-3 p-3">
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-outline-variant/30 bg-muted">
-              {w.illustrationUrl ? (
-                <Image
-                  src={w.illustrationUrl}
-                  alt={`Ilustración de ${w.spanish}`}
-                  width={128}
-                  height={128}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                  sin imagen
-                </div>
-              )}
-            </div>
+            {w.illustrationUrl ? (
+              <IllustrationLightbox url={w.illustrationUrl} alt={`${w.spanish}`} thumbSize={64} />
+            ) : (
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-outline-variant/30 bg-muted text-xs text-muted-foreground">
+                sin imagen
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">
                 {w.spanish} <span className="font-normal text-muted-foreground">/ {w.nasaYuwe}</span>
