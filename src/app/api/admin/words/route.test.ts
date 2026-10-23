@@ -109,6 +109,22 @@ describe("GET /api/admin/words", () => {
     )
   })
 
+  it("filters by audio presence", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
+    vi.mocked(db.dictionaryWord.count).mockResolvedValue(0)
+
+    await GET(new Request("http://localhost:3000/api/admin/words?audio=without"))
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { audioUrl: null } })
+    )
+
+    await GET(new Request("http://localhost:3000/api/admin/words?audio=with"))
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { NOT: { audioUrl: null } } })
+    )
+  })
+
   it("filters by exact category", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
