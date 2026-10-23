@@ -129,3 +129,27 @@ WebP en cliente) → `POST /api/admin/upload-image` → R2 (`images/<uuid>.webp`
 - **Modal "Gestión de fichas" sin scroll horizontal**: `table-fixed` +
   anchos relativos + `truncate`; override al `overflow-x-auto` interno del
   `Table` de shadcn (sin forkarlo).
+
+## 10. Audios en R2 con compresión Opus (rama `feat/audios-r2`)
+
+Flujo completo: `AudioPicker` (comprime a Ogg Opus 24kbps mono en el
+navegador con libopus WASM) → `POST /api/admin/upload-audio` (valida
+firma binaria: ID3/MPEG, RIFF/WAVE, OggS) → R2 (`audios/<wordId>/<ts>-<file>.ogg`)
+→ `audioUrl` en la ficha → reproductor con cache offline del SW
+(cache-first por extensión `.mp3/.wav/.ogg` + `destination: audio`,
+incluidas respuestas opacas).
+
+- **Compresión**: `lib/audio/compress-audio.ts` — decodeAudioData →
+  downmix mono → `@audio/encode-opus` (import dinámico, fuera del bundle)
+  → `File .ogg`. Ante cualquier fallo devuelve el original (nunca bloquea).
+  Verificado con bytes reales: 1s mono en 91ms → 3.5KB (BOS/OpusHead
+  mono/OpusTags/EOS).
+- **Panel `/admin/audios`**: espejo del de ilustraciones (filtros con/sin
+  audio, mini-reproductor, subida individual con indicador de ahorro,
+  quitar (PUT `null` borra el objeto server-side), lote con matching).
+- **Ficha**: `use-word-audio` comprime antes de subir; `EditWordAudio`
+  con patrón Subir/Reemplazar/Quitar/Descartar.
+- **E2E** (`screenplay-admin`, tests "audios:"): panel lista/filtra,
+  subir+comprimir+reproducir (`duration > 0` en `<audio>` real),
+  reemplazo borra la anterior de R2 (404), lote con matching.
+  Requieren R2 (`.env.r2.test`); los wavs de prueba se sintetizan en el test.
