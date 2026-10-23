@@ -1,5 +1,5 @@
 /**
- * Compresión de imágenes en el cliente antes de subirlas a Postgres.
+ * Compresión de imágenes en el cliente antes de subirlas a R2.
  *
  * Es la condición para que el límite de 3 MB del lado servidor no rechace
  * fotos de celular (que salen de cámara en 3-6 MB). Redimensionar a un lado
@@ -7,8 +7,11 @@
  * que es más que suficiente para una lección.
  */
 
-/** Lado máximo (px) de una imagen de curso. 1600 queda nítido a ancho completo. */
+/** Lado máximo (px) de una imagen de curso/bloque. 1600 queda nítido a ancho completo. */
 export const IMAGE_MAX_DIMENSION = 1600
+
+/** Lado (px) de las ilustraciones de ficha: cuadradas 1:1, WebP uniforme. */
+export const ILLUSTRATION_SIZE = 512
 
 export function targetDimensions(
   width: number,
@@ -38,6 +41,50 @@ export function filenameForBlob(original: string, outType: string): string {
   return `${parte}.jpg`
 }
 
+/**
+ * Recorte cuadrado centrado (lado = lado más corto). Puro y testeable.
+ */
+export function squareCrop(
+  width: number,
+  height: number
+): { sx: number; sy: number; side: number } {
+  const w = Number.isFinite(width) && width > 0 ? width : ILLUSTRATION_SIZE
+  const h = Number.isFinite(height) && height > 0 ? height : ILLUSTRATION_SIZE
+  const side = Math.min(w, h)
+  return { sx: Math.floor((w - side) / 2), sy: Math.floor((h - side) / 2), side }
+}
+
+/**
+ * Ilustración de ficha: crop cuadrado centrado → resize a 512 → WebP.
+ * Uniforme para que todas las fichas pesen ~13-43 KB y el layout 1:1 nunca
+ * se rompa, venga la imagen que venga.
+ */
+export async function compressToIllustration(
+  file: File,
+  { size = ILLUSTRATION_SIZE, quality = 0.85 }: { size?: number; quality?: number } = {}
+): Promise<File> {
+  try {
+    const bitmap = await createImageBitmap(file)
+    const { sx, sy, side } = squareCrop(bitmap.width, bitmap.height)
+
+    const canvas = document.createElement("canvas")
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return file
+    ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size)
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((b) => resolve(b), "image/webp", quality)
+    })
+    if (!blob || blob.size === 0) return file
+
+    const base = file.name.replace(/\.[^.]*$/, "") || "ilustracion"
+    return new File([blob], `${base}.webp`, { type: blob.type || "image/webp" })
+  } catch {
+    return file
+  }
+}
 /**
  * Re-encoda la imagen al tamaño objetivo. Si el navegador no soporta
  * re-encode (raro), devuelve el archivo original y que lo juzgue el server.

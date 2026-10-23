@@ -6,26 +6,36 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   compressImageForWeb,
+  compressToIllustration,
   IMAGE_MAX_DIMENSION,
+  ILLUSTRATION_SIZE,
 } from "@/lib/media/compress-image"
 
 /**
- * Subida de imagen para los bloques del editor (y para la portada del curso).
+ * Uploader único de imágenes (sube a R2 vía /api/admin/upload-image).
  *
- * Comprime en el cliente (canvas, ~1600px) ANTES de mandar: una foto de
- * celular baja de 3-6 MB a cientos de KB y entra en el límite de 3 MB que el
- * servidor valida. Devuelve la URL pública R2 que ya sirve para bloques,
- * portadas e ilustraciones.
+ * - `block` (default): proporción libre, lado máximo 1600px. Bloques y portadas.
+ * - `illustration`: crop cuadrado centrado → 512px WebP uniforme. Fichas.
+ *
+ * Comprime en el cliente ANTES de mandar: una foto de celular baja de 3-6 MB
+ * a cientos de KB y entra en el límite de 3 MB que el servidor valida.
+ * Devuelve la URL pública R2.
  */
+
+export type MediaPickerVariant = "block" | "illustration"
+
+const ACCEPT = "image/png,image/jpeg,image/webp,image/avif"
 
 export function MediaPicker({
   onSubida,
   onCancelar,
   etiqueta,
+  variant = "block",
 }: {
   onSubida: (url: string) => void
   onCancelar?: () => void
   etiqueta?: string
+  variant?: MediaPickerVariant
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [subiendo, setSubiendo] = useState(false)
@@ -39,7 +49,8 @@ export function MediaPicker({
     setError(null)
     setSubiendo(true)
     try {
-      const comprimida = await compressImageForWeb(file)
+      const comprimida =
+        variant === "illustration" ? await compressToIllustration(file) : await compressImageForWeb(file)
 
       const fd = new FormData()
       fd.append("file", comprimida)
@@ -62,19 +73,29 @@ export function MediaPicker({
     <div className="rounded-lg border border-outline-variant/30 bg-background p-3">
       <p className="mb-2 text-sm font-semibold">{etiqueta ?? "Subir imagen"}</p>
       <p className="mb-2 text-xs text-muted-foreground">
-        PNG, JPG, WebP o AVIF. Se redimensiona a {IMAGE_MAX_DIMENSION}px y se comprime
-        automáticamente antes de subir.
+        {variant === "illustration" ? (
+          <>
+            PNG, JPG, WebP o AVIF. Se recorta al centro en 1:1, se reduce a{" "}
+            {ILLUSTRATION_SIZE}px y se convierte a WebP antes de subir.
+          </>
+        ) : (
+          <>
+            PNG, JPG, WebP o AVIF. Se redimensiona a {IMAGE_MAX_DIMENSION}px y se comprime
+            automáticamente antes de subir.
+          </>
+        )}
       </p>
 
       <div className="flex items-center gap-2">
         <Input
           ref={inputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/avif"
+          accept={ACCEPT}
           onChange={alElegir}
-          className="h-9 w-auto max-w-[16rem] text-xs"
+          className="hidden"
           aria-label="Elegir imagen del dispositivo"
           disabled={subiendo}
+          tabIndex={-1}
         />
         <Button
           type="button"

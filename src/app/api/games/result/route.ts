@@ -22,8 +22,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null)
     const game = body?.game
     const won = body?.won === true
-    const score = Number.isFinite(Number(body?.score)) ? Math.max(0, Math.floor(Number(body.score))) : 0
-    const streak = Number.isFinite(Number(body?.streak)) ? Math.max(0, Math.floor(Number(body.streak))) : 0
+    const score = Number.isFinite(Number(body?.score)) ? Math.max(0, Math.min(1_000_000, Math.floor(Number(body.score)))) : 0
+    const streak = Number.isFinite(Number(body?.streak)) ? Math.max(0, Math.min(1_000_000, Math.floor(Number(body.streak)))) : 0
     const sessionKey = typeof body?.sessionKey === "string" && body.sessionKey ? body.sessionKey.slice(0, 64) : null
 
     if (!isGameId(game)) {

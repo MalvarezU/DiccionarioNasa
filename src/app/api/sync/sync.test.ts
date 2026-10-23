@@ -73,7 +73,8 @@ describe("sync API [B3.1]", () => {
     const t1 = new Date("2026-09-02T00:00:00Z")
     const mk = (id: string) => ({
       id, spanish: "a", nasaYuwe: "b", pronunciation: null, audioUrl: null,
-      culturalContext: null, category: null, examples: null, status: "PUBLISHED", updatedAt: t1,
+      illustrationUrl: null, culturalContext: null, category: null, examples: null,
+      status: "PUBLISHED", updatedAt: t1,
     })
     vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([mk("w1"), mk("w2"), mk("w3")] as never)
     vi.mocked(db.auditLog.findMany).mockResolvedValue([])

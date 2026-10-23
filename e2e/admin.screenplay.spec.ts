@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import * as XLSX from "xlsx";
 import { actorAdmin } from "./screenplay/actores";
 import { IrA } from "./screenplay/tasks/acciones";
@@ -337,5 +337,124 @@ test.describe("admin Piiyaak (Screenplay)", () => {
   test("imagen inexistente devuelve 404", async ({ page }) => {
     const res = await page.request.get("/api/media/no-existe-esta-imagen");
     expect(res.status()).toBe(404);
+  });
+
+  // Fase ilustraciones: gestión desde /admin/illustrations.
+  const PNG_AZUL_1X1 = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64"
+  );
+
+  async function crearFichaE2E(page: Page, spanish: string) {
+    const res = await page.request.post("/api/admin/words", {
+      data: { spanish, nasaYuwe: `E2EYuwe ${spanish}`, status: "PUBLISHED" },
+    });
+    expect(res.status()).toBe(201);
+    return (await res.json()).word.id as string;
+  }
+
+  async function borrarFichaE2E(page: Page, id: string) {
+    await page.request.delete(`/api/admin/words/${id}`);
+  }
+
+  test("ilustraciones: panel lista y filtra sin ilustración", async ({ page }) => {
+    await page.goto("/admin/illustrations");
+    await expect(page.getByText("Gestión de ilustraciones")).toBeVisible({ timeout: 30000 });
+    // Filtro default "Sin ilustración": buscar una palabra seed sin ilustración
+    await page.getByPlaceholder("español o nasa yuwe…").fill("Abeja");
+    const fila = page.locator("li", { hasText: "Abeja / Iz" }).first();
+    await expect(fila.getByText("sin ilustración")).toBeVisible({ timeout: 30000 });
+    await expect(fila.getByRole("button", { name: "Subir" })).toBeVisible();
+  });
+
+  test("ilustraciones: subir desde el panel y ver en ficha", async ({ page }) => {
+    const stamp = Date.now();
+    const nombre = `E2E Ilus ${stamp}`;
+    const archivo = `e2e-ilus-${stamp}.png`;
+    const wordId = await crearFichaE2E(page, nombre);
+    try {
+      await page.goto("/admin/illustrations");
+      await page.getByPlaceholder("español o nasa yuwe…").fill(nombre);
+      const fila = page.locator("li", { hasText: nombre }).first();
+      await expect(fila.getByText("sin ilustración")).toBeVisible({ timeout: 30000 });
+      await fila.getByRole("button", { name: "Subir" }).click();
+      await page
+        .getByLabel("Elegir imagen del dispositivo")
+        .setInputFiles({ name: archivo, mimeType: "image/png", buffer: PNG_AZUL_1X1 });
+      // La ficha sale del filtro "Sin ilustración": cambiar a "Todas" para verla
+      await page.getByLabel("Ilustración").selectOption("all");
+      await expect(fila.getByText("con ilustración")).toBeVisible({ timeout: 30000 });
+
+      // La ficha pública muestra la ilustración
+      await page.goto("/diccionario");
+      await page.getByRole("combobox", { name: /buscar palabras/i }).fill(nombre);
+      await page.getByRole("option", { name: new RegExp(nombre) }).first().click();
+      await expect(page.getByAltText(`Ilustración de ${nombre}`)).toBeVisible({ timeout: 30000 });
+    } finally {
+      await borrarFichaE2E(page, wordId);
+    }
+  });
+
+  test("ilustraciones: reemplazar borra la anterior de R2", async ({ page }) => {
+    const stamp = Date.now();
+    const wordId = await crearFichaE2E(page, `E2E Reem ${stamp}`);
+    try {
+      const sub1 = await page.request.post("/api/admin/upload-image", {
+        multipart: { file: { name: "e2e-reem-1.png", mimeType: "image/png", buffer: PNG_AZUL_1X1 } },
+      });
+      const url1 = (await sub1.json()).url as string;
+      const sub2 = await page.request.post("/api/admin/upload-image", {
+        multipart: { file: { name: "e2e-reem-2.png", mimeType: "image/png", buffer: PNG_AZUL_1X1 } },
+      });
+      const url2 = (await sub2.json()).url as string;
+
+      await page.request.put(`/api/admin/words/${wordId}`, { data: { illustrationUrl: url1 } });
+      const reem = await page.request.put(`/api/admin/words/${wordId}`, {
+        data: { illustrationUrl: url2 },
+      });
+      expect(reem.status()).toBe(200);
+
+      expect((await page.request.get(url1)).status()).toBe(404);
+      expect((await page.request.get(url2)).status()).toBe(200);
+    } finally {
+      await borrarFichaE2E(page, wordId);
+    }
+  });
+
+  test("ilustraciones: lote matchea por nombre y sube", async ({ page }) => {
+    const stamp = Date.now();
+    const n1 = `E2E Lote Uno ${stamp}`;
+    const f1 = `e2e-lote-uno-${stamp}.png`;
+    const n2 = `E2E Lote Dos ${stamp}`;
+    const f2 = `e2e-lote-dos-${stamp}.png`;
+    const id1 = await crearFichaE2E(page, n1);
+    const id2 = await crearFichaE2E(page, n2);
+    try {
+      await page.goto("/admin/illustrations");
+      await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
+        { name: f1, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
+        { name: f2, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
+        { name: "e2e-sinmatch.png", mimeType: "image/png", buffer: PNG_AZUL_1X1 },
+      ]);
+      await expect(page.getByText("e2e-sinmatch.png").first()).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText("sin coincidencia").first()).toBeVisible();
+      await page.getByRole("button", { name: /subir lote/i }).click();
+      await expect(page.getByText(/Lote terminado: 2 subidas, 0 errores/)).toBeVisible({
+        timeout: 60000,
+      });
+
+      // Las fichas ilustradas salen del filtro default: verlas en "Todas"
+      await page.getByLabel("Ilustración").selectOption("all");
+      await page.getByPlaceholder("español o nasa yuwe…").fill(`E2E Lote`);
+      await expect(
+        page.locator("li", { hasText: n1 }).first().getByText("con ilustración")
+      ).toBeVisible({ timeout: 30000 });
+      await expect(
+        page.locator("li", { hasText: n2 }).first().getByText("con ilustración")
+      ).toBeVisible({ timeout: 30000 });
+    } finally {
+      await borrarFichaE2E(page, id1);
+      await borrarFichaE2E(page, id2);
+    }
   });
 });

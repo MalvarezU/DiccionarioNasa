@@ -223,8 +223,8 @@ export function WordListModal({
             <WordTableSkeleton rows={5} />
           ) : words.length > 0 ? (
             <>
-              <div className="rounded-md border overflow-x-auto">
-                <Table>
+              <div className="rounded-md border overflow-hidden [&_[data-slot=table-container]]:overflow-visible">
+                <Table className="table-fixed w-full">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[40px] pl-4">
@@ -236,10 +236,10 @@ export function WordListModal({
                       </TableHead>
                       <TableHead>Español</TableHead>
                       <TableHead>Nasa Yuwe</TableHead>
-                      <TableHead className="hidden sm:table-cell">Categoría</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead className="hidden md:table-cell">Audio</TableHead>
-                      <TableHead className="w-[80px]">Acción</TableHead>
+                      <TableHead className="hidden sm:table-cell max-w-[8rem]">Categoría</TableHead>
+                      <TableHead className="w-[80px]">Estado</TableHead>
+                      <TableHead className="hidden md:table-cell w-[40px]">Audio</TableHead>
+                      <TableHead className="w-[90px] text-right">Acción</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -252,9 +252,9 @@ export function WordListModal({
                             aria-label={`Seleccionar ${w.spanish}`}
                           />
                         </TableCell>
-                        <TableCell className="font-medium text-sm">{w.spanish}</TableCell>
-                        <TableCell className="text-sm text-primary">{w.nasaYuwe}</TableCell>
-                        <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
+                        <TableCell className="font-medium text-sm max-w-[10rem] truncate">{w.spanish}</TableCell>
+                        <TableCell className="text-sm text-primary max-w-[10rem] truncate">{w.nasaYuwe}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-xs text-muted-foreground max-w-[8rem] truncate">
                           {w.category ? (WORD_CATEGORIES.find((c) => c.value === w.category)?.label || w.category) : "—"}
                         </TableCell>
                         <TableCell>{getStatusBadge(w.status)}</TableCell>

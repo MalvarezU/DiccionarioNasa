@@ -25,6 +25,17 @@ describe("WordIllustration", () => {
     expect(img.getAttribute("src")).toContain("media")
   })
 
+  it("fija el contrato 512px (origen cuadrado 1:1) y acepta URL absoluta R2", () => {
+    const { getByAltText } = render(
+      <WordIllustration url="https://cdn.test/images/abc.png" alt="casa" />
+    )
+    const img = getByAltText("Ilustración de casa")
+    expect(img.getAttribute("width")).toBe("512")
+    expect(img.getAttribute("height")).toBe("512")
+    // next/image la sirve vía /_next/image con la URL R2 como parámetro
+    expect(img.getAttribute("src")).toContain("cdn.test")
+  })
+
   it("cae a un aviso legible si la imagen no carga", () => {
     const { getByAltText, getByText } = render(
       <WordIllustration url="/api/media/abc123" alt="casa" />

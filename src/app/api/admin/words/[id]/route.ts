@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireRole } from '@/lib/auth'
 import { audioRefToKey } from '@/lib/media/storage'
 import { deleteObject } from '@/lib/r2'
+import { deleteMediaAssetByUrl } from '@/lib/media/delete-asset'
 
 // Valid status values
 const VALID_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED']
@@ -154,6 +155,21 @@ export async function PUT(
       response.previousAudioUrl = changes.audioUrl.before as string | null
     }
 
+    // Ilustración reemplazada: borrar el asset anterior server-side para no
+    // dejar huérfanos en R2 (el flujo de audio delega al cliente por legacy;
+    // acá no: el PUT no vuelve sin limpiar). Best-effort, nunca bloquea.
+    if ('illustrationUrl' in changes) {
+      const before = changes.illustrationUrl.before
+      const after = changes.illustrationUrl.after
+      if (typeof before === 'string' && before && before !== after) {
+        try {
+          await deleteMediaAssetByUrl(before)
+        } catch (cleanupError) {
+          console.error('Error limpiando ilustración anterior:', cleanupError)
+        }
+      }
+    }
+
     return NextResponse.json(response, { status: 200 })
   } catch (error) {
     console.error('Error updating word:', error)
@@ -167,7 +183,7 @@ export async function PUT(
 /**
  * DELETE /api/admin/words/[id]
  *
- * Elimina la ficha y su audio asociado en Supabase Storage (si existe),
+ * Elimina la ficha y su audio asociado en R2 (si existe),
  * evitando archivos huérfanos. Las relaciones Favorite/ViewHistory se
  * eliminan en cascada según el schema de Prisma.
  */

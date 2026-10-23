@@ -22,7 +22,7 @@ export function useWordIllustration() {
     setIllustrationChanged(false)
   }, [])
 
-  const handleIllustrationChange = useCallback((url: string) => {
+  const handleIllustrationChange = useCallback((url: string | null) => {
     setIllustrationUrl(url)
     setIllustrationChanged(true)
   }, [])

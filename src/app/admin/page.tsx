@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, GraduationCap } from "lucide-react"
+import { ArrowLeft, GraduationCap, Images } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,12 @@ export default function AdminPage() {
               <Button variant="outline" size="sm" className="gap-2">
                 <GraduationCap className="h-4 w-4" />
                 Gestionar cursos
+              </Button>
+            </Link>
+            <Link href="/admin/illustrations">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Images className="h-4 w-4" />
+                Ilustraciones
               </Button>
             </Link>
           </div>

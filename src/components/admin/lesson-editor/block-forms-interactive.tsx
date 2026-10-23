@@ -15,7 +15,7 @@ import {
 import type { LessonBlock, QuizOption } from "@/lib/courses/blocks"
 import type { PalabraEncontrada } from "./word-picker"
 import { WordPicker } from "./word-picker"
-import { MediaPicker } from "./media-picker"
+import { MediaPicker } from "@/components/media/media-picker"
 import { ErroresBloque } from "./block-forms"
 
 /**

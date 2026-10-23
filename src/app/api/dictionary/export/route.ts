@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
           nasaYuwe: true,
           pronunciation: true,
           audioUrl: true,
+          illustrationUrl: true,
           culturalContext: true,
           category: true,
           examples: true,

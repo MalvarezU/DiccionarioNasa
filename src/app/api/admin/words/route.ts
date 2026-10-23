@@ -6,7 +6,8 @@ import { requireRole } from "@/lib/auth"
  * GET /api/admin/words
  *
  * Lists all dictionary words for admin panel (paginated).
- * Supports ?page=&pageSize=&status=&search= filters.
+ * Supports ?page=&pageSize=&status=&search=&illustration=&category= filters.
+ * illustration: "with" (tiene ilustración) | "without" (sin ilustración).
  */
 export async function GET(request: Request) {
   const { session, error } = await requireRole("editor")
@@ -18,9 +19,14 @@ export async function GET(request: Request) {
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "20")))
     const status = searchParams.get("status") || undefined
     const search = searchParams.get("search") || undefined
+    const illustration = searchParams.get("illustration")
+    const category = searchParams.get("category") || undefined
 
     const where: Record<string, unknown> = {}
     if (status) where.status = status
+    if (category) where.category = category
+    if (illustration === "with") where.NOT = { illustrationUrl: null }
+    else if (illustration === "without") where.illustrationUrl = null
     if (search) {
       where.OR = [
         { spanish: { contains: search } },

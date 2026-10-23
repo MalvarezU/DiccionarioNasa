@@ -1,21 +1,23 @@
 "use client"
 
-import Image from "next/image"
-import { ImageIcon, X } from "lucide-react"
+import { useState } from "react"
+import { ImageIcon, ImagePlus, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { MediaPicker } from "./lesson-editor/media-picker"
+import { MediaPicker } from "@/components/media/media-picker"
+import { IllustrationLightbox } from "@/components/media/illustration-lightbox"
 import { type useWordIllustration } from "./use-word-illustration"
 
 type Illustration = ReturnType<typeof useWordIllustration>
 
 /**
- * Sección de ilustración de la ficha (preview cuadrada + subida).
+ * Sección de ilustración de la ficha: un solo punto de entrada por estado.
  *
- * La ilustración que entrega el cliente es 1:1: la preview es cuadrada y usa
- * object-cover, así una imagen que venga con otra proporción no rompe el
- * layout del panel.
+ * - Sin imagen: botón "Subir ilustración" (abre el picker inline).
+ * - Con imagen (sin cambio): miniatura (abre el lightbox) + "Reemplazar"
+ *   (abre el picker inline) + "Quitar".
+ * - Con cambio pendiente: miniatura nueva + "Descartar cambio".
  */
 export function EditWordIllustration({
   illustration,
@@ -31,6 +33,12 @@ export function EditWordIllustration({
     handleIllustrationChange,
     removeIllustration,
   } = illustration
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  function subir(url: string | null) {
+    handleIllustrationChange(url)
+    setPickerOpen(false)
+  }
 
   return (
     <div className="space-y-3">
@@ -49,24 +57,50 @@ export function EditWordIllustration({
 
       {illustrationUrl ? (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="relative aspect-square w-32 shrink-0 overflow-hidden rounded-lg border border-outline-variant/30 bg-muted">
-            <Image
-              src={illustrationUrl}
-              alt="Ilustración de la ficha"
-              width={128}
-              height={128}
-              className="h-full w-full object-cover"
-            />
-          </div>
+          <IllustrationLightbox url={illustrationUrl} alt="la ficha" thumbSize={128} />
 
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <MediaPicker onSubida={handleIllustrationChange} etiqueta="Reemplazar ilustración" />
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
+            {!pickerOpen && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPickerOpen(true)}
+                  className="gap-1.5"
+                >
+                  <ImagePlus className="h-3.5 w-3.5" />
+                  Reemplazar
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => subir(null)}
+                  className="gap-1.5"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Quitar
+                </Button>
+              </div>
+            )}
+            {pickerOpen && (
+              <MediaPicker
+                variant="illustration"
+                onSubida={subir}
+                etiqueta="Elegir reemplazo (cuadrada 1:1)"
+                onCancelar={() => setPickerOpen(false)}
+              />
+            )}
             {illustrationChanged && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={removeIllustration}
+                onClick={() => {
+                  removeIllustration()
+                  setPickerOpen(false)
+                }}
                 className="justify-start gap-1.5 self-start"
               >
                 <X className="h-3.5 w-3.5" />
@@ -76,7 +110,27 @@ export function EditWordIllustration({
           </div>
         </div>
       ) : (
-        <MediaPicker onSubida={handleIllustrationChange} etiqueta="Subir ilustración (cuadrada 1:1)" />
+        <>
+          {!pickerOpen ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPickerOpen(true)}
+              className="gap-1.5"
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              Subir ilustración
+            </Button>
+          ) : (
+            <MediaPicker
+              variant="illustration"
+              onSubida={subir}
+              etiqueta="Subir ilustración (cuadrada 1:1)"
+              onCancelar={() => setPickerOpen(false)}
+            />
+          )}
+        </>
       )}
     </div>
   )

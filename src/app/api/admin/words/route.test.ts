@@ -93,6 +93,33 @@ describe("GET /api/admin/words", () => {
     )
   })
 
+  it("filters by illustration presence", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
+    vi.mocked(db.dictionaryWord.count).mockResolvedValue(0)
+
+    await GET(new Request("http://localhost:3000/api/admin/words?illustration=without"))
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { illustrationUrl: null } })
+    )
+
+    await GET(new Request("http://localhost:3000/api/admin/words?illustration=with"))
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { NOT: { illustrationUrl: null } } })
+    )
+  })
+
+  it("filters by exact category", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
+    vi.mocked(db.dictionaryWord.count).mockResolvedValue(0)
+
+    await GET(new Request("http://localhost:3000/api/admin/words?category=sustantivo"))
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { category: "sustantivo" } })
+    )
+  })
+
   it("returns 401 when not admin", async () => {
     deny()
     const res = await GET(new Request("http://localhost:3000/api/admin/words"))
