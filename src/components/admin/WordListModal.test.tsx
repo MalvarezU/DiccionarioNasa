@@ -94,6 +94,21 @@ describe("WordListModal", () => {
     expect(screen.getByText("Agua")).toBeDefined()
   })
 
+  it("la tabla no tiene scroll horizontal: anchos fijos + truncate", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      Response.json({ words: mockWords, total: 2 }) as never
+    )
+    renderModal()
+    expect(await screen.findByText("Casa")).toBeDefined()
+    const table = document.querySelector("table")
+    expect(table?.className).toContain("table-fixed")
+    expect(table?.className).toContain("w-full")
+    const wrapper = table?.closest("div.rounded-md")
+    expect(wrapper?.className).toContain("overflow-hidden")
+    expect(wrapper?.className).not.toMatch(/(^| )overflow-x-auto( |$)/)
+    expect(document.querySelectorAll("td.truncate").length).toBeGreaterThan(0)
+  })
+
   it("shows empty state when no words", async () => {
     vi.mocked(global.fetch).mockResolvedValue(
       Response.json({ words: [], total: 0 }) as never
