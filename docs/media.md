@@ -115,4 +115,17 @@ WebP en cliente) → `POST /api/admin/upload-image` → R2 (`images/<uuid>.webp`
   (`.env.r2.test`) y `E2E_R2_IMAGE_URL` para offline-media. Convención de
   teardown: archivos de test con prefijo minúsculo `e2e-` (el match es
   case-sensitive).
-- Rama pendiente de merge a `main` (E2E 49/49, unit 914+).
+- Rama mergeada a `main` (`78cab07`, pusheada). Suite final: unit 922, E2E 49/49.
+
+### 8.1 UX del panel (fixes posteriores al merge inicial)
+
+- **Vista previa unificada**: `IllustrationLightbox` (miniatura clicable +
+  modal a 512px) usa el mismo `WordIllustration` canónico de la ficha, en
+  el panel de edición y en la lista de `/admin/illustrations`. Fondo
+  transparente para fundirse con la tarjeta (igual en modo claro/oscuro).
+- **Un solo punto de entrada** en `EditWordIllustration`: sin imagen →
+  "Subir"; con imagen → "Reemplazar" (inline) + "Quitar" (`null` limpia
+  server-side); con cambio → "Descartar". Input file nativo oculto.
+- **Modal "Gestión de fichas" sin scroll horizontal**: `table-fixed` +
+  anchos relativos + `truncate`; override al `overflow-x-auto` interno del
+  `Table` de shadcn (sin forkarlo).
