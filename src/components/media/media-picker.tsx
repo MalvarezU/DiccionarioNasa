@@ -92,9 +92,10 @@ export function MediaPicker({
           type="file"
           accept={ACCEPT}
           onChange={alElegir}
-          className="h-9 w-auto max-w-[16rem] text-xs"
+          className="hidden"
           aria-label="Elegir imagen del dispositivo"
           disabled={subiendo}
+          tabIndex={-1}
         />
         <Button
           type="button"
