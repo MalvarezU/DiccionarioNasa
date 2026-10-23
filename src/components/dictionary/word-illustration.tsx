@@ -33,7 +33,7 @@ export function WordIllustration({
 
   return (
     <figure className={className}>
-      <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-outline-variant/30 bg-muted">
+      <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-outline-variant/30 bg-transparent">
         {fallo ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <ImageOff className="h-6 w-6" />

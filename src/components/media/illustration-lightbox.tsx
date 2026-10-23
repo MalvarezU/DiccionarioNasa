@@ -33,7 +33,7 @@ export function IllustrationLightbox({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-label={`Ver ilustración de ${alt} en tamaño real`}
-        className="relative block aspect-square shrink-0 overflow-hidden rounded-xl border border-outline-variant/30 bg-muted focus-visible:outline-2 focus-visible:outline-primary"
+        className="relative block aspect-square shrink-0 overflow-hidden rounded-xl border border-outline-variant/30 bg-transparent focus-visible:outline-2 focus-visible:outline-primary"
         style={{ width: thumbSize, height: thumbSize }}
       >
         <Image
