@@ -17,6 +17,7 @@ model User {
   password  String?  // Hashed password (bcrypt)
   role      String   @default("user") // "user" | "editor" | "admin"
   emailVerified DateTime? // B1.2: verificación obligatoria (backfill en migración)
+  passwordChangedAt DateTime? // S1: invalidar tokens JWT anteriores al cambio de password
   verifyToken   String?   @unique
   verifyExpires DateTime?
   createdAt DateTime @default(now())

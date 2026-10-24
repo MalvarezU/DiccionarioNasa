@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12)
     await db.user.update({
       where: { id: reset.userId },
-      data: { password: hashedPassword },
+      data: { password: hashedPassword, passwordChangedAt: new Date() },
     })
     await db.passwordReset.update({
       where: { id: reset.id },

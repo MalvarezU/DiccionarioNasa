@@ -152,7 +152,42 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
         (token as JWT & { lastActivity?: number }).lastActivity = now;
+        // S1: store passwordChangedAt for session invalidation
+        try {
+          const dbUser = await db.user.findUnique({
+            where: { id: user.id },
+            select: { passwordChangedAt: true },
+          });
+          (token as JWT & { passwordChangedAt?: number }).passwordChangedAt =
+            dbUser?.passwordChangedAt
+              ? Math.floor(dbUser.passwordChangedAt.getTime() / 1000)
+              : 0;
+        } catch {
+          // ignore
+        }
         return token;
+      }
+
+      // S1: invalidate token if password was changed after token was issued
+      const tokenId = token.id as string | undefined;
+      if (tokenId) {
+        try {
+          const dbUser = await db.user.findUnique({
+            where: { id: tokenId },
+            select: { passwordChangedAt: true },
+          });
+          const dbPwdChangedAt = dbUser?.passwordChangedAt
+            ? Math.floor(dbUser.passwordChangedAt.getTime() / 1000)
+            : 0;
+          const tokenPwdChangedAt =
+            (token as JWT & { passwordChangedAt?: number }).passwordChangedAt ?? 0;
+          if (dbPwdChangedAt > tokenPwdChangedAt) {
+            // Password changed after token was issued → destroy session
+            return null as unknown as JWT;
+          }
+        } catch {
+          // ignore DB errors, don't invalidate
+        }
       }
 
       const last =

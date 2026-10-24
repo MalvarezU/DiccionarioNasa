@@ -29,6 +29,7 @@ const mockUser = {
   emailVerified: new Date("2026-01-02T00:00:00Z"),
   verifyToken: null,
   verifyExpires: null,
+  passwordChangedAt: null,
   createdAt: new Date("2026-01-01T00:00:00Z"),
   updatedAt: new Date("2026-01-01T00:00:00Z"),
 }

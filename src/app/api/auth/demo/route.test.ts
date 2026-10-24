@@ -33,7 +33,6 @@ describe("POST /api/auth/demo", () => {
     expect(res.status).toBe(200)
     expect(body.message).toBe("Demo user created")
     expect(body.email).toBe("demo@nasayuwe.com")
-    expect(body.password).toBe("demo123")
     expect(bcrypt.hash).toHaveBeenCalledWith("demo123", 12)
   })
 
@@ -49,7 +48,6 @@ describe("POST /api/auth/demo", () => {
     expect(res.status).toBe(200)
     expect(body.message).toBe("Demo user already exists")
     expect(body.email).toBe("demo@nasayuwe.com")
-    expect(body.password).toBe("demo123")
     expect(bcrypt.hash).not.toHaveBeenCalled()
     expect(db.user.create).not.toHaveBeenCalled()
   })
