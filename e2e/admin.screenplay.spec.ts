@@ -457,4 +457,153 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       await borrarFichaE2E(page, id2);
     }
   });
+
+  // Fase audios: WAV sintetizado de 1s (RIFF/WAVE valido para la firma binaria)
+  function wavBytes(segundos = 1, freq = 440): Buffer {
+    const rate = 44100;
+    const n = Math.floor(rate * segundos);
+    const data = Buffer.alloc(44 + n * 2);
+    data.write("RIFF", 0);
+    data.writeUInt32LE(36 + n * 2, 4);
+    data.write("WAVE", 8);
+    data.write("fmt ", 12);
+    data.writeUInt32LE(16, 16);
+    data.writeUInt16LE(1, 20);
+    data.writeUInt16LE(1, 22);
+    data.writeUInt32LE(rate, 24);
+    data.writeUInt32LE(rate * 2, 28);
+    data.writeUInt16LE(2, 32);
+    data.writeUInt16LE(16, 34);
+    data.write("data", 36);
+    data.writeUInt32LE(n * 2, 40);
+    for (let i = 0; i < n; i++) {
+      data.writeInt16LE(Math.floor(12000 * Math.sin((2 * Math.PI * freq * i) / rate)), 44 + i * 2);
+    }
+    return data;
+  }
+
+  async function duracionReproducible(page: Page, url: string): Promise<number> {
+    return page.evaluate(async (u: string) => {
+      const a = new Audio(u);
+      await new Promise<void>((res, rej) => {
+        a.onloadedmetadata = () => res();
+        a.onerror = () => rej(new Error("audio no cargable"));
+      });
+      return a.duration;
+    }, url);
+  }
+
+  test("audios: panel lista y filtra sin audio", async ({ page }) => {
+    const stamp = Date.now();
+    const nombre = `E2E AudSin ${stamp}`;
+    const wordId = await crearFichaE2E(page, nombre);
+    try {
+      await page.goto("/admin/audios");
+      await expect(page.getByText("Gestión de audios")).toBeVisible({ timeout: 30000 });
+      await page.getByLabel("Buscar", { exact: true }).fill(nombre);
+      const fila = page.locator("li", { hasText: nombre }).first();
+      await expect(fila.getByText("sin audio")).toBeVisible({ timeout: 30000 });
+      await expect(fila.getByRole("button", { name: "Subir" })).toBeVisible();
+    } finally {
+      await borrarFichaE2E(page, wordId);
+    }
+  });
+
+  test("audios: subir desde el panel, comprimir y reproducir en ficha", async ({ page }) => {
+    const stamp = Date.now();
+    const nombre = `E2E Audio ${stamp}`;
+    const archivo = `e2e-audio-${stamp}.wav`;
+    const wordId = await crearFichaE2E(page, nombre);
+    try {
+      await page.goto("/admin/audios");
+      await page.getByLabel("Buscar", { exact: true }).fill(nombre);
+      const fila = page.locator("li", { hasText: nombre }).first();
+      await expect(fila.getByText("sin audio")).toBeVisible({ timeout: 30000 });
+      await fila.getByRole("button", { name: "Subir" }).click();
+      await page
+        .getByLabel("Elegir archivo de audio")
+        .setInputFiles({ name: archivo, mimeType: "audio/wav", buffer: wavBytes() });
+      // Prueba de que el WASM corrió en el navegador: muestra el ahorro
+      await expect(page.getByText(/Comprimido:/)).toBeVisible({ timeout: 30000 });
+      // La ficha sale del filtro "Sin audio": cambiar a "Todas" para verla
+      await page.getByLabel("Audio", { exact: true }).selectOption("all");
+      await expect(fila.getByText("con audio")).toBeVisible({ timeout: 30000 });
+
+      // El archivo guardado es Ogg comprimido y reproducible
+      const src = await fila.locator("audio").getAttribute("src");
+      expect(src).toContain(".ogg");
+      expect(await duracionReproducible(page, src!)).toBeGreaterThan(0);
+
+      // La ficha pública lo reproduce
+      await page.goto("/diccionario");
+      await page.getByRole("combobox", { name: /buscar palabras/i }).fill(nombre);
+      await page.getByRole("option", { name: new RegExp(nombre) }).first().click();
+      await expect(page.getByRole("button", { name: /reproducir audio/i })).toBeVisible({ timeout: 30000 });
+    } finally {
+      await borrarFichaE2E(page, wordId);
+    }
+  });
+
+  test("audios: reemplazar borra el anterior de R2", async ({ page }) => {
+    const stamp = Date.now();
+    const wordId = await crearFichaE2E(page, `E2E ReemAud ${stamp}`);
+    try {
+      const sub1 = await page.request.post("/api/admin/upload-audio", {
+        multipart: { file: { name: "e2e-reem-aud-1.wav", mimeType: "audio/wav", buffer: wavBytes() } },
+      });
+      const url1 = (await sub1.json()).audioUrl as string;
+      const sub2 = await page.request.post("/api/admin/upload-audio", {
+        multipart: { file: { name: "e2e-reem-aud-2.wav", mimeType: "audio/wav", buffer: wavBytes() } },
+      });
+      const url2 = (await sub2.json()).audioUrl as string;
+
+      await page.request.put(`/api/admin/words/${wordId}`, { data: { audioUrl: url1 } });
+      const reem = await page.request.put(`/api/admin/words/${wordId}`, { data: { audioUrl: url2 } });
+      expect(reem.status()).toBe(200);
+
+      expect((await page.request.get(url1)).status()).toBe(404);
+      const servida = await page.request.get(url2);
+      expect(servida.status()).toBe(200);
+      expect(servida.headers()["content-type"] ?? "").toContain("audio/");
+    } finally {
+      await borrarFichaE2E(page, wordId);
+    }
+  });
+
+  test("audios: lote matchea por nombre y sube", async ({ page }) => {
+    const stamp = Date.now();
+    const n1 = `E2E LoteAud Uno ${stamp}`;
+    const f1 = `e2e-loteaud-uno-${stamp}.wav`;
+    const n2 = `E2E LoteAud Dos ${stamp}`;
+    const f2 = `e2e-loteaud-dos-${stamp}.wav`;
+    const id1 = await crearFichaE2E(page, n1);
+    const id2 = await crearFichaE2E(page, n2);
+    try {
+      await page.goto("/admin/audios");
+      await page.getByLabel("Elegir audios para el lote").setInputFiles([
+        { name: f1, mimeType: "audio/wav", buffer: wavBytes() },
+        { name: f2, mimeType: "audio/wav", buffer: wavBytes(1, 660) },
+        { name: "e2e-audio-sinmatch.wav", mimeType: "audio/wav", buffer: wavBytes() },
+      ]);
+      await expect(page.getByText("e2e-audio-sinmatch.wav").first()).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText("sin coincidencia").first()).toBeVisible();
+      await page.getByRole("button", { name: /subir lote/i }).click();
+      await expect(page.getByText(/Lote terminado: 2 subidos, 0 errores/)).toBeVisible({
+        timeout: 120000,
+      });
+
+      // Las fichas con audio salen del filtro default: verlas en "Todos"
+      await page.getByLabel("Audio", { exact: true }).selectOption("all");
+      await page.getByLabel("Buscar", { exact: true }).fill("E2E LoteAud");
+      await expect(
+        page.locator("li", { hasText: n1 }).first().getByText("con audio")
+      ).toBeVisible({ timeout: 30000 });
+      await expect(
+        page.locator("li", { hasText: n2 }).first().getByText("con audio")
+      ).toBeVisible({ timeout: 30000 });
+    } finally {
+      await borrarFichaE2E(page, id1);
+      await borrarFichaE2E(page, id2);
+    }
+  });
 });
