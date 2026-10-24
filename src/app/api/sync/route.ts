@@ -52,9 +52,26 @@ export async function GET(request: NextRequest) {
       : DEFAULT_LIMIT
 
     const sinceRaw = params.get("since")
-    const since = sinceRaw ? new Date(sinceRaw) : new Date(0)
-    const sinceValid = !Number.isNaN(since.getTime()) ? since : new Date(0)
-    const cursor = decodeCursor(params.get("cursor"))
+    let sinceValid: Date
+    if (sinceRaw) {
+      const parsed = new Date(sinceRaw)
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json({ message: "since inválido (ISO esperado)" }, { status: 400 })
+      }
+      sinceValid = parsed
+    } else {
+      sinceValid = new Date(0)
+    }
+
+    const cursorRaw = params.get("cursor")
+    let cursor: ReturnType<typeof decodeCursor> = null
+    if (cursorRaw) {
+      const decoded = decodeCursor(cursorRaw)
+      if (!decoded) {
+        return NextResponse.json({ message: "cursor inválido" }, { status: 400 })
+      }
+      cursor = decoded
+    }
 
     const serverTime = new Date()
 
