@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
         nasaYuwe: w.nasaYuwe,
         pronunciation: w.pronunciation,
         audioUrl: w.audioUrl,
+        illustrationUrl: w.illustrationUrl,
         culturalContext: w.culturalContext,
         category: w.category,
         examples: w.examples,
