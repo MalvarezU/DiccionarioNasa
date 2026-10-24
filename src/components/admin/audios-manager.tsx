@@ -8,6 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { AudioPicker } from "@/components/media/audio-picker"
 import { compressToOpus } from "@/lib/audio/compress-audio"
 import { matchIllustrationFiles } from "@/lib/media/bulk-match"
+import {
+  bulkActionFor,
+  type BulkPolicy,
+  type BulkRowDecision,
+} from "@/lib/media/bulk-policy"
 
 type Row = {
   id: string
@@ -21,6 +26,8 @@ type BulkRow = {
   file: File
   wordId: string | null
   wordLabel: string | null
+  hasExisting: boolean
+  decision: BulkRowDecision
   reason: string | null
   status: "pendiente" | "subiendo" | "ok" | "error"
   detail?: string
@@ -70,8 +77,9 @@ export function AudiosManager() {
   const [saving, setSaving] = useState(false)
 
   const [bulk, setBulk] = useState<BulkRow[]>([])
+  const [bulkPolicy, setBulkPolicy] = useState<BulkPolicy>("skip-existing")
   const [bulkRunning, setBulkRunning] = useState(false)
-  const [bulkDone, setBulkDone] = useState<{ ok: number; errores: number } | null>(null)
+  const [bulkDone, setBulkDone] = useState<{ ok: number; omitidos: number; errores: number } | null>(null)
 
   const filtersRef = useRef({ page: 1, search: "", filter: "all" as typeof filter, category: "" })
   filtersRef.current = { page, search, filter, category }
@@ -134,14 +142,31 @@ export function AudiosManager() {
       const all = await fetchAllWords()
       const { matched, unmatched } = matchIllustrationFiles(Array.from(files), all)
       const byFile = new Map(matched.map((m) => [m.file.name, m]))
+      const byId = new Map(all.map((w) => [w.id, w]))
       setBulk(
         Array.from(files).map((file) => {
           const m = byFile.get(file.name)
           if (m) {
-            return { file, wordId: m.wordId, wordLabel: m.wordLabel, reason: null, status: "pendiente" as const }
+            return {
+              file,
+              wordId: m.wordId,
+              wordLabel: m.wordLabel,
+              hasExisting: !!byId.get(m.wordId)?.audioUrl,
+              decision: "auto" as const,
+              reason: null,
+              status: "pendiente" as const,
+            }
           }
           const u = unmatched.find((x) => x.file.name === file.name)
-          return { file, wordId: null, wordLabel: null, reason: u?.reason ?? "sin coincidencia", status: "pendiente" as const }
+          return {
+            file,
+            wordId: null,
+            wordLabel: null,
+            hasExisting: false,
+            decision: "auto" as const,
+            reason: u?.reason ?? "sin coincidencia",
+            status: "pendiente" as const,
+          }
         })
       )
     } catch (err) {
@@ -152,7 +177,7 @@ export function AudiosManager() {
   async function runBulk() {
     const targets = bulk
       .map((b, i) => ({ ...b, i }))
-      .filter((b) => b.wordId && b.status !== "ok")
+      .filter((b) => bulkActionFor(b, bulkPolicy) === "subir" && b.status !== "ok")
     if (targets.length === 0) return
     setBulkRunning(true)
     setBulkDone(null)
@@ -183,9 +208,14 @@ export function AudiosManager() {
         )
       }
     }
+    const omitidos = bulk.filter((b) => bulkActionFor(b, bulkPolicy) === "omitir").length
     setBulkRunning(false)
-    setBulkDone({ ok, errores })
+    setBulkDone({ ok, omitidos, errores })
     await load()
+  }
+
+  function setRowDecision(index: number, decision: BulkRow["decision"]) {
+    setBulk((prev) => prev.map((b, i) => (i === index ? { ...b, decision } : b)))
   }
 
   return (
@@ -339,7 +369,7 @@ export function AudiosManager() {
           Seleccioná varios audios: el nombre (sin extensión) debe coincidir con el español o
           nasa yuwe de la ficha. Se comprimen a Ogg 24kbps de a uno.
         </p>
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <Input
             type="file"
             accept="audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg"
@@ -349,7 +379,29 @@ export function AudiosManager() {
             aria-label="Elegir audios para el lote"
             disabled={bulkRunning}
           />
-          <Button type="button" size="sm" disabled={bulkRunning || !bulk.some((b) => b.wordId && b.status !== "ok")} onClick={() => void runBulk()}>
+          <label className="text-xs text-muted-foreground" htmlFor="bulk-policy-aud">
+            Si la ficha ya tiene audio:
+          </label>
+          <select
+            id="bulk-policy-aud"
+            className="h-9 rounded-md border bg-background px-2 text-xs"
+            value={bulkPolicy}
+            onChange={(e) => setBulkPolicy(e.target.value as BulkPolicy)}
+            disabled={bulkRunning}
+          >
+            <option value="skip-existing">Omitir (no toca lo existente)</option>
+            <option value="replace-all">Reemplazar todos</option>
+            <option value="per-row">Decidir uno por uno</option>
+          </select>
+          <Button
+            type="button"
+            size="sm"
+            disabled={
+              bulkRunning ||
+              !bulk.some((b) => bulkActionFor(b, bulkPolicy) === "subir" && b.status !== "ok")
+            }
+            onClick={() => void runBulk()}
+          >
             {bulkRunning ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-1 h-4 w-4" />}
             Subir lote
           </Button>
@@ -357,25 +409,61 @@ export function AudiosManager() {
 
         {bulk.length > 0 ? (
           <ul className="mt-3 max-h-72 divide-y divide-border overflow-auto rounded-lg border">
-            {bulk.map((b, i) => (
-              <li key={`${b.file.name}-${i}`} className="flex items-center gap-2 px-3 py-1.5 text-sm">
-                <span className="min-w-0 flex-1 truncate font-mono text-xs">{b.file.name}</span>
-                {b.wordLabel ? (
-                  <span className="truncate text-xs text-muted-foreground">→ {b.wordLabel}</span>
-                ) : (
-                  <span className="text-xs text-destructive">→ {b.reason}</span>
-                )}
-                <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
-                  {b.status === "ok" ? "✓ listo" : b.status === "error" ? `✗ ${b.detail ?? ""}` : b.status === "subiendo" ? "…subiendo" : "pendiente"}
-                </span>
-              </li>
-            ))}
+            {bulk.map((b, i) => {
+              const accion = bulkActionFor(b, bulkPolicy)
+              return (
+                <li key={`${b.file.name}-${i}`} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+                  <span className="min-w-0 flex-1 truncate font-mono text-xs">{b.file.name}</span>
+                  {b.wordLabel ? (
+                    <span className="truncate text-xs text-muted-foreground">→ {b.wordLabel}</span>
+                  ) : (
+                    <span className="text-xs text-destructive">→ {b.reason}</span>
+                  )}
+                  {b.wordId && b.hasExisting && bulkPolicy === "per-row" && b.status === "pendiente" ? (
+                    <span className="flex shrink-0 gap-1">
+                      <Button
+                        type="button"
+                        variant={b.decision === "omitir" ? "secondary" : "ghost"}
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setRowDecision(i, "omitir")}
+                        title="Conservar el audio actual"
+                      >
+                        Omitir
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={b.decision === "subir" ? "secondary" : "ghost"}
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setRowDecision(i, "subir")}
+                        title="Reemplazar por el nuevo audio"
+                      >
+                        Reemplazar
+                      </Button>
+                    </span>
+                  ) : null}
+                  <span className="w-28 shrink-0 text-right text-xs text-muted-foreground">
+                    {b.status === "ok"
+                      ? "✓ listo"
+                      : b.status === "error"
+                        ? `✗ ${b.detail ?? ""}`
+                        : b.status === "subiendo"
+                          ? "…subiendo"
+                          : accion === "omitir" && b.wordId
+                            ? "⊘ ya tiene"
+                            : "pendiente"}
+                  </span>
+                </li>
+              )
+            })}
           </ul>
         ) : null}
 
         {bulkDone ? (
           <p className="mt-2 text-sm" aria-live="polite">
-            Lote terminado: {bulkDone.ok} subidos, {bulkDone.errores} errores.
+            Lote terminado: {bulkDone.ok} subidos, {bulkDone.omitidos} omitidos, {bulkDone.errores}{" "}
+            errores.
           </p>
         ) : null}
       </div>

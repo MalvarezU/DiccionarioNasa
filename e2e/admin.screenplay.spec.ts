@@ -439,7 +439,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       await expect(page.getByText("e2e-sinmatch.png").first()).toBeVisible({ timeout: 15000 });
       await expect(page.getByText("sin coincidencia").first()).toBeVisible();
       await page.getByRole("button", { name: /subir lote/i }).click();
-      await expect(page.getByText(/Lote terminado: 2 subidas, 0 errores/)).toBeVisible({
+      await expect(page.getByText(/Lote terminado: 2 subidas, 0 omitidas, 0 errores/)).toBeVisible({
         timeout: 60000,
       });
 
@@ -588,7 +588,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       await expect(page.getByText("e2e-audio-sinmatch.wav").first()).toBeVisible({ timeout: 15000 });
       await expect(page.getByText("sin coincidencia").first()).toBeVisible();
       await page.getByRole("button", { name: /subir lote/i }).click();
-      await expect(page.getByText(/Lote terminado: 2 subidos, 0 errores/)).toBeVisible({
+      await expect(page.getByText(/Lote terminado: 2 subidos, 0 omitidos, 0 errores/)).toBeVisible({
         timeout: 120000,
       });
 
@@ -601,6 +601,154 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       await expect(
         page.locator("li", { hasText: n2 }).first().getByText("con audio")
       ).toBeVisible({ timeout: 30000 });
+    } finally {
+      await borrarFichaE2E(page, id1);
+      await borrarFichaE2E(page, id2);
+    }
+  });
+
+  test("ilustraciones: el lote omite por defecto lo que ya tiene imagen", async ({ page }) => {
+    const stamp = Date.now();
+    const nombre = `E2E IlusExist ${stamp}`;
+    const wordId = await crearFichaE2E(page, nombre);
+    try {
+      // Pre-carga una ilustración directamente (sin pasar por R2 real)
+      await page.request.put(`/api/admin/words/${wordId}`, {
+        data: { illustrationUrl: "https://cdn.test/images/vieja.png" },
+      });
+      await page.goto("/admin/illustrations");
+      await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
+        { name: `e2e-ilexist-${stamp}.png`, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
+      ]);
+      await expect(page.getByText("ya tiene").first()).toBeVisible({ timeout: 15000 });
+      await page.getByRole("button", { name: /subir lote/i }).click();
+      await expect(page.getByText(/Lote terminado: 0 subidas, 1 omitidas, 0 errores/)).toBeVisible({
+        timeout: 60000,
+      });
+      // La ilustración original sigue intacta
+      const check = await page.request.get(`/api/admin/words?pageSize=1&search=${encodeURIComponent(nombre)}`);
+      const words = ((await check.json()) as { words: { illustrationUrl: string | null }[] }).words;
+      expect(words[0]?.illustrationUrl).toBe("https://cdn.test/images/vieja.png");
+    } finally {
+      await borrarFichaE2E(page, wordId);
+    }
+  });
+
+  test("ilustraciones: lote con reemplazar todas sobrescribe la existente", async ({ page }) => {
+    const stamp = Date.now();
+    const nombre = `E2E IlusReem ${stamp}`;
+    const archivo = `e2e-ilusreem-${stamp}.png`;
+    const wordId = await crearFichaE2E(page, nombre);
+    try {
+      await page.request.put(`/api/admin/words/${wordId}`, {
+        data: { illustrationUrl: "https://cdn.test/images/vieja.png" },
+      });
+      await page.goto("/admin/illustrations");
+      await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
+        { name: archivo, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
+      ]);
+      await expect(page.getByText(archivo).first()).toBeVisible({ timeout: 15000 });
+      await page.getByLabel("Si la ficha ya tiene imagen:").selectOption("replace-all");
+      await page.getByRole("button", { name: /subir lote/i }).click();
+      await expect(page.getByText(/Lote terminado: 1 subidas, 0 omitidas, 0 errores/)).toBeVisible({
+        timeout: 60000,
+      });
+      const check = await page.request.get(`/api/admin/words?pageSize=1&search=${encodeURIComponent(nombre)}`);
+      const words = ((await check.json()) as { words: { illustrationUrl: string | null }[] }).words;
+      expect(words[0]?.illustrationUrl ?? "").toContain("/api/media/");
+    } finally {
+      await borrarFichaE2E(page, wordId);
+    }
+  });
+
+  test("audios: el lote omite por defecto lo que ya tiene audio", async ({ page }) => {
+    const stamp = Date.now();
+    const nombre = `E2E AudExist ${stamp}`;
+    const wordId = await crearFichaE2E(page, nombre);
+    try {
+      await page.request.put(`/api/admin/words/${wordId}`, {
+        data: { audioUrl: "https://cdn.test/audios/viejo.mp3" },
+      });
+      await page.goto("/admin/audios");
+      await page.getByLabel("Elegir audios para el lote").setInputFiles([
+        { name: `e2e-audexist-${stamp}.wav`, mimeType: "audio/wav", buffer: wavBytes() },
+      ]);
+      await expect(page.getByText("ya tiene").first()).toBeVisible({ timeout: 15000 });
+      await page.getByRole("button", { name: /subir lote/i }).click();
+      await expect(page.getByText(/Lote terminado: 0 subidos, 1 omitidos, 0 errores/)).toBeVisible({
+        timeout: 60000,
+      });
+      const check = await page.request.get(`/api/admin/words?pageSize=1&search=${encodeURIComponent(nombre)}`);
+      const words = ((await check.json()) as { words: { audioUrl: string | null }[] }).words;
+      expect(words[0]?.audioUrl).toBe("https://cdn.test/audios/viejo.mp3");
+    } finally {
+      await borrarFichaE2E(page, wordId);
+    }
+  });
+
+  test("audios: lote con reemplazar todas sobrescribe el existente", async ({ page }) => {
+    const stamp = Date.now();
+    const nombre = `E2E AudReem ${stamp}`;
+    const archivo = `e2e-audreem-${stamp}.wav`;
+    const wordId = await crearFichaE2E(page, nombre);
+    try {
+      await page.request.put(`/api/admin/words/${wordId}`, {
+        data: { audioUrl: "https://cdn.test/audios/viejo.mp3" },
+      });
+      await page.goto("/admin/audios");
+      await page.getByLabel("Elegir audios para el lote").setInputFiles([
+        { name: archivo, mimeType: "audio/wav", buffer: wavBytes() },
+      ]);
+      await expect(page.getByText(archivo).first()).toBeVisible({ timeout: 15000 });
+      await page.getByLabel("Si la ficha ya tiene audio:").selectOption("replace-all");
+      await page.getByRole("button", { name: /subir lote/i }).click();
+      await expect(page.getByText(/Lote terminado: 1 subidos, 0 omitidos, 0 errores/)).toBeVisible({
+        timeout: 120000,
+      });
+      const check = await page.request.get(`/api/admin/words?pageSize=1&search=${encodeURIComponent(nombre)}`);
+      const words = ((await check.json()) as { words: { audioUrl: string | null }[] }).words;
+      expect(words[0]?.audioUrl ?? "").toContain(".ogg");
+    } finally {
+      await borrarFichaE2E(page, wordId);
+    }
+  });
+
+  test("ilustraciones: lote con SVG disfrazado reporta error y sigue", async ({ page }) => {
+    const stamp = Date.now();
+    const n1 = `E2E Parcial Uno ${stamp}`;
+    const f1 = `e2e-parcial-uno-${stamp}.png`;
+    const n2 = `E2E Parcial Dos ${stamp}`;
+    const f2 = `e2e-parcial-dos-${stamp}.png`;
+    const id1 = await crearFichaE2E(page, n1);
+    const id2 = await crearFichaE2E(page, n2);
+    try {
+      await page.goto("/admin/illustrations");
+      await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
+        { name: f1, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
+        { name: f2, mimeType: "image/png", buffer: Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'><rect width='1' height='1'/></svg>") },
+      ]);
+      await expect(page.getByText(f2).first()).toBeVisible({ timeout: 15000 });
+      await page.getByRole("button", { name: /subir lote/i }).click();
+      await expect(page.getByText(/Lote terminado: 1 subidas, 0 omitidas, 1 errores/)).toBeVisible({
+        timeout: 120000,
+      });
+    } finally {
+      await borrarFichaE2E(page, id1);
+      await borrarFichaE2E(page, id2);
+    }
+  });
+
+  test("ilustraciones: lote ambiguo (2 fichas mismo español) marca ambiguo", async ({ page }) => {
+    const stamp = Date.now();
+    const spanish = `E2E Ambig ${stamp}`;
+    const id1 = await crearFichaE2E(page, spanish);
+    const id2 = await crearFichaE2E(page, spanish);
+    try {
+      await page.goto("/admin/illustrations");
+      await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
+        { name: `${spanish}.png`, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
+      ]);
+      await expect(page.getByText("ambiguo").first()).toBeVisible({ timeout: 15000 });
     } finally {
       await borrarFichaE2E(page, id1);
       await borrarFichaE2E(page, id2);
