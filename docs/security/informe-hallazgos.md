@@ -253,3 +253,27 @@ Escaneo manual sin hallazgos en `src/`.
 | H-27 admin noindex | `src/app/admin/layout.tsx` metadata robots noindex; robots.txt Disallow /admin/ /api/ | Mitigado |
 
 Pendiente: H-15 (passwordChangedAt requiere migración), H-04 xlsx (sin fix upstream), H-12 móvil, DAST, IDOR dinámico.
+
+---
+
+## 13. Bitácora de remediación Fase 2 (2026-10-24, commits S1-S8)
+
+| Hallazgo | Fase | Acción | Estado |
+|---|---|---|---|
+| H-15 session invalidation | S1 | `passwordChangedAt` en User + JWT; tokens viejos rechazados; migración aplicada | Mitigado |
+| H-25 sync cursor/since | S2 | Validación ISO en `since`, base64url en `cursor`; 400 en inválidos | Mitigado |
+| H-26 CSP | S3 | Promovido de Report-Only a enforced | Mitigado |
+| H-14 score manipulation | S4 | Cap 1.000.000 (ya existente) + test de verificación | Mitigado (parcial) |
+| H-04/H-20 xlsx/import | S5 | Max length 2000 en campos de texto; size limit 5MB ya existente | Mitigado (parcial) |
+| H-28 RLS | S6 | Documentado: no habilitado, justificado (service role server-side) | Documentado |
+| H-29 backups/retención | S7 | Documentado en `rls-backups.md` | Documentado |
+| H-05/H-06/H-07 SCA | S8 | `npm audit fix` (zod actualizado); xlsx/vite/uuid sin fix upstream | Mitigado (parcial) |
+
+### Pendiente (requiere entorno/staging)
+- S9: MM1-MM5 pruebas manuales móvil (emulador/dispositivo).
+- S10: M9-M10 verificación de headers y robots.
+- S11: DAST con ZAP (requiere staging).
+- S12: IDOR dinámico (2 usuarios + admin endpoints).
+
+### H-31 móvil (cookie en memoria) — REMEDIADO
+La rama `feat/mobile-paridad-web` persiste la sesión en `expo-secure-store` (commit `f685b6e`). Ya no aplica.
