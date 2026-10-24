@@ -158,6 +158,55 @@ describe("PUT /api/admin/words/[id]", () => {
     expect(res.status).toBe(200)
   })
 
+  it("reemplazar audio borra el objeto anterior de R2 sin bloquear el PUT", async () => {
+    allow()
+    mockDeleteObject.mockResolvedValue(undefined)
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      audioUrl: "https://xyz.supabase.co/storage/v1/object/public/audios/temp/viejo.mp3",
+    })
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({
+      ...existingWord,
+      audioUrl: "https://cdn.test/audios/temp/nuevo.mp3",
+    })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioUrl: "https://cdn.test/audios/temp/nuevo.mp3" }),
+      }),
+      params
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockDeleteObject).toHaveBeenCalledWith("audios/temp/viejo.mp3")
+  })
+
+  it("quitar audio (null) borra el objeto anterior de R2", async () => {
+    allow()
+    mockDeleteObject.mockResolvedValue(undefined)
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      audioUrl: "https://xyz.supabase.co/storage/v1/object/public/audios/temp/viejo.mp3",
+    })
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...existingWord, audioUrl: null })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioUrl: null }),
+      }),
+      params
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockDeleteObject).toHaveBeenCalledWith("audios/temp/viejo.mp3")
+  })
+
   it("returns 400 for empty required fields", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)

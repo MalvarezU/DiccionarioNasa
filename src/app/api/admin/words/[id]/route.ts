@@ -156,8 +156,7 @@ export async function PUT(
     }
 
     // Ilustración reemplazada: borrar el asset anterior server-side para no
-    // dejar huérfanos en R2 (el flujo de audio delega al cliente por legacy;
-    // acá no: el PUT no vuelve sin limpiar). Best-effort, nunca bloquea.
+    // dejar huérfanos en R2. Best-effort, nunca bloquea.
     if ('illustrationUrl' in changes) {
       const before = changes.illustrationUrl.before
       const after = changes.illustrationUrl.after
@@ -166,6 +165,22 @@ export async function PUT(
           await deleteMediaAssetByUrl(before)
         } catch (cleanupError) {
           console.error('Error limpiando ilustración anterior:', cleanupError)
+        }
+      }
+    }
+
+    // Audio reemplazado o quitado: borrar el objeto anterior de R2.
+    // El frontend también intenta borrarlo (compat), pero deleteObject es
+    // idempotente, así que el doble borrado es inofensivo.
+    if ('audioUrl' in changes) {
+      const before = changes.audioUrl.before
+      const after = changes.audioUrl.after
+      if (typeof before === 'string' && before && before !== after) {
+        try {
+          const key = audioRefToKey(before)
+          if (key) await deleteObject(key)
+        } catch (cleanupError) {
+          console.error('Error limpiando audio anterior:', cleanupError)
         }
       }
     }

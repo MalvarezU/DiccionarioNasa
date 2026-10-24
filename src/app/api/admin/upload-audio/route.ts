@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireRole } from "@/lib/auth"
 import { audioKey } from "@/lib/media/storage"
+import { detectAudioMime, expectedExtensions } from "@/lib/media/audio"
 import { putObject, publicUrl } from "@/lib/r2"
 
 const VALID_MIME_TYPES = [
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const validationError = validateAudio(file)
+  const validationError = validateAudio(file, new Uint8Array(await file.arrayBuffer()))
   if (validationError) {
     return NextResponse.json({ message: validationError }, { status: 400 })
   }
@@ -89,7 +90,7 @@ function extensionOf(name: string): string {
   return dotIndex === -1 ? "" : name.substring(dotIndex).toLowerCase()
 }
 
-function validateAudio(file: File): string | null {
+function validateAudio(file: File, bytes: Uint8Array): string | null {
   const ext = extensionOf(file.name)
 
   // La extensión es obligatoria (el MIME lo puede falsear el cliente)
@@ -105,6 +106,16 @@ function validateAudio(file: File): string | null {
 
   if (file.size > 10 * 1024 * 1024) {
     return "El audio no puede superar los 10 MB"
+  }
+
+  // La firma binaria manda: el contenido debe ser audio real y la
+  // extensión debe coincidir con el formato detectado.
+  const detected = detectAudioMime(bytes)
+  if (detected === null) {
+    return "El archivo no es un audio válido"
+  }
+  if (!expectedExtensions(detected).includes(ext)) {
+    return `La extensión ${ext} no coincide con el contenido real del audio`
   }
 
   return null

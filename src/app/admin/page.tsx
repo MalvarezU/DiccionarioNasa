@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, GraduationCap, Images } from "lucide-react"
+import { ArrowLeft, GraduationCap, Images, AudioLines } from "lucide-react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -38,6 +38,12 @@ export default function AdminPage() {
               <Button variant="outline" size="sm" className="gap-2">
                 <Images className="h-4 w-4" />
                 Ilustraciones
+              </Button>
+            </Link>
+            <Link href="/admin/audios">
+              <Button variant="outline" size="sm" className="gap-2">
+                <AudioLines className="h-4 w-4" />
+                Audios
               </Button>
             </Link>
           </div>

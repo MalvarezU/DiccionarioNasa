@@ -35,7 +35,13 @@ function deny() {
   })
 }
 
-function createMockRequest(fileName: string, mimeType: string, content: string): Request {
+const MP3_BYTES = new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, 0, 0, 0, 1, 2, 3])
+const WAV_BYTES = new Uint8Array([
+  0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45,
+])
+const OGG_BYTES = new Uint8Array([0x4f, 0x67, 0x67, 0x53, 0, 2, 0, 0])
+
+function createMockRequest(fileName: string, mimeType: string, content: string | Uint8Array<ArrayBuffer>): Request {
   const formData = new FormData()
   const blob = new Blob([content], { type: mimeType })
   const file = new File([blob], fileName, { type: mimeType })
@@ -88,7 +94,7 @@ describe("POST /api/admin/upload-audio", () => {
   })
 
   it("uploads audio to R2 and returns permanent public URL", async () => {
-    const req = createMockRequest("test.mp3", "audio/mpeg", "fake")
+    const req = createMockRequest("test.mp3", "audio/mpeg", MP3_BYTES)
     const res = await POST(req)
     const body = await res.json()
 
@@ -108,14 +114,30 @@ describe("POST /api/admin/upload-audio", () => {
   })
 
   it("accepts generic octet-stream mime with valid extension", async () => {
-    const req = createMockRequest("test.mp3", "application/octet-stream", "fake")
+    const req = createMockRequest("test.mp3", "application/octet-stream", MP3_BYTES)
     expect((await POST(req)).status).toBe(200)
+  })
+
+  it("rejects binary garbage even with valid extension and mime", async () => {
+    const req = createMockRequest("test.mp3", "audio/mpeg", "esto no es audio ni de lejos")
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    expect((await res.json()).message).toMatch(/no es un audio/)
+    expect(mockPutObject).not.toHaveBeenCalled()
+  })
+
+  it("rejects extension that does not match the detected content", async () => {
+    const req = createMockRequest("test.wav", "audio/wav", MP3_BYTES)
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    expect((await res.json()).message).toMatch(/no coincide/)
+    expect(mockPutObject).not.toHaveBeenCalled()
   })
 
   it("returns 500 when R2 upload fails", async () => {
     mockPutObject.mockRejectedValue(new Error("R2 caído"))
 
-    const req = createMockRequest("test.mp3", "audio/mpeg", "fake")
+    const req = createMockRequest("test.mp3", "audio/mpeg", MP3_BYTES)
     expect((await POST(req)).status).toBe(500)
   })
 })
