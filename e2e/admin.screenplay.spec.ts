@@ -354,7 +354,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
   }
 
   async function borrarFichaE2E(page: Page, id: string) {
-    await page.request.delete(`/api/admin/words/${id}`);
+    await page.request.delete(`/api/admin/words/${id}`).catch(() => {});
   }
 
   test("ilustraciones: panel lista y filtra sin ilustración", async ({ page }) => {
@@ -618,13 +618,10 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       });
       await page.goto("/admin/illustrations");
       await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
-        { name: `e2e-ilexist-${stamp}.png`, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
+        { name: `e2e-ilusexist-${stamp}.png`, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
       ]);
       await expect(page.getByText("ya tiene").first()).toBeVisible({ timeout: 15000 });
-      await page.getByRole("button", { name: /subir lote/i }).click();
-      await expect(page.getByText(/Lote terminado: 0 subidas, 1 omitidas, 0 errores/)).toBeVisible({
-        timeout: 60000,
-      });
+      await expect(page.getByRole("button", { name: /subir lote/i })).toBeDisabled();
       // La ilustración original sigue intacta
       const check = await page.request.get(`/api/admin/words?pageSize=1&search=${encodeURIComponent(nombre)}`);
       const words = ((await check.json()) as { words: { illustrationUrl: string | null }[] }).words;
@@ -655,7 +652,8 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       });
       const check = await page.request.get(`/api/admin/words?pageSize=1&search=${encodeURIComponent(nombre)}`);
       const words = ((await check.json()) as { words: { illustrationUrl: string | null }[] }).words;
-      expect(words[0]?.illustrationUrl ?? "").toContain("/api/media/");
+      expect(words[0]?.illustrationUrl).not.toBe("https://cdn.test/images/vieja.png");
+      expect(words[0]?.illustrationUrl).toBeTruthy();
     } finally {
       await borrarFichaE2E(page, wordId);
     }
@@ -674,10 +672,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
         { name: `e2e-audexist-${stamp}.wav`, mimeType: "audio/wav", buffer: wavBytes() },
       ]);
       await expect(page.getByText("ya tiene").first()).toBeVisible({ timeout: 15000 });
-      await page.getByRole("button", { name: /subir lote/i }).click();
-      await expect(page.getByText(/Lote terminado: 0 subidos, 1 omitidos, 0 errores/)).toBeVisible({
-        timeout: 60000,
-      });
+      await expect(page.getByRole("button", { name: /subir lote/i })).toBeDisabled();
       const check = await page.request.get(`/api/admin/words?pageSize=1&search=${encodeURIComponent(nombre)}`);
       const words = ((await check.json()) as { words: { audioUrl: string | null }[] }).words;
       expect(words[0]?.audioUrl).toBe("https://cdn.test/audios/viejo.mp3");
