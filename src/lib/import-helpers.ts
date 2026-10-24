@@ -56,10 +56,12 @@ const safeUrl = (v: unknown): string | null => {
     return null
   }
 }
-const str = (v: unknown): string | null => {
+const MAX_TEXT = 2000;
+const str = (v: unknown, max = MAX_TEXT): string | null => {
   if (v === undefined || v === null) return null;
   const s = String(v).trim();
-  return s === "" ? null : s;
+  if (s === "") return null;
+  return s.length > max ? s.slice(0, max) : s;
 };
 
 /** Columnas reconocidas (encabezados ES/EN, con o sin tildes/guiones). */
