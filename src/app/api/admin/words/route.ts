@@ -18,9 +18,7 @@ export async function GET(request: Request) {
     const rawPage = Number(searchParams.get("page") ?? "1")
     const rawPageSize = Number(searchParams.get("pageSize") ?? "20")
     const page = Number.isFinite(rawPage) ? Math.max(1, Math.floor(rawPage)) : 1
-    const pageSize = Number.isFinite(rawPageSize)
-      ? Math.min(100, Math.max(1, Math.floor(rawPageSize)))
-      : 20
+    const pageSize = Number.isFinite(rawPageSize) ? Math.min(100, Math.max(1, Math.floor(rawPageSize))) : 20
     const status = searchParams.get("status") || undefined
     const search = searchParams.get("search") || undefined
     const illustration = searchParams.get("illustration")
@@ -114,6 +112,10 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validate status
+    const validStatuses = ["DRAFT", "PUBLISHED", "ARCHIVED"]
+    const finalStatus = status && validStatuses.includes(status) ? status : "DRAFT"
+
     // Create the word
     const word = await db.dictionaryWord.create({
       data: {
@@ -125,7 +127,7 @@ export async function POST(request: Request) {
         culturalContext: culturalContext?.trim() || null,
         category: category?.trim() || null,
         examples: examples ? JSON.stringify(examples) : null,
-        status: status || "DRAFT",
+        status: finalStatus,
       },
     })
 

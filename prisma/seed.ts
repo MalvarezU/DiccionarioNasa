@@ -8,13 +8,13 @@ const prisma = new PrismaClient()
 
 async function createAdmin() {
   const email = process.env.ADMIN_EMAIL || 'admin@nasayuwe.com'
-  let password = process.env.ADMIN_PASSWORD
+  const password = process.env.ADMIN_PASSWORD
+  if (!password && process.env.NODE_ENV === "production") {
+    throw new Error("ADMIN_PASSWORD es obligatorio en producción")
+  }
+  const finalPassword = password || 'AdminNasa2024!'
   if (!password) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('ADMIN_PASSWORD es obligatorio en producción (no usar default)')
-    }
     console.warn('⚠ ADMIN_PASSWORD no definido: usando password de desarrollo (NO usar en prod)')
-    password = 'AdminNasa2024!'
   }
   const name = process.env.ADMIN_NAME || 'Administrador'
 
@@ -43,7 +43,7 @@ async function createAdmin() {
     return
   }
 
-  const hashedPassword = await bcrypt.hash(password, 12)
+  const hashedPassword = await bcrypt.hash(finalPassword, 12)
   await prisma.user.create({
     data: { email, password: hashedPassword, name, role: 'admin', emailVerified: new Date() },
   })
