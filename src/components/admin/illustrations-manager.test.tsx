@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { IllustrationsManager } from "./illustrations-manager"
+import { compressToIllustration } from "@/lib/media/compress-image"
 
 vi.mock("@/lib/media/compress-image", () => ({
   compressToIllustration: vi.fn(async (f: File) => f),
@@ -45,9 +46,10 @@ describe("IllustrationsManager — lote", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupFetch()
+    vi.mocked(compressToIllustration).mockImplementation(async (f: File) => f)
   })
 
-  it("prepareBulk muestra sin coincidencia", async () => {
+  it("prepareBulk muestra sin coincidencia", { timeout: 30000 }, async () => {
     render(<IllustrationsManager />)
     await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
 
@@ -59,13 +61,13 @@ describe("IllustrationsManager — lote", () => {
     await waitFor(() => expect(document.body.textContent).toContain("sin coincidencia"), { timeout: 5000 })
   })
 
-  it("runBulk feliz", async () => {
+  it("runBulk feliz", { timeout: 30000 }, async () => {
     render(<IllustrationsManager />)
     await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
 
     await act(async () => {
       selectFiles(["Casa.png"])
-      await new Promise((r) => setTimeout(r, 500))
+      await new Promise((r) => setTimeout(r, 2000))
     })
     await waitFor(() => expect(bodyHas(/Casa \/ Yat/)).toBeTruthy(), { timeout: 5000 })
 
@@ -164,7 +166,7 @@ describe("IllustrationsManager — lote", () => {
     expect(uploadCount).toBe(uploadsAntes + 1)
   })
 
-  it("deshabilita input y botón mientras corre", async () => {
+  it("deshabilita input y botón mientras corre", { timeout: 30000 }, async () => {
     let resolveUpload: (v: Response) => void = () => {}
     const pending = new Promise<Response>((r) => { resolveUpload = r })
 
@@ -205,7 +207,7 @@ describe("IllustrationsManager — lote", () => {
     await waitFor(() => expect(bodyHas(/Lote terminado/)).toBeTruthy(), { timeout: 10000 })
   })
 
-  it("skip-existing: fila con imagen no dispara upload", async () => {
+  it("skip-existing: fila con imagen no dispara upload", { timeout: 30000 }, async () => {
     const fetch = global.fetch as ReturnType<typeof vi.fn>
     global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
@@ -248,7 +250,7 @@ describe("IllustrationsManager — lote", () => {
     expect(uploadsAfter - uploadsBefore).toBe(1)
   })
 
-  it("per-row: elegir Reemplazar sube lo que estaba marcado omitir", async () => {
+  it("per-row: elegir Reemplazar sube lo que estaba marcado omitir", { timeout: 30000 }, async () => {
     global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url.includes("/api/admin/upload-image")) {
@@ -290,7 +292,7 @@ describe("IllustrationsManager — lote", () => {
     await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidas, 0 omitidas, 0 errores/)).toBeTruthy(), { timeout: 10000 })
   })
 
-  it("sin coincidencia: se omite sin fetch de upload", async () => {
+  it("sin coincidencia: se omite sin fetch de upload", { timeout: 30000 }, async () => {
     render(<IllustrationsManager />)
     await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
 

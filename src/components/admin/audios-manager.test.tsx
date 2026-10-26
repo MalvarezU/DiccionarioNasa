@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { AudiosManager } from "./audios-manager"
+import { compressToOpus } from "@/lib/audio/compress-audio"
 
 vi.mock("@/lib/audio/compress-audio", () => ({
   compressToOpus: vi.fn(async (f: File) => ({ ok: true as const, file: f, originalBytes: f.size, opusBytes: f.size })),
@@ -42,6 +43,7 @@ function setupFetch() {
 beforeEach(() => {
   vi.clearAllMocks()
   setupFetch()
+  vi.mocked(compressToOpus).mockImplementation(async (f: File) => ({ ok: true as const, file: f, originalBytes: f.size, opusBytes: f.size }))
   vi.mocked(matchIllustrationFiles).mockImplementation((files, words) => {
     const byName = new Map((words as { id: string; spanish: string; nasaYuwe: string; audioUrl: string | null }[]).map((w) => [w.spanish.toLowerCase(), w]))
     const matched = (files as File[])
