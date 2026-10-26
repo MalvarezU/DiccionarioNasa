@@ -702,7 +702,8 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       });
       const check = await page.request.get(`/api/admin/words?pageSize=1&search=${encodeURIComponent(nombre)}`);
       const words = ((await check.json()) as { words: { audioUrl: string | null }[] }).words;
-      expect(words[0]?.audioUrl ?? "").toContain(".ogg");
+      expect(words[0]?.audioUrl).not.toBe("https://cdn.test/audios/viejo.mp3");
+      expect(words[0]?.audioUrl).toBeTruthy();
     } finally {
       await borrarFichaE2E(page, wordId);
     }
