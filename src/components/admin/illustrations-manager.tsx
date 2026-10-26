@@ -9,6 +9,12 @@ import { MediaPicker } from "@/components/media/media-picker"
 import { IllustrationLightbox } from "@/components/media/illustration-lightbox"
 import { compressToIllustration } from "@/lib/media/compress-image"
 import { matchIllustrationFiles, type BulkMatch } from "@/lib/media/bulk-match"
+import {
+  bulkActionFor,
+  bulkOmitReason,
+  type BulkPolicy,
+  type BulkRowDecision,
+} from "@/lib/media/bulk-policy"
 
 type Row = {
   id: string
@@ -22,6 +28,8 @@ type BulkRow = {
   file: File
   wordId: string | null
   wordLabel: string | null
+  hasExisting: boolean
+  decision: BulkRowDecision
   reason: string | null
   status: "pendiente" | "subiendo" | "ok" | "error"
   detail?: string
@@ -69,8 +77,9 @@ export function IllustrationsManager() {
   const [saving, setSaving] = useState(false)
 
   const [bulk, setBulk] = useState<BulkRow[]>([])
+  const [bulkPolicy, setBulkPolicy] = useState<BulkPolicy>("skip-existing")
   const [bulkRunning, setBulkRunning] = useState(false)
-  const [bulkDone, setBulkDone] = useState<{ ok: number; errores: number } | null>(null)
+  const [bulkDone, setBulkDone] = useState<{ ok: number; omitidos: number; errores: number } | null>(null)
   const bulkInputRef = useRef<HTMLInputElement>(null)
 
   // Filtros vivos en un ref: load() es estable y siempre lee lo vigente.
@@ -140,14 +149,27 @@ export function IllustrationsManager() {
       const all = await fetchAllWords()
       const { matched, unmatched } = matchIllustrationFiles(Array.from(files), all)
       const byFile = new Map(matched.map((m) => [m.file.name, m]))
+      const byId = new Map(all.map((w) => [w.id, w]))
       const rows: BulkRow[] = Array.from(files).map((file) => {
         const m: BulkMatch | undefined = byFile.get(file.name)
-        if (m) return { file, wordId: m.wordId, wordLabel: m.wordLabel, reason: null, status: "pendiente" as const }
+        if (m) {
+          return {
+            file,
+            wordId: m.wordId,
+            wordLabel: m.wordLabel,
+            hasExisting: !!byId.get(m.wordId)?.illustrationUrl,
+            decision: "auto" as const,
+            reason: null,
+            status: "pendiente" as const,
+          }
+        }
         const u = unmatched.find((x) => x.file.name === file.name)
         return {
           file,
           wordId: null,
           wordLabel: null,
+          hasExisting: false,
+          decision: "auto" as const,
           reason: u?.reason ?? "sin coincidencia",
           status: "pendiente" as const,
         }
@@ -159,7 +181,9 @@ export function IllustrationsManager() {
   }
 
   async function runBulk() {
-    const targets = bulk.map((b, i) => ({ ...b, i })).filter((b) => b.wordId && b.status !== "ok")
+    const targets = bulk
+      .map((b, i) => ({ ...b, i }))
+      .filter((b) => bulkActionFor(b, bulkPolicy) === "subir" && b.status !== "ok")
     if (targets.length === 0) return
     setBulkRunning(true)
     setBulkDone(null)
@@ -190,9 +214,14 @@ export function IllustrationsManager() {
         )
       }
     }
+    const omitidos = bulk.filter((b) => bulkActionFor(b, bulkPolicy) === "omitir").length
     setBulkRunning(false)
-    setBulkDone({ ok, errores })
+    setBulkDone({ ok, omitidos, errores })
     await load()
+  }
+
+  function setRowDecision(index: number, decision: BulkRow["decision"]) {
+    setBulk((prev) => prev.map((b, i) => (i === index ? { ...b, decision } : b)))
   }
 
   return (
@@ -351,57 +380,150 @@ export function IllustrationsManager() {
       ) : null}
 
       {/* Lote */}
-      <div className="rounded-lg border p-4">
-        <p className="text-sm font-semibold">Subida en lote</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Seleccioná varios archivos: el nombre (sin extensión) debe coincidir con el español o el
-          nasa yuwe de la ficha. Se suben de a uno con compresión 512px WebP.
-        </p>
-        <div className="mt-3 flex items-center gap-2">
-          <Input
-            ref={bulkInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/avif"
-            multiple
-            onChange={(e) => void prepareBulk(e.target.files)}
-            className="h-9 w-auto max-w-xs text-xs"
-            aria-label="Elegir imágenes para el lote"
-            disabled={bulkRunning}
-          />
+      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        {/* Header */}
+        <div className="flex items-start gap-3 border-b bg-muted/30 px-5 py-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <UploadCloud className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold">Subida en lote</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Seleccioná varios audios: el nombre (sin extensión) debe coincidir con el español o
+              nasa yuwe de la ficha. Se comprimen a Ogg 24kbps de a uno.
+            </p>
+          </div>
+        </div>
+
+        {/* Controles */}
+        <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-input bg-muted/20 px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/40">
+            <UploadCloud className="h-4 w-4 text-muted-foreground" />
+            <span>Elegir imágenes</span>
+            <Input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/avif,.png,.jpg,.jpeg,.webp,.avif"
+              multiple
+              onChange={(e) => void prepareBulk(e.target.files)}
+              className="sr-only"
+              aria-label="Elegir imágenes para el lote"
+              disabled={bulkRunning}
+            />
+          </label>
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground" htmlFor="bulk-policy-ilus">
+              Si la ficha ya tiene imagen:
+            </label>
+            <select
+              id="bulk-policy-ilus"
+              className="h-9 rounded-md border bg-background px-2 text-xs"
+              value={bulkPolicy}
+              onChange={(e) => setBulkPolicy(e.target.value as BulkPolicy)}
+              disabled={bulkRunning}
+            >
+              <option value="skip-existing">Omitir (no toca lo existente)</option>
+              <option value="replace-all">Reemplazar todos</option>
+              <option value="per-row">Decidir uno por uno</option>
+            </select>
+          </div>
+
           <Button
             type="button"
             size="sm"
-            disabled={bulkRunning || !bulk.some((b) => b.wordId && b.status !== "ok")}
+            disabled={
+              bulkRunning ||
+              !bulk.some((b) => bulkActionFor(b, bulkPolicy) === "subir" && b.status !== "ok")
+            }
             onClick={() => void runBulk()}
+            className="ml-auto"
           >
             {bulkRunning ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-1 h-4 w-4" />}
             Subir lote
           </Button>
         </div>
 
+        {/* Lista */}
         {bulk.length > 0 ? (
-          <ul className="mt-3 max-h-72 divide-y divide-border overflow-auto rounded-lg border">
-            {bulk.map((b, i) => (
-              <li key={`${b.file.name}-${i}`} className="flex items-center gap-2 px-3 py-1.5 text-sm">
-                <span className="min-w-0 flex-1 truncate font-mono text-xs">{b.file.name}</span>
-                {b.wordLabel ? (
-                  <span className="truncate text-xs text-muted-foreground">→ {b.wordLabel}</span>
-                ) : (
-                  <span className="text-xs text-destructive">→ {b.reason}</span>
-                )}
-                <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
-                  {b.status === "ok" ? "✓ lista" : b.status === "error" ? `✗ ${b.detail ?? ""}` : b.status === "subiendo" ? "…subiendo" : "pendiente"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+          <div className="border-t">
+            <ul className="max-h-72 divide-y divide-border overflow-auto">
+              {bulk.map((b, i) => {
+                const accion = bulkActionFor(b, bulkPolicy)
+                return (
+                  <li key={`${b.file.name}-${i}`} className="flex items-center gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-muted/30">
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs">{b.file.name}</span>
+                    {b.wordLabel ? (
+                      <span className="truncate text-xs text-muted-foreground">→ {b.wordLabel}</span>
+                    ) : (
+                      <span className="text-xs font-medium text-destructive">→ {b.reason}</span>
+                    )}
+                    {b.wordId && b.hasExisting && bulkPolicy === "per-row" && b.status === "pendiente" ? (
+                      <span className="flex shrink-0 gap-1">
+                        <Button
+                          type="button"
+                          variant={b.decision === "omitir" ? "secondary" : "ghost"}
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => setRowDecision(i, "omitir")}
+                          title="Conservar la imagen actual"
+                        >
+                          Omitir
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={b.decision === "subir" ? "secondary" : "ghost"}
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => setRowDecision(i, "subir")}
+                          title="Reemplazar por la nueva imagen"
+                        >
+                          Reemplazar
+                        </Button>
+                      </span>
+                    ) : null}
+                    <span
+                      className={
+                        "w-24 shrink-0 text-right text-xs font-medium " +
+                        (b.status === "ok"
+                          ? "text-emerald-600"
+                          : b.status === "error"
+                            ? "text-destructive"
+                            : b.status === "subiendo"
+                              ? "text-blue-600"
+                              : accion === "omitir" && b.wordId
+                                ? "text-amber-600"
+                                : "text-muted-foreground")
+                      }
+                    >
+                      {b.status === "ok"
+                        ? "✓ listo"
+                        : b.status === "error"
+                          ? `✗ ${b.detail ?? ""}`
+                          : b.status === "subiendo"
+                            ? "…subiendo"
+                            : accion === "omitir" && b.wordId
+                              ? "⊘ ya tiene"
+                              : "pendiente"}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
 
-        {bulkDone ? (
-          <p className="mt-2 text-sm" aria-live="polite">
-            Lote terminado: {bulkDone.ok} subidas, {bulkDone.errores} errores.
+            {bulkDone ? (
+              <div className="border-t bg-muted/30 px-5 py-3 text-sm" aria-live="polite">
+                <p className="text-sm">
+                  Lote terminado: {bulkDone.ok} subidas, {bulkDone.omitidos} omitidas, {bulkDone.errores}{" "}
+                  errores.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="border-t px-5 py-4 text-xs text-muted-foreground">
+            Seleccioná archivos para previsualizar el lote y su estado.
           </p>
-        ) : null}
+        )}
       </div>
     </div>
   )

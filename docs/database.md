@@ -4,7 +4,7 @@
 
 | Capa | Tecnología |
 |------|-----------|
-| Motor | PostgreSQL (Supabase en prod, local en dev) |
+| Motor | MariaDB 10.11 (Hostinger en prod, MariaDB 10.11 local en dev) |
 | ORM | Prisma (`prisma-client-js`) |
 | Migraciones | Prisma Migrate (11 migraciones) |
 | Extensiones | `unaccent` (búsqueda insensible a acentos) |
@@ -461,7 +461,7 @@ Registro de auditoría de cambios en el diccionario.
 
 1. **IDs `cuid()` en TEXT** — legibles en URL, sin enumeración secuencial.
 2. **AuditLog con UUID** — expone menos información de volumen que un serial.
-3. **MediaAsset en Postgres (bytea)** — mismo origen que la API → el service worker del PWA puede cachear offline sin CORS.
+3. **MediaAsset en MariaDB (LONGBLOB)** — mismo origen que la API → el service worker del PWA puede cachear offline sin CORS. (Legado: bytea en Postgres/Supabase, deprecado.)
 4. **`illustrationUrl` como string, no relación** — mismo patrón que `audioUrl`: el binario vive en MediaAsset pero se referencia por URL para cacheabilidad.
 5. **`Lesson.content` como JSONB** — permite bloques tipados sin esquema fijo por tipo; la validación vive en `src/lib/courses/blocks.ts`.
 6. **`Lesson.type` DEPRECATED** — el tipo ahora vive en cada bloque de `content`; se conserva para backfill.
@@ -472,7 +472,7 @@ Registro de auditoría de cambios en el diccionario.
 
 ## 9. Variante MariaDB (rama `feat/mysql`)
 
-Rama de pruebas que migra el motor a **MariaDB** (paridad con Hostinger: su hosting Web/Cloud usa MariaDB y cPanel instala 10.11 por defecto). `main` sigue en PostgreSQL/Supabase.
+Migración del motor a **MariaDB** (paridad con Hostinger: su hosting Node.js + cPanel usa MariaDB 10.11 por defecto). Supabase/PostgreSQL queda deprecado como BD de producción; el despliegue objetivo es Hostinger (Node.js App + MariaDB).
 
 ### 9.1 Diferencias PG → MariaDB
 
