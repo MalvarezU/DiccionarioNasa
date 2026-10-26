@@ -82,8 +82,8 @@ describe("POST /api/games/result [B2.1]", () => {
       req({ game: "flashcards", won: true, score: 9_999_999, streak: 9_999_999, sessionKey: "anon1" }) as never
     )
     expect(res.status).toBe(200)
-    // anónimo sin persistencia, pero el cap se aplicó en el parseo (no crash)
-    expect((await res.json()).saved).toBe(false)
+    // anónimo con sessionKey persiste
+    expect((await res.json()).saved).toBe(true)
   })
 
   it("anónimo sin sessionKey valida sin persistir", async () => {
