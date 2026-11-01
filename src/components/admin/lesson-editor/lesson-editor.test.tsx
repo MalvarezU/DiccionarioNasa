@@ -7,9 +7,19 @@ vi.mock("@/hooks/use-toast", () => ({
 }))
 
 import { LessonEditor } from "./lesson-editor"
+
+vi.mock("./text-editor", () => ({
+  EditorTextoRico: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <textarea
+      aria-label="Texto de la lección"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  ),
+}))
 import type { LessonBlock } from "@/lib/courses/blocks"
 
-const bloqueTexto: LessonBlock = { id: "b1", type: "text", markdown: "Hola lección" }
+const bloqueTexto: LessonBlock = { id: "b1", type: "text", html: "Hola lección" }
 const bloqueImagenVacia: LessonBlock = { id: "b2", type: "image", url: "", alt: "" }
 
 function peticionPUT() {
@@ -132,31 +142,27 @@ describe("LessonEditor", () => {
     const init = put![1] as RequestInit
     const cuerpo = JSON.parse(String(init.body)) as {
       title: string
-      content: { version: number; blocks: Array<{ id: string; type: string; markdown: string }> }
+      content: { version: number; blocks: Array<{ id: string; type: string; html: string }> }
     }
     expect(cuerpo.title).toBe("Lección nueva")
-    expect(cuerpo.content.version).toBe(1)
-    expect(cuerpo.content.blocks[0]!.markdown).toBe("Hola lección!")
+    expect(cuerpo.content.version).toBe(2)
+    expect(cuerpo.content.blocks[0]!.html).toBe("Hola lección!")
 
     await waitFor(() => expect(screen.queryByText(/Cambios sin guardar/)).toBeNull())
     expect(onGuardado).toHaveBeenCalled()
   })
 
-  it("la vista previa muestra el render del estudiante y se puede ocultar", async () => {
+  it("la vista previa abre un dialog a pantalla amplia con el render del estudiante", async () => {
     const user = userEvent.setup()
     render(<LessonEditor lessonId="l1" initialTitle="T" initialBlocks={[bloqueTexto]} />)
 
     await user.click(boton(/Vista previa/i))
-    const panel = screen.getByLabelText(/Vista previa de la lección/i)
-    expect(within(panel).getByText("Hola lección")).toBeDefined()
+    const dialogo = await screen.findByRole("dialog")
+    expect(dialogo.textContent).toContain("Vista previa")
+    expect(dialogo.textContent).toContain("Hola lección")
 
-    await user.click(boton(/Ocultar vista previa/i))
-    expect(screen.queryByLabelText(/Vista previa de la lección/i)).toBeNull()
-  })
-
-  it("el bloque legacy se muestra como solo lectura", () => {
-    const legacy: LessonBlock = { id: "b9", type: "legacy-quiz-words", words: ["a", "b"] }
-    render(<LessonEditor lessonId="l1" initialTitle="T" initialBlocks={[legacy]} />)
-    expect(screen.getByText(/no es editable/i)).toBeDefined()
+    // cerrar con Esc (Radix AlertDialog/Dialog)
+    await user.keyboard("{Escape}")
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
   })
 })

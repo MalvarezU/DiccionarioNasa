@@ -3,12 +3,12 @@ import { renderHook, act } from "@testing-library/react"
 import { useLessonEditor } from "./use-lesson-editor"
 import type { LessonBlock } from "@/lib/courses/blocks"
 
-const texto = (markdown = "Hola"): LessonBlock => ({
+const texto = (html = "Hola"): LessonBlock => ({
   id: "b1",
   type: "text",
-  markdown,
+  html,
 })
-const texto2: LessonBlock = { id: "b2", type: "text", markdown: "Segundo" }
+const texto2: LessonBlock = { id: "b2", type: "text", html: "Segundo" }
 const imagen: LessonBlock = { id: "b3", type: "image", url: "/a.png", alt: "Foto" }
 
 describe("useLessonEditor — mutaciones del documento", () => {
@@ -97,8 +97,8 @@ describe("useLessonEditor — validación con el MISMO contrato del server", () 
   it("documento válido expone el documento listo para guardar", () => {
     const { result } = renderHook(() => useLessonEditor({ blocks: [texto()] }))
     expect(result.current.documento).toEqual({
-      version: 1,
-      blocks: [{ id: "b1", type: "text", markdown: "Hola" }],
+      version: 2,
+      blocks: [{ id: "b1", type: "text", html: "Hola" }],
     })
   })
 })

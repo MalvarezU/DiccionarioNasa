@@ -3,14 +3,13 @@
 import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
 import { CheckCircle2 } from "lucide-react"
-import { parseInline, parseMarkdownLite } from "@/lib/courses/markdown-lite"
+import { TEXT_BLOCK_PROSE } from "@/lib/courses/lesson-html"
 import { isInteractive, type LessonBlock, type LessonContent } from "@/lib/courses/blocks"
 import type { CourseWordData } from "@/lib/courses/word-data"
 import { BlockWordCard } from "./block-word-card"
 import { YoutubeEmbed } from "./block-media"
 import { QuizInteractivo } from "./block-quiz"
 import { EscuchaInteractivo } from "./block-listening"
-import { JuegoEmbebido } from "./block-game"
 import { Button } from "@/components/ui/button"
 
 /**
@@ -26,9 +25,6 @@ import { Button } from "@/components/ui/button"
  *   juego son jugables; la lección se marca completa cuando TODOS los
  *   bloques interactivos están aprobados (score = el mejor de los quiz).
  *
- * Los bloques legacy (legacy-quiz-words / legacy-complete-word) NO se juegan
- * acá: la lección que los contiene renderiza por el renderer clásico (ver
- * ModuleAccordion). Preserva el comportamiento exacto de lo que ya existía.
  */
 
 export interface LessonContentViewProps {
@@ -38,11 +34,6 @@ export interface LessonContentViewProps {
   interactive?: boolean
   /** Modo estudiante: se llama cuando todos los interactivos están aprobados. */
   onCompleta?: (score: number | null) => void
-}
-
-const ETIQUETA_LEGACY: Record<string, string> = {
-  "legacy-quiz-words": "Quiz con palabras del diccionario",
-  "legacy-complete-word": "Ejercicio: completa la palabra",
 }
 
 export function LessonContentView({
@@ -80,7 +71,7 @@ export function LessonContentView({
     )
   }
 
-  // Lección rica sin actividad: se completa a mano (igual que una READ legacy).
+  // Lección rica sin actividad: se completa a mano.
   const sinActividad = interactive && onCompleta && interactivos.length === 0
 
   return (
@@ -126,9 +117,21 @@ function BlockView({
 
   switch (block.type) {
     case "text":
-      return <RenderText markdown={block.markdown} />
+      // html vacío: no renderizar nada (evita <div></div> vacío en la lección).
+      if (!block.html || !block.html.trim()) return null
+      return (
+        <div
+          className={TEXT_BLOCK_PROSE}
+          dangerouslySetInnerHTML={{ __html: block.html }}
+        />
+      )
 
     case "image": {
+      // Bloque incompleto (url "") no renderiza <img>: un src vacío hace que
+      // el browser re-descargue la página y levanta error de consola.
+      if (!block.url) {
+        return <AvisoFalta texto="Esta imagen todavía no tiene fuente." />
+      }
       return (
         <figure>
           <Image
@@ -148,14 +151,7 @@ function BlockView({
     }
 
     case "audio": {
-      if (block.media.source === "youtube" && block.media.youtubeId) {
-        return (
-          <YoutubeEmbed
-            youtubeId={block.media.youtubeId}
-            title={block.title ?? "Audio de la lección"}
-          />
-        )
-      }
+      // Solo archivo subido: YouTube quedó exclusivo del bloque video.
       if (block.media.url) {
         return (
           <div>
@@ -173,6 +169,10 @@ function BlockView({
     }
 
     case "video":
+      // Bloque incompleto (youtubeId vacío) no renderiza iframe roto.
+      if (!block.youtubeId) {
+        return <AvisoFalta texto="Este video todavía no tiene fuente." />
+      }
       return <YoutubeEmbed youtubeId={block.youtubeId} title={block.title} />
 
     case "word":
@@ -240,110 +240,12 @@ function BlockView({
           <PanelInteractivo titulo="Ejercicio de escucha" detalle={block.question} />
         </div>
       )
-
-    case "game":
-      if (jugable) {
-        return (
-          <JuegoEmbebido
-            block={block}
-            words={words}
-            onAprobado={(score) => onBloqueAprobado(block.id, score)}
-          />
-        )
-      }
-      {
-        const juego = block.game === "memory" ? "Memoria" : "Flashcards"
-        return (
-          <div data-testid="game-preview">
-            <PanelInteractivo
-              titulo={`Juego embebido: ${juego}`}
-              detalle={`${block.wordIds.length} palabras · dificultad ${block.difficulty}`}
-            />
-          </div>
-        )
-      }
-
-    // Legacy: en el estudiante van por el renderer clásico (ver ModuleAccordion);
-    // acá quedan como resumen para la vista previa del editor.
-    case "legacy-quiz-words":
-      return (
-        <div data-testid="legacy-quiz-preview">
-          <PanelInteractivo
-            titulo={ETIQUETA_LEGACY["legacy-quiz-words"]!}
-            detalle={`${block.words.length} palabra${block.words.length === 1 ? "" : "s"}`}
-          />
-        </div>
-      )
-    case "legacy-complete-word":
-      return (
-        <div data-testid="legacy-complete-preview">
-          <PanelInteractivo
-            titulo={ETIQUETA_LEGACY["legacy-complete-word"]!}
-            detalle="1 palabra"
-          />
-        </div>
-      )
   }
 }
 
 // ------------------------------------------------------------- piezas ---
 
 /** Títulos, párrafos y listas. Todo texto, sin HTML por construcción. */
-function RenderText({ markdown }: { markdown: string }) {
-  const blocks = parseMarkdownLite(markdown)
-
-  if (blocks.length === 0) return null
-
-  return (
-    <div className="space-y-3 leading-relaxed">
-      {blocks.map((b, i) => {
-        switch (b.kind) {
-          case "heading": {
-            if (b.level === 1) {
-              return (
-                <h2 key={i} className="font-serif text-xl font-bold">
-                  {renderInline(b.text)}
-                </h2>
-              )
-            }
-            if (b.level === 2) {
-              return (
-                <h3 key={i} className="font-serif text-lg font-bold">
-                  {renderInline(b.text)}
-                </h3>
-              )
-            }
-            return (
-              <h4 key={i} className="font-semibold">
-                {renderInline(b.text)}
-              </h4>
-            )
-          }
-          case "list":
-            return (
-              <ul key={i} className="list-disc space-y-1 pl-5">
-                {b.items.map((item, j) => (
-                  <li key={j}>{renderInline(item)}</li>
-                ))}
-              </ul>
-            )
-          case "paragraph":
-          default:
-            return <p key={i}>{renderInline(b.text)}</p>
-        }
-      })}
-    </div>
-  )
-}
-
-function renderInline(text: string): React.ReactNode[] {
-  return parseInline(text).map((t, i) => {
-    if (t.bold) return <strong key={i}>{t.text}</strong>
-    if (t.italic) return <em key={i}>{t.text}</em>
-    return <span key={i}>{t.text}</span>
-  })
-}
-
 function PanelInteractivo({ titulo, detalle }: { titulo: string; detalle: string }) {
   return (
     <div className="rounded-lg border border-outline-variant/40 bg-surface-container-high/60 px-4 py-3">

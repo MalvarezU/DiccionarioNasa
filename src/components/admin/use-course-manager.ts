@@ -116,7 +116,7 @@ export function useCourseManager() {
   }
 
   async function handleDeleteCourse() {
-    if (!detail || !window.confirm(`¿Eliminar el curso "${detail.title}" con todo su contenido?`)) return
+    if (!detail) return
     try {
       await api(`/api/courses/${detail.id}`, { method: "DELETE" })
       setDetail(null)
@@ -148,7 +148,7 @@ export function useCourseManager() {
   }
 
   async function handleDeleteModule(moduleId: string) {
-    if (!detail || !window.confirm("¿Eliminar el módulo con sus lecciones?")) return
+    if (!detail) return
     try {
       await api(`/api/modules/${moduleId}`, { method: "DELETE" })
       await loadDetail(detail.id)
@@ -197,10 +197,10 @@ export function useCourseManager() {
     try {
       await api(`/api/modules/${moduleId}/lessons`, {
         method: "POST",
+        // Alta mínima: solo título. El contenido (texto, quiz, juego...)
+        // se arma en el creador único de bloques.
         body: JSON.stringify({
           title: form.title.trim(),
-          type: form.type,
-          wordSpanish: form.wordSpanish.trim() || undefined,
         }),
       })
       setLessonForms((prev) => ({
@@ -217,7 +217,7 @@ export function useCourseManager() {
   }
 
   async function handleDeleteLesson(lessonId: string) {
-    if (!detail || !window.confirm("¿Eliminar la lección?")) return
+    if (!detail) return
     try {
       await api(`/api/lessons/${lessonId}`, { method: "DELETE" })
       await loadDetail(detail.id)
@@ -261,9 +261,7 @@ export function useCourseManager() {
           moduleTitle: mod.title,
           moduleIndex: mi + 1,
           title: les.title,
-          type: les.type,
           lessonNumber: les.lessonNumber,
-          wordSpanish: les.word?.spanish ?? "",
         }
       }
     }
@@ -288,9 +286,7 @@ export function useCourseManager() {
           moduleTitle: mod.title,
           moduleIndex: detail.modules.indexOf(mod) + 1,
           title: les.title,
-          type: les.type,
           lessonNumber: les.lessonNumber,
-          wordSpanish: les.word?.spanish ?? "",
           content: parse.ok ? parse.content : null,
         }
       }

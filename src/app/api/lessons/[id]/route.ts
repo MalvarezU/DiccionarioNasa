@@ -2,35 +2,15 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireRole } from "@/lib/auth"
 import { parseLessonContent } from "@/lib/courses/blocks"
+import { sanitizeLessonContent } from "@/lib/courses/text-sanitizer"
 
 type Ctx = { params: Promise<{ id: string }> }
 
-const LESSON_TYPES = ["READ", "QUIZ", "COMPLETE"] as const
-
-function asPayload(value: unknown): string | null {
-  if (value === undefined || value === null) return null
-  if (typeof value === "string") return value
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return null
-  }
-}
-
-async function resolveWordId(wordSpanish: unknown): Promise<string | null> {
-  if (typeof wordSpanish !== "string" || !wordSpanish.trim()) return null
-  const word = await db.dictionaryWord.findFirst({
-    where: { spanish: { equals: wordSpanish.trim() }, status: "PUBLISHED" },
-    select: { id: true },
-  })
-  return word?.id ?? null
-}
-
 /**
- * PATCH /api/lessons/[id] { title?, wordSpanish?, order? } (editor+)
- * - Edita título y/o palabra asociada (no el `type`).
+ * PATCH /api/lessons/[id] { title?, order? } (editor+)
  * - Si cambia `title`, valida dedupe por módulo.
  * - Re-numerar al reordenar va por `/api/courses/[id]/reorder`.
+ * - El contenido va por PUT con documento de bloques.
  */
 export async function PATCH(request: NextRequest, { params }: Ctx) {
   const { error } = await requireRole("editor")
@@ -65,7 +45,6 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
       }
       data.title = title
     }
-    if (body.wordSpanish !== undefined) data.wordId = await resolveWordId(body.wordSpanish)
     if (Number.isInteger(body.order) && (body.order as number) >= 0) data.order = body.order
 
     if (Object.keys(data).length === 0) {
@@ -83,12 +62,11 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
  * PUT /api/lessons/[id] { title?, content? } (editor+)
  *
  * Guarda la lección completa: título y documento de bloques. Es el endpoint
- * que usa el editor de contenido (fase 3).
+ * que usa el editor de contenido.
  *
  * - `content` se valida con el contrato de src/lib/courses/blocks.ts. Un
  *   documento inválido NO se guarda y se devuelven todas las rutas con error.
  * - `content` no puede ser null: vaciar una lección es mandar `blocks: []`.
- *   Si se aceptara null, el backfill la volvería a llenar con lo legacy.
  * - El dedupe de título por módulo se mantiene igual que en PATCH.
  */
 export async function PUT(request: NextRequest, { params }: Ctx) {
@@ -136,7 +114,8 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
       } else {
         const parsed = parseLessonContent(body.content)
         if (parsed.ok) {
-          data.content = parsed.content
+          // Sanitización server-side: el HTML guardado es inofensivo por construcción.
+          data.content = sanitizeLessonContent(parsed.content as any)
         } else {
           errors.push(...parsed.errors)
         }

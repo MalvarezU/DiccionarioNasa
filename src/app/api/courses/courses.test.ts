@@ -160,7 +160,7 @@ describe("cursos API [B2.2]", () => {
     expect(db.course.delete).not.toHaveBeenCalled()
   })
 
-  it("módulos y lecciones CRUD con palabra resuelta", async () => {
+  it("módulos y lecciones CRUD solo con título (contenido va por PUT)", async () => {
     allowEditor()
     vi.mocked(db.module.count).mockResolvedValue(2)
     vi.mocked(db.module.create).mockResolvedValue({ id: "m1" } as never)
@@ -169,16 +169,26 @@ describe("cursos API [B2.2]", () => {
 
     vi.mocked(db.module.findUnique).mockResolvedValue({ id: "m1" } as never)
     vi.mocked(db.lesson.count).mockResolvedValue(0)
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue({ id: "w1" } as never)
     vi.mocked(db.lesson.create).mockResolvedValue({ id: "l1" } as never)
     const les = await lessonsPOST(
-      jsonReq("http://x", { title: "L", type: "READ", wordSpanish: "Casa" }) as never,
+      jsonReq("http://x", { title: "L" }) as never,
       params("m1")
     )
     expect(les.status).toBe(201)
     expect(db.lesson.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ wordId: "w1", type: "READ" }) })
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: "L",
+          content: { version: 2, blocks: [] },
+        }),
+      })
     )
+    const sentData = vi.mocked(db.lesson.create).mock.calls[0]![0] as {
+      data: Record<string, unknown>
+    }
+    expect(sentData.data).not.toHaveProperty("type")
+    expect(sentData.data).not.toHaveProperty("wordId")
+    expect(sentData.data).not.toHaveProperty("payload")
 
     vi.mocked(db.lesson.findUnique).mockResolvedValue({ id: "l1", moduleId: "m1" } as never)
     vi.mocked(db.lesson.update).mockResolvedValue({ id: "l1" } as never)
@@ -350,11 +360,10 @@ describe("lecciones: numeración y dedupe [admin-cursos]", () => {
     expect(db.lesson.create).not.toHaveBeenCalled()
   })
 
-  it("PATCH edita título y palabra, rechaza duplicado y no toca type", async () => {
+  it("PATCH edita solo título y orden (sin palabra ni type)", async () => {
     allowEditor()
     vi.mocked(db.lesson.findUnique).mockResolvedValue({ id: "l1", moduleId: "m1" } as never)
     vi.mocked(db.lesson.findFirst).mockResolvedValue(null)
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue({ id: "w9" } as never)
     vi.mocked(db.lesson.update).mockResolvedValue({ id: "l1" } as never)
 
     const res = await lessonPATCH(
@@ -364,13 +373,14 @@ describe("lecciones: numeración y dedupe [admin-cursos]", () => {
     expect(res.status).toBe(200)
     expect(db.lesson.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ title: "Nuevo título", wordId: "w9" }),
+        data: expect.objectContaining({ title: "Nuevo título" }),
       })
     )
-    // type NO debe viajar en el update aunque venga en el body
+    // palabra y type NO deben viajar aunque vengan en el body
     const sentData = vi.mocked(db.lesson.update).mock.calls[0]![0] as {
       data: Record<string, unknown>
     }
+    expect(sentData.data).not.toHaveProperty("wordId")
     expect(sentData.data).not.toHaveProperty("type")
   })
 
@@ -424,8 +434,8 @@ describe("PUT /api/lessons/[id] — guardar contenido [cursos-fase2]", () => {
   beforeEach(() => vi.clearAllMocks())
 
   const contenidoValido = {
-    version: 1,
-    blocks: [{ id: "b1", type: "text", markdown: "Hola" }],
+    version: 2,
+    blocks: [{ id: "b1", type: "text", html: "Hola" }],
   }
 
   function leccionExiste() {
@@ -475,7 +485,7 @@ describe("PUT /api/lessons/[id] — guardar contenido [cursos-fase2]", () => {
       data: { title: string; content: { version: number; blocks: unknown[] } }
     }
     expect(arg.data.title).toBe("Lección nueva")
-    expect(arg.data.content.version).toBe(1)
+    expect(arg.data.content.version).toBe(2)
     expect(arg.data.content.blocks).toHaveLength(1)
   })
 
@@ -486,7 +496,7 @@ describe("PUT /api/lessons/[id] — guardar contenido [cursos-fase2]", () => {
     const res = await lessonPUT(
       jsonReq(
         "http://x/api/lessons/l1",
-        { content: { version: 1, blocks: [{ id: "b1", type: "image", url: "javascript:alert(1)", alt: "x" }] } },
+        { content: { version: 2, blocks: [{ id: "b1", type: "image", url: "javascript:alert(1)", alt: "x" }] } },
         "PUT"
       ) as never,
       params("l1")
@@ -516,7 +526,7 @@ describe("PUT /api/lessons/[id] — guardar contenido [cursos-fase2]", () => {
     vi.mocked(db.lesson.update).mockResolvedValue({ id: "l1" } as never)
 
     const res = await lessonPUT(
-      jsonReq("http://x/api/lessons/l1", { content: { version: 1, blocks: [] } }, "PUT") as never,
+      jsonReq("http://x/api/lessons/l1", { content: { version: 2, blocks: [] } }, "PUT") as never,
       params("l1")
     )
     expect(res.status).toBe(200)

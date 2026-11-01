@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ImagePlus, Loader2, Search, Trash2, UploadCloud } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "./confirm-dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { MediaPicker } from "@/components/media/media-picker"
@@ -74,6 +75,7 @@ export function IllustrationsManager() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingWord, setPendingWord] = useState<Row | null>(null)
+  const [confirmQuitar, setConfirmQuitar] = useState<{ id: string; spanish: string } | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [bulk, setBulk] = useState<BulkRow[]>([])
@@ -321,11 +323,7 @@ export function IllustrationsManager() {
                   variant="ghost"
                   size="sm"
                   disabled={saving}
-                  onClick={() => {
-                    if (window.confirm(`¿Quitar la ilustración de "${w.spanish}"?`)) {
-                      void saveIllustration(w.id, null)
-                    }
-                  }}
+                  onClick={() => setConfirmQuitar({ id: w.id, spanish: w.spanish })}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -525,6 +523,17 @@ export function IllustrationsManager() {
           </p>
         )}
       </div>
-    </div>
+          <ConfirmDialog
+        open={confirmQuitar !== null}
+        onOpenChange={(v) => !v && setConfirmQuitar(null)}
+        titulo={confirmQuitar ? `¿Quitar la ilustración de "${confirmQuitar.spanish}"?` : ""}
+        descripcion="La ilustración se desasocia de la palabra. Esta acción no se puede deshacer."
+        accionLabel="Quitar"
+        onConfirm={() => {
+          if (confirmQuitar) void saveIllustration(confirmQuitar.id, null)
+          setConfirmQuitar(null)
+        }}
+      />
+</div>
   )
 }

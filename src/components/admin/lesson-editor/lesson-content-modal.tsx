@@ -5,9 +5,10 @@ import type { LessonContent } from "@/lib/courses/blocks"
 import { LessonEditor } from "./lesson-editor"
 
 /**
- * Modal del editor de contenido (fase 3). Separado a propósito del
- * EditLessonModal (título/palabra/reordenar): son dos trabajos distintos y
- * no se estorban. El guardado dispara onSaved para refrescar el detalle.
+ * Modal del editor de contenido. Ancho original (sin preview lateral): el
+ * editor ocupa todo el espacio y la vista previa se abre por botón (ver
+ * LessonEditor) como un Dialog a pantalla amplia, con la vista real del
+ * estudiante.
  */
 export function LessonContentModal({
   lesson,
@@ -23,7 +24,7 @@ export function LessonContentModal({
     content?: LessonContent | null
   } | null
   open: boolean
-  onOpenChange: (open: boolean) => void
+  onOpenChange: (v: boolean) => void
   onSaved: () => void
 }) {
   if (!lesson) return null
@@ -37,8 +38,8 @@ export function LessonContentModal({
             {lesson.title}
           </DialogTitle>
           <DialogDescription>
-            {lesson.moduleTitle} · armá la lección bloque por bloque. La vista
-            previa es exactamente lo que verá el estudiante.
+            {lesson.moduleTitle} · armá la lección bloque por bloque. El botón
+            "Vista previa" abre exactamente lo que verá el estudiante.
           </DialogDescription>
         </DialogHeader>
 

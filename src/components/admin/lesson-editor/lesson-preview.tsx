@@ -44,7 +44,7 @@ export function LessonPreview({
 
   return (
     <LessonContentView
-      content={{ version: 1, blocks: [...blocks] }}
+      content={{ version: 2, blocks: [...blocks] }}
       words={words}
       interactive={interactive}
     />

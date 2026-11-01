@@ -101,7 +101,7 @@ export function useLessonEditor(
   }, [])
 
   const parseado = useMemo(
-    () => parseLessonContent({ version: 1, blocks }),
+    () => parseLessonContent({ version: 2, blocks }),
     // saveToken evita memoizar resultados viejos tras guardar
     [blocks, saveToken]
   )
@@ -113,7 +113,7 @@ export function useLessonEditor(
     // desaparecían justo cuando hacían falta.
     const out: Record<string, string[]> = {}
     for (const bloque of blocks) {
-      const solo = parseLessonContent({ version: 1, blocks: [bloque] })
+      const solo = parseLessonContent({ version: 2, blocks: [bloque] })
       if (!solo.ok) out[bloque.id] = solo.errors
     }
     return out

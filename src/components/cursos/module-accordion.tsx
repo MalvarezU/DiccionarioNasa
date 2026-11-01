@@ -1,14 +1,22 @@
 "use client"
 
 import { useState } from "react"
-import { BookOpen, HelpCircle, Lock, CheckCircle2, ChevronDown, PenLine, Blocks } from "lucide-react"
+import { Lock, CheckCircle2, ChevronDown, Blocks } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { LessonRenderer, type RealLesson } from "./lesson-renderer"
 import { LessonContentView } from "./blocks/lesson-content-view"
 import { parseLessonContent, type LessonContent } from "@/lib/courses/blocks"
 import type { CourseWordData } from "@/lib/courses/word-data"
+
+export interface RealLesson {
+  id: string
+  title: string
+  /** Numeración visible "1.1, 1.2…" — persistida en BD (estable al reordenar). */
+  lessonNumber: number | null
+  /** Documento de bloques (Json de Prisma). */
+  content: unknown
+}
 
 export interface RealModule {
   id: string
@@ -27,34 +35,10 @@ interface ModuleAccordionProps {
   words?: Map<string, CourseWordData>
 }
 
-function lessonIcon(type: string) {
-  if (type === "QUIZ") return HelpCircle
-  if (type === "COMPLETE") return PenLine
-  return BookOpen
-}
-
-function lessonTypeLabel(type: string) {
-  if (type === "QUIZ") return "Quiz"
-  if (type === "COMPLETE") return "Ejercicio"
-  return "Lectura"
-}
-
-/**
- * ¿La lección renderiza por el documento de bloques?
- *
- * Solo si tiene `content` y NO contiene bloques legacy interactivos: esos los
- * ejecuta el renderer clásico, que ya sabe correrlos y su comportamiento no
- * puede cambiar. El backfill produce documentos con un solo bloque legacy
- * (o [word]); una lección editada con el editor nuevo no los tiene.
- */
-function esLeccionRica(les: RealLesson): { content: LessonContent } | null {
-  const raw = (les as { content?: unknown }).content
-  const parse = parseLessonContent(raw)
+/** La lección es su documento de bloques (Nivel 1+2: sin tipos ni legacy). */
+function contenidoLeccion(les: RealLesson): { content: LessonContent } | null {
+  const parse = parseLessonContent(les.content)
   if (!parse.ok) return null
-  const tieneLegacy = parse.content.blocks.some(
-    (b) => b.type === "legacy-quiz-words" || b.type === "legacy-complete-word"
-  )
-  if (tieneLegacy) return null
   return { content: parse.content }
 }
 
@@ -109,7 +93,7 @@ export function ModuleAccordion({
         <CardContent className="space-y-3 pt-0">
             {module.lessons.map((lesson) => {
               const isComplete = completedLessons.includes(lesson.id)
-              const Icon = lessonIcon(lesson.type)
+              const Icon = Blocks
               const active = activeLessonId === lesson.id
               return (
                 <div key={lesson.id} className="rounded-lg border border-outline-variant/20">
@@ -135,14 +119,11 @@ export function ModuleAccordion({
                       </span>
                       {lesson.title}
                     </span>
-                    <Badge variant="outline" className="text-2xs">
-                      {lessonTypeLabel(lesson.type)}
-                    </Badge>
                   </button>
                   {active && (
                     <div className="p-3 pt-0">
                       {(() => {
-                        const rica = esLeccionRica(lesson)
+                        const rica = contenidoLeccion(lesson)
                         if (rica && words !== undefined) {
                           return (
                             <LessonContentView
@@ -155,11 +136,9 @@ export function ModuleAccordion({
                           )
                         }
                         return (
-                          <LessonRenderer
-                            lesson={lesson}
-                            isComplete={isComplete}
-                            onComplete={onLessonComplete}
-                          />
+                          <p className="text-sm text-destructive">
+                            Esta lección no tiene contenido válido.
+                          </p>
                         )
                       })()}
                     </div>

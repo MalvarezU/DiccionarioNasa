@@ -1,11 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   ChevronDown,
   ChevronUp,
   Eye,
-  EyeOff,
   Loader2,
   Plus,
   Save,
@@ -16,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { BlockType, LessonBlock } from "@/lib/courses/blocks"
 import { useLessonEditor } from "./use-lesson-editor"
 import {
@@ -27,7 +27,7 @@ import {
   FormVocabulary,
   ErroresBloque,
 } from "./block-forms"
-import { FormQuiz, FormListening, FormGame } from "./block-forms-interactive"
+import { FormQuiz, FormListening } from "./block-forms-interactive"
 import { LessonPreview } from "./lesson-preview"
 
 /**
@@ -42,27 +42,23 @@ import { LessonPreview } from "./lesson-preview"
 const TIPOS_NUEVOS: Array<{ type: BlockType; label: string }> = [
   { type: "text", label: "Texto" },
   { type: "image", label: "Imagen" },
-  { type: "audio", label: "Audio" },
-  { type: "video", label: "Video" },
+  { type: "audio", label: "Audio (archivo)" },
+  { type: "video", label: "Video (YouTube)" },
   { type: "word", label: "Palabra" },
   { type: "vocabulary", label: "Vocabulario" },
   { type: "quiz", label: "Quiz" },
   { type: "listening", label: "Escucha" },
-  { type: "game", label: "Juego" },
 ]
 
 const ETIQUETA_TIPO: Record<string, string> = {
   text: "Texto",
   image: "Imagen",
-  audio: "Audio",
-  video: "Video",
+  audio: "Audio (archivo)",
+  video: "Video (YouTube)",
   word: "Palabra",
   vocabulary: "Vocabulario",
   quiz: "Quiz",
   listening: "Escucha",
-  game: "Juego",
-  "legacy-quiz-words": "Quiz legacy (palabras)",
-  "legacy-complete-word": "Ejercicio legacy",
 }
 
 export function LessonEditor({
@@ -70,15 +66,27 @@ export function LessonEditor({
   initialTitle,
   initialBlocks,
   onGuardado,
+  onBloquesChange,
 }: {
   lessonId: string
   initialTitle: string
   initialBlocks?: LessonBlock[]
   onGuardado?: () => void
+  onBloquesChange?: (blocks: LessonBlock[]) => void
 }) {
   const editor = useLessonEditor({ title: initialTitle, blocks: initialBlocks })
+
+  // Ref estable: el padre puede pasar un callback inline sin disparar el
+  // efecto en cada render (el loop "Maximum update depth" ya ocurrió una vez).
+  const onBloquesRef = useRef(onBloquesChange)
+  useEffect(() => {
+    onBloquesRef.current = onBloquesChange
+  })
+  useEffect(() => {
+    onBloquesRef.current?.(editor.blocks)
+  }, [editor.blocks])
   const [guardando, setGuardando] = useState(false)
-  const [previewVisible, setPreviewVisible] = useState(false)
+  const [previewAbierta, setPreviewAbierta] = useState(false)
   const { toast } = useToast()
 
   async function guardar() {
@@ -239,11 +247,12 @@ export function LessonEditor({
         <Button
           type="button"
           variant="outline"
-          onClick={() => setPreviewVisible((v) => !v)}
-          aria-pressed={previewVisible}
+          onClick={() => setPreviewAbierta(true)}
+          aria-label="Vista previa: exactamente lo que verá el estudiante"
+          title="Vista previa: exactamente lo que verá el estudiante"
         >
-          {previewVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          {previewVisible ? "Ocultar vista previa" : "Vista previa"}
+          <Eye className="size-4" />
+          Vista previa
         </Button>
 
         {editor.dirty ? (
@@ -251,15 +260,21 @@ export function LessonEditor({
         ) : null}
       </div>
 
-      {/* Vista previa: el MISMO render del estudiante */}
-      {previewVisible ? (
-        <section aria-label="Vista previa de la lección" className="rounded-lg border border-outline-variant/40 p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Así la ve el estudiante
-          </p>
-          <LessonPreview blocks={editor.blocks} interactive={false} />
-        </section>
-      ) : null}
+      {/* Vista previa real: Dialog a pantalla amplia con el mismo render del estudiante */}
+      <Dialog open={previewAbierta} onOpenChange={setPreviewAbierta}>
+        <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Vista previa — {editor.title || "Lección"}</DialogTitle>
+            <DialogDescription>
+              Exactamente lo que verá el estudiante. Los quiz y la escucha son
+              jugables; completarlos no guarda progreso (es solo vista previa).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-outline-variant/20 bg-background p-4">
+            <LessonPreview blocks={editor.blocks} interactive />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -290,22 +305,5 @@ function FormDeBloque({
       return <FormQuiz block={block} onChange={onChange} errores={errores} />
     case "listening":
       return <FormListening block={block} onChange={onChange} errores={errores} />
-    case "game":
-      return <FormGame block={block} onChange={onChange} errores={errores} />
-    // Legacy: solo lectura. El backfill los crea; la limpieza posterior los migra.
-    case "legacy-quiz-words":
-      return (
-        <p className="text-sm text-muted-foreground">
-          Quiz de la versión anterior con {block.words.length} palabra(s). No es editable;
-          convertilo agregando un quiz nuevo y quitando este bloque.
-        </p>
-      )
-    case "legacy-complete-word":
-      return (
-        <p className="text-sm text-muted-foreground">
-          Ejercicio de la versión anterior. No es editable; convertilo agregando
-          una actividad nueva y quitando este bloque.
-        </p>
-      )
   }
 }
