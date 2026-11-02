@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Mic, Loader2, Search, Trash2, UploadCloud, Volume2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { WordUploadDialog } from "./word-upload-dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { AudioPicker } from "@/components/media/audio-picker"
@@ -346,21 +347,19 @@ export function AudiosManager() {
       </div>
 
       {pendingWord ? (
-        <div className="rounded-lg border p-4">
-          <p className="mb-2 text-sm font-semibold">
-            Audio para {pendingWord.spanish} / {pendingWord.nasaYuwe}
-          </p>
+        <WordUploadDialog
+          open
+          onOpenChange={(v) => {
+            if (!v) setPendingWord(null)
+          }}
+          titulo={`Audio para ${pendingWord.spanish} / ${pendingWord.nasaYuwe}`}
+          saving={saving}
+        >
           <AudioPicker
             onSubida={(url) => void saveAudio(pendingWord.id, url)}
             onCancelar={() => setPendingWord(null)}
           />
-          {saving ? (
-            <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Guardando en la ficha…
-            </p>
-          ) : null}
-        </div>
+        </WordUploadDialog>
       ) : null}
 
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">

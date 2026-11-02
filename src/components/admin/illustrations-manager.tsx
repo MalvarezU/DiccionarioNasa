@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { ImagePlus, Loader2, Search, Trash2, UploadCloud } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "./confirm-dialog"
+import { WordUploadDialog } from "./word-upload-dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { MediaPicker } from "@/components/media/media-picker"
@@ -359,22 +360,21 @@ export function IllustrationsManager() {
 
       {/* Subida individual */}
       {pendingWord ? (
-        <div className="rounded-lg border p-4">
-          <p className="mb-2 text-sm font-semibold">
-            Ilustración para {pendingWord.spanish} / {pendingWord.nasaYuwe}
-          </p>
+        <WordUploadDialog
+          open
+          onOpenChange={(v) => {
+            if (!v) setPendingWord(null)
+          }}
+          titulo={`Ilustración para ${pendingWord.spanish} / ${pendingWord.nasaYuwe}`}
+          saving={saving}
+        >
           <MediaPicker
             variant="illustration"
             etiqueta={`Elegir imagen (cuadrada 1:1 · ${pendingWord.spanish})`}
             onSubida={(url) => void saveIllustration(pendingWord.id, url)}
             onCancelar={() => setPendingWord(null)}
           />
-          {saving ? (
-            <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Guardando en la ficha…
-            </p>
-          ) : null}
-        </div>
+        </WordUploadDialog>
       ) : null}
 
       {/* Lote */}
