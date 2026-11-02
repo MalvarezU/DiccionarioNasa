@@ -84,4 +84,18 @@ describe("AdminShell [F1]", () => {
     expect(screen.getByText("Gestión de cursos").closest("a")?.getAttribute("aria-current")).toBe("page")
     expect(screen.getByText("Resumen").closest("a")?.getAttribute("aria-current")).toBeNull()
   })
+
+  it("muestra skeleton mientras la sesión carga", () => {
+    vi.mocked(useSession).mockReturnValue({
+      data: null,
+      status: "loading",
+      update: vi.fn(),
+    } as never)
+    render(
+      <AdminShell>
+        <p>hola</p>
+      </AdminShell>
+    )
+    expect(screen.getByLabelText("Cargando sesión")).toBeDefined()
+  })
 })

@@ -1,7 +1,6 @@
-"use client"
-
 import { useSession } from "next-auth/react"
 import { AdminDashboard } from "@/components/admin-dashboard"
+import { AdminPageHeader } from "@/components/admin/admin-page-header"
 
 export default function AdminPage() {
   const { data: session } = useSession()
@@ -10,11 +9,10 @@ export default function AdminPage() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-2xl font-serif font-bold text-primary">Resumen del panel</h1>
-        <p className="text-sm text-muted-foreground">Estadísticas y estado del diccionario</p>
-      </div>
-
+      <AdminPageHeader
+        title="Resumen del panel"
+        description="Estadísticas y estado del diccionario"
+      />
       <AdminDashboard isAdmin={isAdmin} />
     </>
   )

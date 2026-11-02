@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface NavItem {
   title: string
@@ -71,7 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const role = (session?.user as { role?: string } | undefined)?.role
   const isAdmin = role === "admin"
   const userName = session?.user?.name || session?.user?.email || "Usuario"
@@ -140,10 +141,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               Panel de administración
             </p>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="hidden sm:inline truncate max-w-[180px]">{userName}</span>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                {isAdmin ? "Admin" : "Editor"}
-              </span>
+              {status === "loading" ? (
+                <span className="flex items-center gap-2" aria-busy="true" aria-label="Cargando sesión">
+                  <Skeleton className="h-6 w-6 rounded-full" />
+                  <Skeleton className="hidden sm:block h-4 w-20" />
+                </span>
+              ) : (
+                <>
+                  <span className="hidden sm:inline truncate max-w-[180px]">{userName}</span>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    {isAdmin ? "Admin" : "Editor"}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </header>

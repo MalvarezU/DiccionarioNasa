@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useSession } from "next-auth/react"
 import { Plus, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { AdminPageHeader } from "@/components/admin/admin-page-header"
 import { CreateWordModal } from "@/components/admin/CreateWordModal"
 import { ImportCorpusModal } from "@/components/admin/ImportCorpusModal"
 import { EditWordModal } from "@/components/admin/EditWordModal"
@@ -30,26 +31,22 @@ export default function AdminPalabrasPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-serif font-bold text-primary">
-            Gestión de palabras
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Fichas del diccionario: crear, gestionar e importar.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setCreateOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nueva ficha
-          </Button>
-          <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-2">
-            <Upload className="h-4 w-4" />
-            Importar corpus
-          </Button>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Gestión de palabras"
+        description="Fichas del diccionario: crear, gestionar e importar."
+        actions={
+          <>
+            <Button onClick={() => setCreateOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nueva ficha
+            </Button>
+            <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-2">
+              <Upload className="h-4 w-4" />
+              Importar corpus
+            </Button>
+          </>
+        }
+      />
 
       <WordListContent
         key={listKey}

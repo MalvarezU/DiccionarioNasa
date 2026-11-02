@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react"
 import { ShieldAlert } from "lucide-react"
 import { UserManagementSection } from "@/components/user-management-section"
+import { AdminPageHeader } from "@/components/admin/admin-page-header"
 
 export default function AdminUsuariosPage() {
   const { data: session } = useSession()
@@ -24,9 +25,10 @@ export default function AdminUsuariosPage() {
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-serif font-bold text-primary">
-        Gestión de usuarios
-      </h1>
+      <AdminPageHeader
+        title="Gestión de usuarios"
+        description="Roles y accesos"
+      />
       <UserManagementSection />
     </>
   )

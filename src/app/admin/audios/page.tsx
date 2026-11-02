@@ -1,11 +1,10 @@
-"use client"
-
 import { AudiosManager } from "@/components/admin/audios-manager"
+import { AdminPageHeader } from "@/components/admin/admin-page-header"
 
 export default function AdminAudiosPage() {
   return (
     <>
-      <h1 className="mb-6 text-2xl font-serif font-bold text-primary">Gestión de audios</h1>
+      <AdminPageHeader title="Gestión de audios" />
       <AudiosManager />
     </>
   )

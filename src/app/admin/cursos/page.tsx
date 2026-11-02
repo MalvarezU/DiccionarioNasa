@@ -1,7 +1,6 @@
-"use client"
-
 import { useSession } from "next-auth/react"
 import { CourseManager } from "@/components/admin/course-manager"
+import { AdminPageHeader } from "@/components/admin/admin-page-header"
 
 export default function AdminCoursesPage() {
   const { data: session } = useSession()
@@ -9,9 +8,7 @@ export default function AdminCoursesPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-serif font-bold text-primary">Gestión de cursos</h1>
-      </div>
+      <AdminPageHeader title="Gestión de cursos" />
       <CourseManager canDelete={userRole === "admin"} />
       <p className="mt-6 text-xs text-muted-foreground">
         Los cursos publicados aparecen en /cursos. Las lecciones referencian
