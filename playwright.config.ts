@@ -46,6 +46,12 @@ export default defineConfig({
       use: { storageState: "e2e/.auth/admin.json" },
     },
     {
+      name: "tiptap-font",
+      testMatch: /tiptap-font\.spec\.ts/,
+      dependencies: ["setup"],
+      use: { storageState: "e2e/.auth/admin.json" },
+    },
+    {
       // Sin sesión global: cada test crea sus contextos (admin/user/visitante)
       name: "screenplay-multi",
       testMatch: /multiactor\.screenplay\.spec\.ts/,

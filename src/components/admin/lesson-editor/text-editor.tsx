@@ -71,6 +71,10 @@ export function EditorTextoRico({
     ],
     content: "",
     immediatelyRender: false,
+    // CRÍTICO: sin esto, el componente no se re-renderiza en transacciones
+    // sin cambio de documento (toggle de marca en cursor colapsado → stored
+    // mark). El botón quedaba "pegado" un keystroke detrás.
+    shouldRerenderOnTransaction: true,
     editable: !disabled,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML()
@@ -121,13 +125,10 @@ export function EditorTextoRico({
         className={cn(
           mini ? "min-h-[4.5rem]" : "min-h-[12rem]",
           "px-3 py-2 focus:outline-none",
-          "min-h-[12rem] px-3 py-2 focus:outline-none",
-          "[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2",
-          "[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1.5",
-          "[&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1",
-          "[&_p]:mb-2 [&_p]:leading-relaxed",
-          "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2",
-          "[&_li]:mb-0.5",
+          // Una sola fuente de estilo para los tres lados (editor, vista previa
+          // y curso). Antes se duplicaban las clases aquí y en lesson-html.ts,
+          // y el editor se quedaba sin font-serif en los h1/h2/h3.
+          TEXT_BLOCK_PROSE,
           "[&_strong]:font-bold [&_em]:italic"
         )}
       />
