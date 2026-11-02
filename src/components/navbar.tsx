@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { Skeleton } from "@/components/ui/skeleton"
 import { AuthModal } from "@/components/auth-modal"
 
 /** Dispatch a custom event to open the favorites/history panel from the page */
@@ -41,8 +42,9 @@ export function NavBar() {
   const pathname = usePathname()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const isAuthenticated = !!session?.user
+  const isLoadingSession = status === "loading"
   const userRole = (session?.user as { role?: string } | undefined)?.role
   const isAdminUser = userRole === "admin"
   const canUsePanel = userRole === "admin" || userRole === "editor"
@@ -128,8 +130,13 @@ export function NavBar() {
               </Badge>
             )}
 
-            {/* Auth: Login button or User dropdown */}
-            {isAuthenticated ? (
+            {/* Auth: skeleton mientras carga la sesión, luego login o dropdown */}
+            {isLoadingSession ? (
+              <div className="flex items-center gap-2 px-2" aria-busy="true" aria-label="Cargando sesión">
+                <Skeleton className="h-6 w-6 rounded-full" />
+                <Skeleton className="hidden sm:block h-4 w-20" />
+              </div>
+            ) : isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
