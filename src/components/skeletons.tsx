@@ -438,7 +438,7 @@ function CourseManagerDetailSkeleton() {
 }
 
 /**
- * Gestor completo (/admin/courses): replica el grid lista + detalle del
+ * Gestor completo (/admin/cursos): replica el grid lista + detalle del
  * CourseManager real para que el route loading no salte al llegar el dato.
  */
 function CourseManagerSkeleton() {

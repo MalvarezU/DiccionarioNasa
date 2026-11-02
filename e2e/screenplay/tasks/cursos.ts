@@ -2,7 +2,7 @@ import { expect } from "@playwright/test";
 import type { Actor, Task } from "../actor";
 import { NavegarLaWeb } from "../habilidades";
 
-/** Ir a /admin/courses y esperar el panel. */
+/** Ir a /admin/cursos y esperar el panel. */
 export class IrAGestionDeCursos implements Task {
   descripcion = "ir a gestión de cursos";
   static ahora(): IrAGestionDeCursos {
@@ -10,7 +10,7 @@ export class IrAGestionDeCursos implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.goto("/admin/courses");
+    await page.goto("/admin/cursos");
     await expect(page.getByText("Gestión de cursos")).toBeVisible({ timeout: 30000 });
   }
 }

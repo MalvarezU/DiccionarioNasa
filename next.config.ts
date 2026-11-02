@@ -27,6 +27,14 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     "preview-chat-c0b3a305-afb6-43bb-a109-680dbc0aec86.space-z.ai",
   ],
+  async redirects() {
+    return [
+      { source: "/admin/courses", destination: "/admin/cursos", permanent: false },
+      { source: "/admin/courses/:path*", destination: "/admin/cursos/:path*", permanent: false },
+      { source: "/admin/illustrations", destination: "/admin/ilustraciones", permanent: false },
+      { source: "/admin/illustrations/:path*", destination: "/admin/ilustraciones/:path*", permanent: false },
+    ]
+  },
 };
 
 export default nextConfig;

@@ -4,7 +4,7 @@ const CURSO = "Nasa Yuwe Básico"
 
 test.describe("editor de texto — tipografía unificada", () => {
   test("el h1 del editor y el de la vista previa usan la misma fuente serif", async ({ page }) => {
-    await page.goto("/admin/courses", { waitUntil: "domcontentloaded" })
+    await page.goto("/admin/cursos", { waitUntil: "domcontentloaded" })
     await page.getByRole("button", { name: new RegExp(CURSO) }).first().click()
     const filas = page.locator('[data-testid="lesson-row"]')
     await filas.first().waitFor()

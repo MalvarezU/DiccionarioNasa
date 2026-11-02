@@ -61,7 +61,7 @@ async function fetchAllWords(): Promise<Row[]> {
 }
 
 /**
- * Gestión de ilustraciones (/admin/illustrations): lista con filtros, subida
+ * Gestión de ilustraciones (/admin/ilustraciones): lista con filtros, subida
  * individual por ficha y subida en lote con matching por nombre de archivo.
  */
 export function IllustrationsManager() {

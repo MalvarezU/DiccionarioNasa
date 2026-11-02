@@ -339,7 +339,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     expect(res.status()).toBe(404);
   });
 
-  // Fase ilustraciones: gestión desde /admin/illustrations.
+  // Fase ilustraciones: gestión desde /admin/ilustraciones.
   const PNG_AZUL_1X1 = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
     "base64"
@@ -358,7 +358,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
   }
 
   test("ilustraciones: panel lista y filtra sin ilustración", async ({ page }) => {
-    await page.goto("/admin/illustrations");
+    await page.goto("/admin/ilustraciones");
     await expect(page.getByText("Gestión de ilustraciones")).toBeVisible({ timeout: 30000 });
     // Filtro default "Sin ilustración": buscar una palabra seed sin ilustración
     await page.getByPlaceholder("español o nasa yuwe…").fill("Abeja");
@@ -373,7 +373,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     const archivo = `e2e-ilus-${stamp}.png`;
     const wordId = await crearFichaE2E(page, nombre);
     try {
-      await page.goto("/admin/illustrations");
+      await page.goto("/admin/ilustraciones");
       await page.getByPlaceholder("español o nasa yuwe…").fill(nombre);
       const fila = page.locator("li", { hasText: nombre }).first();
       await expect(fila.getByText("sin ilustración")).toBeVisible({ timeout: 30000 });
@@ -430,7 +430,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     const id1 = await crearFichaE2E(page, n1);
     const id2 = await crearFichaE2E(page, n2);
     try {
-      await page.goto("/admin/illustrations");
+      await page.goto("/admin/ilustraciones");
       await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
         { name: f1, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
         { name: f2, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
@@ -616,7 +616,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       await page.request.put(`/api/admin/words/${wordId}`, {
         data: { illustrationUrl: "https://cdn.test/images/vieja.png" },
       });
-      await page.goto("/admin/illustrations");
+      await page.goto("/admin/ilustraciones");
       await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
         { name: `e2e-ilusexist-${stamp}.png`, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
       ]);
@@ -640,7 +640,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       await page.request.put(`/api/admin/words/${wordId}`, {
         data: { illustrationUrl: "https://cdn.test/images/vieja.png" },
       });
-      await page.goto("/admin/illustrations");
+      await page.goto("/admin/ilustraciones");
       await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
         { name: archivo, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
       ]);
@@ -718,7 +718,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     const id1 = await crearFichaE2E(page, n1);
     const id2 = await crearFichaE2E(page, n2);
     try {
-      await page.goto("/admin/illustrations");
+      await page.goto("/admin/ilustraciones");
       await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
         { name: f1, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
         { name: f2, mimeType: "image/png", buffer: Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'><rect width='1' height='1'/></svg>") },
@@ -740,7 +740,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     const id1 = await crearFichaE2E(page, spanish);
     const id2 = await crearFichaE2E(page, spanish);
     try {
-      await page.goto("/admin/illustrations");
+      await page.goto("/admin/ilustraciones");
       await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
         { name: `${spanish}.png`, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
       ]);
