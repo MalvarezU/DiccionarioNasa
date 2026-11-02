@@ -398,7 +398,7 @@ export function IllustrationsManager() {
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-input bg-muted/20 px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/40">
             <UploadCloud className="h-4 w-4 text-muted-foreground" />
             <span>Elegir imágenes</span>
-            <Input
+            <input
               type="file"
               accept="image/png,image/jpeg,image/webp,image/avif,.png,.jpg,.jpeg,.webp,.avif"
               multiple

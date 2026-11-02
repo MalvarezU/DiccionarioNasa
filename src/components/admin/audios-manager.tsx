@@ -383,7 +383,7 @@ export function AudiosManager() {
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-input bg-muted/20 px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/40">
             <UploadCloud className="h-4 w-4 text-muted-foreground" />
             <span>Elegir archivos</span>
-            <Input
+            <input
               type="file"
               accept="audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg"
               multiple
