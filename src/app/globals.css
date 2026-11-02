@@ -160,11 +160,3 @@
   }
 }
 
-/* Editor Tiptap: los títulos usan la misma fuente serif (Newsreader) que el
-   render del estudiante. Sin esto, el docente ve sans-serif en el editor pero
-   el alumno ve serif — discrepancia visual. */
-.ProseMirror h1,
-.ProseMirror h2,
-.ProseMirror h3 {
-  font-family: var(--font-serif);
-}
