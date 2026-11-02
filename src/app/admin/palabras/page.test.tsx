@@ -80,4 +80,117 @@ describe("AdminPalabrasPage [F2]", () => {
     // El modal de creación se abre (título del modal presente)
     expect(await screen.findByRole("heading", { name: "Nueva ficha" })).toBeDefined()
   })
+
+  // ═══════════════════════════════════════
+  // Modales (mudados desde el Resumen en F3: misma UI, nuevo hogar)
+  // ═══════════════════════════════════════
+
+  const mockWordRow = {
+    id: "w1",
+    spanish: "agua",
+    nasaYuwe: "yu'",
+    pronunciation: "",
+    audioUrl: null,
+    culturalContext: "",
+    category: "sustantivo",
+    status: "PUBLISHED",
+  }
+
+  function mockWordsList() {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ words: [mockWordRow], totalPages: 1, total: 1 })
+    )
+  }
+
+  it("opens CreateWordModal and renders form fields", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getAllByRole("button", { name: "Nueva ficha" })[0])
+    expect(screen.getByText("Crea una nueva entrada en el diccionario bilingüe")).toBeDefined()
+    expect(screen.getByPlaceholderText("palabra en español")).toBeDefined()
+    expect(screen.getByPlaceholderText("palabra en nasa yuwe")).toBeDefined()
+  })
+
+  it("CreateWordModal validates required fields", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getAllByRole("button", { name: "Nueva ficha" })[0])
+    await user.click(screen.getByText("Guardar como borrador"))
+    expect(screen.getByText(/El campo.*Español.*es obligatorio/)).toBeDefined()
+    expect(screen.getByText(/El campo.*Nasa Yuwe.*es obligatorio/)).toBeDefined()
+  })
+
+  it("CreateWordModal submits and shows success", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getAllByRole("button", { name: "Nueva ficha" })[0])
+    await user.type(screen.getByPlaceholderText("palabra en español"), "sol")
+    await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "ate")
+    vi.mocked(fetch).mockResolvedValue(Response.json({ message: "ok" }))
+    await user.click(screen.getByText("Guardar como borrador"))
+    expect(await screen.findByText("Ficha guardada como borrador")).toBeDefined()
+  })
+
+  it("CreateWordModal submits and publishes", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getAllByRole("button", { name: "Nueva ficha" })[0])
+    await user.type(screen.getByPlaceholderText("palabra en español"), "luna")
+    await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "ate")
+    vi.mocked(fetch).mockResolvedValue(Response.json({ message: "ok" }))
+    await user.click(screen.getByText("Guardar y publicar"))
+    expect(await screen.findByText("Ficha guardada y publicada")).toBeDefined()
+  })
+
+  it("opens ImportCorpusModal and shows format info", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getByRole("button", { name: /Importar corpus/i }))
+    expect(await screen.findByText("Subir archivo Excel o CSV")).toBeDefined()
+    expect(screen.getByText(/Todo entra en borrador/)).toBeDefined()
+  })
+
+  it("ImportCorpusModal previews file before confirm [B1.10]", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getByRole("button", { name: /Importar corpus/i }))
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({
+        fileName: "corpus.xlsx",
+        columns: [{ header: "Palabra_esp", mapped: "spanish" }],
+        total: 2,
+        valid: 2,
+        invalid: 0,
+        duplicates: 0,
+        errors: [],
+        previewToken: "tok",
+      })
+    )
+    await user.upload(
+      input,
+      new File(["x"], "corpus.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+    )
+    expect(await screen.findByText(/Vista previa/)).toBeDefined()
+    expect(screen.getByText(/Confirmar \(2 en borrador\)/)).toBeDefined()
+  })
+
+  it("inline list to EditWordModal flow", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    expect(await screen.findByText("agua")).toBeDefined()
+    await user.click(screen.getByText("Editar"))
+    expect(await screen.findByText("Editar ficha")).toBeDefined()
+    expect(screen.getByDisplayValue("agua")).toBeDefined()
+    expect(screen.getByDisplayValue("yu'")).toBeDefined()
+  })
 })
