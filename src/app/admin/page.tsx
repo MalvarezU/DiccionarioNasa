@@ -1,3 +1,5 @@
+"use client"
+
 import { useSession } from "next-auth/react"
 import { AdminDashboard } from "@/components/admin-dashboard"
 import { AdminPageHeader } from "@/components/admin/admin-page-header"

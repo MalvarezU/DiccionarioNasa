@@ -1,3 +1,5 @@
+"use client"
+
 import { useSession } from "next-auth/react"
 import { CourseManager } from "@/components/admin/course-manager"
 import { AdminPageHeader } from "@/components/admin/admin-page-header"

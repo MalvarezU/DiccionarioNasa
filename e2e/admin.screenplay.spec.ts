@@ -116,7 +116,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
 
   test("gestión de usuarios visible", async ({ page }) => {
     const admin = actorAdmin(page);
-    await admin.intenta(IrADashboard.ahora());
+    await admin.intenta(IrA.a("/admin/usuarios"));
     expect(await admin.pregunta(PanelMuestra.texto(/administra los roles/i))).toBe(true);
   });
 
@@ -359,10 +359,10 @@ test.describe("admin Piiyaak (Screenplay)", () => {
 
   test("ilustraciones: panel lista y filtra sin ilustración", async ({ page }) => {
     await page.goto("/admin/ilustraciones");
-    await expect(page.getByText("Gestión de ilustraciones")).toBeVisible({ timeout: 30000 });
+    await expect(page.getByRole("heading", { name: "Gestión de ilustraciones" })).toBeVisible({ timeout: 30000 });
     // Filtro default "Sin ilustración": buscar una palabra seed sin ilustración
-    await page.getByPlaceholder("español o nasa yuwe…").fill("Abeja");
-    const fila = page.locator("li", { hasText: "Abeja / Iz" }).first();
+    await page.getByPlaceholder("español o nasa yuwe…").fill("Casa");
+    const fila = page.locator("ul.divide-y li", { hasText: "Casa / Yat" }).first();
     await expect(fila.getByText("sin ilustración")).toBeVisible({ timeout: 30000 });
     await expect(fila.getByRole("button", { name: "Subir" })).toBeVisible();
   });
@@ -375,7 +375,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     try {
       await page.goto("/admin/ilustraciones");
       await page.getByPlaceholder("español o nasa yuwe…").fill(nombre);
-      const fila = page.locator("li", { hasText: nombre }).first();
+      const fila = page.locator("ul.divide-y li", { hasText: nombre }).first();
       await expect(fila.getByText("sin ilustración")).toBeVisible({ timeout: 30000 });
       await fila.getByRole("button", { name: "Subir" }).click();
       await page
@@ -447,10 +447,10 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       await page.getByLabel("Ilustración").selectOption("all");
       await page.getByPlaceholder("español o nasa yuwe…").fill(`E2E Lote`);
       await expect(
-        page.locator("li", { hasText: n1 }).first().getByText("con ilustración")
+        page.locator("ul.divide-y li", { hasText: n1 }).first().getByText("con ilustración")
       ).toBeVisible({ timeout: 30000 });
       await expect(
-        page.locator("li", { hasText: n2 }).first().getByText("con ilustración")
+        page.locator("ul.divide-y li", { hasText: n2 }).first().getByText("con ilustración")
       ).toBeVisible({ timeout: 30000 });
     } finally {
       await borrarFichaE2E(page, id1);
@@ -499,9 +499,9 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     const wordId = await crearFichaE2E(page, nombre);
     try {
       await page.goto("/admin/audios");
-      await expect(page.getByText("Gestión de audios")).toBeVisible({ timeout: 30000 });
+      await expect(page.getByRole("heading", { name: "Gestión de audios" })).toBeVisible({ timeout: 30000 });
       await page.getByLabel("Buscar", { exact: true }).fill(nombre);
-      const fila = page.locator("li", { hasText: nombre }).first();
+      const fila = page.locator("ul.divide-y li", { hasText: nombre }).first();
       await expect(fila.getByText("sin audio")).toBeVisible({ timeout: 30000 });
       await expect(fila.getByRole("button", { name: "Subir" })).toBeVisible();
     } finally {
@@ -517,7 +517,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     try {
       await page.goto("/admin/audios");
       await page.getByLabel("Buscar", { exact: true }).fill(nombre);
-      const fila = page.locator("li", { hasText: nombre }).first();
+      const fila = page.locator("ul.divide-y li", { hasText: nombre }).first();
       await expect(fila.getByText("sin audio")).toBeVisible({ timeout: 30000 });
       await fila.getByRole("button", { name: "Subir" }).click();
       await page
@@ -588,7 +588,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       await expect(page.getByText("e2e-audio-sinmatch.wav").first()).toBeVisible({ timeout: 15000 });
       await expect(page.getByText("sin coincidencia").first()).toBeVisible();
       await page.getByRole("button", { name: /subir lote/i }).click();
-      await expect(page.getByText(/Lote terminado: 2 subidos, 0 omitidos, 0 errores/)).toBeVisible({
+      await expect(page.getByText(/Lote terminado: 2 subidas, 0 omitidos, 0 errores/)).toBeVisible({
         timeout: 120000,
       });
 
@@ -596,10 +596,10 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       await page.getByLabel("Audio", { exact: true }).selectOption("all");
       await page.getByLabel("Buscar", { exact: true }).fill("E2E LoteAud");
       await expect(
-        page.locator("li", { hasText: n1 }).first().getByText("con audio")
+        page.locator("ul.divide-y li", { hasText: n1 }).first().getByText("con audio")
       ).toBeVisible({ timeout: 30000 });
       await expect(
-        page.locator("li", { hasText: n2 }).first().getByText("con audio")
+        page.locator("ul.divide-y li", { hasText: n2 }).first().getByText("con audio")
       ).toBeVisible({ timeout: 30000 });
     } finally {
       await borrarFichaE2E(page, id1);
@@ -697,7 +697,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       await expect(page.getByText(archivo).first()).toBeVisible({ timeout: 15000 });
       await page.getByLabel("Si la ficha ya tiene audio:").selectOption("replace-all");
       await page.getByRole("button", { name: /subir lote/i }).click();
-      await expect(page.getByText(/Lote terminado: 1 subidos, 0 omitidos, 0 errores/)).toBeVisible({
+      await expect(page.getByText(/Lote terminado: 1 subidas, 0 omitidos, 0 errores/)).toBeVisible({
         timeout: 120000,
       });
       const check = await page.request.get(`/api/admin/words?pageSize=1&search=${encodeURIComponent(nombre)}`);

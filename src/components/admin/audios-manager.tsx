@@ -496,7 +496,7 @@ export function AudiosManager() {
             {bulkDone ? (
               <div className="border-t bg-muted/30 px-5 py-3 text-sm" aria-live="polite">
                 <p className="text-sm">
-                  Lote terminado: {bulkDone.ok} subidos, {bulkDone.omitidos} omitidos, {bulkDone.errores}{" "}
+                  Lote terminado: {bulkDone.ok} subidas, {bulkDone.omitidos} omitidos, {bulkDone.errores}{" "}
                   errores.
                 </p>
               </div>
