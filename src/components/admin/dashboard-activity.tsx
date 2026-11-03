@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   FileText,
   Eye,
@@ -9,6 +10,9 @@ import {
   ScrollText,
   User,
 } from "lucide-react"
+import { AuditLogDetailDialog } from "./audit-log-detail-dialog"
+import { revertedOriginalId } from "@/lib/audit-revert"
+import { type AuditLogEntry } from "@/lib/admin-utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -35,11 +39,27 @@ interface DashboardActivityProps {
   stats: AdminStats
   statusSum: number
   onViewAll: () => void
+  isAdmin?: boolean
 }
 
 /** Distribución por estado + actividad reciente (bitácora). */
-export function DashboardActivity({ stats, statusSum, onViewAll }: DashboardActivityProps) {
+export function DashboardActivity({ stats, statusSum, onViewAll, isAdmin = false }: DashboardActivityProps) {
+  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
+
+  const revertedIds = new Set(
+    stats.recentAuditLogs
+      .filter((l) => l.action === "REVERT")
+      .map((l) => revertedOriginalId(l.changes))
+      .filter(Boolean) as string[]
+  )
+
+  const openDetail = (log: AuditLogEntry) => {
+    setSelectedLog(log)
+    setDetailOpen(true)
+  }
   return (
+    <>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <CardHeader>
@@ -159,7 +179,20 @@ export function DashboardActivity({ stats, statusSum, onViewAll }: DashboardActi
                 </TableHeader>
                 <TableBody>
                   {stats.recentAuditLogs.map((log) => (
-                    <TableRow key={log.id}>
+                    <TableRow
+                      key={log.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => openDetail(log)}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Ver detalle de ${getActionLabel(log.action)}`}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          openDetail(log)
+                        }
+                      }}
+                    >
                       <TableCell className="text-2xs text-muted-foreground whitespace-nowrap">
                         <span title={formatDate(log.createdAt)}>{formatTimeAgo(log.createdAt)}</span>
                       </TableCell>
@@ -194,5 +227,17 @@ export function DashboardActivity({ stats, statusSum, onViewAll }: DashboardActi
         </CardContent>
       </Card>
     </div>
+
+    <AuditLogDetailDialog
+      open={detailOpen}
+      onOpenChange={setDetailOpen}
+      log={selectedLog}
+      isAdmin={isAdmin}
+      revertedIds={revertedIds}
+      onReverted={() => {
+        // no-op: la actividad se refresca con el polling del dashboard
+      }}
+    />
+    </>
   )
 }

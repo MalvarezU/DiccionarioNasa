@@ -201,9 +201,10 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
         stats={stats}
         statusSum={statusSum}
         onViewAll={() => setFullAuditLogOpen(true)}
+        isAdmin={isAdmin}
       />
 
-      <FullAuditLogModal open={fullAuditLogOpen} onOpenChange={setFullAuditLogOpen} />
+      <FullAuditLogModal open={fullAuditLogOpen} onOpenChange={setFullAuditLogOpen} isAdmin={isAdmin} />
     </div>
   )
 }
