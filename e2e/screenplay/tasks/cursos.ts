@@ -120,23 +120,6 @@ export class AnadirLeccion implements Task {
   }
 }
 
-/** Abrir el editor único de una lección (título + contenido). */
-export class AbrirEditorDeLeccion implements Task {
-  descripcion: string;
-  private constructor(private titulo: string) {
-    this.descripcion = `abrir editor de "${titulo}"`;
-  }
-  static titulada(titulo: string): AbrirEditorDeLeccion {
-    return new AbrirEditorDeLeccion(titulo);
-  }
-  async ejecutar(actor: Actor): Promise<void> {
-    const { page } = actor.usa(NavegarLaWeb);
-    await page.getByRole("button", { name: `Contenido de lección ${this.titulo}` }).click();
-    await expect(page.getByText("Contenido ·").first()).toBeVisible({ timeout: 15000 });
-    await expect(page.locator("#lesson-title")).toBeVisible({ timeout: 15000 });
-  }
-}
-
 /**
  * Mover una lección una posición con los botones ↑/↓ de su fila.
  * Termina cuando la insignia de la fila cambia (señal de re-render
@@ -272,8 +255,7 @@ export class GuardarLeccionEnEditor implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    const dialog = page.getByRole("dialog");
-    await dialog.getByRole("button", { name: "Guardar lección" }).click();
+    await page.getByRole("button", { name: "Guardar lección" }).click();
     await expect
       .poll(
         async () => {
@@ -303,11 +285,9 @@ export class AbrirContenidoDeLeccion implements Task {
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
     await page.getByRole("button", { name: `Contenido de lección ${this.titulo}` }).click();
-    // El header del dialog: "Contenido · N. título". first(): el título
-    // también está en la fila de fondo.
-    await expect(page.getByText("Contenido ·").first()).toBeVisible({ timeout: 15000 });
-    // Señal de editor listo: vale para lección VACÍA (mostraría "Agregá el
-    // primer bloque") y para lección CON contenido (mostraría sus bloques).
+    // La edición vive en página propia: URL con el id + título prellenado.
+    await expect(page).toHaveURL(/\/lecciones\//, { timeout: 15000 });
+    await expect(page.locator("#lesson-title")).toHaveValue(this.titulo, { timeout: 15000 });
     await expect(
       page.getByRole("button", { name: "Guardar lección" })
     ).toBeVisible({ timeout: 15000 });
@@ -380,14 +360,9 @@ export class CerrarContenido {
       descripcion: "cerrar el editor de contenido",
       ejecutar: async (actor: Actor) => {
         const { page } = actor.usa(NavegarLaWeb);
-        // OJO: mientras el toast "Lección guardada" está visible, Escape no
-        // cierra el dialog (la capa del toast consume la tecla). Usamos el
-        // botón X (sr-only "Close" en el DialogContent del editor).
-        const dialogo = page
-          .locator(".bg-background[data-state='open'], [data-slot='dialog-content']")
-          .filter({ hasText: "Contenido ·" });
-        await dialogo.locator('[data-slot="dialog-close"]').click();
-        await expect(page.getByText("Contenido ·")).toHaveCount(0, { timeout: 15000 });
+        await page.getByRole("button", { name: "Volver a Gestión de cursos" }).click();
+        // Vuelve a la lista del gestor (ya guardó: el guard no frena).
+        await expect(page.getByTestId("cursos-lista")).toBeVisible({ timeout: 15000 });
       },
     };
     return tarea;

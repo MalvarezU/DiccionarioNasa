@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,7 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { LessonContentModal } from "./lesson-editor/lesson-content-modal"
 import { MediaPicker } from "@/components/media/media-picker"
 import { CourseManagerListSkeleton } from "@/components/skeletons"
 import { STATUS_LABEL } from "./course-types"
@@ -24,6 +24,7 @@ import { useCourseManager } from "./use-course-manager"
 import { ConfirmDialog } from "./confirm-dialog"
 
 export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
+  const router = useRouter()
   const [confirmPendiente, setConfirmPendiente] = useState<{
     kind: "course" | "module" | "lesson"
     id?: string
@@ -53,9 +54,6 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     editCover,
     setEditCover,
     stats,
-    contentLessonId,
-    setContentLessonId,
-    contentLesson,
     lessonForm,
     setLessonForm,
     loadDetail,
@@ -319,7 +317,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                             variant="ghost"
                             className="h-6 w-6"
                             aria-label={`Contenido de lección ${les.title}`}
-                            onClick={() => setContentLessonId(les.id)}
+                            onClick={() => router.push(`/admin/cursos/${detail.id}/lecciones/${les.id}`)}
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
@@ -412,17 +410,6 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
           } finally {
             setProcesando(false)
           }
-        }}
-      />
-
-      <LessonContentModal
-        lesson={contentLesson}
-        open={contentLesson !== null}
-        onOpenChange={(v) => {
-          if (!v) setContentLessonId(null)
-        }}
-        onSaved={() => {
-          if (detail) void loadDetail(detail.id)
         }}
       />
     </div>

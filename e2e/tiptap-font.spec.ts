@@ -10,28 +10,29 @@ test.describe("editor de texto — tipografía unificada", () => {
     await filas.first().waitFor()
     await filas.first().getByRole("button", { name: /Contenido de lección/ }).click()
 
-    const dialogo = page.getByRole("dialog").filter({ hasText: "Contenido ·" })
-    await dialogo.waitFor()
+    // La edición vive en página propia (ya no es un dialog)
+    await expect(page).toHaveURL(/\/lecciones\//, { timeout: 15000 })
+    await expect(page.locator("#lesson-title")).toBeVisible({ timeout: 15000 })
 
     // Bloque de texto nuevo (no se guarda)
-    await dialogo.getByRole("button", { name: "Texto", exact: true }).click()
-    await dialogo.getByRole("button", { name: "Título 1", exact: true }).last().click()
+    await page.getByRole("button", { name: "Texto", exact: true }).click()
+    await page.getByRole("button", { name: "Título 1", exact: true }).click()
     await page.keyboard.type("Título de prueba")
     await page.keyboard.press("Enter")
     await page.keyboard.type("Párrafo de prueba")
 
     // Fuente calculada del h1 dentro del editor
-    const fuenteEditor = await dialogo
+    const fuenteEditor = await page
       .locator(".ProseMirror h1")
       .filter({ hasText: "Título de prueba" })
       .first()
       .evaluate((el) => getComputedStyle(el).fontFamily)
 
-    await dialogo.getByRole("button", { name: /Vista previa: exactamente/ }).click()
-    const preview = page.getByRole("dialog").filter({ hasText: "Vista previa —" })
-    await preview.waitFor()
-    const fuentePreview = await preview
-      .locator("h1")
+    // Vista previa in-page (modo vista, sin dialog)
+    await page.getByRole("button", { name: "Vista previa" }).click()
+    await page.getByRole("button", { name: "Volver a edición" }).waitFor({ timeout: 15000 })
+    const fuentePreview = await page
+      .locator("main h1")
       .filter({ hasText: "Título de prueba" })
       .first()
       .evaluate((el) => getComputedStyle(el).fontFamily)

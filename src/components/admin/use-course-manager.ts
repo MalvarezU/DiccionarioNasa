@@ -1,8 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { type LessonForEdit } from "./course-types"
-import { parseLessonContent, type LessonContent } from "@/lib/courses/blocks"
 import { type CourseStats } from "./course-types"
 import {
   api,
@@ -40,8 +38,7 @@ export function useCourseManager() {
   const [savingLesson, setSavingLesson] = useState<Record<string, boolean>>({})
   const savingModuleRef = useRef(false)
   const savingLessonRef = useRef<Set<string>>(new Set())
-  /** Modal de contenido (título + bloques): edición única de la lección. */
-  const [contentLessonId, setContentLessonId] = useState<string | null>(null)
+
   const [lessonForms, setLessonForms] = useState<Record<string, LessonForm>>({})
 
   const loadCourses = useCallback(async () => {
@@ -247,31 +244,6 @@ export function useCourseManager() {
     }
   }
 
-  /**
-   * Lección con contenido (bloques) para el editor. Es el mismo detalle, así
-   * que se refresca solo tras guardar. El content se
-   * PARSEA con el contrato: si la base tuviera un documento inválido, el
-   * editor arranca con null (estado vacío) en vez de con datos envenenados.
-   */
-  const contentLesson: (LessonForEdit & { content: LessonContent | null }) | null = (() => {
-    if (!detail || !contentLessonId) return null
-    for (const mod of detail.modules) {
-      const les = mod.lessons.find((l) => l.id === contentLessonId)
-      if (les) {
-        const parse = parseLessonContent((les as { content?: unknown }).content)
-        return {
-          id: les.id,
-          moduleId: mod.id,
-          moduleTitle: mod.title,
-          moduleIndex: detail.modules.indexOf(mod) + 1,
-          title: les.title,
-          lessonNumber: les.lessonNumber,
-          content: parse.ok ? parse.content : null,
-        }
-      }
-    }
-    return null
-  })()
 
   return {
     courses,
@@ -295,9 +267,6 @@ export function useCourseManager() {
     setNewModuleTitle,
     savingModule,
     savingLesson,
-    contentLessonId,
-    setContentLessonId,
-    contentLesson,
     lessonForm,
     setLessonForm,
     loadDetail,

@@ -20,12 +20,11 @@ import {
   AbrirCurso,
   CrearModulo,
   AnadirLeccion,
-  AbrirEditorDeLeccion,
+  AbrirContenidoDeLeccion,
   MoverLeccion,
   PublicarCursoAbierto,
   ArchivarCursoAbierto,
   EliminarCurso,
-  AbrirContenidoDeLeccion,
   AgregarBloqueDeTexto,
   AgregarBloqueDeVocabulario,
   GuardarContenido,
@@ -190,12 +189,15 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       CrearModulo.titulado(`E2E Mod ${stamp}`),
       AnadirLeccion.titulada(primera),
       AnadirLeccion.titulada(segunda),
-      AbrirEditorDeLeccion.titulada(primera)
+      AbrirContenidoDeLeccion.titulada(primera)
     );
 
     // El editor único pre-rellena el título
     expect(await admin.pregunta(TituloEnEditor.mostrado())).toBe(primera);
     await admin.intenta(CerrarContenido.ahora());
+
+    // De vuelta al detalle: las filas solo existen con el curso abierto
+    await admin.intenta(AbrirCurso.titulado(curso));
 
     // Mover la primera hacia abajo con ↑/↓ de la fila
     await admin.intenta(MoverLeccion.abajo(primera));
@@ -232,8 +234,10 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       GuardarContenido.deLaLeccion()
     );
 
-    // Verificación REAL: cerrar, reabrir y encontrar los bloques guardados
+    // Verificación REAL: cerrar (vuelve a la lista), reabrir el curso y
+    // el editor, y encontrar los bloques guardados
     await admin.intenta(CerrarContenido.ahora());
+    await admin.intenta(AbrirCurso.titulado(curso));
     await admin.intenta(AbrirContenidoDeLeccion.titulada(leccion));
     expect(
       await admin.pregunta(BloquesDeLeccion.guardados(["Texto", "Vocabulario"]))
