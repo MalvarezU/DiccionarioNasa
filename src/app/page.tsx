@@ -16,6 +16,7 @@ import {
 import { NavBar } from "@/components/navbar";
 import { InstallBanner } from "@/components/pwa/install-banner";
 import { SiteFooter } from "@/components/site-footer";
+import { InstallSectionLazy } from "@/components/pwa/install-section-lazy";
 import { DownloadBanner } from "@/components/download-banner";
 import { WordOfDayCard } from "@/components/word-of-day-card";
 import { WordDetailCard } from "@/components/word-detail-card";
@@ -201,6 +202,7 @@ function HomeContent() {
             </div>
           </div>
         </section>
+      <InstallSectionLazy />
       </main>
 
       <SiteFooter />
