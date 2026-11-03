@@ -209,7 +209,10 @@ export function AudiosManager() {
         )
       }
     }
-    const omitidos = bulk.filter((b) => bulkActionFor(b, bulkPolicy) === "omitir").length
+    // Solo cuentan como omitidas las filas CON coincidencia que la política
+    // salta (p.ej. ya tiene el medio). Las filas sin coincidencia se
+    // muestran aparte como "sin coincidencia" y no entran al conteo.
+    const omitidos = bulk.filter((b) => b.wordId !== null && bulkActionFor(b, bulkPolicy) === "omitir").length
     setBulkRunning(false)
     setBulkDone({ ok, omitidos, errores })
     await load()
