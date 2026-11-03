@@ -153,3 +153,68 @@ export async function DELETE(_request: NextRequest, { params }: Ctx) {
     return NextResponse.json({ message: "Error interno del servidor" }, { status: 500 })
   }
 }
+
+/**
+ * GET /api/lessons/[id] (editor+)
+ *
+ * Una lección con su contexto para la página del editor:
+ * título, documento de bloques, módulo, curso y lecciones vecinas
+ * (anterior/siguiente por `order` dentro del módulo).
+ */
+export async function GET(_request: NextRequest, { params }: Ctx) {
+  const { error } = await requireRole("editor")
+  if (error) return error
+  try {
+    const { id } = await params
+    const lesson = await db.lesson.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        lessonNumber: true,
+        order: true,
+        content: true,
+        module: {
+          select: {
+            id: true,
+            title: true,
+            lessons: {
+              select: { id: true, title: true, order: true },
+              orderBy: { order: "asc" },
+            },
+            course: {
+              select: { id: true, title: true, status: true },
+            },
+          },
+        },
+      },
+    })
+    if (!lesson) {
+      return NextResponse.json({ message: "Lección no encontrada" }, { status: 404 })
+    }
+
+    const siblings = lesson.module.lessons
+    const idx = siblings.findIndex((l) => l.id === id)
+    const prev = idx > 0 ? siblings[idx - 1] : null
+    const next = idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1] : null
+
+    return NextResponse.json({
+      lesson: {
+        id: lesson.id,
+        title: lesson.title,
+        lessonNumber: lesson.lessonNumber,
+        content: lesson.content,
+        moduleId: lesson.module.id,
+        moduleTitle: lesson.module.title,
+        courseId: lesson.module.course.id,
+        courseTitle: lesson.module.course.title,
+        courseStatus: lesson.module.course.status,
+        prev: prev ? { id: prev.id, title: prev.title } : null,
+        next: next ? { id: next.id, title: next.title } : null,
+      },
+    })
+  } catch (err) {
+    console.error("Lesson get error:", err)
+    return NextResponse.json({ message: "Error interno del servidor" }, { status: 500 })
+  }
+}

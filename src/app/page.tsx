@@ -14,7 +14,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import { NavBar } from "@/components/navbar";
+import { InstallBanner } from "@/components/pwa/install-banner";
 import { SiteFooter } from "@/components/site-footer";
+import { InstallSectionLazy } from "@/components/pwa/install-section-lazy";
 import { DownloadBanner } from "@/components/download-banner";
 import { WordOfDayCard } from "@/components/word-of-day-card";
 import { WordDetailCard } from "@/components/word-detail-card";
@@ -48,6 +50,7 @@ function HomeContent() {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
+      <InstallBanner destino="/#instalar" />
 
       <main className="flex-1">
         {/* Hero — bienvenida a la plataforma */}
@@ -199,6 +202,7 @@ function HomeContent() {
             </div>
           </div>
         </section>
+      <InstallSectionLazy />
       </main>
 
       <SiteFooter />

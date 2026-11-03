@@ -67,12 +67,18 @@ export function LessonEditor({
   initialBlocks,
   onGuardado,
   onBloquesChange,
+  onDirtyChange,
+  ocultarVistaPrevia = false,
 }: {
   lessonId: string
   initialTitle: string
   initialBlocks?: LessonBlock[]
   onGuardado?: () => void
   onBloquesChange?: (blocks: LessonBlock[]) => void
+  /** Notifica cambios de `dirty` (para el guard de navegación de la página). */
+  onDirtyChange?: (dirty: boolean) => void
+  /** En la página del editor la vista previa es un modo in-page, no un dialog. */
+  ocultarVistaPrevia?: boolean
 }) {
   const editor = useLessonEditor({ title: initialTitle, blocks: initialBlocks })
 
@@ -85,6 +91,13 @@ export function LessonEditor({
   useEffect(() => {
     onBloquesRef.current?.(editor.blocks)
   }, [editor.blocks])
+  const onDirtyRef = useRef(onDirtyChange)
+  useEffect(() => {
+    onDirtyRef.current = onDirtyChange
+  })
+  useEffect(() => {
+    onDirtyRef.current?.(editor.dirty)
+  }, [editor.dirty])
   const [guardando, setGuardando] = useState(false)
   const [previewAbierta, setPreviewAbierta] = useState(false)
   const { toast } = useToast()
@@ -237,44 +250,49 @@ export function LessonEditor({
         </div>
       ) : null}
 
-      {/* Acciones */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Acciones: sticky-bottom para que Guardar esté siempre a mano */}
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-2 border-t border-outline-variant/30 bg-background/95 py-3 backdrop-blur">
         <Button type="button" onClick={guardar} disabled={!editor.valido || guardando}>
           {guardando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           Guardar lección
         </Button>
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setPreviewAbierta(true)}
-          aria-label="Vista previa: exactamente lo que verá el estudiante"
-          title="Vista previa: exactamente lo que verá el estudiante"
-        >
-          <Eye className="size-4" />
-          Vista previa
-        </Button>
+        {!ocultarVistaPrevia && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setPreviewAbierta(true)}
+            aria-label="Vista previa: exactamente lo que verá el estudiante"
+            title="Vista previa: exactamente lo que verá el estudiante"
+          >
+            <Eye className="size-4" />
+            Vista previa
+          </Button>
+        )}
 
         {editor.dirty ? (
-          <span className="text-xs text-muted-foreground">Cambios sin guardar</span>
+          <span className="text-xs text-muted-foreground" aria-live="polite">Cambios sin guardar</span>
         ) : null}
       </div>
 
-      {/* Vista previa real: Dialog a pantalla amplia con el mismo render del estudiante */}
-      <Dialog open={previewAbierta} onOpenChange={setPreviewAbierta}>
-        <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Vista previa — {editor.title || "Lección"}</DialogTitle>
-            <DialogDescription>
-              Exactamente lo que verá el estudiante. Los quiz y la escucha son
-              jugables; completarlos no guarda progreso (es solo vista previa).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="rounded-lg border border-outline-variant/20 bg-background p-4">
-            <LessonPreview blocks={editor.blocks} interactive />
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Vista previa real: Dialog a pantalla amplia con el mismo render del estudiante.
+          En la página del editor no se usa (la vista previa es un modo in-page). */}
+      {!ocultarVistaPrevia && (
+        <Dialog open={previewAbierta} onOpenChange={setPreviewAbierta}>
+          <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Vista previa — {editor.title || "Lección"}</DialogTitle>
+              <DialogDescription>
+                Exactamente lo que verá el estudiante. Los quiz y la escucha son
+                jugables; completarlos no guarda progreso (es solo vista previa).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-lg border border-outline-variant/20 bg-background p-4">
+              <LessonPreview blocks={editor.blocks} interactive />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

@@ -1,8 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { type LessonForEdit } from "./edit-lesson-modal"
-import { parseLessonContent, type LessonContent } from "@/lib/courses/blocks"
 import { type CourseStats } from "./course-types"
 import {
   api,
@@ -40,9 +38,7 @@ export function useCourseManager() {
   const [savingLesson, setSavingLesson] = useState<Record<string, boolean>>({})
   const savingModuleRef = useRef(false)
   const savingLessonRef = useRef<Set<string>>(new Set())
-  const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
-  /** Modal de contenido (bloques) — separado del modal de metadatos. */
-  const [contentLessonId, setContentLessonId] = useState<string | null>(null)
+
   const [lessonForms, setLessonForms] = useState<Record<string, LessonForm>>({})
 
   const loadCourses = useCallback(async () => {
@@ -248,56 +244,6 @@ export function useCourseManager() {
     }
   }
 
-  // Lección en edición, derivada del detalle (se refresca sola tras mover/guardar)
-  const editingLesson: LessonForEdit | null = (() => {
-    if (!detail || !editingLessonId) return null
-    for (let mi = 0; mi < detail.modules.length; mi++) {
-      const mod = detail.modules[mi]!
-      const les = mod.lessons.find((l) => l.id === editingLessonId)
-      if (les) {
-        return {
-          id: les.id,
-          moduleId: mod.id,
-          moduleTitle: mod.title,
-          moduleIndex: mi + 1,
-          title: les.title,
-          lessonNumber: les.lessonNumber,
-        }
-      }
-    }
-    return null
-  })()
-
-  /**
-   * Lección con contenido (bloques) para el editor. Es el mismo detalle, así
-   * que se refresca solo tras guardar — igual que editingLesson. El content se
-   * PARSEA con el contrato: si la base tuviera un documento inválido, el
-   * editor arranca con null (estado vacío) en vez de con datos envenenados.
-   */
-  const contentLesson: (LessonForEdit & { content: LessonContent | null }) | null = (() => {
-    if (!detail || !contentLessonId) return null
-    for (const mod of detail.modules) {
-      const les = mod.lessons.find((l) => l.id === contentLessonId)
-      if (les) {
-        const parse = parseLessonContent((les as { content?: unknown }).content)
-        return {
-          id: les.id,
-          moduleId: mod.id,
-          moduleTitle: mod.title,
-          moduleIndex: detail.modules.indexOf(mod) + 1,
-          title: les.title,
-          lessonNumber: les.lessonNumber,
-          content: parse.ok ? parse.content : null,
-        }
-      }
-    }
-    return null
-  })()
-
-  async function handleMoveFromModal(lessonId: string, moduleId: string, dir: -1 | 1) {
-    const ok = await moveLesson(moduleId, lessonId, dir)
-    if (!ok) throw new Error("move-failed")
-  }
 
   return {
     courses,
@@ -321,12 +267,6 @@ export function useCourseManager() {
     setNewModuleTitle,
     savingModule,
     savingLesson,
-    editingLessonId,
-    setEditingLessonId,
-    editingLesson,
-    contentLessonId,
-    setContentLessonId,
-    contentLesson,
     lessonForm,
     setLessonForm,
     loadDetail,
@@ -339,6 +279,5 @@ export function useCourseManager() {
     handleAddLesson,
     handleDeleteLesson,
     moveLesson,
-    handleMoveFromModal,
   }
 }

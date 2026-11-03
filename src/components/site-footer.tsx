@@ -62,6 +62,12 @@ export function SiteFooter() {
                 Acerca del proyecto
               </Link>
               <Link
+                href="/#instalar"
+                className="text-xs text-white/70 hover:text-white transition-colors duration-200"
+              >
+                Descargar app
+              </Link>
+              <Link
                 href="/admin"
                 className="text-xs text-white/70 hover:text-white transition-colors duration-200"
               >

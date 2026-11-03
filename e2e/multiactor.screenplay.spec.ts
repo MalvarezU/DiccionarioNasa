@@ -26,7 +26,7 @@ import {
   AbrirCurso,
   CrearModulo,
   AnadirLeccion,
-  AbrirEditorDeLeccion,
+  AbrirContenidoDeLeccion,
   RenombrarLeccionEnEditor,
   GuardarLeccionEnEditor,
   PublicarCursoAbierto,
@@ -190,7 +190,7 @@ test.describe("multi-actor (Screenplay)", () => {
       await editorA.intenta(
         IrAGestionDeCursos.ahora(),
         AbrirCurso.titulado(curso),
-        AbrirEditorDeLeccion.titulada(base1),
+        AbrirContenidoDeLeccion.titulada(base1),
         RenombrarLeccionEnEditor.a(duelo),
         GuardarLeccionEnEditor.ahora()
       );
@@ -199,7 +199,7 @@ test.describe("multi-actor (Screenplay)", () => {
       await editorB.intenta(
         IrAGestionDeCursos.ahora(),
         AbrirCurso.titulado(curso),
-        AbrirEditorDeLeccion.titulada(base2),
+        AbrirContenidoDeLeccion.titulada(base2),
         RenombrarLeccionEnEditor.a(duelo),
         GuardarLeccionEnEditor.ahora()
       );
