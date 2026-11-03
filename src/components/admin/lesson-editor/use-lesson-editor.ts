@@ -27,6 +27,8 @@ export type LessonEditorApi = {
 
   /** Reemplaza un bloque entero (los formularios computan el nuevo). */
   setBlock: (id: string, block: LessonBlock) => void
+  /** Reemplaza todos los bloques (plantillas). */
+  setBlocks: (blocks: LessonBlock[]) => void
   addBlock: (type: BlockType) => void
   removeBlock: (id: string) => void
   /** -1 = arriba, 1 = abajo; en los extremos es un no-op. */
@@ -58,6 +60,14 @@ export function useLessonEditor(
   const setBlock = useCallback(
     (id: string, block: LessonBlock) => {
       setBlocks((prev) => prev.map((b) => (b.id === id ? block : b)))
+      marcarCambio()
+    },
+    [marcarCambio]
+  )
+
+  const setBlocksAll = useCallback(
+    (newBlocks: LessonBlock[]) => {
+      setBlocks(newBlocks)
       marcarCambio()
     },
     [marcarCambio]
@@ -127,6 +137,7 @@ export function useLessonEditor(
     },
     blocks,
     setBlock,
+    setBlocks: setBlocksAll,
     addBlock,
     removeBlock,
     moveBlock,

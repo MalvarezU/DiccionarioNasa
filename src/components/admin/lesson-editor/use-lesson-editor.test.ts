@@ -37,6 +37,15 @@ describe("useLessonEditor — mutaciones del documento", () => {
     expect(result.current.blocks[0]!.id).toBe("b1")
   })
 
+  it("setBlocks reemplaza todos los bloques y marca dirty", () => {
+    const { result } = renderHook(() => useLessonEditor({ blocks: [texto()] }))
+    const nuevos = [texto2, imagen]
+    act(() => result.current.setBlocks(nuevos))
+    expect(result.current.blocks).toHaveLength(2)
+    expect(result.current.blocks[0]!.id).toBe("b2")
+    expect(result.current.dirty).toBe(true)
+  })
+
   it("removeBlock saca el bloque indicado", () => {
     const { result } = renderHook(() => useLessonEditor({ blocks: [texto(), texto2] }))
     act(() => result.current.removeBlock("b2"))

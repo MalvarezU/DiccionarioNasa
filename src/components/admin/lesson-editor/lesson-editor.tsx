@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { BlockType, LessonBlock } from "@/lib/courses/blocks"
+import { PLANTILLAS_LECCION } from "@/lib/courses/templates"
 import { useLessonEditor } from "./use-lesson-editor"
 import {
   FormText,
@@ -156,9 +157,25 @@ export function LessonEditor({
       {/* Bloques */}
       <div className="space-y-3">
         {editor.blocks.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-outline-variant/40 px-4 py-6 text-center text-sm text-muted-foreground">
-            Agregá el primer bloque de la lección.
-          </p>
+          <div className="space-y-3 rounded-lg border border-dashed border-outline-variant/40 px-4 py-6">
+            <p className="text-center text-sm text-muted-foreground">
+              Empezá desde una plantilla o agregá un bloque.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {PLANTILLAS_LECCION.filter((p) => p.id !== "vacia").map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => editor.setBlocks(p.bloques)}
+                  className="flex flex-col items-start gap-1 rounded-md border border-outline-variant/30 bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                  data-testid={`plantilla-${p.id}`}
+                >
+                  <span className="text-sm font-medium">{p.nombre}</span>
+                  <span className="text-xs text-muted-foreground">{p.descripcion}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         ) : (
           <ol className="space-y-3">
             {editor.blocks.map((block, i) => (

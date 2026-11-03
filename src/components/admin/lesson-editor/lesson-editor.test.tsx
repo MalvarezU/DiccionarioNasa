@@ -61,9 +61,10 @@ describe("LessonEditor", () => {
     expect(ordenDeBloques()).toEqual(["block-card-b1"])
   })
 
-  it("sin bloques muestra el estado vacío", () => {
+  it("sin bloques muestra el estado vacío con plantillas", () => {
     render(<LessonEditor lessonId="l1" initialTitle="T" initialBlocks={[]} />)
-    expect(screen.getByText(/Agregá el primer bloque/i)).toBeDefined()
+    expect(screen.getByText(/Empezá desde una plantilla/i)).toBeDefined()
+    expect(screen.getByTestId("plantilla-texto")).toBeDefined()
   })
 
   it("agregar un bloque lo deja al final", async () => {
