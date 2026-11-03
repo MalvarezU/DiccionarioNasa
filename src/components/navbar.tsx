@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
@@ -48,6 +48,19 @@ export function NavBar() {
   const userRole = (session?.user as { role?: string } | undefined)?.role
   const isAdminUser = userRole === "admin"
   const canUsePanel = userRole === "admin" || userRole === "editor"
+
+  // El proxy manda acá con ?auth=required|expired cuando piden /admin
+  // sin sesión válida: se abre el login solo y se limpia la URL (sin
+  // Suspense: se lee window en el efecto, no useSearchParams).
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    const motivo = params.get("auth")
+    if (motivo === "required" || motivo === "expired") {
+      setAuthModalOpen(true)
+      window.history.replaceState(null, "", window.location.pathname)
+    }
+  }, [])
 
   const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "Usuario"
 
