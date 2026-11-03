@@ -10,6 +10,7 @@ import {
   List,
 } from "lucide-react";
 import { NavBar } from "@/components/navbar";
+import { InstallBanner } from "@/components/pwa/install-banner";
 import { SearchBar } from "@/components/search-bar";
 import { WordDetailCard } from "@/components/word-detail-card";
 import { SiteFooter } from "@/components/site-footer";
@@ -118,6 +119,7 @@ function DiccionarioContent() {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
+      <InstallBanner destino="/#instalar" />
 
       <main className="flex-1">
         {/* Hero del diccionario */}
