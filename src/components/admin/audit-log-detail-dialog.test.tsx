@@ -117,3 +117,47 @@ describe("AuditLogDetailDialog", () => {
   })
 })
 
+
+  it("409 durante revert muestra toast y no cierra", async () => {
+    const toast = (await import("@/hooks/use-toast")).toast as ReturnType<typeof vi.fn>
+    vi.mocked(fetch).mockResolvedValue(Response.json({ message: "Este cambio ya fue revertido" }, { status: 409 }))
+    const onOpenChange = vi.fn()
+    const onReverted = vi.fn()
+    render(
+      <AuditLogDetailDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        log={log as never}
+        isAdmin={true}
+        revertedIds={new Set()}
+        onReverted={onReverted}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Revertir cambio" }))
+    fireEvent.click(screen.getByRole("button", { name: "Revertir" }))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" }))
+    expect(onReverted).toHaveBeenCalled()
+    expect(screen.getByText("Detalle de la acción")).toBeDefined()
+  })
+
+  it("guard anti-cierre: no cierra mientras saving", () => {
+    const onOpenChange = vi.fn()
+    render(
+      <AuditLogDetailDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        log={log as never}
+        isAdmin={true}
+        revertedIds={new Set()}
+        onReverted={() => {}}
+      />
+    )
+    // El botón "Revertir cambio" abre el ConfirmDialog; no hay cierre directo
+    // del Dialog principal mientras se confirma.
+    fireEvent.click(screen.getByText("Revertir cambio"))
+    expect(screen.getByText("¿Revertir este cambio?")).toBeDefined()
+    // El Dialog principal sigue abierto (onOpenChange no fue llamado con false)
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+  })
+
