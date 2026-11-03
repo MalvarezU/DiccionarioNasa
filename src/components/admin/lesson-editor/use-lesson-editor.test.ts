@@ -46,6 +46,21 @@ describe("useLessonEditor — mutaciones del documento", () => {
     expect(result.current.dirty).toBe(true)
   })
 
+  it("reorder mueve un bloque a la posición de otro", () => {
+    const { result } = renderHook(() => useLessonEditor({ blocks: [texto(), texto2, imagen] }))
+    act(() => result.current.reorder("b1", "b3"))
+    expect(result.current.blocks.map((b) => b.id)).toEqual(["b2", "b3", "b1"])
+    expect(result.current.dirty).toBe(true)
+  })
+
+  it("reorder con ids iguales o inexistentes es no-op", () => {
+    const { result } = renderHook(() => useLessonEditor({ blocks: [texto(), texto2] }))
+    act(() => result.current.reorder("b1", "b1"))
+    expect(result.current.blocks.map((b) => b.id)).toEqual(["b1", "b2"])
+    act(() => result.current.reorder("nope", "b2"))
+    expect(result.current.blocks.map((b) => b.id)).toEqual(["b1", "b2"])
+  })
+
   it("removeBlock saca el bloque indicado", () => {
     const { result } = renderHook(() => useLessonEditor({ blocks: [texto(), texto2] }))
     act(() => result.current.removeBlock("b2"))

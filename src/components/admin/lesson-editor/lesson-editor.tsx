@@ -5,11 +5,15 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
+  GripVertical,
   Loader2,
   Plus,
   Save,
   Trash2,
 } from "lucide-react"
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core"
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -30,6 +34,7 @@ import {
 } from "./block-forms"
 import { FormQuiz, FormListening } from "./block-forms-interactive"
 import { LessonPreview } from "./lesson-preview"
+import { SortableBlock } from "./sortable-block"
 
 /**
  * Editor de contenido de una lección: título + secuencia de bloques +
@@ -177,64 +182,94 @@ export function LessonEditor({
             </div>
           </div>
         ) : (
-          <ol className="space-y-3">
-            {editor.blocks.map((block, i) => (
-              <li
-                key={block.id}
-                data-testid={`block-card-${block.id}`}
-                className={
-                  editor.erroresPorBloque[block.id]
-                    ? "rounded-lg border border-destructive/50 bg-background p-3"
-                    : "rounded-lg border border-outline-variant/30 bg-background p-3"
-                }
-              >
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{i + 1}.</span>
-                  <Badge variant="secondary">{ETIQUETA_TIPO[block.type] ?? block.type}</Badge>
-                  <div className="ml-auto flex items-center gap-0.5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      onClick={() => editor.moveBlock(block.id, -1)}
-                      disabled={i === 0}
-                      aria-label={`Mover bloque ${i + 1} arriba`}
-                    >
-                      <ChevronUp className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      onClick={() => editor.moveBlock(block.id, 1)}
-                      disabled={i === editor.blocks.length - 1}
-                      aria-label={`Mover bloque ${i + 1} abajo`}
-                    >
-                      <ChevronDown className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 text-destructive"
-                      onClick={() => editor.removeBlock(block.id)}
-                      aria-label={`Quitar bloque ${i + 1}`}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </div>
+          <DndContext
+            sensors={useSensors(
+              useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+              useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+            )}
+            collisionDetection={closestCenter}
+            onDragEnd={(e: DragEndEvent) => {
+              const { active, over } = e
+              if (over && active.id !== over.id) {
+                editor.reorder(String(active.id), String(over.id))
+              }
+            }}
+          >
+            <SortableContext items={editor.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+              <ol className="space-y-3">
+                {editor.blocks.map((block, i) => (
+                  <SortableBlock key={block.id} id={block.id}>
+                    {({ setNodeRef, style, attributes, listeners }) => (
+                      <li
+                        ref={setNodeRef}
+                        style={style}
+                        data-testid={`block-card-${block.id}`}
+                        className={
+                          editor.erroresPorBloque[block.id]
+                            ? "rounded-lg border border-destructive/50 bg-background p-3"
+                            : "rounded-lg border border-outline-variant/30 bg-background p-3"
+                        }
+                      >
+                        <div className="mb-2 flex items-center gap-2">
+                          <button
+                            type="button"
+                            {...attributes}
+                            {...listeners}
+                            className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+                            aria-label={`Arrastrar bloque ${i + 1}`}
+                          >
+                            <GripVertical className="size-4" />
+                          </button>
+                          <span className="text-xs text-muted-foreground">{i + 1}.</span>
+                          <Badge variant="secondary">{ETIQUETA_TIPO[block.type] ?? block.type}</Badge>
+                          <div className="ml-auto flex items-center gap-0.5">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-7"
+                              onClick={() => editor.moveBlock(block.id, -1)}
+                              disabled={i === 0}
+                              aria-label={`Mover bloque ${i + 1} arriba`}
+                            >
+                              <ChevronUp className="size-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-7"
+                              onClick={() => editor.moveBlock(block.id, 1)}
+                              disabled={i === editor.blocks.length - 1}
+                              aria-label={`Mover bloque ${i + 1} abajo`}
+                            >
+                              <ChevronDown className="size-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-7 text-destructive"
+                              onClick={() => editor.removeBlock(block.id)}
+                              aria-label={`Quitar bloque ${i + 1}`}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </div>
 
-                <FormDeBloque
-                  block={block}
-                  onChange={(next) => editor.setBlock(block.id, next)}
-                  errores={editor.erroresPorBloque[block.id] ?? []}
-                />
-              </li>
-            ))}
-          </ol>
+                        <FormDeBloque
+                          block={block}
+                          onChange={(next) => editor.setBlock(block.id, next)}
+                          errores={editor.erroresPorBloque[block.id] ?? []}
+                        />
+                      </li>
+                    )}
+                  </SortableBlock>
+                ))}
+              </ol>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 

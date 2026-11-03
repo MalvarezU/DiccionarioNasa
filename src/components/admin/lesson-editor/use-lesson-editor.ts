@@ -33,6 +33,8 @@ export type LessonEditorApi = {
   removeBlock: (id: string) => void
   /** -1 = arriba, 1 = abajo; en los extremos es un no-op. */
   moveBlock: (id: string, dir: -1 | 1) => void
+  /** Reordena por drag & drop: mueve activeId a la posición de overId. */
+  reorder: (activeId: string, overId: string) => void
 
   /** Documento listo para guardar, o null si es inválido. */
   documento: { version: number; blocks: LessonBlock[] } | null
@@ -105,6 +107,23 @@ export function useLessonEditor(
     [marcarCambio]
   )
 
+  const reorder = useCallback(
+    (activeId: string, overId: string) => {
+      if (activeId === overId) return
+      setBlocks((prev) => {
+        const from = prev.findIndex((b) => b.id === activeId)
+        const to = prev.findIndex((b) => b.id === overId)
+        if (from === -1 || to === -1) return prev
+        const next = [...prev]
+        const [moved] = next.splice(from, 1)
+        next.splice(to, 0, moved!)
+        return next
+      })
+      marcarCambio()
+    },
+    [marcarCambio]
+  )
+
   const markSaved = useCallback(() => {
     setDirty(false)
     setSaveToken((t) => t + 1)
@@ -141,6 +160,7 @@ export function useLessonEditor(
     addBlock,
     removeBlock,
     moveBlock,
+    reorder,
     documento: parseado.ok ? parseado.content : null,
     errores: parseado.ok ? [] : parseado.errors,
     erroresPorBloque,
