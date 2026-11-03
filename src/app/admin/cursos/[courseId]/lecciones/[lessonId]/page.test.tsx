@@ -51,6 +51,9 @@ describe("LessonEditorPage [F2]", () => {
     // prev deshabilitado (es la primera), next habilitado
     expect(screen.getByRole("button", { name: /Sin lección anterior/ })).toBeDisabled()
     expect(screen.getByRole("button", { name: /Lección siguiente/ })).toBeEnabled()
+    // undo/redo disponibles
+    expect(screen.getByRole("button", { name: "Deshacer último cambio" })).toBeDefined()
+    expect(screen.getByRole("button", { name: "Rehacer cambio" })).toBeDefined()
   })
 
   it("el modo vista muestra el preview y oculta el editor", async () => {

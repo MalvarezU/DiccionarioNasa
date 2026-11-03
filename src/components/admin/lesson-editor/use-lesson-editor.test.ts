@@ -61,6 +61,33 @@ describe("useLessonEditor — mutaciones del documento", () => {
     expect(result.current.blocks.map((b) => b.id)).toEqual(["b1", "b2"])
   })
 
+  it("undo deshace el ultimo cambio y redo lo rehace", () => {
+    const { result } = renderHook(() => useLessonEditor({ title: "T", blocks: [texto()] }))
+    act(() => result.current.setTitle("T2"))
+    expect(result.current.title).toBe("T2")
+    expect(result.current.puedeDeshacer).toBe(true)
+    act(() => result.current.undo())
+    expect(result.current.title).toBe("T")
+    expect(result.current.puedeRehacer).toBe(true)
+    act(() => result.current.redo())
+    expect(result.current.title).toBe("T2")
+  })
+
+  it("undo en el estado inicial es no-op", () => {
+    const { result } = renderHook(() => useLessonEditor({ title: "T", blocks: [texto()] }))
+    act(() => result.current.undo())
+    expect(result.current.title).toBe("T")
+  })
+
+  it("nueva edicion tras undo descarta la rama redo", () => {
+    const { result } = renderHook(() => useLessonEditor({ title: "T", blocks: [texto()] }))
+    act(() => result.current.setTitle("T2"))
+    act(() => result.current.undo())
+    act(() => result.current.setTitle("T3"))
+    expect(result.current.title).toBe("T3")
+    expect(result.current.puedeRehacer).toBe(false)
+  })
+
   it("removeBlock saca el bloque indicado", () => {
     const { result } = renderHook(() => useLessonEditor({ blocks: [texto(), texto2] }))
     act(() => result.current.removeBlock("b2"))

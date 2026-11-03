@@ -75,6 +75,8 @@ export function LessonEditor({
   onBloquesChange,
   onDirtyChange,
   ocultarVistaPrevia = false,
+  onGuardarRef,
+  onUndoRedoRef,
 }: {
   lessonId: string
   initialTitle: string
@@ -85,6 +87,8 @@ export function LessonEditor({
   onDirtyChange?: (dirty: boolean) => void
   /** En la página del editor la vista previa es un modo in-page, no un dialog. */
   ocultarVistaPrevia?: boolean
+  onGuardarRef?: (fn: () => Promise<void>) => void
+  onUndoRedoRef?: (undo: () => void, redo: () => void) => void
 }) {
   const editor = useLessonEditor({ title: initialTitle, blocks: initialBlocks })
 
@@ -104,6 +108,14 @@ export function LessonEditor({
   useEffect(() => {
     onDirtyRef.current?.(editor.dirty)
   }, [editor.dirty])
+
+  // Exponer guardar y undo/redo al padre (auto-save + teclado global)
+  useEffect(() => {
+    onGuardarRef?.(guardar)
+  }, [guardar, onGuardarRef])
+  useEffect(() => {
+    onUndoRedoRef?.(editor.undo, editor.redo)
+  }, [editor.undo, editor.redo, onUndoRedoRef])
   const [guardando, setGuardando] = useState(false)
   const [previewAbierta, setPreviewAbierta] = useState(false)
   const { toast } = useToast()

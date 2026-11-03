@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useRef, useState, useEffect } from "react"
 import {
   createBlock,
   newBlockId,
@@ -29,6 +29,13 @@ export type LessonEditorApi = {
   setBlock: (id: string, block: LessonBlock) => void
   /** Reemplaza todos los bloques (plantillas). */
   setBlocks: (blocks: LessonBlock[]) => void
+
+  /** Deshace el último cambio de documento (título o bloques). */
+  undo: () => void
+  /** Rehace un cambio deshecho. */
+  redo: () => void
+  puedeDeshacer: boolean
+  puedeRehacer: boolean
   addBlock: (type: BlockType) => void
   removeBlock: (id: string) => void
   /** -1 = arriba, 1 = abajo; en los extremos es un no-op. */
@@ -56,6 +63,27 @@ export function useLessonEditor(
   const [blocks, setBlocks] = useState<LessonBlock[]>(initial.blocks ?? [])
   const [dirty, setDirty] = useState(false)
   const [saveToken, setSaveToken] = useState(0)
+  const [puedeDeshacer, setPuedeDeshacer] = useState(false)
+  const [puedeRehacer, setPuedeRehacer] = useState(false)
+
+  const historialRef = useRef<Array<{ title: string; blocks: LessonBlock[] }>>([])
+  const punteroRef = useRef(-1)
+  const ultimoRef = useRef<string | null>(null)
+
+  // Snapshot del documento en cada cambio (máx. 50 estados).
+  // Se descarta la rama "redo" cuando se edita después de deshacer.
+  useEffect(() => {
+    const snap = JSON.stringify({ title, blocks })
+    if (snap === ultimoRef.current) return
+    const pila = historialRef.current.slice(0, punteroRef.current + 1)
+    pila.push({ title, blocks })
+    if (pila.length > 50) pila.shift()
+    historialRef.current = pila
+    punteroRef.current = pila.length - 1
+    ultimoRef.current = snap
+    setPuedeDeshacer(punteroRef.current > 0)
+    setPuedeRehacer(false)
+  }, [title, blocks])
 
   const marcarCambio = useCallback(() => setDirty(true), [])
 
@@ -129,6 +157,32 @@ export function useLessonEditor(
     setSaveToken((t) => t + 1)
   }, [])
 
+  const undo = useCallback(() => {
+    if (punteroRef.current <= 0) return
+    punteroRef.current -= 1
+    const snap = historialRef.current[punteroRef.current]
+    if (!snap) return
+    ultimoRef.current = JSON.stringify(snap)
+    setTitle(snap.title)
+    setBlocks(snap.blocks)
+    setDirty(true)
+    setPuedeDeshacer(punteroRef.current > 0)
+    setPuedeRehacer(punteroRef.current < historialRef.current.length - 1)
+  }, [])
+
+  const redo = useCallback(() => {
+    if (punteroRef.current >= historialRef.current.length - 1) return
+    punteroRef.current += 1
+    const snap = historialRef.current[punteroRef.current]
+    if (!snap) return
+    ultimoRef.current = JSON.stringify(snap)
+    setTitle(snap.title)
+    setBlocks(snap.blocks)
+    setDirty(true)
+    setPuedeDeshacer(punteroRef.current > 0)
+    setPuedeRehacer(punteroRef.current < historialRef.current.length - 1)
+  }, [])
+
   const parseado = useMemo(
     () => parseLessonContent({ version: 2, blocks }),
     // saveToken evita memoizar resultados viejos tras guardar
@@ -167,6 +221,10 @@ export function useLessonEditor(
     valido: parseado.ok,
     dirty,
     markSaved,
+    undo,
+    redo,
+    puedeDeshacer,
+    puedeRehacer,
   }
 }
 

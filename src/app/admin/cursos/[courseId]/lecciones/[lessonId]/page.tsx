@@ -1,8 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, ChevronLeft, ChevronRight, Eye, Pencil } from "lucide-react"
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, Pencil, Redo2, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LessonEditor } from "@/components/admin/lesson-editor/lesson-editor"
@@ -42,6 +42,12 @@ export default function LessonEditorPage() {
   const [blocks, setBlocks] = useState<LessonBlock[]>([])
   const [dirty, setDirty] = useState(false)
   const [pendiente, setPendiente] = useState<string | null>(null)
+  const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved" | "error">("idle")
+  const guardarRef = useRef<(() => Promise<void>) | null>(null)
+  const dirtyRef = useRef(dirty)
+  const editorUndoRef = useRef<(() => void) | null>(null)
+  const editorRedoRef = useRef<(() => void) | null>(null)
+  useEffect(() => { dirtyRef.current = dirty }, [dirty])
 
   useEffect(() => {
     let cancelado = false
@@ -108,6 +114,45 @@ export default function LessonEditorPage() {
     return () => window.removeEventListener("keydown", onKey)
   }, [modo])
 
+  // Auto-guardado tras 2s de inactividad (solo si válido y con título).
+  useEffect(() => {
+    if (!dirty || !blocks.length) return
+    const t = setTimeout(async () => {
+      if (!dirtyRef.current) return
+      const fn = guardarRef.current
+      if (!fn) return
+      setAutosaveState("saving")
+      try {
+        await fn()
+        setAutosaveState("saved")
+        setTimeout(() => setAutosaveState((s) => (s === "saved" ? "idle" : s)), 2000)
+      } catch {
+        setAutosaveState("error")
+      }
+    }, 2000)
+    return () => clearTimeout(t)
+  }, [dirty, blocks, leccion?.title])
+
+  // Undo/Redo global con teclado (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z o Y)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey
+      if (!mod) return
+      const target = e.target as HTMLElement | null
+      // No interferir con inputs de texto nativos del navegador (Tiptap maneja el suyo)
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return
+      if (e.key === "z" && !e.shiftKey) {
+        e.preventDefault()
+        editorUndoRef.current?.()
+      } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+        e.preventDefault()
+        editorRedoRef.current?.()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
@@ -157,6 +202,9 @@ export default function LessonEditorPage() {
             </h1>
             <p className="truncate text-xs text-muted-foreground">
               {leccion.courseTitle} · {leccion.moduleTitle}
+              {autosaveState === "saving" && <span className="ml-2 text-primary">· Guardando…</span>}
+              {autosaveState === "saved" && <span className="ml-2 text-secondary">· Guardado ✓</span>}
+              {autosaveState === "error" && <span className="ml-2 text-destructive">· Error al guardar</span>}
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -183,6 +231,30 @@ export default function LessonEditorPage() {
               onClick={() => leccion.next && irA(`/admin/cursos/${leccion.courseId}/lecciones/${leccion.next.id}`)}
             >
               <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={!dirty}
+              aria-label="Deshacer último cambio"
+              title="Deshacer (Ctrl+Z)"
+              onClick={() => editorUndoRef.current?.()}
+            >
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={!dirty}
+              aria-label="Rehacer cambio"
+              title="Rehacer (Ctrl+Shift+Z)"
+              onClick={() => editorRedoRef.current?.()}
+            >
+              <Redo2 className="h-4 w-4" />
             </Button>
             <Button
               type="button"
@@ -214,10 +286,13 @@ export default function LessonEditorPage() {
             initialBlocks={leccion.content?.blocks ?? []}
             onGuardado={() => {
               setDirty(false)
+              setAutosaveState("idle")
             }}
             onBloquesChange={setBlocks}
             onDirtyChange={setDirty}
             ocultarVistaPrevia
+            onGuardarRef={(fn) => { guardarRef.current = fn }}
+            onUndoRedoRef={(u, r) => { editorUndoRef.current = u; editorRedoRef.current = r }}
           />
         </div>
         <div hidden={edicion}>
