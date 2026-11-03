@@ -31,6 +31,7 @@ export function LessonPreview({
     let vivo = true
     const lista = ids ? ids.split(",") : []
     if (lista.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWords(new Map())
       return
     }

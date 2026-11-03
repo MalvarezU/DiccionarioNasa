@@ -51,11 +51,13 @@ export default function LessonEditorPage() {
 
   useEffect(() => {
     let cancelado = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLeccion(null)
     setError(null)
     setModo("edicion")
     setDirty(false)
     setPendiente(null)
+    setAutosaveState("idle")
     void (async () => {
       try {
         const res = await fetch(`/api/lessons/${lessonId}`)

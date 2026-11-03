@@ -91,6 +91,10 @@ export function LessonEditor({
   onUndoRedoRef?: (undo: () => void, redo: () => void) => void
 }) {
   const editor = useLessonEditor({ title: initialTitle, blocks: initialBlocks })
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   // Ref estable: el padre puede pasar un callback inline sin disparar el
   // efecto en cada render (el loop "Maximum update depth" ya ocurrió una vez).
@@ -195,10 +199,7 @@ export function LessonEditor({
           </div>
         ) : (
           <DndContext
-            sensors={useSensors(
-              useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-              useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-            )}
+            sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={(e: DragEndEvent) => {
               const { active, over } = e

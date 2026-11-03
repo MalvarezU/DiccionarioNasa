@@ -63,7 +63,6 @@ export function FormImage({ block, onChange, errores }: BlockFormProps<Extract<L
 
       {block.url ? (
         <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={block.url} alt={block.alt || ""} className="h-16 w-24 rounded-md object-cover" />
           <Button type="button" variant="outline" size="sm" onClick={() => onChange({ ...block, url: "", alt: "" })}>
             Quitar
