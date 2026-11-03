@@ -10,9 +10,7 @@ const mockLesson: LessonForEdit = {
   moduleTitle: "Módulo 1",
   moduleIndex: 1,
   title: "Bienvenida",
-  type: "READ",
   lessonNumber: 1,
-  wordSpanish: "casa",
 }
 
 function renderModal(lesson: LessonForEdit | null = mockLesson) {
@@ -37,17 +35,17 @@ describe("EditLessonModal", () => {
     global.fetch = vi.fn()
   })
 
-  it("pre-rellena título y palabra y muestra el número", () => {
+  it("pre-rellena el título y muestra el número (sin palabra asociada)", () => {
     renderModal()
     expect(screen.getByText("Editar lección")).toBeDefined()
     expect(screen.getByDisplayValue("Bienvenida")).toBeDefined()
-    expect(screen.getByDisplayValue("casa")).toBeDefined()
+    expect(screen.queryByLabelText(/palabra asociada/i)).toBeNull()
     expect(screen.getByText("1.1")).toBeDefined()
-    // type no editable: se muestra como texto, no como control
-    expect(screen.getByText(/no editable/)).toBeDefined()
+    // sin tipo: el encabezado muestra solo el modulo
+    expect(screen.getByText("Módulo 1")).toBeDefined()
   })
 
-  it("guarda título y palabra con PATCH y bloquea doble envío", async () => {
+  it("guarda solo el título con PATCH y bloquea doble envío", async () => {
     const { onSaved, onOpenChange } = renderModal()
     // Fetch pendiente: simula red lenta para que ambos clicks lleguen
     // antes de que el primero termine (el race real del doble click).
@@ -72,7 +70,7 @@ describe("EditLessonModal", () => {
       "/api/lessons/l1",
       expect.objectContaining({
         method: "PATCH",
-        body: expect.stringContaining("Bienvenida 2"),
+        body: JSON.stringify({ title: "Bienvenida 2" }),
       })
     )
     expect(onOpenChange).toHaveBeenCalledWith(false)

@@ -1,14 +1,14 @@
 "use client"
 
+import { useState } from "react"
 import {
-  FileText,
-  Eye,
-  Pencil,
-  Archive,
   Clock,
   ScrollText,
   User,
 } from "lucide-react"
+import { AuditLogDetailDialog } from "./audit-log-detail-dialog"
+import { revertedOriginalId } from "@/lib/audit-revert"
+import { type AuditLogEntry } from "@/lib/admin-utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -33,95 +33,29 @@ import {
 
 interface DashboardActivityProps {
   stats: AdminStats
-  statusSum: number
   onViewAll: () => void
+  isAdmin?: boolean
 }
 
-/** Distribución por estado + actividad reciente (bitácora). */
-export function DashboardActivity({ stats, statusSum, onViewAll }: DashboardActivityProps) {
+/** Actividad reciente (bitácora) a ancho completo. */
+export function DashboardActivity({ stats, onViewAll, isAdmin = false }: DashboardActivityProps) {
+  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
+
+  const revertedIds = new Set(
+    stats.recentAuditLogs
+      .filter((l) => l.action === "REVERT")
+      .map((l) => revertedOriginalId(l.changes))
+      .filter(Boolean) as string[]
+  )
+
+  const openDetail = (log: AuditLogEntry) => {
+    setSelectedLog(log)
+    setDetailOpen(true)
+  }
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" />
-            Distribución por estado
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <Eye className="h-3.5 w-3.5 text-secondary" />
-                  <span className="text-sm font-medium text-foreground">Publicadas</span>
-                </div>
-                <span className="text-sm font-semibold text-foreground">{formatNumber(stats.publishedCount)}</span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-secondary transition-all duration-500"
-                  style={{ width: stats.totalWords > 0 ? `${(stats.publishedCount / stats.totalWords) * 100}%` : "0%" }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <Pencil className="h-3.5 w-3.5 text-tertiary" />
-                  <span className="text-sm font-medium text-foreground">Borradores</span>
-                </div>
-                <span className="text-sm font-semibold text-foreground">{formatNumber(stats.draftCount)}</span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-tertiary transition-all duration-500"
-                  style={{ width: stats.totalWords > 0 ? `${(stats.draftCount / stats.totalWords) * 100}%` : "0%" }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <Archive className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Archivadas</span>
-                </div>
-                <span className="text-sm font-semibold text-foreground">{formatNumber(stats.archivedCount)}</span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-muted-foreground/50 transition-all duration-500"
-                  style={{ width: stats.totalWords > 0 ? `${(stats.archivedCount / stats.totalWords) * 100}%` : "0%" }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 pt-4 border-t">
-            <p className="text-xs text-muted-foreground text-center">
-              <span className="inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-secondary inline-block" />
-                {formatNumber(stats.publishedCount)}
-              </span>
-              {" + "}
-              <span className="inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-tertiary inline-block" />
-                {formatNumber(stats.draftCount)}
-              </span>
-              {" + "}
-              <span className="inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 inline-block" />
-                {formatNumber(stats.archivedCount)}
-              </span>
-              {" = "}
-              <span className="font-semibold text-foreground">{formatNumber(statusSum)}</span>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
+    <>
+    <div>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -159,7 +93,20 @@ export function DashboardActivity({ stats, statusSum, onViewAll }: DashboardActi
                 </TableHeader>
                 <TableBody>
                   {stats.recentAuditLogs.map((log) => (
-                    <TableRow key={log.id}>
+                    <TableRow
+                      key={log.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => openDetail(log)}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Ver detalle de ${getActionLabel(log.action)}`}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          openDetail(log)
+                        }
+                      }}
+                    >
                       <TableCell className="text-2xs text-muted-foreground whitespace-nowrap">
                         <span title={formatDate(log.createdAt)}>{formatTimeAgo(log.createdAt)}</span>
                       </TableCell>
@@ -194,5 +141,17 @@ export function DashboardActivity({ stats, statusSum, onViewAll }: DashboardActi
         </CardContent>
       </Card>
     </div>
+
+    <AuditLogDetailDialog
+      open={detailOpen}
+      onOpenChange={setDetailOpen}
+      log={selectedLog}
+      isAdmin={isAdmin}
+      revertedIds={revertedIds}
+      onReverted={() => {
+        // no-op: la actividad se refresca con el polling del dashboard
+      }}
+    />
+    </>
   )
 }

@@ -33,6 +33,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { AuditLogDetailDialog } from "./audit-log-detail-dialog"
+import { isRevertible, revertedOriginalId } from "@/lib/audit-revert"
 import {
   type AuditLogEntry,
   formatDate,
@@ -46,15 +48,19 @@ import {
 interface FullAuditLogModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  isAdmin?: boolean
 }
 
 export function FullAuditLogModal({
   open,
   onOpenChange,
+  isAdmin = false,
 }: FullAuditLogModalProps) {
   const prevOpenRef = useRef(false)
   const filtersRef = useRef({ action: "all", from: "", to: "", userId: "all" })
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
+  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -122,6 +128,14 @@ export function FullAuditLogModal({
     })()
   }, [open, fetchLogs])
 
+  const revertedIds = new Set(
+    logs.filter((l) => l.action === "REVERT").map((l) => revertedOriginalId(l.changes)).filter(Boolean) as string[]
+  )
+
+  const handleReverted = useCallback(() => {
+    // refresca la página actual conservando filtros
+    fetchLogs(page)
+  }, [fetchLogs, page])
   const handlePageChange = useCallback(
     (newPage: number) => {
       setPage(newPage)
@@ -129,6 +143,7 @@ export function FullAuditLogModal({
     },
     [fetchLogs]
   )
+
 
   const refreshWith = useCallback(
     (overrides: { action?: string; from?: string; to?: string; userId?: string }) => {
@@ -277,7 +292,24 @@ export function FullAuditLogModal({
                   </TableHeader>
                   <TableBody>
                     {logs.map((log) => (
-                      <TableRow key={log.id}>
+                      <TableRow
+                        key={log.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => {
+                          setSelectedLog(log)
+                          setDetailOpen(true)
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`Ver detalle de ${getActionLabel(log.action)} sobre ${getEntityLabel(log.entity)}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            setSelectedLog(log)
+                            setDetailOpen(true)
+                          }
+                        }}
+                      >
                         <TableCell className="text-2xs text-muted-foreground whitespace-nowrap">
                           {formatDate(log.createdAt)}
                         </TableCell>
@@ -352,6 +384,14 @@ export function FullAuditLogModal({
           )}
         </div>
       </DialogContent>
+    <AuditLogDetailDialog
+      open={detailOpen}
+      onOpenChange={setDetailOpen}
+      log={selectedLog}
+      isAdmin={isAdmin}
+      revertedIds={revertedIds}
+      onReverted={handleReverted}
+    />
     </Dialog>
   )
 }

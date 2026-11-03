@@ -33,3 +33,20 @@ describe("PWA [B3.2]", () => {
     expect(sw).not.toContain("nasa-yuwe-shell-v1")
   })
 })
+
+describe("PWA [B3.2] — service worker no cachea respuestas no-store", () => {
+  const sw = fs.readFileSync(path.join(root, "public/sw.js"), "utf-8")
+
+  it("la rama stale-while-revalidate consulta Cache-Control de la respuesta", () => {
+    // Guardia: antes de cache.put, se lee el Cache-Control de la respuesta
+    // y se omite el put si contiene no-store. Evita que el CSS/JS del dev
+    // server (que se envía con no-store) quede stale en la caché del SW.
+    expect(sw).toMatch(/res\.headers\.get\("Cache-Control"\)/)
+    expect(sw).toMatch(/!cc\.includes\("no-store"\)/)
+  })
+
+  it("la caché del shell subió de v2 a v3 (limpia caché vieja con CSS stale)", () => {
+    expect(sw).toContain('SHELL_CACHE = "piiyaak-shell-v3"')
+    expect(sw).not.toContain('SHELL_CACHE = "piiyaak-shell-v2"')
+  })
+})

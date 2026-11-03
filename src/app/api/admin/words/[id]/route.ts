@@ -247,10 +247,7 @@ export async function DELETE(
         entity: 'DictionaryWord',
         entityId: id,
         changes: JSON.stringify({
-          deleted: {
-            spanish: existingWord.spanish,
-            nasaYuwe: existingWord.nasaYuwe,
-          },
+          deleted: { ...existingWord },
           responsable: sessionUser?.name || sessionUser?.email,
         }),
         userId: sessionUser?.id,

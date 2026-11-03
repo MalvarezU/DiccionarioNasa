@@ -142,3 +142,33 @@ describe("NavBar", () => {
     expect(signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
   })
 })
+
+describe("NavBar — aviso ?auth=required del middleware", () => {
+  it("abre el login solo y limpia la URL", async () => {
+    window.history.replaceState(null, "", "/?auth=required")
+    try {
+      render(<NavBar />)
+      expect(await screen.findByTestId("auth-modal")).toBeDefined()
+      expect(window.location.search).toBe("")
+    } finally {
+      window.history.replaceState(null, "", "/")
+    }
+  })
+
+  it("también abre con sesión expirada", async () => {
+    window.history.replaceState(null, "", "/?auth=expired")
+    try {
+      render(<NavBar />)
+      expect(await screen.findByTestId("auth-modal")).toBeDefined()
+      expect(window.location.search).toBe("")
+    } finally {
+      window.history.replaceState(null, "", "/")
+    }
+  })
+
+  it("sin el aviso no abre nada", () => {
+    window.history.replaceState(null, "", "/")
+    render(<NavBar />)
+    expect(screen.queryByTestId("auth-modal")).toBeNull()
+  })
+})

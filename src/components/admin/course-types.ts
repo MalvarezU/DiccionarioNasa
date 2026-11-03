@@ -1,11 +1,8 @@
 export interface Lesson {
   id: string
   title: string
-  type: "READ" | "QUIZ" | "COMPLETE"
   order: number
   lessonNumber: number | null
-  wordId: string | null
-  word: { spanish: string } | null
 }
 
 export interface Module {
@@ -36,11 +33,9 @@ export interface Course {
 
 export interface LessonForm {
   title: string
-  type: string
-  wordSpanish: string
 }
 
-export const EMPTY_LESSON_FORM: LessonForm = { title: "", type: "READ", wordSpanish: "" }
+export const EMPTY_LESSON_FORM: LessonForm = { title: "" }
 
 /** Estadísticas de progreso del curso (GET detail, solo editor+). */
 export interface CourseStats {
@@ -66,10 +61,4 @@ export const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Borrador",
   PUBLISHED: "Publicado",
   ARCHIVED: "Archivado",
-}
-
-export const LESSON_LABEL: Record<string, string> = {
-  READ: "Lectura",
-  QUIZ: "Quiz",
-  COMPLETE: "Ejercicio",
 }

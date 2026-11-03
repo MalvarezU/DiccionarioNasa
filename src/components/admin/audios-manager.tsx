@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Mic, Loader2, Search, Trash2, UploadCloud, Volume2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { WordUploadDialog } from "./word-upload-dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { AudioPicker } from "@/components/media/audio-picker"
@@ -346,21 +347,19 @@ export function AudiosManager() {
       </div>
 
       {pendingWord ? (
-        <div className="rounded-lg border p-4">
-          <p className="mb-2 text-sm font-semibold">
-            Audio para {pendingWord.spanish} / {pendingWord.nasaYuwe}
-          </p>
+        <WordUploadDialog
+          open
+          onOpenChange={(v) => {
+            if (!v) setPendingWord(null)
+          }}
+          titulo={`Audio para ${pendingWord.spanish} / ${pendingWord.nasaYuwe}`}
+          saving={saving}
+        >
           <AudioPicker
             onSubida={(url) => void saveAudio(pendingWord.id, url)}
             onCancelar={() => setPendingWord(null)}
           />
-          {saving ? (
-            <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Guardando en la ficha…
-            </p>
-          ) : null}
-        </div>
+        </WordUploadDialog>
       ) : null}
 
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -383,7 +382,7 @@ export function AudiosManager() {
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-input bg-muted/20 px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/40">
             <UploadCloud className="h-4 w-4 text-muted-foreground" />
             <span>Elegir archivos</span>
-            <Input
+            <input
               type="file"
               accept="audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg"
               multiple
@@ -496,7 +495,7 @@ export function AudiosManager() {
             {bulkDone ? (
               <div className="border-t bg-muted/30 px-5 py-3 text-sm" aria-live="polite">
                 <p className="text-sm">
-                  Lote terminado: {bulkDone.ok} subidos, {bulkDone.omitidos} omitidos, {bulkDone.errores}{" "}
+                  Lote terminado: {bulkDone.ok} subidas, {bulkDone.omitidos} omitidos, {bulkDone.errores}{" "}
                   errores.
                 </p>
               </div>

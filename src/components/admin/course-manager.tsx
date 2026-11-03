@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+
 import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, FileText, Eye } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,10 +19,19 @@ import { Separator } from "@/components/ui/separator"
 import { EditLessonModal } from "./edit-lesson-modal"
 import { LessonContentModal } from "./lesson-editor/lesson-content-modal"
 import { MediaPicker } from "@/components/media/media-picker"
-import { LESSON_LABEL, STATUS_LABEL } from "./course-types"
+import { CourseManagerListSkeleton } from "@/components/skeletons"
+import { STATUS_LABEL } from "./course-types"
 import { useCourseManager } from "./use-course-manager"
+import { ConfirmDialog } from "./confirm-dialog"
 
 export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
+  const [confirmPendiente, setConfirmPendiente] = useState<{
+    kind: "course" | "module" | "lesson"
+    id?: string
+    titulo?: string
+  } | null>(null)
+  const [procesando, setProcesando] = useState(false)
+
   const {
     courses,
     loading,
@@ -65,16 +76,17 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Lista */}
-      <Card className="lg:col-span-1 h-fit">
-        <CardHeader>
+      {/* Lista: altura acotada al layout en desktop; solo la lista scrollea,
+          el form queda fijo. En móvil, flujo natural sin tope. */}
+      <Card className="lg:col-span-1 flex flex-col lg:max-h-[calc(100dvh-13rem)] lg:overflow-hidden" data-testid="cursos-card">
+        <CardHeader className="shrink-0">
           <CardTitle className="flex items-center gap-2 text-base">
             <GraduationCap className="h-4 w-4 text-primary" />
             Cursos ({courses.length})
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <form onSubmit={handleCreate} className="flex gap-2">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+          <form onSubmit={handleCreate} className="flex gap-2 shrink-0">
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
@@ -86,10 +98,18 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
               <Plus className="h-4 w-4" />
             </Button>
           </form>
+          {error && <p className="text-sm text-destructive shrink-0">{error}</p>}
           {loading ? (
-            <p className="text-sm text-muted-foreground">Cargando...</p>
+            <div aria-busy="true" aria-label="Cargando cursos">
+              <CourseManagerListSkeleton />
+            </div>
           ) : (
-            <div className="space-y-2">
+            <div
+              className="space-y-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+              data-testid="cursos-lista"
+              role="region"
+              aria-label="Lista de cursos"
+            >
               {courses.map((c) => (
                 <button
                   key={c.id}
@@ -117,7 +137,6 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
               )}
             </div>
           )}
-          {error && <p className="text-sm text-destructive">{error}</p>}
         </CardContent>
       </Card>
 
@@ -206,7 +225,12 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                     </a>
                   </Button>
                   {canDelete && (
-                    <Button size="sm" variant="destructive" onClick={handleDeleteCourse} className="gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setConfirmPendiente({ kind: "course", titulo: detail?.title ?? "" })}
+                      className="gap-1.5"
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                       Eliminar
                     </Button>
@@ -269,7 +293,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                         variant="ghost"
                         className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         aria-label={`Eliminar ${mod.title}`}
-                        onClick={() => void handleDeleteModule(mod.id)}
+                        onClick={() => setConfirmPendiente({ kind: "module", id: mod.id, titulo: mod.title })}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -293,12 +317,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                           <Badge variant="outline" className="text-2xs shrink-0">
                             {modIdx + 1}.{les.lessonNumber ?? "?"}
                           </Badge>
-                          <span className="flex-1">
-                            {les.title}{" "}
-                            <span className="text-2xs text-muted-foreground">
-                              ({LESSON_LABEL[les.type] ?? les.type})
-                            </span>
-                          </span>
+                          <span className="flex-1">{les.title}</span>
                           <Button
                             size="icon"
                             variant="ghost"
@@ -340,7 +359,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                             variant="ghost"
                             className="h-6 w-6 text-muted-foreground hover:text-destructive"
                             aria-label={`Eliminar lección ${les.title}`}
-                            onClick={() => void handleDeleteLesson(les.id)}
+                            onClick={() => setConfirmPendiente({ kind: "lesson", id: les.id, titulo: les.title })}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -357,27 +376,6 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                           placeholder="Nueva lección..."
                           aria-label={`Título de nueva lección en ${mod.title}`}
                           className="flex-1 min-w-[140px] h-8 text-xs"
-                          disabled={!!savingLesson[mod.id]}
-                        />
-                        <Select
-                          value={lessonForm(mod.id).type}
-                          onValueChange={(type) => setLessonForm(mod.id, { type })}
-                        >
-                          <SelectTrigger className="w-[120px] h-8 text-xs" aria-label="Tipo de lección">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="READ">Lectura</SelectItem>
-                            <SelectItem value="QUIZ">Quiz</SelectItem>
-                            <SelectItem value="COMPLETE">Ejercicio</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          value={lessonForm(mod.id).wordSpanish}
-                          onChange={(e) => setLessonForm(mod.id, { wordSpanish: e.target.value })}
-                          placeholder="Palabra (español)"
-                          aria-label="Palabra en español para la lección"
-                          className="w-[140px] h-8 text-xs"
                           disabled={!!savingLesson[mod.id]}
                         />
                         <Button
@@ -398,6 +396,37 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmPendiente !== null}
+        onOpenChange={(v) => !v && setConfirmPendiente(null)}
+        processing={procesando}
+        titulo={
+          confirmPendiente?.kind === "course"
+            ? `¿Eliminar el curso "${confirmPendiente.titulo}"?`
+            : confirmPendiente?.kind === "module"
+            ? `¿Eliminar el módulo "${confirmPendiente.titulo}"?`
+            : `¿Eliminar la lección "${confirmPendiente?.titulo}"?`
+        }
+        descripcion={
+          confirmPendiente?.kind === "course"
+            ? "Se borran el curso, todos sus módulos, lecciones y el progreso de los alumnos. Esta acción no se puede deshacer."
+            : confirmPendiente?.kind === "module"
+            ? "Se borran el módulo y todas sus lecciones. Esta acción no se puede deshacer."
+            : "La lección se elimina definitivamente."
+        }
+        onConfirm={async () => {
+          setProcesando(true)
+          try {
+            if (confirmPendiente?.kind === "course") await handleDeleteCourse()
+            else if (confirmPendiente?.kind === "module" && confirmPendiente.id) await handleDeleteModule(confirmPendiente.id)
+            else if (confirmPendiente?.kind === "lesson" && confirmPendiente.id) await handleDeleteLesson(confirmPendiente.id)
+            setConfirmPendiente(null)
+          } finally {
+            setProcesando(false)
+          }
+        }}
+      />
 
       <EditLessonModal
         lesson={editingLesson}

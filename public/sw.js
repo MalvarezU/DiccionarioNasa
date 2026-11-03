@@ -9,7 +9,7 @@
 //   (status 0, ok === false). Si solo se guarda `res.ok`, el caché nunca se
 //   llena: se acepta también `res.type === "opaque"`, con tope para acotar.
 
-const SHELL_CACHE = "piiyaak-shell-v2"
+const SHELL_CACHE = "piiyaak-shell-v3"
 const AUDIO_CACHE = "piiyaak-audio-v1"
 const AUDIO_MAX_ENTRIES = 50
 const IMAGE_CACHE = "piiyaak-image-v1"
@@ -166,7 +166,12 @@ self.addEventListener("fetch", (event) => {
       const hit = await cache.match(req)
       const network = fetch(req)
         .then((res) => {
-          if (res.ok) cache.put(req, res.clone()).catch(() => {})
+          // No cachear respuestas que el servidor marca no-store (dev).
+          // Evita que un CSS/JS viejo quede en la caché del SW.
+          const cc = (res.headers.get("Cache-Control") || "").toLowerCase()
+          if (res.ok && !cc.includes("no-store")) {
+            cache.put(req, res.clone()).catch(() => {})
+          }
           return res
         })
         .catch(() => hit)

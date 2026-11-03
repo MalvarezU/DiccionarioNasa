@@ -2,7 +2,7 @@ import { expect } from "@playwright/test";
 import type { Actor, Task } from "../actor";
 import { NavegarLaWeb } from "../habilidades";
 
-/** Ir a /admin/courses y esperar el panel. */
+/** Ir a /admin/cursos y esperar el panel. */
 export class IrAGestionDeCursos implements Task {
   descripcion = "ir a gestión de cursos";
   static ahora(): IrAGestionDeCursos {
@@ -10,8 +10,8 @@ export class IrAGestionDeCursos implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.goto("/admin/courses");
-    await expect(page.getByText("Gestión de cursos")).toBeVisible({ timeout: 30000 });
+    await page.goto("/admin/cursos");
+    await expect(page.getByRole("heading", { name: "Gestión de cursos" })).toBeVisible({ timeout: 30000 });
   }
 }
 
@@ -193,6 +193,12 @@ export class EliminarCurso implements Task {
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
     await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+    // El panel usa ConfirmDialog (Radix AlertDialog), no window.confirm:
+    // AceptarConfirmaciones (page.on dialog) no lo captura. Confirmamos acá.
+    const confirmBtn = page.getByRole("button", { name: "Eliminar", exact: true }).last();
+    if (await confirmBtn.isVisible().catch(() => false)) {
+      await confirmBtn.click();
+    }
     await expect(page.getByText(this.titulo)).toHaveCount(0, { timeout: 30000 });
   }
 }
@@ -326,8 +332,9 @@ export class AgregarBloqueDeTexto implements Task {
     const { page } = actor.usa(NavegarLaWeb);
     // Botón del estante "Agregar bloque" (exact: los badges de tipo no son botones)
     await page.getByRole("button", { name: "Texto", exact: true }).click();
-    const area = page.getByLabel(/Texto de la lección/i).last();
+    const area = page.getByLabel(/Texto de la lección/i).last().locator(".tiptap, .ProseMirror").first();
     await expect(area).toBeVisible({ timeout: 10000 });
+    await area.click();
     await area.fill(this.markdown);
   }
 }

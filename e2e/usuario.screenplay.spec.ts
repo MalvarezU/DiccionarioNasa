@@ -83,4 +83,11 @@ test.describe("usuario Piiyaak (Screenplay)", () => {
     await usuario.intenta(IrA.a("/"), AbrirMenuUsuario.ahora(), CerrarSesion.ahora());
     expect(await usuario.pregunta(SesionCerrada.valor())).toBe(true);
   });
+
+  test("usuario común no entra al panel admin", async ({ page }) => {
+    const usuario = actorUsuario(page);
+    await usuario.intenta(IrA.a("/admin"));
+    // El proxy lo devuelve al inicio como denegado (rol user sin panel)
+    await expect(page).toHaveURL(/auth=denied/, { timeout: 30000 });
+  });
 });

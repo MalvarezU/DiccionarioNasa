@@ -50,9 +50,9 @@ import type { LessonBlock } from "./blocks"
 export function wordIdsUsedByContent(blocks: readonly LessonBlock[]): string[] {
   const ids: string[] = []
   for (const block of blocks) {
-    if (block.type === "word" || block.type === "legacy-complete-word") {
+    if (block.type === "word") {
       ids.push(block.wordId)
-    } else if (block.type === "vocabulary" || block.type === "game") {
+    } else if (block.type === "vocabulary") {
       ids.push(...block.wordIds)
     }
   }

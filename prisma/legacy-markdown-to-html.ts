@@ -87,6 +87,18 @@ export function parseInline(text: string): InlineToken[] {
   let i = 0
 
   while (i < text.length) {
+    // Negrita+cursiva ("***…***"): tiptap-markdown serializa ambos formatos
+    // juntos así; probarlo ANTES que "**" para no comerse un asterisco.
+    if (text.startsWith("***", i)) {
+      const cierre = text.indexOf("***", i + 3)
+      if (cierre !== -1) {
+        if (buffer) out.push({ text: buffer })
+        buffer = ""
+        out.push({ text: text.slice(i + 3, cierre), bold: true, italic: true })
+        i = cierre + 3
+        continue
+      }
+    }
     // Negrita primero: "**" contendría a un "*" suelto, hay que probarlo antes.
     if (text.startsWith("**", i)) {
       const cierre = text.indexOf("**", i + 2)
@@ -129,4 +141,49 @@ function unirTokensPlanos(tokens: InlineToken[]): InlineToken[] {
     }
   }
   return out
+}
+
+/**
+ * Serializador markdown → HTML para la migración de lecciones v1 → v2.
+ * Reusa `parseMarkdownLite` y `parseInline` (sin dependencias externas).
+ */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
+export function markdownToHtml(md: string): string {
+  const blocks = parseMarkdownLite(md)
+  const out: string[] = []
+  for (const b of blocks) {
+    switch (b.kind) {
+      case "heading": {
+        const lvl = b.level === 1 ? "h1" : b.level === 2 ? "h2" : "h3"
+        out.push(`<${lvl}>${serializeInline(b.text)}</${lvl}>`)
+        break
+      }
+      case "paragraph":
+        out.push(`<p>${serializeInline(b.text)}</p>`)
+        break
+      case "list":
+        out.push(`<ul>${b.items.map((it) => `<li>${serializeInline(it)}</li>`).join("")}</ul>`)
+        break
+    }
+  }
+  return out.join("")
+}
+
+function serializeInline(text: string): string {
+  return parseInline(text)
+    .map((t) => {
+      let inner = escapeHtml(t.text)
+      if (t.bold && t.italic) inner = `<strong><em>${inner}</em></strong>`
+      else if (t.bold) inner = `<strong>${inner}</strong>`
+      else if (t.italic) inner = `<em>${inner}</em>`
+      return inner
+    })
+    .join("")
 }

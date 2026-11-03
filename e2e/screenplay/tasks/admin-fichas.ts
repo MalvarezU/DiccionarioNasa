@@ -2,7 +2,7 @@ import { expect } from "@playwright/test";
 import type { Actor, Task } from "../actor";
 import { NavegarLaWeb } from "../habilidades";
 
-/** Abrir el modal de nueva ficha desde el dashboard. */
+/** Abrir la página de nueva ficha (sección Palabras). */
 export class AbrirNuevaFicha implements Task {
   descripcion = "abrir nueva ficha";
   static ahora(): AbrirNuevaFicha {
@@ -10,7 +10,8 @@ export class AbrirNuevaFicha implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.getByRole("button", { name: /nueva ficha/i }).click();
+    await page.goto("/admin/palabras");
+    await page.getByRole("button", { name: /nueva ficha/i }).first().click();
   }
 }
 
@@ -37,7 +38,7 @@ export class CrearYPublicarFicha implements Task {
   }
 }
 
-/** Abrir la gestión de fichas desde el dashboard. */
+/** Abrir la gestión de fichas (sección Palabras, lista inline). */
 export class AbrirGestionFichas implements Task {
   descripcion = "abrir gestión de fichas";
   static ahora(): AbrirGestionFichas {
@@ -45,8 +46,8 @@ export class AbrirGestionFichas implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.getByRole("button", { name: /gestionar fichas/i }).click();
-    await expect(page.getByText("Gestión de fichas")).toBeVisible({ timeout: 20000 });
+    await page.goto("/admin/palabras");
+    await expect(page.getByRole("heading", { name: "Gestión de palabras" })).toBeVisible({ timeout: 20000 });
   }
 }
 
@@ -123,6 +124,7 @@ export class ImportarCorpus implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
+    await page.goto("/admin/palabras");
     await page.getByRole("button", { name: /importar corpus/i }).click();
     await page.locator('input[type="file"]').setInputFiles({
       name: "corpus-e2e.xlsx",

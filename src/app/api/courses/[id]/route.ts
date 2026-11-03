@@ -30,19 +30,6 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
           include: {
             lessons: {
               orderBy: [{ lessonNumber: "asc" }, { id: "asc" }],
-              include: {
-                word: {
-                  select: {
-                    id: true,
-                    spanish: true,
-                    nasaYuwe: true,
-                    pronunciation: true,
-                    audioUrl: true,
-                    culturalContext: true,
-                    category: true,
-                  },
-                },
-              },
             },
           },
         },

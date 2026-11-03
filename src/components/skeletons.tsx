@@ -356,6 +356,124 @@ function CoursePlayerSkeleton({ modules = 3 }: { modules?: number }) {
   )
 }
 
+/* ------------------------------------------------------- admin cursos -- */
+
+/**
+ * Réplica de una fila de la lista del gestor (botón con título + badge +
+ * conteo). Copia el padding y el borde del botón real para no mover layout.
+ */
+function CourseManagerRowSkeleton() {
+  return (
+    <div
+      data-slot="skeleton-course-manager-row"
+      className="w-full rounded-lg border border-outline-variant/20 p-3"
+    >
+      <Skeleton className="h-4 w-3/4 border-transparent" />
+      <div className="mt-2 flex items-center gap-2">
+        <Skeleton className="h-5 w-16 rounded-full border-transparent" />
+        <Skeleton className="h-3 w-28 border-transparent" />
+      </div>
+    </div>
+  )
+}
+
+/** Lista de cursos del panel: formulario + filas. */
+function CourseManagerListSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div data-slot="skeleton-course-manager-list" className="space-y-3">
+      <div className="flex gap-2">
+        <Skeleton className="h-9 flex-1 border-transparent" />
+        <Skeleton className="h-9 w-9 shrink-0 rounded-md border-transparent" />
+      </div>
+      <div className="space-y-2">
+        {Array.from({ length: count }, (_, i) => (
+          <CourseManagerRowSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Detalle del curso: campos, portada, acciones y módulos. */
+function CourseManagerDetailSkeleton() {
+  return (
+    <div data-slot="skeleton-course-manager-detail" className="space-y-4">
+      <div className="grid gap-3">
+        <div className="grid gap-2">
+          <Skeleton className="h-3 w-16 border-transparent" />
+          <Skeleton className="h-9 w-full border-transparent" />
+        </div>
+        <div className="grid gap-2">
+          <Skeleton className="h-3 w-24 border-transparent" />
+          <Skeleton className="h-9 w-full border-transparent" />
+        </div>
+        <div className="grid gap-2">
+          <Skeleton className="h-3 w-16 border-transparent" />
+          <Skeleton className="h-9 w-[200px] border-transparent" />
+        </div>
+        <div className="grid gap-2">
+          <Skeleton className="h-3 w-16 border-transparent" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-14 w-24 rounded-md border-transparent" />
+            <Skeleton className="h-8 w-28 rounded-md border-transparent" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-28 rounded-md border-transparent" />
+          <Skeleton className="h-8 w-36 rounded-md border-transparent" />
+        </div>
+      </div>
+      <div className="bg-border h-px w-full" />
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-20 border-transparent" />
+        <div className="flex gap-2">
+          <Skeleton className="h-9 flex-1 border-transparent" />
+          <Skeleton className="h-9 w-20 rounded-md border-transparent" />
+        </div>
+        <ModuleSkeleton lessons={2} />
+        <ModuleSkeleton lessons={2} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Gestor completo (/admin/cursos): replica el grid lista + detalle del
+ * CourseManager real para que el route loading no salte al llegar el dato.
+ */
+function CourseManagerSkeleton() {
+  return (
+    <div
+      data-slot="skeleton-course-manager"
+      data-testid="skeleton-course-manager"
+      className="grid grid-cols-1 gap-6 lg:grid-cols-3"
+    >
+      <div className="bg-card flex h-fit flex-col gap-6 rounded-xl border py-6 shadow-sm lg:col-span-1">
+        <div className="px-6">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-4 rounded border-transparent" />
+            <Skeleton className="h-5 w-28 border-transparent" />
+          </div>
+        </div>
+        <div className="px-6">
+          <CourseManagerListSkeleton />
+        </div>
+      </div>
+      <div className="bg-card flex h-fit flex-col gap-6 rounded-xl border py-6 shadow-sm lg:col-span-2">
+        <div className="px-6">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-4 rounded border-transparent" />
+            <Skeleton className="h-5 w-40 border-transparent" />
+          </div>
+        </div>
+        <div className="px-6">
+          <CourseManagerDetailSkeleton />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------------ admin */
 
 /** Réplica de la tarjeta de estadística del panel: número grande + etiqueta. */
@@ -469,6 +587,9 @@ function HomeSkeleton() {
 
 export {
   AdminDashboardSkeleton,
+  CourseManagerSkeleton,
+  CourseManagerListSkeleton,
+  CourseManagerDetailSkeleton,
   FavoriteCardSkeleton,
   FavoritesGridSkeleton,
   HistorySkeleton,

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ImagePlus, Loader2, Search, Trash2, UploadCloud } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "./confirm-dialog"
+import { WordUploadDialog } from "./word-upload-dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { MediaPicker } from "@/components/media/media-picker"
@@ -60,7 +62,7 @@ async function fetchAllWords(): Promise<Row[]> {
 }
 
 /**
- * Gestión de ilustraciones (/admin/illustrations): lista con filtros, subida
+ * Gestión de ilustraciones (/admin/ilustraciones): lista con filtros, subida
  * individual por ficha y subida en lote con matching por nombre de archivo.
  */
 export function IllustrationsManager() {
@@ -74,6 +76,7 @@ export function IllustrationsManager() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingWord, setPendingWord] = useState<Row | null>(null)
+  const [confirmQuitar, setConfirmQuitar] = useState<{ id: string; spanish: string } | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [bulk, setBulk] = useState<BulkRow[]>([])
@@ -321,11 +324,7 @@ export function IllustrationsManager() {
                   variant="ghost"
                   size="sm"
                   disabled={saving}
-                  onClick={() => {
-                    if (window.confirm(`¿Quitar la ilustración de "${w.spanish}"?`)) {
-                      void saveIllustration(w.id, null)
-                    }
-                  }}
+                  onClick={() => setConfirmQuitar({ id: w.id, spanish: w.spanish })}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -361,22 +360,21 @@ export function IllustrationsManager() {
 
       {/* Subida individual */}
       {pendingWord ? (
-        <div className="rounded-lg border p-4">
-          <p className="mb-2 text-sm font-semibold">
-            Ilustración para {pendingWord.spanish} / {pendingWord.nasaYuwe}
-          </p>
+        <WordUploadDialog
+          open
+          onOpenChange={(v) => {
+            if (!v) setPendingWord(null)
+          }}
+          titulo={`Ilustración para ${pendingWord.spanish} / ${pendingWord.nasaYuwe}`}
+          saving={saving}
+        >
           <MediaPicker
             variant="illustration"
             etiqueta={`Elegir imagen (cuadrada 1:1 · ${pendingWord.spanish})`}
             onSubida={(url) => void saveIllustration(pendingWord.id, url)}
             onCancelar={() => setPendingWord(null)}
           />
-          {saving ? (
-            <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Guardando en la ficha…
-            </p>
-          ) : null}
-        </div>
+        </WordUploadDialog>
       ) : null}
 
       {/* Lote */}
@@ -400,7 +398,7 @@ export function IllustrationsManager() {
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-input bg-muted/20 px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/40">
             <UploadCloud className="h-4 w-4 text-muted-foreground" />
             <span>Elegir imágenes</span>
-            <Input
+            <input
               type="file"
               accept="image/png,image/jpeg,image/webp,image/avif,.png,.jpg,.jpeg,.webp,.avif"
               multiple
@@ -525,6 +523,17 @@ export function IllustrationsManager() {
           </p>
         )}
       </div>
-    </div>
+          <ConfirmDialog
+        open={confirmQuitar !== null}
+        onOpenChange={(v) => !v && setConfirmQuitar(null)}
+        titulo={confirmQuitar ? `¿Quitar la ilustración de "${confirmQuitar.spanish}"?` : ""}
+        descripcion="La ilustración se desasocia de la palabra. Esta acción no se puede deshacer."
+        accionLabel="Quitar"
+        onConfirm={() => {
+          if (confirmQuitar) void saveIllustration(confirmQuitar.id, null)
+          setConfirmQuitar(null)
+        }}
+      />
+</div>
   )
 }

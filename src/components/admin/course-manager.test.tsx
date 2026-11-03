@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { CourseManager } from "./course-manager"
 
@@ -19,7 +19,7 @@ const DETAIL = {
       id: "m1",
       title: "M1",
       order: 0,
-      lessons: [{ id: "l1", title: "L1", type: "READ", order: 0, wordId: "w1" }],
+      lessons: [{ id: "l1", title: "L1", order: 0, lessonNumber: 1 }],
     },
   ],
 }
@@ -112,5 +112,80 @@ describe("CourseManager [B2.2]", () => {
     await waitFor(() => {
       expect(screen.queryByDisplayValue("Doble")).toBeNull()
     })
+  })
+})
+
+describe("CourseManager delete con confirm dialog", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+  })
+
+  it("eliminar curso: abre confirm y al confirmar llama DELETE", async () => {
+    vi.mocked(fetch).mockImplementation(async (input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      if (init?.method === "DELETE") return Response.json({ success: true })
+      if (url.includes("/api/courses/c1")) {
+        return Response.json({ course: DETAIL, stats: { alumnos: 0, promedioPct: null, completadas: 0 } })
+      }
+      return Response.json({ courses: COURSES })
+    })
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+    await user.click(await screen.findByText("Básico"))
+    const eliminarBtn = await screen.findByRole("button", { name: "Eliminar" })
+    await user.click(eliminarBtn)
+
+    const dialogo = await screen.findByRole("alertdialog")
+    expect(dialogo.textContent).toContain('¿Eliminar el curso "Básico"?')
+
+    await user.click(within(dialogo).getByRole("button", { name: "Eliminar" }))
+    await waitFor(() => {
+      const calls = vi.mocked(fetch).mock.calls
+      expect(calls.some((c) => String(c[0]).includes("/api/courses/c1") && (c[1] as any)?.method === "DELETE")).toBe(true)
+    })
+  })
+
+  it("cancelar no llama DELETE", async () => {
+    vi.mocked(fetch).mockImplementation(async (input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes("/api/courses/c1")) {
+        return Response.json({ course: DETAIL, stats: { alumnos: 0, promedioPct: null, completadas: 0 } })
+      }
+      return Response.json({ courses: COURSES })
+    })
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+    await user.click(await screen.findByText("Básico"))
+    await user.click(await screen.findByRole("button", { name: "Eliminar" }))
+
+    const dialogo = await screen.findByRole("alertdialog")
+    await user.click(within(dialogo).getByRole("button", { name: "Cancelar" }))
+    const calls = vi.mocked(fetch).mock.calls
+    expect(calls.some((c) => (c[1] as any)?.method === "DELETE")).toBe(false)
+  })
+})
+
+describe("CourseManager — lista con scroll propio", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+  })
+
+  it("la lista scrollea en su contenedor con tope de layout y el form queda fijo", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ courses: COURSES }))
+    render(<CourseManager canDelete />)
+
+    const lista = await screen.findByTestId("cursos-lista")
+    expect(lista.className).toMatch(/overflow-y-auto/)
+    expect(lista.className).toMatch(/flex-1/)
+    expect(lista.className).toMatch(/min-h-0/)
+
+    const card = screen.getByTestId("cursos-card")
+    expect(card.className).toMatch(/lg:max-h-\[calc\(100dvh-13rem\)\]/)
+
+    // El form de alta queda fuera del área scrolleable (siempre visible)
+    expect(lista.querySelector('input[aria-label="Título del nuevo curso"]')).toBeNull()
+    expect(screen.getByLabelText("Título del nuevo curso")).toBeDefined()
   })
 })

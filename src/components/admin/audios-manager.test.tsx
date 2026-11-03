@@ -90,7 +90,7 @@ describe("AudiosManager — lote", () => {
       screen.getByRole("button", { name: /subir lote/i }).click()
       await new Promise((r) => setTimeout(r, 2000))
     })
-    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidos, 0 omitidos, 0 errores/)).toBeTruthy(), { timeout: 15000 })
+    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidas, 0 omitidos, 0 errores/)).toBeTruthy(), { timeout: 15000 })
   })
 
   it("error parcial: un archivo falla y el lote sigue", { timeout: 30000 }, async () => {
@@ -129,7 +129,7 @@ describe("AudiosManager — lote", () => {
       screen.getByRole("button", { name: /subir lote/i }).click()
       await new Promise((r) => setTimeout(r, 2000))
     })
-    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidos, 0 omitidos, 1 errores/)).toBeTruthy(), { timeout: 15000 })
+    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidas, 0 omitidos, 1 errores/)).toBeTruthy(), { timeout: 15000 })
   })
 
   it("reintento: solo la fila error se reprocesa", { timeout: 30000 }, async () => {
@@ -165,7 +165,7 @@ describe("AudiosManager — lote", () => {
       screen.getByRole("button", { name: /subir lote/i }).click()
       await new Promise((r) => setTimeout(r, 2000))
     })
-    await waitFor(() => expect(bodyHas(/Lote terminado: 0 subidos, 0 omitidos, 1 errores/)).toBeTruthy(), { timeout: 15000 })
+    await waitFor(() => expect(bodyHas(/Lote terminado: 0 subidas, 0 omitidos, 1 errores/)).toBeTruthy(), { timeout: 15000 })
 
     const uploadsAntes = uploadCount
 
@@ -173,7 +173,7 @@ describe("AudiosManager — lote", () => {
       screen.getByRole("button", { name: /subir lote/i }).click()
       await new Promise((r) => setTimeout(r, 2000))
     })
-    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidos, 0 omitidos, 0 errores/)).toBeTruthy(), { timeout: 15000 })
+    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidas, 0 omitidos, 0 errores/)).toBeTruthy(), { timeout: 15000 })
 
     expect(uploadCount).toBe(uploadsAntes + 1)
   })
@@ -255,7 +255,7 @@ describe("AudiosManager — lote", () => {
       screen.getByRole("button", { name: /subir lote/i }).click()
       await new Promise((r) => setTimeout(r, 2000))
     })
-    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidos, 1 omitidos, 0 errores/)).toBeTruthy(), { timeout: 15000 })
+    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidas, 1 omitidos, 0 errores/)).toBeTruthy(), { timeout: 15000 })
 
     const uploadsAfter = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter((c) => String(c[0]).includes("/api/admin/upload-audio")).length
     expect(uploadsAfter - uploadsBefore).toBe(1)
@@ -301,7 +301,7 @@ describe("AudiosManager — lote", () => {
       screen.getByRole("button", { name: /subir lote/i }).click()
       await new Promise((r) => setTimeout(r, 2000))
     })
-    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidos, 0 omitidos, 0 errores/)).toBeTruthy(), { timeout: 15000 })
+    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidas, 0 omitidos, 0 errores/)).toBeTruthy(), { timeout: 15000 })
   })
 
   it("sin coincidencia: se omite sin fetch de upload", { timeout: 30000 }, async () => {
@@ -322,5 +322,44 @@ describe("AudiosManager — lote", () => {
     expect(btn.disabled).toBe(true)
 
     expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter((c) => String(c[0]).includes("/api/admin/upload-audio")).length).toBe(uploadsBefore)
+  })
+})
+
+describe("AudiosManager — subida individual en modal", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupFetch()
+    vi.mocked(compressToOpus).mockImplementation(async (f: File) => ({ ok: true as const, file: f, originalBytes: f.size, opusBytes: f.size }))
+  })
+
+  it("Subir abre el modal con la ficha y Cancelar lo cierra", { timeout: 30000 }, async () => {
+    render(<AudiosManager />)
+    await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
+
+    fireEvent.click(screen.getByRole("button", { name: "Subir" }))
+    expect(await screen.findByRole("dialog")).toBeDefined()
+    expect(screen.getByText("Audio para Casa / Yat")).toBeDefined()
+
+    fireEvent.click(screen.getByText("Cancelar"))
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull(), { timeout: 5000 })
+  })
+
+  it("guardar cierra el modal y hace PUT en la ficha", { timeout: 30000 }, async () => {
+    render(<AudiosManager />)
+    await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
+
+    fireEvent.click(screen.getByRole("button", { name: "Subir" }))
+    await screen.findByRole("dialog")
+
+    await act(async () => {
+      const input = document.querySelector('input[aria-label="Elegir archivo de audio"]') as HTMLInputElement
+      fireEvent.change(input, { target: { files: [new File(["x"], "casa.mp3", { type: "audio/mpeg" })] as unknown as FileList } })
+      await new Promise((r) => setTimeout(r, 2000))
+    })
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull(), { timeout: 10000 })
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      expect.stringContaining("/api/admin/words/w1"),
+      expect.objectContaining({ method: "PUT" })
+    )
   })
 })

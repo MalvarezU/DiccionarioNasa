@@ -3,11 +3,10 @@
 import { useState } from "react"
 import { CheckCircle2, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { MediaRef } from "@/lib/courses/blocks"
-import { YoutubeEmbed } from "./block-media"
+import type { AudioMediaRef } from "@/lib/courses/blocks"
 
 /**
- * Ejercicio de escucha INTERACTIVO: suena el audio (subido o de YouTube) y el
+ * Ejercicio de escucha INTERACTIVO: suena el audio subido (R2) y el
  * estudiante elige la opción. Acierta → bloque aprobado (score 100); erra →
  * reintenta.
  */
@@ -17,7 +16,7 @@ export function EscuchaInteractivo({
 }: {
   block: {
     id: string
-    media: MediaRef
+    media: AudioMediaRef
     question: string
     options: Array<{ text: string; correct: boolean }>
   }
@@ -38,9 +37,7 @@ export function EscuchaInteractivo({
 
   return (
     <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-4" data-testid="escucha-interactivo">
-      {block.media.source === "youtube" && block.media.youtubeId ? (
-        <YoutubeEmbed youtubeId={block.media.youtubeId} title="Audio del ejercicio" />
-      ) : block.media.url ? (
+      {block.media.url ? (
         <audio controls src={block.media.url} className="w-full" aria-label="Audio del ejercicio" />
       ) : (
         <p className="text-sm text-destructive">El audio del ejercicio no tiene fuente.</p>

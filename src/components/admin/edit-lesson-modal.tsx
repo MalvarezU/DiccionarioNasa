@@ -20,9 +20,7 @@ export interface LessonForEdit {
   moduleTitle: string
   moduleIndex: number
   title: string
-  type: "READ" | "QUIZ" | "COMPLETE"
   lessonNumber: number | null
-  wordSpanish: string
 }
 
 interface EditLessonModalProps {
@@ -33,12 +31,6 @@ interface EditLessonModalProps {
   onMove: (lessonId: string, moduleId: string, dir: -1 | 1) => Promise<void>
 }
 
-const TYPE_LABEL: Record<LessonForEdit["type"], string> = {
-  READ: "Lectura",
-  QUIZ: "Quiz",
-  COMPLETE: "Ejercicio",
-}
-
 export function EditLessonModal({
   lesson,
   open,
@@ -47,7 +39,6 @@ export function EditLessonModal({
   onMove,
 }: EditLessonModalProps) {
   const [title, setTitle] = useState("")
-  const [wordSpanish, setWordSpanish] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [movingDir, setMovingDir] = useState<-1 | 1 | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -59,7 +50,6 @@ export function EditLessonModal({
   useEffect(() => {
     if (open && lesson) {
       setTitle(lesson.title)
-      setWordSpanish(lesson.wordSpanish)
       setSubmitError(null)
     }
   }, [open, lesson])
@@ -84,7 +74,6 @@ export function EditLessonModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
-          wordSpanish: wordSpanish.trim(),
         }),
       })
       const data = await res.json().catch(() => null)
@@ -131,7 +120,7 @@ export function EditLessonModal({
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            {lesson.moduleTitle} · Tipo {TYPE_LABEL[lesson.type]} (no editable)
+            {lesson.moduleTitle}
           </DialogDescription>
         </DialogHeader>
 
@@ -142,16 +131,6 @@ export function EditLessonModal({
               id="edit-lesson-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              disabled={busy}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="edit-lesson-word">Palabra asociada (español)</Label>
-            <Input
-              id="edit-lesson-word"
-              value={wordSpanish}
-              onChange={(e) => setWordSpanish(e.target.value)}
-              placeholder="Vacío para desasociar"
               disabled={busy}
             />
           </div>

@@ -15,12 +15,12 @@
  * real. En particular `isSafeMediaUrl` corta `javascript:` y `data:`.
  */
 
-export const LESSON_CONTENT_VERSION = 1
+export const LESSON_CONTENT_VERSION = 2
 
 /** Límites. Acotados a propósito: el documento entra en un JSONB. */
 export const LIMITS = {
   maxBlocks: 100,
-  maxMarkdown: 20_000,
+  maxHtml: 40_000,
   maxQuestions: 50,
   minOptions: 2,
   maxOptions: 6,
@@ -43,24 +43,19 @@ export const BLOCK_TYPES = [
   "vocabulary",
   "quiz",
   "listening",
-  "game",
-  "legacy-quiz-words",
-  "legacy-complete-word",
 ] as const
 
 export type BlockType = (typeof BLOCK_TYPES)[number]
 
-export type MediaSource = "upload" | "youtube"
-export type GameKind = "memory" | "flashcards"
-export type GameDifficulty = "easy" | "medium" | "hard"
-
-/** Fuente de audio o video. Si es `youtube`, manda `youtubeId`. */
-export type MediaRef = {
-  source: MediaSource
-  /** Solo cuando `source === "upload"`. */
+/**
+ * Medio de un bloque de audio (audio o escucha): siempre archivo subido a R2.
+ * YouTube quedó exclusivo del bloque video, que lleva `youtubeId` directo y
+ * no usa este tipo.
+ */
+export type AudioMediaRef = {
+  source: "upload"
+  /** URL pública del archivo. Ausente solo en datos cojos (el editor exige subir). */
   url?: string
-  /** Solo cuando `source === "youtube"`. */
-  youtubeId?: string
 }
 
 export type QuizOption = { text: string; correct: boolean }
@@ -70,7 +65,7 @@ export type QuizQuestion = {
   explanation?: string
 }
 
-export type TextBlock = { id: string; type: "text"; markdown: string }
+export type TextBlock = { id: string; type: "text"; html: string }
 export type ImageBlock = {
   id: string
   type: "image"
@@ -81,7 +76,7 @@ export type ImageBlock = {
 export type AudioBlock = {
   id: string
   type: "audio"
-  media: MediaRef
+  media: AudioMediaRef
   title?: string
 }
 export type VideoBlock = {
@@ -106,34 +101,10 @@ export type QuizBlock = {
 export type ListeningBlock = {
   id: string
   type: "listening"
-  media: MediaRef
+  media: AudioMediaRef
   question: string
   options: QuizOption[]
 }
-export type GameBlock = {
-  id: string
-  type: "game"
-  game: GameKind
-  wordIds: string[]
-  difficulty: GameDifficulty
-}
-
-/**
- * Bloques legacy: solo los produce el backfill, para que las lecciones que ya
- * existían se comporten EXACTAMENTE igual que antes. La limpieza posterior los
- * migra a los tipos nuevos.
- */
-export type LegacyQuizWordsBlock = {
-  id: string
-  type: "legacy-quiz-words"
-  words: string[]
-}
-export type LegacyCompleteWordBlock = {
-  id: string
-  type: "legacy-complete-word"
-  wordId: string
-}
-
 export type LessonBlock =
   | TextBlock
   | ImageBlock
@@ -143,9 +114,6 @@ export type LessonBlock =
   | VocabularyBlock
   | QuizBlock
   | ListeningBlock
-  | GameBlock
-  | LegacyQuizWordsBlock
-  | LegacyCompleteWordBlock
 
 export type LessonContent = { version: number; blocks: LessonBlock[] }
 
@@ -157,10 +125,7 @@ export type ParseResult =
 export function isInteractive(block: LessonBlock): boolean {
   return (
     block.type === "quiz" ||
-    block.type === "listening" ||
-    block.type === "game" ||
-    block.type === "legacy-quiz-words" ||
-    block.type === "legacy-complete-word"
+    block.type === "listening"
   )
 }
 
@@ -170,6 +135,20 @@ export function emptyContent(): LessonContent {
 
 const ID_RE = /^[A-Za-z0-9_-]+$/
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/
+
+/**
+ * Extrae el ID de 11 caracteres de una URL de YouTube (watch, youtu.be,
+ * shorts, embed, live) o devuelve el texto pelado si ya es el ID.
+ * El editor lo usa para que pegar la URL completa también funcione.
+ */
+export function extraerYoutubeId(input: string): string {
+  const v = input.trim()
+  const m = v.match(
+    /(?:youtube\.com\/(?:watch\?[^#]*v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/
+  )
+  if (m) return m[1]!
+  return v
+}
 
 /**
  * Solo https absoluto o ruta relativa que empieza con un único "/".
@@ -259,25 +238,20 @@ function readMediaRef(
   value: unknown,
   path: string,
   errors: string[]
-): MediaRef | undefined {
+): AudioMediaRef | undefined {
   if (typeof value !== "object" || value === null) {
     fail(errors, path, "tiene que ser un objeto de medio")
     return undefined
   }
   const v = value as Record<string, unknown>
   const source = v.source
-  if (source !== "upload" && source !== "youtube") {
-    fail(errors, `${path}.source`, 'tiene que ser "upload" o "youtube"')
+  if (source === "youtube") {
+    fail(errors, `${path}.source`, "los audios se suben como archivo (YouTube es solo para video)")
     return undefined
   }
-  if (source === "youtube") {
-    const yt = readString(v.youtubeId, `${path}.youtubeId`, 32, errors)
-    if (yt !== undefined && !YOUTUBE_ID_RE.test(yt)) {
-      fail(errors, `${path}.youtubeId`, "no es un ID de YouTube válido")
-      return undefined
-    }
-    if (yt === undefined) return undefined
-    return { source, youtubeId: yt }
+  if (source !== "upload") {
+    fail(errors, `${path}.source`, 'tiene que ser "upload"')
+    return undefined
   }
   const url = readString(v.url, `${path}.url`, 2_000, errors)
   if (url === undefined) return undefined
@@ -367,30 +341,7 @@ function readQuestions(
   return out
 }
 
-function readGameKind(
-  value: unknown,
-  path: string,
-  errors: string[]
-): GameKind | undefined {
-  if (value !== "memory" && value !== "flashcards") {
-    fail(errors, path, 'tiene que ser "memory" o "flashcards"')
-    return undefined
-  }
-  return value
-}
 
-function readDifficulty(
-  value: unknown,
-  path: string,
-  errors: string[]
-): GameDifficulty | undefined {
-  if (value === undefined) return "medium"
-  if (value !== "easy" && value !== "medium" && value !== "hard") {
-    fail(errors, path, 'tiene que ser "easy", "medium" o "hard"')
-    return undefined
-  }
-  return value
-}
 
 // ---------------------------------------------------------------- validador ---
 
@@ -420,8 +371,8 @@ function parseBlock(value: unknown, index: number): BlockResult {
 
   switch (type as BlockType) {
     case "text": {
-      const markdown = readString(raw.markdown, `${path}.markdown`, LIMITS.maxMarkdown, errors)
-      if (markdown !== undefined) block = { id, type: "text", markdown }
+      const html = readString(raw.html, `${path}.html`, LIMITS.maxHtml, errors)
+      if (html !== undefined) block = { id, type: "text", html }
       break
     }
     case "image": {
@@ -500,28 +451,6 @@ function parseBlock(value: unknown, index: number): BlockResult {
       }
       break
     }
-    case "game": {
-      const game = readGameKind(raw.game, `${path}.game`, errors)
-      const wordIds = readStringArray(raw.wordIds, `${path}.wordIds`, LIMITS.maxWordIds, errors)
-      const difficulty = readDifficulty(raw.difficulty, `${path}.difficulty`, errors)
-      if (game !== undefined && wordIds !== undefined && difficulty !== undefined) {
-        block = { id, type: "game", game, wordIds, difficulty }
-      }
-      break
-    }
-    case "legacy-quiz-words": {
-      if (!Array.isArray(raw.words) || raw.words.some((w) => typeof w !== "string")) {
-        fail(errors, `${path}.words`, "tiene que ser una lista de textos")
-      } else {
-        block = { id, type: "legacy-quiz-words", words: raw.words as string[] }
-      }
-      break
-    }
-    case "legacy-complete-word": {
-      const wordId = readId(raw.wordId, `${path}.wordId`, errors)
-      if (wordId !== undefined) block = { id, type: "legacy-complete-word", wordId }
-      break
-    }
   }
 
   // Salida única: si CUALQUIER helper dejó un error, el bloque no entra,
@@ -585,7 +514,7 @@ export function createBlock(type: BlockType): LessonBlock {
   const id = newBlockId()
   switch (type) {
     case "text":
-      return { id, type, markdown: "" }
+      return { id, type, html: "" }
     case "image":
       return { id, type, url: "", alt: "" }
     case "audio":
@@ -611,11 +540,5 @@ export function createBlock(type: BlockType): LessonBlock {
         question: "",
         options: [{ text: "", correct: true }, { text: "", correct: false }],
       }
-    case "game":
-      return { id, type, game: "flashcards", wordIds: [], difficulty: "medium" }
-    case "legacy-quiz-words":
-      return { id, type, words: [] }
-    case "legacy-complete-word":
-      return { id, type, wordId: "" }
   }
 }
