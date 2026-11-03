@@ -199,7 +199,6 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
 
       <DashboardActivity
         stats={stats}
-        statusSum={statusSum}
         onViewAll={() => setFullAuditLogOpen(true)}
         isAdmin={isAdmin}
       />
