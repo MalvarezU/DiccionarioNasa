@@ -22,7 +22,6 @@ import {
   AnadirLeccion,
   AbrirEditorDeLeccion,
   MoverLeccion,
-  CerrarEditor,
   PublicarCursoAbierto,
   ArchivarCursoAbierto,
   EliminarCurso,
@@ -41,7 +40,6 @@ import { CursoListado, CursoAusente } from "./screenplay/questions/cursos-public
 import {
   CantidadDeLecciones,
   TituloEnEditor,
-  NumeroEnModal,
   NumeroEnFila,
 } from "./screenplay/questions/cursos";
 
@@ -195,19 +193,17 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       AbrirEditorDeLeccion.titulada(primera)
     );
 
-    // El editor pre-rellena el título
+    // El editor único pre-rellena el título
     expect(await admin.pregunta(TituloEnEditor.mostrado())).toBe(primera);
+    await admin.intenta(CerrarContenido.ahora());
 
-    // Mover la primera hacia abajo: el modal refleja 1.2...
-    await admin.intenta(MoverLeccion.abajo());
-    expect(await admin.pregunta(NumeroEnModal.mostrado())).toBe("1.2");
+    // Mover la primera hacia abajo con ↑/↓ de la fila
+    await admin.intenta(MoverLeccion.abajo(primera));
+    expect(await admin.pregunta(NumeroEnFila.titulada(primera))).toBe("1.2");
 
-    // ...y de vuelta hacia arriba: el modal refleja 1.1
-    await admin.intenta(MoverLeccion.arriba());
-    expect(await admin.pregunta(NumeroEnModal.mostrado())).toBe("1.1");
-
-    // En la lista, todo volvió a su lugar: la segunda es 1.2
-    await admin.intenta(CerrarEditor.ahora());
+    // ...y de vuelta hacia arriba: todo vuelve a su lugar
+    await admin.intenta(MoverLeccion.arriba(primera));
+    expect(await admin.pregunta(NumeroEnFila.titulada(primera))).toBe("1.1");
     expect(await admin.pregunta(NumeroEnFila.titulada(segunda))).toBe("1.2");
 
     // Limpieza explícita (ya estamos en el detalle: cascada a módulos y lecciones)
@@ -382,7 +378,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
         .getByLabel("Elegir imagen del dispositivo")
         .setInputFiles({ name: archivo, mimeType: "image/png", buffer: PNG_AZUL_1X1 });
       // La ficha sale del filtro "Sin ilustración": cambiar a "Todas" para verla
-      await page.getByLabel("Ilustración").selectOption("all");
+      await page.getByLabel("Ilustración", { exact: true }).selectOption("all");
       await expect(fila.getByText("con ilustración")).toBeVisible({ timeout: 30000 });
 
       // La ficha pública muestra la ilustración
@@ -444,7 +440,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
       });
 
       // Las fichas ilustradas salen del filtro default: verlas en "Todas"
-      await page.getByLabel("Ilustración").selectOption("all");
+      await page.getByLabel("Ilustración", { exact: true }).selectOption("all");
       await page.getByPlaceholder("español o nasa yuwe…").fill(`E2E Lote`);
       await expect(
         page.locator("ul.divide-y li", { hasText: n1 }).first().getByText("con ilustración")

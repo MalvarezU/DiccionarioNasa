@@ -35,6 +35,16 @@ export interface LessonForm {
   title: string
 }
 
+/** Lección lista para editar (título + contenido) en el modal único. */
+export interface LessonForEdit {
+  id: string
+  moduleId: string
+  moduleTitle: string
+  moduleIndex: number
+  title: string
+  lessonNumber: number | null
+}
+
 export const EMPTY_LESSON_FORM: LessonForm = { title: "" }
 
 /** Estadísticas de progreso del curso (GET detail, solo editor+). */

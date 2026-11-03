@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 
-import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, FileText, Eye } from "lucide-react"
+import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { EditLessonModal } from "./edit-lesson-modal"
 import { LessonContentModal } from "./lesson-editor/lesson-content-modal"
 import { MediaPicker } from "@/components/media/media-picker"
 import { CourseManagerListSkeleton } from "@/components/skeletons"
@@ -51,8 +50,6 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     setNewModuleTitle,
     savingModule,
     savingLesson,
-    setEditingLessonId,
-    editingLesson,
     editCover,
     setEditCover,
     stats,
@@ -71,7 +68,6 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     handleAddLesson,
     handleDeleteLesson,
     moveLesson,
-    handleMoveFromModal,
   } = useCourseManager()
 
   return (
@@ -322,19 +318,10 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                             size="icon"
                             variant="ghost"
                             className="h-6 w-6"
-                            aria-label={`Editar lección ${les.title}`}
-                            onClick={() => setEditingLessonId(les.id)}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6"
                             aria-label={`Contenido de lección ${les.title}`}
                             onClick={() => setContentLessonId(les.id)}
                           >
-                            <FileText className="h-3 w-3" />
+                            <Pencil className="h-3 w-3" />
                           </Button>
                           <Button
                             size="icon"
@@ -426,18 +413,6 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
             setProcesando(false)
           }
         }}
-      />
-
-      <EditLessonModal
-        lesson={editingLesson}
-        open={editingLesson !== null}
-        onOpenChange={(v) => {
-          if (!v) setEditingLessonId(null)
-        }}
-        onSaved={() => {
-          if (detail) void loadDetail(detail.id)
-        }}
-        onMove={handleMoveFromModal}
       />
 
       <LessonContentModal

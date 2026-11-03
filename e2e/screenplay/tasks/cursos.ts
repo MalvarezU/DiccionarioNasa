@@ -120,7 +120,7 @@ export class AnadirLeccion implements Task {
   }
 }
 
-/** Abrir el editor de una lección (pre-rellena título y palabra). */
+/** Abrir el editor único de una lección (título + contenido). */
 export class AbrirEditorDeLeccion implements Task {
   descripcion: string;
   private constructor(private titulo: string) {
@@ -131,51 +131,45 @@ export class AbrirEditorDeLeccion implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.getByRole("button", { name: `Editar lección ${this.titulo}` }).click();
-    await expect(page.getByText("Editar lección")).toBeVisible({ timeout: 15000 });
-    await expect(page.locator("#edit-lesson-title")).toBeVisible({ timeout: 15000 });
+    await page.getByRole("button", { name: `Contenido de lección ${this.titulo}` }).click();
+    await expect(page.getByText("Contenido ·").first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("#lesson-title")).toBeVisible({ timeout: 15000 });
   }
 }
 
 /**
- * Mover la lección del editor abierto una posición (arriba o abajo).
- * Espera a que el botón se rehabilite (señal de envío terminado);
- * el número resultante se verifica con NumeroEnModal.
+ * Mover una lección una posición con los botones ↑/↓ de su fila.
+ * Termina cuando la insignia de la fila cambia (señal de re-render
+ * tras el POST + loadDetail).
  */
 export class MoverLeccion {
-  static abajo(): Task {
-    return moverLeccion("Bajar lección", "hacia abajo");
+  static abajo(titulo: string): Task {
+    return moverLeccion("Bajar lección", titulo, "hacia abajo");
   }
-  static arriba(): Task {
-    return moverLeccion("Subir lección", "hacia arriba");
+  static arriba(titulo: string): Task {
+    return moverLeccion("Subir lección", titulo, "hacia arriba");
   }
 }
 
-function moverLeccion(boton: string, direccion: string): Task {
+function moverLeccion(boton: string, titulo: string, direccion: string): Task {
   return {
-    descripcion: `mover lección del editor ${direccion}`,
+    descripcion: `mover lección "${titulo}" ${direccion}`,
     async ejecutar(actor: Actor): Promise<void> {
       const { page } = actor.usa(NavegarLaWeb);
-      const dialog = page.getByRole("dialog");
-      const mover = dialog.getByRole("button", { name: boton, exact: true });
-      await mover.click();
-      // El POST puede tardar con la BD lenta; el botón se bloquea mientras envía
-      await expect(mover).toBeEnabled({ timeout: 60000 });
+      const fila = page.locator(
+        `[data-testid="lesson-row"][data-lesson-title="${titulo}"]`
+      );
+      const insignia = fila.getByText(/^\d+\.\d+$/).first();
+      await insignia.waitFor({ timeout: 30000 });
+      const antes = ((await insignia.textContent()) ?? "").trim();
+      await page.getByRole("button", { name: `${boton} ${titulo}`, exact: true }).click();
+      await expect
+        .poll(async () => ((await insignia.textContent()) ?? "").trim(), {
+          timeout: 60000,
+        })
+        .not.toBe(antes);
     },
   };
-}
-
-/** Cerrar el editor con Escape. */
-export class CerrarEditor implements Task {
-  descripcion = "cerrar editor";
-  static ahora(): CerrarEditor {
-    return new CerrarEditor();
-  }
-  async ejecutar(actor: Actor): Promise<void> {
-    const { page } = actor.usa(NavegarLaWeb);
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15000 });
-  }
 }
 
 /**
@@ -262,13 +256,14 @@ export class RenombrarLeccionEnEditor implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.locator("#edit-lesson-title").fill(this.titulo);
+    await page.locator("#lesson-title").fill(this.titulo);
   }
 }
 
 /**
- * Guardar el editor abierto. Termina cuando el modal cierra (éxito) o
- * muestra error (p.ej. 409 por duplicado); el resultado se lee con ErrorEnModal.
+ * Guardar el editor abierto. El modal de contenido NO cierra al guardar:
+ * termina cuando aparece el toast de éxito o el de error (p.ej. 409 por
+ * duplicado); el resultado se lee con ErrorEnModal o el toast.
  */
 export class GuardarLeccionEnEditor implements Task {
   descripcion = "guardar editor de lección";
@@ -278,12 +273,12 @@ export class GuardarLeccionEnEditor implements Task {
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
     const dialog = page.getByRole("dialog");
-    await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+    await dialog.getByRole("button", { name: "Guardar lección" }).click();
     await expect
       .poll(
         async () => {
-          if ((await dialog.count()) === 0) return "cerrado";
-          if ((await dialog.locator("p.text-destructive").count()) > 0) return "error";
+          if (await page.getByText("Lección guardada").first().isVisible().catch(() => false)) return "guardado";
+          if (await page.getByText("No se pudo guardar").first().isVisible().catch(() => false)) return "error";
           return "esperando";
         },
         { timeout: 30000 }
