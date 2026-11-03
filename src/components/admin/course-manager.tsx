@@ -76,16 +76,17 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Lista */}
-      <Card className="lg:col-span-1 h-fit">
-        <CardHeader>
+      {/* Lista: altura acotada al layout en desktop; solo la lista scrollea,
+          el form queda fijo. En móvil, flujo natural sin tope. */}
+      <Card className="lg:col-span-1 flex flex-col lg:max-h-[calc(100dvh-13rem)] lg:overflow-hidden" data-testid="cursos-card">
+        <CardHeader className="shrink-0">
           <CardTitle className="flex items-center gap-2 text-base">
             <GraduationCap className="h-4 w-4 text-primary" />
             Cursos ({courses.length})
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <form onSubmit={handleCreate} className="flex gap-2">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+          <form onSubmit={handleCreate} className="flex gap-2 shrink-0">
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
@@ -97,12 +98,18 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
               <Plus className="h-4 w-4" />
             </Button>
           </form>
+          {error && <p className="text-sm text-destructive shrink-0">{error}</p>}
           {loading ? (
             <div aria-busy="true" aria-label="Cargando cursos">
               <CourseManagerListSkeleton />
             </div>
           ) : (
-            <div className="space-y-2">
+            <div
+              className="space-y-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+              data-testid="cursos-lista"
+              role="region"
+              aria-label="Lista de cursos"
+            >
               {courses.map((c) => (
                 <button
                   key={c.id}
@@ -130,7 +137,6 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
               )}
             </div>
           )}
-          {error && <p className="text-sm text-destructive">{error}</p>}
         </CardContent>
       </Card>
 

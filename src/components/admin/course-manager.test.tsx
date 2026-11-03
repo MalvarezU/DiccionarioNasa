@@ -165,3 +165,27 @@ describe("CourseManager delete con confirm dialog", () => {
     expect(calls.some((c) => (c[1] as any)?.method === "DELETE")).toBe(false)
   })
 })
+
+describe("CourseManager — lista con scroll propio", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+  })
+
+  it("la lista scrollea en su contenedor con tope de layout y el form queda fijo", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ courses: COURSES }))
+    render(<CourseManager canDelete />)
+
+    const lista = await screen.findByTestId("cursos-lista")
+    expect(lista.className).toMatch(/overflow-y-auto/)
+    expect(lista.className).toMatch(/flex-1/)
+    expect(lista.className).toMatch(/min-h-0/)
+
+    const card = screen.getByTestId("cursos-card")
+    expect(card.className).toMatch(/lg:max-h-\[calc\(100dvh-13rem\)\]/)
+
+    // El form de alta queda fuera del área scrolleable (siempre visible)
+    expect(lista.querySelector('input[aria-label="Título del nuevo curso"]')).toBeNull()
+    expect(screen.getByLabelText("Título del nuevo curso")).toBeDefined()
+  })
+})
