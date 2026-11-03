@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Download, X, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -19,18 +19,17 @@ const REAPARECE_MS = 30 * 24 * 60 * 60 * 1000 // 30 días
  */
 export function InstallBanner({ destino = "/#instalar" }: { destino?: string }) {
   const { instalPromptDisponible, instalada, instalar } = useInstallPrompt()
-  const [oculto, setOculto] = useState(true)
-  const router = useRouter()
-
-  useEffect(() => {
+  // El dismiss se lee una sola vez al montar (sin efecto: evita renders en cascada)
+  const [oculto, setOculto] = useState(() => {
+    if (typeof window === "undefined") return true
     try {
       const ts = Number(localStorage.getItem(DISMISS_KEY) ?? "0")
-      if (Date.now() - ts < REAPARECE_MS) return
+      return Date.now() - ts < REAPARECE_MS
     } catch {
-      // Sin localStorage: mostrar igual
+      return false
     }
-    setOculto(false)
-  }, [])
+  })
+  const router = useRouter()
 
   if (oculto || instalada) return null
 

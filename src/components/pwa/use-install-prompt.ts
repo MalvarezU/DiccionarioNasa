@@ -31,7 +31,6 @@ export function useInstallPrompt() {
   const [instalada, setInstalada] = useState<boolean>(() => esStandalone())
 
   useEffect(() => {
-    setInstalada(esStandalone())
     const onPrompt = (e: Event) => {
       e.preventDefault()
       const evt = e as BeforeInstallPromptEvent

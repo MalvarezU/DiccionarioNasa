@@ -15,18 +15,18 @@ const InstallSection = dynamic(
  */
 export function InstallSectionLazy() {
   const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
+  // Si el hash ya pide la sección o no hay IntersectionObserver,
+  // visible desde el primer render (sin efecto)
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === "undefined") return false
+    if (window.location.hash === "#instalar") return true
+    return typeof IntersectionObserver === "undefined"
+  })
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#instalar") {
-      setVisible(true)
-      return
-    }
+    if (visible) return
     const el = ref.current
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setVisible(true)
-      return
-    }
+    if (!el) return
     const obs = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
@@ -38,7 +38,7 @@ export function InstallSectionLazy() {
     )
     obs.observe(el)
     return () => obs.disconnect()
-  }, [])
+  }, [visible])
 
   // Scroll suave al aterrizar con #instalar (desde /diccionario u otro link)
   useEffect(() => {
