@@ -113,12 +113,9 @@ export function WordListContent({
       <div className="flex items-center gap-2 text-sm tabular-nums text-muted-foreground">
         <span>{formatNumber(total)} palabra{total !== 1 ? "s" : ""}</span>
         {statusFilter !== "all" && (
-          <>
-            <span>·</span>
-            <Badge variant="outline" className="text-2xs gap-1">
-              {statusFilterLabel}: {formatNumber(total)}
-            </Badge>
-          </>
+          <Badge variant="outline" className="text-2xs gap-1">
+            {statusFilterLabel}: {formatNumber(total)}
+          </Badge>
         )}
       </div>
 
@@ -176,7 +173,7 @@ export function WordListContent({
               <p className="text-sm text-secondary">
                 {bulkResult.updated} palabra{bulkResult.updated !== 1 ? "s" : ""} {bulkResult.action}
                 {bulkResult.skipped > 0 && (
-                  <span className="text-muted-foreground"> · {bulkResult.skipped} omitida{bulkResult.skipped !== 1 ? "s" : ""}</span>
+                  <span className="text-muted-foreground">{bulkResult.skipped} omitida{bulkResult.skipped !== 1 ? "s" : ""}</span>
                 )}
               </p>
               <Button
@@ -227,7 +224,7 @@ export function WordListContent({
         <WordTableSkeleton rows={5} />
       ) : words.length > 0 ? (
         <>
-          <div className="overflow-hidden rounded-md border bg-card [&_[data-slot=table-container]]:overflow-visible">
+          <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-card [&_[data-slot=table-container]]:overflow-visible">
             <Table className="table-fixed w-full">
               <TableHeader className="bg-muted/40">
                 <TableRow className="hover:bg-muted/40">
@@ -315,7 +312,7 @@ export function WordListContent({
           )}
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 px-4 py-12">
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 px-4 py-12">
           <BookOpen className="h-8 w-8 text-muted-foreground/30" />
           {hasActiveFilter ? (
             <>

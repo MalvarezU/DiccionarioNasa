@@ -173,9 +173,9 @@ export function ImportCorpusModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="flex flex-col gap-0 p-0 overflow-hidden sm:max-w-2xl md:max-w-3xl">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
+          <DialogTitle className="flex items-center gap-2 font-serif tracking-tight text-lg text-primary">
             <Upload className="h-5 w-5 text-primary" />
             Importar corpus
           </DialogTitle>
@@ -184,9 +184,10 @@ export function ImportCorpusModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        <div className="space-y-4">
           <Card className="bg-muted/40">
-            <CardContent className="pt-4 pb-4 space-y-2">
+            <CardContent className="pt-4 pb-4 grid gap-3 md:grid-cols-2">
               <p className="text-xs text-muted-foreground leading-relaxed">
                 <strong>Paso 1:</strong> sube <code className="bg-muted px-1 rounded">.xlsx</code> o{" "}
                 <code className="bg-muted px-1 rounded">.csv</code> con encabezados
@@ -202,14 +203,14 @@ export function ImportCorpusModal({
           </Card>
 
           <div className="space-y-2">
-            <Label>Subir archivo Excel o CSV</Label>
+            <Label className="text-xs">Subir archivo Excel o CSV</Label>
             <div className="flex items-center gap-3">
               <Input
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 onChange={handleFileUpload}
                 disabled={busy}
-                className="max-w-xs"
+                className="w-full sm:max-w-md"
               />
               {fileName && (
                 <Badge variant="secondary" className="gap-1">
@@ -313,8 +314,9 @@ export function ImportCorpusModal({
             </div>
           )}
         </div>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t border-outline-variant/30 px-6 py-4">
           <Button variant="outline" onClick={handleClose} disabled={busy}>
             {importResult ? "Cerrar" : "Cancelar"}
           </Button>

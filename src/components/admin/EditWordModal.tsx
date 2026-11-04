@@ -94,9 +94,9 @@ export function EditWordModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="flex flex-col gap-0 p-0 overflow-hidden sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
+          <DialogTitle className="flex items-center gap-2 font-serif tracking-tight text-lg text-primary">
             <Pencil className="h-5 w-5 text-primary" />
             Editar ficha
           </DialogTitle>
@@ -105,8 +105,9 @@ export function EditWordModal({
           </DialogDescription>
         </DialogHeader>
 
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         {successMessage && (
-          <Card className="border border-secondary/30 bg-secondary/5">
+          <Card className="border border-secondary/30 bg-secondary/5 mb-4">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-secondary shrink-0" />
@@ -116,9 +117,10 @@ export function EditWordModal({
           </Card>
         )}
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="edit-spanish">Español <span className="text-destructive">*</span></Label>
+            <Label htmlFor="edit-spanish" className="text-xs">Español <span className="text-destructive">*</span></Label>
             <Input
               id="edit-spanish"
               placeholder="palabra en español"
@@ -131,7 +133,7 @@ export function EditWordModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-nasaYuwe">Nasa Yuwe <span className="text-destructive">*</span></Label>
+            <Label htmlFor="edit-nasaYuwe" className="text-xs">Nasa Yuwe <span className="text-destructive">*</span></Label>
             <Input
               id="edit-nasaYuwe"
               placeholder="palabra en nasa yuwe"
@@ -142,9 +144,10 @@ export function EditWordModal({
             />
             {fieldErrors.nasaYuwe && <p className="text-xs text-destructive">{fieldErrors.nasaYuwe}</p>}
           </div>
+          </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-pronunciation">Pronunciación fonética</Label>
+            <Label htmlFor="edit-pronunciation" className="text-xs">Pronunciación fonética</Label>
             <Input
               id="edit-pronunciation"
               placeholder="guía de pronunciación (ej. wah-lah)"
@@ -153,8 +156,9 @@ export function EditWordModal({
             />
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Categoría gramatical</Label>
+            <Label className="text-xs">Categoría gramatical</Label>
             <Select value={form.category || "__none__"} onValueChange={(v) => handleChange("category", v === "__none__" ? "" : v)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleccionar categoría..." />
@@ -169,7 +173,7 @@ export function EditWordModal({
           </div>
 
           <div className="space-y-2">
-            <Label>Estado</Label>
+            <Label className="text-xs">Estado</Label>
             <Select value={form.status} onValueChange={(v) => handleChange("status", v)}>
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -181,9 +185,10 @@ export function EditWordModal({
               </SelectContent>
             </Select>
           </div>
+          </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-culturalContext">Descripción contextual</Label>
+            <Label htmlFor="edit-culturalContext" className="text-xs">Descripción contextual</Label>
             <Textarea
               id="edit-culturalContext"
               placeholder="Significado cultural, uso tradicional, etc."
@@ -204,8 +209,9 @@ export function EditWordModal({
             </div>
           )}
         </div>
+        </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="shrink-0 border-t border-outline-variant/30 px-6 py-4 flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={handleClose} disabled={isSubmitting || isTransitioning}>
             Cancelar
           </Button>
@@ -276,8 +282,9 @@ export function EditWordModal({
               {isTransitioning ? "Publicando..." : "Volver a publicar"}
             </Button>
           )}
+        </DialogFooter>
 
-          <AlertDialog open={showPublishNoAudioWarning} onOpenChange={setShowPublishNoAudioWarning}>
+        <AlertDialog open={showPublishNoAudioWarning} onOpenChange={setShowPublishNoAudioWarning}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2">
@@ -310,7 +317,6 @@ export function EditWordModal({
             onOpenChange={setPreviewOpen}
             word={previewWord}
           />
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
