@@ -7,6 +7,8 @@ import {
   BookOpen,
   GraduationCap,
   Gamepad2,
+  Download,
+  ChevronDown,
 } from "lucide-react";
 import { NavBar } from "@/components/navbar";
 import { InstallBanner } from "@/components/pwa/install-banner";
@@ -114,6 +116,18 @@ function HomeContent() {
                   </Link>
                 );
               })}
+            </div>
+
+            {/* Baja a la sección de descargas */}
+            <div className="mt-6 flex justify-center">
+              <a
+                href="#instalar"
+                className="group inline-flex items-center gap-2 rounded-full border border-[#F6EEDC]/40 bg-black/25 px-5 py-2.5 text-sm font-medium text-[#F6EEDC] backdrop-blur-md transition-colors duration-200 hover:bg-[#F6EEDC]/15 hover:border-[#F6EEDC]/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F6EEDC]"
+              >
+                <Download className="h-4 w-4 shrink-0" />
+                Descargar app
+                <ChevronDown className="h-4 w-4 shrink-0 animate-bounce" />
+              </a>
             </div>
           </div>
         </section>

@@ -61,12 +61,7 @@ export function SiteFooter() {
               >
                 Descargar app
               </Link>
-              <Link
-                href="/admin"
-                className="text-xs text-[#F6EEDC]/80 hover:text-[#F6EEDC] transition-colors duration-200"
-              >
-                Administración
-              </Link>
+
             </nav>
           </div>
 
