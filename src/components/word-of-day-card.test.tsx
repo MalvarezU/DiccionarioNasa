@@ -99,28 +99,23 @@ describe("WordOfDayCard", () => {
     expect(screen.getByText("sin conexión")).toBeDefined()
   })
 
-  it("returns nothing when online but server fails and no cache", async () => {
+  it("muestra el estado vacío diseñado cuando hay conexión pero sin dato ni caché", async () => {
     vi.mocked(fetch).mockRejectedValueOnce(new Error("Network error"))
     vi.mocked(getCachedWordOfDay).mockResolvedValue(null)
 
-    const { container } = render(<WordOfDayCard />)
-    // El skeleton desaparece cuando el fetch resuelve sin datos: el componente
-    // devuelve null y no queda nada colgado en pantalla.
-    await vi.waitFor(() =>
-      expect(container.querySelector('[data-slot="skeleton-word-detail"]')).toBeNull(),
-    )
-    expect(container.innerHTML).toBe("")
+    render(<WordOfDayCard />)
+    // El skeleton desaparece y aparece el estado vacío diseñado: nunca hueco.
+    expect(await screen.findByText(/hoy la palabra descansa/i)).toBeDefined()
+    expect(screen.getByRole("link", { name: /explorar el diccionario/i })).toBeDefined()
   })
 
-  it("returns nothing when server returns 500 and no cache", async () => {
+  it("muestra el estado vacío diseñado cuando el servidor falla sin caché", async () => {
     mockFetch(new Response(null, { status: 500 }))
     vi.mocked(getCachedWordOfDay).mockResolvedValue(null)
 
-    const { container } = render(<WordOfDayCard />)
-    await vi.waitFor(() =>
-      expect(container.querySelector('[data-slot="skeleton-word-detail"]')).toBeNull(),
-    )
-    expect(container.innerHTML).toBe("")
+    render(<WordOfDayCard />)
+    expect(await screen.findByText(/hoy la palabra descansa/i)).toBeDefined()
+    expect(screen.getByRole("link", { name: /explorar el diccionario/i })).toBeDefined()
   })
 
   it("calls onWordSelect when clicking the card", async () => {

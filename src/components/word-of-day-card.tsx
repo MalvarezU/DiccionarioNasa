@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { WordDetailSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
@@ -212,10 +213,36 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
     )
   }
 
-  // ─── No word data available ─────────────────────────────────────────────
+  // ─── No word data available (online, server empty/failed, no cache) ─────
+  // Designed empty state — never a ghost gap. Fetch/cache logic above
+  // stays intact; only the fallthrough render changes.
 
   if (!wordData) {
-    return null
+    return (
+      <Card className="border-outline-variant/30 bg-surface-container-low">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base font-semibold text-foreground">
+              Palabra del Día
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-container-highest">
+              <BookOpen className="h-6 w-6 text-primary/60" />
+            </span>
+            <p className="text-sm text-muted-foreground">
+              Hoy la palabra descansa — explorá el diccionario
+            </p>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/diccionario">Explorar el diccionario</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   // ─── Word of the Day Card ───────────────────────────────────────────────

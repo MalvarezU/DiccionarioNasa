@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react"
+import { useCallback, useMemo, useSyncExternalStore } from "react"
 import { Download, CheckCircle2, AlertCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -122,15 +122,9 @@ export function DownloadBanner() {
     startDownload()
   }, [startDownload])
 
-  // Auto-dismiss after completion
-  useEffect(() => {
-    if (bannerState === "complete" && isVisible) {
-      const timer = setTimeout(() => {
-        handleDismiss()
-      }, 4000)
-      return () => clearTimeout(timer)
-    }
-  }, [bannerState, isVisible, handleDismiss])
+  // Sin auto-dismiss por temporizador: el banner compacto es secundario y
+  // persistente hasta que el usuario lo cierra. La jerarquía de instalación
+  // la lleva el InstallBanner superior.
 
   // Wait for client mount before rendering to avoid hydration mismatch
   // (localStorage, navigator.onLine, IndexedDB state differ between server and client)
@@ -140,88 +134,81 @@ export function DownloadBanner() {
   if (!isVisible) return null
 
   return (
-    <div className="w-full animate-in fade-in duration-300">
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
       <div
+        role={bannerState === "error" ? "alert" : "status"}
         className={`
-          mx-auto px-4 py-3
-          sm:mx-4 sm:rounded-lg sm:mt-2
-          flex items-center gap-3
+          mt-2 flex items-center gap-2 rounded-lg border px-3 py-1.5
           ${
-            bannerState === "complete"
-              ? "bg-primary/10 border border-primary/20"
-              : bannerState === "error"
-                ? "bg-destructive/10 border border-destructive/20"
-                : "bg-secondary/60 border border-border"
+            bannerState === "error"
+              ? "border-[#A44A3A]/25 bg-[#F1DCDC]"
+              : "border-outline-variant/30 bg-surface-container-high"
           }
         `}
       >
         {/* Icon */}
         <div className="shrink-0">
           {bannerState === "idle" && (
-            <Download className="size-5 text-primary" />
+            <Download className="size-4 text-primary" />
           )}
           {bannerState === "downloading" && (
-            <Download className="size-5 text-primary animate-pulse" />
+            <Download className="size-4 text-primary animate-pulse" />
           )}
           {bannerState === "complete" && (
-            <CheckCircle2 className="size-5 text-primary" />
+            <CheckCircle2 className="size-4 text-secondary" />
           )}
           {bannerState === "error" && (
-            <AlertCircle className="size-5 text-destructive" />
+            <AlertCircle className="size-4 text-[#A44A3A]" />
           )}
         </div>
 
-        {/* Content */}
+        {/* Content — single compact line */}
         <div className="flex-1 min-w-0">
           {bannerState === "idle" && (
-            <p className="text-sm font-medium text-foreground">
+            <p className="truncate text-xs font-medium text-foreground">
               Descargar diccionario para uso sin conexión
             </p>
           )}
 
           {bannerState === "downloading" && (
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium text-foreground">
+            <div className="flex items-center gap-2">
+              <p className="shrink-0 text-xs font-medium text-foreground">
                 Descargando diccionario... {downloadProgress}%
               </p>
-              <Progress value={downloadProgress} className="h-2" />
+              <Progress value={downloadProgress} className="h-1 min-w-0 flex-1" />
             </div>
           )}
 
           {bannerState === "complete" && (
-            <p className="text-sm font-medium text-primary">
+            <p className="truncate text-xs font-medium text-secondary">
               Diccionario listo para usar sin conexión
             </p>
           )}
 
           {bannerState === "error" && (
-            <p className="text-sm font-medium text-destructive">
-              Error al descargar. Se reanudará cuando haya conexión.
+            <p className="text-xs font-medium text-[#A44A3A]">
+              Error al descargar. Se reanudará cuando haya conexión.{" "}
+              <Button
+                variant="link"
+                onClick={handleRetry}
+                className="h-auto p-0 text-xs font-semibold text-[#A44A3A] underline underline-offset-2"
+              >
+                Reintentar
+              </Button>
             </p>
           )}
         </div>
 
         {/* Action buttons */}
-        <div className="shrink-0 flex items-center gap-2">
+        <div className="shrink-0 flex items-center gap-1">
           {bannerState === "idle" && (
             <Button
               size="sm"
               onClick={handleDownload}
-              className="bg-primary hover:bg-[#22303D] text-primary-foreground"
+              className="h-7 px-2.5 text-xs bg-primary hover:bg-[#22303D] text-primary-foreground"
             >
-              <Download className="size-4" />
+              <Download className="size-3.5" />
               <span className="hidden sm:inline">Descargar</span>
-            </Button>
-          )}
-
-          {bannerState === "error" && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleRetry}
-              className="border-destructive/30 text-destructive hover:bg-destructive/10"
-            >
-              Reintentar
             </Button>
           )}
 
@@ -231,10 +218,10 @@ export function DownloadBanner() {
               size="icon"
               variant="ghost"
               onClick={handleDismiss}
-              className="size-7 text-muted-foreground hover:text-foreground"
+              className="size-6 text-muted-foreground hover:text-foreground"
               aria-label="Cerrar aviso"
             >
-              <X className="size-4" />
+              <X className="size-3.5" />
             </Button>
           )}
         </div>
