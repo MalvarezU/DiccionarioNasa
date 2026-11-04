@@ -5,11 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BookOpen,
-  Globe,
   GraduationCap,
   Gamepad2,
-  Heart,
-  Users,
 } from "lucide-react";
 import { NavBar } from "@/components/navbar";
 import { InstallBanner } from "@/components/pwa/install-banner";
@@ -128,50 +125,6 @@ function HomeContent() {
         {/* Word of the Day */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
           <WordOfDayCard onWordSelect={handleWordSelect} />
-        </section>
-
-        {/* About Section */}
-        <section id="acerca" className="bg-surface-container-high">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
-                  <Heart className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="font-serif font-semibold text-foreground">
-                  Preservación Cultural
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                  Cada palabra registrada es un paso más en la conservación del
-                  patrimonio lingüístico del pueblo Nasa.
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10 border border-secondary/20">
-                  <Users className="h-6 w-6 text-secondary" />
-                </div>
-                <h3 className="font-serif font-semibold text-foreground">
-                  Comunidad Nasa
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                  Creado en colaboración con hablantes nativos y lingüistas
-                  especializados en lenguas indígenas.
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-tertiary/10 border border-tertiary/20">
-                  <Globe className="h-6 w-6 text-tertiary" />
-                </div>
-                <h3 className="font-serif font-semibold text-foreground">
-                  Acceso Universal
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                  Disponible en línea y sin conexión, para que la lengua Nasa
-                  Yuwe llegue a todas partes.
-                </p>
-              </div>
-            </div>
-          </div>
         </section>
       <InstallSectionLazy />
       </main>

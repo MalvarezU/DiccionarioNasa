@@ -33,10 +33,9 @@ describe("InstallSection", () => {
     })
   })
 
-  it("muestra las 3 plataformas, QR y copiar enlace", () => {
+  it("muestra las 2 plataformas, QR y copiar enlace", () => {
     render(<InstallSection />)
     expect(screen.getByText("Android / Chrome")).toBeDefined()
-    expect(screen.getByText("iPhone / iPad")).toBeDefined()
     expect(screen.getByText("Escritorio")).toBeDefined()
     expect(screen.getByRole("img", { name: /Código QR/ })).toBeDefined()
     expect(screen.getByText("https://piiyaak.test")).toBeDefined()

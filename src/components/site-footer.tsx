@@ -56,12 +56,6 @@ export function SiteFooter() {
                 Cursos
               </Link>
               <Link
-                href="/#acerca"
-                className="text-xs text-[#F6EEDC]/80 hover:text-[#F6EEDC] transition-colors duration-200"
-              >
-                Acerca del proyecto
-              </Link>
-              <Link
                 href="/#instalar"
                 className="text-xs text-[#F6EEDC]/80 hover:text-[#F6EEDC] transition-colors duration-200"
               >

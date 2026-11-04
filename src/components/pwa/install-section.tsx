@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { QRCodeSVG } from "qrcode.react"
-import { Check, Copy, Download, MonitorDown, Share, Smartphone } from "lucide-react"
+import { Check, Copy, Download, MonitorDown, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useInstallPrompt } from "./use-install-prompt"
@@ -32,7 +32,7 @@ export function InstallSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <div className="text-center mb-8">
           <h2 id="instalar-titulo" className="text-2xl sm:text-3xl font-serif font-bold">
-            Llevá Piiyaak con vos
+            Lleva Piiyaak contigo
           </h2>
           <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
             Instalala en tu celular o compu y usala sin conexión con tus
@@ -40,7 +40,7 @@ export function InstallSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -63,24 +63,6 @@ export function InstallSection() {
                   aplicación”.
                 </p>
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Share className="h-4 w-4 text-primary" />
-                iPhone / iPad
-              </CardTitle>
-              <CardDescription>
-                Safari no ofrece botón directo; son 2 toques.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
-                <li>Tocá Compartir (el cuadrado con flecha).</li>
-                <li>Elegí “Añadir a pantalla de inicio”.</li>
-              </ol>
             </CardContent>
           </Card>
 
