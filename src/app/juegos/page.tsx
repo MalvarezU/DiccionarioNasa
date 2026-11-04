@@ -1,41 +1,40 @@
-import Link from "next/link"
-import { Gamepad2, Brain, Type, ArrowRight, Lock } from "lucide-react"
 import { NavBar } from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumbs } from "@/components/breadcrumbs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { GameTile, type GameMotif } from "@/components/juegos/game-tile"
 
-const JUEGOS = [
+const JUEGOS: Array<{
+  href: string
+  motivo: GameMotif
+  title: string
+  description: string
+  locked: boolean
+}> = [
   {
     href: "/juegos/flashcards",
-    icon: Brain,
+    motivo: "flash",
     title: "Flashcards",
     description:
       "Se muestra una palabra y eliges la traducción correcta entre 4 opciones. ¡Racha de aciertos!",
-    color: "bg-primary",
     locked: false,
   },
   {
     href: "/juegos/memoria",
-    icon: Gamepad2,
+    motivo: "memory",
     title: "Memoria",
     description:
       "Voltea las cartas y encuentra las parejas entre palabras en español y Nasa Yuwe.",
-    color: "bg-secondary",
     locked: false,
   },
   {
     href: "/juegos/completar",
-    icon: Type,
+    motivo: "gaps",
     title: "Completar palabra",
     description:
       "Escribe las letras que faltan para completar la palabra. ¡Tienes 3 intentos!",
-    color: "bg-tertiary",
     locked: false,
   },
-] as const
+]
 
 export default function JuegosPage() {
   return (
@@ -59,68 +58,16 @@ export default function JuegosPage() {
 
         {/* Cards de juegos */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {JUEGOS.map((juego) => {
-            const Icon = juego.icon
-            const card = (
-              <Card
-                key={juego.href}
-                className={`transition-all ${
-                  juego.locked
-                    ? "opacity-60"
-                    : "group cursor-pointer hover:shadow-md hover:border-primary/40"
-                }`}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div
-                      className={`flex items-center justify-center w-14 h-14 rounded-2xl ${juego.color} mb-3`}
-                    >
-                      <Icon className="h-7 w-7 text-white" />
-                    </div>
-                    {juego.locked && (
-                      <Badge variant="outline" className="shrink-0 text-2xs">
-                        <Lock className="h-3 w-3 mr-1" />
-                        Próximamente
-                      </Badge>
-                    )}
-                  </div>
-                  <CardTitle className="text-xl font-serif">
-                    {juego.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {juego.description}
-                  </p>
-                  {juego.locked ? (
-                    <Button
-                      disabled
-                      variant="outline"
-                      className="mt-4 gap-1.5 cursor-not-allowed"
-                    >
-                      <Lock className="h-4 w-4" />
-                      Próximamente
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      className="mt-4 gap-1.5 px-0 text-primary hover:text-primary/80 hover:bg-transparent"
-                    >
-                      Jugar ahora
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            )
-            return juego.locked ? (
-              card
-            ) : (
-              <Link key={juego.href} href={juego.href}>
-                {card}
-              </Link>
-            )
-          })}
+          {JUEGOS.map((juego) => (
+            <GameTile
+              key={juego.href}
+              motivo={juego.motivo}
+              href={juego.href}
+              title={juego.title}
+              description={juego.description}
+              locked={juego.locked}
+            />
+          ))}
         </div>
       </main>
       <SiteFooter />

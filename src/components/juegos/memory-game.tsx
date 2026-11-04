@@ -366,7 +366,7 @@ export function MemoryGame({ words: providedWords, initialPairs = 6 }: MemoryGam
               className={`relative aspect-[3/4] min-h-11 rounded-xl border-2 transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45] ${
                 isFlipped
                   ? card.matched
-                    ? "border-[#5E6B45] bg-[#E3E6D2]"
+                    ? "border-[#5E6B45] bg-[#E3E6D2] anim-match-pop"
                     : "border-primary bg-primary/5"
                   : "border-muted-foreground/20 bg-muted/40 hover:border-primary/50 hover:bg-muted/60 cursor-pointer"
               }`}

@@ -330,9 +330,9 @@ export function FlashcardGame({
               className={`h-auto min-h-11 py-5 text-lg font-medium transition-all focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45] ${
                 showResult
                   ? isCorrect
-                    ? "border-[#5E6B45] bg-[#E3E6D2] text-[#4C5738]"
+                    ? "border-[#5E6B45] bg-[#E3E6D2] text-[#4C5738] anim-flash-correct"
                     : isSelected && !isCorrect
-                      ? "border-[#A44A3A] bg-[#F1DCD2] text-[#A44A3A]"
+                      ? "border-[#A44A3A] bg-[#F1DCD2] text-[#A44A3A] anim-flash-wrong"
                       : "opacity-50"
                   : "hover:border-primary hover:bg-primary/5"
               }`}

@@ -251,7 +251,7 @@ export function CompleteWordGame({
           status === "correct"
             ? "border-[#5E6B45] bg-[#E3E6D2]"
             : status === "wrong"
-              ? "border-[#A44A3A] bg-[#F1DCD2]"
+              ? "border-[#A44A3A] bg-[#F1DCD2] anim-complete-wrong"
               : status === "failed"
                 ? "border-muted-foreground bg-muted/20"
                 : "border-primary/20"

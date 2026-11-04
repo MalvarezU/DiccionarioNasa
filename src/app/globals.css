@@ -152,6 +152,56 @@
   outline-offset: 2px;
 }
 
+/* WU-L6: micro-interactions for games. Keyframes only run when the user
+   has no reduced-motion preference; the global reduce block below neutralizes
+   them otherwise. Uses `animation` (never ambient transitions) on purpose. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes flash-correct {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.02);
+    }
+  }
+  @keyframes flash-shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-4px);
+    }
+    75% {
+      transform: translateX(4px);
+    }
+  }
+  @keyframes match-pop {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.06);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .anim-flash-correct {
+    animation: flash-correct 150ms ease-out;
+  }
+  .anim-flash-wrong {
+    animation: flash-shake 200ms ease-in-out 2;
+  }
+  .anim-match-pop {
+    animation: match-pop 250ms ease-out;
+  }
+  .anim-complete-wrong {
+    animation: flash-shake 200ms ease-in-out 2;
+  }
+}
+
 /* Respect user motion preferences (WCAG 2.3.3) */
 @media (prefers-reduced-motion: reduce) {
   *,
