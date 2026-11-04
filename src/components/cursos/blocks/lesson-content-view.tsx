@@ -65,9 +65,26 @@ export function LessonContentView({
 
   if (!content || content.blocks.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-outline-variant/40 px-4 py-6 text-center text-sm text-muted-foreground">
-        Esta lección todavía no tiene contenido.
-      </p>
+      <div className="flex flex-col gap-3">
+        <p className="rounded-lg border border-dashed border-outline-variant/40 px-4 py-6 text-center text-sm text-muted-foreground">
+          Esta lección todavía no tiene contenido.
+        </p>
+        {/* Sin bloques no hay nada que aprobar: en modo estudiante la
+            lección vacía se completa a mano (evita cursos secuenciales
+            atascados por lecciones sin contenido; la vista previa admin
+            no pasa onCompleta y no muestra acción). */}
+        {interactive && onCompleta ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="self-start"
+            onClick={() => onCompleta(null)}
+          >
+            <CheckCircle2 className="size-4" />
+            Marcar como completada
+          </Button>
+        ) : null}
+      </div>
     )
   }
 

@@ -105,6 +105,9 @@ test.describe("multi-actor (Screenplay)", () => {
         IrADashboard.ahora(),
         AbrirNuevaFicha.ahora(),
         CrearYPublicarFicha.conPalabras(palabra, `E2ENyA ${stamp}`),
+        // La creación vive en /admin/palabras; el log completo ("Ver todo")
+        // solo existe en el dashboard: volver antes de abrirlo.
+        IrADashboard.ahora(),
         AbrirLogCompleto.ahora()
       );
       const { nombre, ruta, hayArchivo } = await descargarBitacora(admin);

@@ -38,6 +38,31 @@ describe("LessonContentView — vista general", () => {
     render(<LessonContentView content={contenido([])} words={new Map()} />)
     expect(screen.getByText(/no tiene contenido/i)).toBeDefined()
   })
+
+  it("lección vacía en modo estudiante ofrece completar a mano", async () => {
+    const user = userEvent.setup()
+    const onCompleta = vi.fn()
+    render(
+      <LessonContentView content={contenido([])} words={new Map()} onCompleta={onCompleta} />
+    )
+    expect(screen.getByText(/no tiene contenido/i)).toBeDefined()
+    await user.click(screen.getByRole("button", { name: /Marcar como completada/i }))
+    expect(onCompleta).toHaveBeenCalledWith(null)
+  })
+
+  it("lección vacía en vista previa (admin) no ofrece acción", () => {
+    const onCompleta = vi.fn()
+    render(
+      <LessonContentView
+        content={contenido([])}
+        words={new Map()}
+        interactive={false}
+        onCompleta={onCompleta}
+      />
+    )
+    expect(screen.getByText(/no tiene contenido/i)).toBeDefined()
+    expect(screen.queryByRole("button", { name: /Marcar como completada/i })).toBeNull()
+  })
 })
 
 describe("bloque text — HTML sanitizado", () => {
