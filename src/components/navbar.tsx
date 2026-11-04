@@ -214,9 +214,10 @@ export function NavBar() {
                 size="sm"
                 className="gap-1.5 text-xs sm:text-sm bg-primary hover:bg-[#22303D] transition-colors"
                 onClick={() => setAuthModalOpen(true)}
+                aria-label="Iniciar sesión"
               >
                 <LogIn className="h-4 w-4" />
-                Iniciar sesión
+                <span className="hidden min-[400px]:inline">Iniciar sesión</span>
               </Button>
             )}
 

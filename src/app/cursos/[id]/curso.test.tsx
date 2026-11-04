@@ -67,7 +67,7 @@ describe("/cursos/[id] [B2.2]", () => {
   it("bloquea el módulo 2 hasta completar el 1 (secuencial)", async () => {
     mockCourse()
     render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
-    expect(await screen.findByText("Básico")).toBeDefined()
+    expect(await screen.findByRole("heading", { name: "Básico" })).toBeDefined()
     expect(screen.getByText("Bloqueado")).toBeDefined()
     expect(screen.getByText("0/3 lecciones")).toBeDefined()
   })
