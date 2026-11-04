@@ -1,17 +1,22 @@
 "use client"
 
-import dynamic from "next/dynamic"
-import { useEffect, useRef, useState } from "react"
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 
 /** Carga diferida: el chunk (QR incluido) solo se descarga al acercarse. */
-const InstallSection = dynamic(
-  () => import("./install-section").then((m) => m.InstallSection),
-  { ssr: false, loading: () => null }
+const InstallSection = lazy(() =>
+  import("./install-section").then((m) => ({ default: m.InstallSection }))
 )
 
 /**
  * Envuelve la sección con un marcador de altura fija (evita CLS) y la
  * monta cuando entra al viewport (~200px antes) o si el hash la pide.
+ *
+ * - Con `visible === false` el contenedor es un sentinel de 1px, así no
+ *   queda banda vacía en la home.
+ * - Con `visible === true` se reserva 420px solo mientras el chunk carga;
+ *   una vez montado, el contenido propio define la altura.
+ * - `id="instalar"` vive en el contenedor hasta que el chunk carga y
+ *   luego en la sección interna, así el scroll siempre encuentra target.
  */
 export function InstallSectionLazy() {
   const ref = useRef<HTMLDivElement>(null)
@@ -22,6 +27,8 @@ export function InstallSectionLazy() {
     if (window.location.hash === "#instalar") return true
     return typeof IntersectionObserver === "undefined"
   })
+  const [loaded, setLoaded] = useState(false)
+  const markLoaded = useCallback(() => setLoaded(true), [])
 
   useEffect(() => {
     if (visible) return
@@ -40,18 +47,63 @@ export function InstallSectionLazy() {
     return () => obs.disconnect()
   }, [visible])
 
+  // hashchange: cubre el caso de click en "Descargar app" desde la home
+  // misma (el hash cambia sin remontar el componente).
+  useEffect(() => {
+    const onHashChange = () => {
+      if (window.location.hash === "#instalar") {
+        setVisible(true)
+        window.setTimeout(() => {
+          document
+            .getElementById("instalar")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" })
+        }, 100)
+      }
+    }
+    window.addEventListener("hashchange", onHashChange)
+    return () => window.removeEventListener("hashchange", onHashChange)
+  }, [])
+
   // Scroll suave al aterrizar con #instalar (desde /diccionario u otro link)
   useEffect(() => {
-    if (!visible || (typeof window !== "undefined" && window.location.hash !== "#instalar")) return
+    if (!visible) return
+    if (typeof window === "undefined" || window.location.hash !== "#instalar") return
     const t = setTimeout(() => {
-      document.getElementById("instalar")?.scrollIntoView({ behavior: "smooth", block: "start" })
+      document
+        .getElementById("instalar")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" })
     }, 100)
     return () => clearTimeout(t)
-  }, [visible])
+  }, [visible, loaded])
 
   return (
-    <div ref={ref} className="min-h-[420px]">
-      {visible ? <InstallSection /> : null}
+    <div
+      ref={ref}
+      id={loaded ? undefined : "instalar"}
+      className={
+        visible ? (loaded ? "" : "min-h-[420px]") : "min-h-[1px]"
+      }
+    >
+      {visible ? (
+        <Suspense fallback={null}>
+          <MountNotifier onMount={markLoaded}>
+            <InstallSection />
+          </MountNotifier>
+        </Suspense>
+      ) : null}
     </div>
   )
+}
+
+function MountNotifier({
+  onMount,
+  children,
+}: {
+  onMount: () => void
+  children: ReactNode
+}) {
+  useEffect(() => {
+    onMount()
+  }, [onMount])
+  return <>{children}</>
 }
