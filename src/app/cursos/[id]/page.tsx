@@ -64,6 +64,8 @@ export default function CursoDetailPage({
   const [notFoundFlag, setNotFoundFlag] = useState(false)
   const [completedLessons, setCompletedLessons] = useState<string[]>([])
   const [lastVisited, setLastVisited] = useState<string | null>(null)
+  /** Lección objetivo del CTA "Continuar donde quedé" (abre su módulo). */
+  const [continueLessonId, setContinueLessonId] = useState<string | null>(null)
   /** Datos de las palabras referenciadas por los bloques de todas las lecciones. */
   const [words, setWords] = useState<Map<string, CourseWordData>>(() => new Map())
 
@@ -177,6 +179,19 @@ export default function CursoDetailPage({
     [isAuthed]
   )
 
+  const handleContinue = useCallback(() => {
+    if (!lastVisited) return
+    void handleLessonOpen(lastVisited)
+    setContinueLessonId(lastVisited)
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`lesson-${lastVisited}`)
+      if (!el) return
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" })
+      el.focus({ preventScroll: true })
+    })
+  }, [lastVisited, handleLessonOpen])
+
   if (notFoundFlag) notFound()
   if (!id || !course) {
     return (
@@ -241,19 +256,26 @@ export default function CursoDetailPage({
           )}
 
           {/* Progreso */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Tu progreso</span>
-              <span className="font-medium text-foreground">
-                {completedLessons.length}/{totalLessons} lecciones
-              </span>
+          <div className="space-y-2">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <span className="text-sm text-muted-foreground">Tu progreso</span>
+                <p className="font-serif text-4xl font-bold text-primary tabular-nums">
+                  {progress}%
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <span className="text-sm font-medium text-foreground tabular-nums">
+                  {completedLessons.length}/{totalLessons} lecciones
+                </span>
+                {lastVisited && (
+                  <Button onClick={handleContinue} className="gap-2">
+                    Continuar donde quedé
+                  </Button>
+                )}
+              </div>
             </div>
             <Progress value={progress} className="h-2" aria-label={`Avance: ${progress}%`} />
-            {lastVisited && (
-              <p className="text-xs text-muted-foreground">
-                Última lección visitada guardada entre dispositivos
-              </p>
-            )}
             {progress === 100 && totalLessons > 0 && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/10 border border-secondary/20 mt-2">
                 <CheckCircle2 className="h-5 w-5 text-secondary" />
@@ -277,6 +299,7 @@ export default function CursoDetailPage({
               onLessonComplete={handleLessonComplete}
               onLessonOpen={handleLessonOpen}
               words={words}
+              openLessonId={continueLessonId}
             />
           ))}
         </div>

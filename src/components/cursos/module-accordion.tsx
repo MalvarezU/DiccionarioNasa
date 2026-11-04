@@ -1,28 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { Lock, CheckCircle2, ChevronDown, Blocks } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { LessonContentView } from "./blocks/lesson-content-view"
-import { parseLessonContent, type LessonContent } from "@/lib/courses/blocks"
+import { Card } from "@/components/ui/card"
+import { ModuleStepper } from "./module-stepper"
 import type { CourseWordData } from "@/lib/courses/word-data"
 
-export interface RealLesson {
-  id: string
-  title: string
-  /** Numeración visible "1.1, 1.2…" — persistida en BD (estable al reordenar). */
-  lessonNumber: number | null
-  /** Documento de bloques (Json de Prisma). */
-  content: unknown
-}
-
-export interface RealModule {
-  id: string
-  title: string
-  lessons: RealLesson[]
-}
+export type { RealLesson, RealModule, ModuleProgress } from "./module-stepper"
+import type { RealModule } from "./module-stepper"
 
 interface ModuleAccordionProps {
   module: RealModule
@@ -33,13 +16,8 @@ interface ModuleAccordionProps {
   onLessonOpen?: (lessonId: string) => void
   /** Datos de las palabras referenciadas por los bloques (vocabulary/game). */
   words?: Map<string, CourseWordData>
-}
-
-/** La lección es su documento de bloques (Nivel 1+2: sin tipos ni legacy). */
-function contenidoLeccion(les: RealLesson): { content: LessonContent } | null {
-  const parse = parseLessonContent(les.content)
-  if (!parse.ok) return null
-  return { content: parse.content }
+  /** Abre y activa esta lección (CTA "Continuar donde quedé"). */
+  openLessonId?: string | null
 }
 
 export function ModuleAccordion({
@@ -50,10 +28,8 @@ export function ModuleAccordion({
   onLessonComplete,
   onLessonOpen,
   words,
+  openLessonId,
 }: ModuleAccordionProps) {
-  const [open, setOpen] = useState(moduleIndex === 1 && isUnlocked)
-  const [activeLessonId, setActiveLessonId] = useState<string | null>(null)
-
   const done = module.lessons.filter((l) => completedLessons.includes(l.id)).length
 
   return (
@@ -62,92 +38,17 @@ export function ModuleAccordion({
       data-module-title={module.title}
       className={!isUnlocked ? "opacity-70" : ""}
     >
-      <CardHeader
-        className={`cursor-pointer hover:bg-muted/40 transition-colors ${!isUnlocked ? "pointer-events-none" : ""}`}
-        onClick={() => isUnlocked && setOpen((o) => !o)}
-        aria-expanded={isUnlocked && open}
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 text-primary font-bold">
-            {moduleIndex}
-          </div>
-          <div className="flex-1">
-            <CardTitle className="text-base font-serif">{module.title}</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {done}/{module.lessons.length} lecciones
-            </p>
-          </div>
-          {isUnlocked ? (
-            <ChevronDown
-              className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
-            />
-          ) : (
-            <Badge variant="outline" className="gap-1 text-2xs">
-              <Lock className="h-3 w-3" />
-              Bloqueado
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-      {isUnlocked && open && (
-        <CardContent className="space-y-3 pt-0">
-            {module.lessons.map((lesson) => {
-              const isComplete = completedLessons.includes(lesson.id)
-              const Icon = Blocks
-              const active = activeLessonId === lesson.id
-              return (
-                <div key={lesson.id} className="rounded-lg border border-outline-variant/20">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = active ? null : lesson.id
-                      setActiveLessonId(next)
-                      if (next) onLessonOpen?.(next)
-                    }}
-                    className="w-full flex items-center gap-2 p-3 text-left hover:bg-muted/40 transition-colors"
-                    aria-expanded={active}
-                    data-completed={isComplete ? "true" : "false"}
-                  >
-                    {isComplete ? (
-                      <CheckCircle2 className="h-4 w-4 text-secondary shrink-0" />
-                    ) : (
-                      <Icon className="h-4 w-4 text-primary shrink-0" />
-                    )}
-                    <span className="flex-1 text-sm font-medium">
-                      <span className="text-muted-foreground tabular-nums">
-                        {moduleIndex}.{lesson.lessonNumber ?? "?"} ·{" "}
-                      </span>
-                      {lesson.title}
-                    </span>
-                  </button>
-                  {active && (
-                    <div className="p-3 pt-0">
-                      {(() => {
-                        const rica = contenidoLeccion(lesson)
-                        if (rica && words !== undefined) {
-                          return (
-                            <LessonContentView
-                              key={lesson.id}
-                              content={rica.content}
-                              words={words}
-                              interactive
-                              onCompleta={(score) => onLessonComplete(lesson.id, score)}
-                            />
-                          )
-                        }
-                        return (
-                          <p className="text-sm text-destructive">
-                            Esta lección no tiene contenido válido.
-                          </p>
-                        )
-                      })()}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </CardContent>
-      )}
+      <ModuleStepper
+        module={module}
+        moduleIndex={moduleIndex}
+        isUnlocked={isUnlocked}
+        completedLessons={completedLessons}
+        moduleProgress={{ done, total: module.lessons.length }}
+        onLessonComplete={onLessonComplete}
+        onLessonOpen={onLessonOpen}
+        words={words}
+        openLessonId={openLessonId}
+      />
     </Card>
   )
 }
