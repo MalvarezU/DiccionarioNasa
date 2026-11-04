@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { NavBar } from "@/components/navbar";
 import { InstallBanner } from "@/components/pwa/install-banner";
-import { DownloadBanner } from "@/components/download-banner";
 import { SearchBar } from "@/components/search-bar";
 import { WordDetailCard } from "@/components/word-detail-card";
 import { SiteFooter } from "@/components/site-footer";
@@ -211,9 +210,6 @@ function DiccionarioContent() {
             </div>
           </div>
         </section>
-
-        {/* Download para uso sin conexión (compacto, junto al search) */}
-        <DownloadBanner />
 
         {/* Word of the Day */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">

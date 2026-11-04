@@ -71,68 +71,52 @@ export function getActiveLetters(groups: LetterGroup[]): Set<string> {
   return new Set(groups.map((g) => g.letter));
 }
 
-export interface IndexRow {
-  type: "row";
-  /** Letter group this chunk belongs to (drives the sticky strip + rail). */
+export interface HeaderRow {
+  type: "header";
   letter: string;
-  /** 1..N words sharing one fixed-height grid row (N = column count). */
-  words: ExploreWord[];
+  count: number;
   id: string;
 }
 
-export type VirtualRow = IndexRow;
-
-/**
- * Split a group's words into chunks of `size` for multi-column index rows.
- * The last chunk may be short; the UI pads it with empty cells.
- */
-export function chunkWords(words: ExploreWord[], size: number): ExploreWord[][] {
-  const n = Math.max(1, Math.floor(size));
-  if (n <= 1) return words.map((w) => [w]);
-  const chunks: ExploreWord[][] = [];
-  for (let i = 0; i < words.length; i += n) {
-    chunks.push(words.slice(i, i + n));
-  }
-  return chunks;
+export interface WordRow {
+  type: "word";
+  word: ExploreWord;
+  id: string;
 }
 
+export type VirtualRow = HeaderRow | WordRow;
+
 /**
- * Build virtual rows from letter groups: each group's words chunked into
- * fixed-height grid rows of `columns` entries. Letter headers are NOT rows —
- * the sticky strip shows the current letter instead.
+ * Build virtual rows from letter groups: interleaves letter headers and word items.
  */
-export function buildVirtualRows(groups: LetterGroup[], columns = 1): VirtualRow[] {
+export function buildVirtualRows(groups: LetterGroup[]): VirtualRow[] {
   const rows: VirtualRow[] = [];
   for (const group of groups) {
-    for (const chunk of chunkWords(group.words, columns)) {
-      rows.push({
-        type: "row",
-        letter: group.letter,
-        words: chunk,
-        id: `row-${group.letter}-${rows.length}`,
-      });
+    rows.push({
+      type: "header",
+      letter: group.letter,
+      count: group.words.length,
+      id: `header-${group.letter}`,
+    });
+    for (const word of group.words) {
+      rows.push({ type: "word", word, id: `word-${word.id}` });
     }
   }
   return rows;
 }
 
 /**
- * Build a lookup map from letter → first virtual row index (for scroll-to-letter).
+ * Build a lookup map from letter → virtual row index (for scroll-to-letter).
  */
 export function buildLetterIndexMap(rows: VirtualRow[]): Map<string, number> {
   const map = new Map<string, number>();
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    if (row && !map.has(row.letter)) {
+    if (row && row.type === "header") {
       map.set(row.letter, i);
     }
   }
   return map;
-}
-
-/** Word count per letter, for the sticky strip ("Aa · 42 palabras"). */
-export function buildLetterCounts(groups: LetterGroup[]): Map<string, number> {
-  return new Map(groups.map((g) => [g.letter, g.words.length]));
 }
 
 /** Map a local-DB word row onto ExploreWord (shared by the three load paths). */

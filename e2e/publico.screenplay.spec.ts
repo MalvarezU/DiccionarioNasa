@@ -45,7 +45,7 @@ test.describe("Piiyaak público (Screenplay)", () => {
     const visitante = actorVisitante(page);
     await visitante.intenta(IrA.a("/"));
     expect(
-      await visitante.pregunta(EncabezadoVisible.conNombre("Palabra del día"))
+      await visitante.pregunta(EncabezadoVisible.conNombre("Bienvenido a Piiyaak"))
     ).toBe(true);
   });
 
