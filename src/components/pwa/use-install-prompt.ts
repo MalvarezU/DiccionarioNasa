@@ -26,30 +26,38 @@ function esStandalone(): boolean {
   )
 }
 
+// Captura temprana a nivel de módulo: `beforeinstallprompt` dispara ~585ms,
+// antes de que los componentes monten (~669ms en visitas repetidas). Sin esto,
+// visitas repetidas pierden la captura y el botón degrada a "Cómo instalarla".
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (e: Event) => {
+    e.preventDefault()
+    const evt = e as BeforeInstallPromptEvent
+    eventoRetenido = evt
+    oyentes.forEach((fn) => fn(evt))
+  })
+  window.addEventListener("appinstalled", () => {
+    eventoRetenido = null
+    oyentes.forEach((fn) => fn(null))
+  })
+}
+
 export function useInstallPrompt() {
   const [evento, setEvento] = useState<BeforeInstallPromptEvent | null>(eventoRetenido)
   const [instalada, setInstalada] = useState<boolean>(() => esStandalone())
 
   useEffect(() => {
-    const onPrompt = (e: Event) => {
-      e.preventDefault()
-      const evt = e as BeforeInstallPromptEvent
-      eventoRetenido = evt
-      oyentes.forEach((fn) => fn(evt))
-      setEvento(evt)
-    }
+    oyentes.add(setEvento)
+    // Sincroniza estado inicial si el evento llegó antes del mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (eventoRetenido !== null && evento === null) setEvento(eventoRetenido)
     const onInstalada = () => {
-      eventoRetenido = null
-      oyentes.forEach((fn) => fn(null))
       setEvento(null)
       setInstalada(true)
     }
-    oyentes.add(setEvento)
-    window.addEventListener("beforeinstallprompt", onPrompt)
     window.addEventListener("appinstalled", onInstalada)
     return () => {
       oyentes.delete(setEvento)
-      window.removeEventListener("beforeinstallprompt", onPrompt)
       window.removeEventListener("appinstalled", onInstalada)
     }
   }, [])
