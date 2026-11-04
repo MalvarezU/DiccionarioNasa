@@ -20,6 +20,7 @@ import { ErroresBloque } from "./block-forms"
 import { EditorTextoRico } from "./text-editor"
 import { ChipOpcion } from "./chip-opcion"
 import { LIMITS } from "@/lib/courses/blocks"
+import { htmlToPlainText } from "@/lib/html-to-text"
 
 /**
  * Formularios de los bloques INTERACTIVOS: quiz, listening.
@@ -98,10 +99,14 @@ function EditorDeOpciones({
 }
 
 export function FormQuiz({ block, onChange, errores }: BlockFormProps<Extract<LessonBlock, { type: "quiz" }>>) {
-  const cambiarPregunta = (i: number, prompt: string) =>
+  // El prompt se guarda en TEXTO PLANO: el estudiante lo renderiza como texto
+  // y el HTML del editor se vería literal (`<p>¿...?</p>`). Ver html-to-text.ts.
+  const cambiarPregunta = (i: number, md: string) =>
     onChange({
       ...block,
-      questions: block.questions.map((q, j) => (j === i ? { ...q, prompt } : q)),
+      questions: block.questions.map((q, j) =>
+        j === i ? { ...q, prompt: htmlToPlainText(md) } : q
+      ),
     })
 
   const cambiarOpciones = (i: number, options: QuizOption[]) =>
@@ -304,7 +309,8 @@ export function FormListening({
         <Label>Pregunta</Label>
         <EditorTextoRico
           value={block.question}
-          onChange={(md) => onChange({ ...block, question: md })}
+          // Texto plano por el mismo motivo del prompt del quiz.
+          onChange={(md) => onChange({ ...block, question: htmlToPlainText(md) })}
           mini
           maxChars={LIMITS.maxPrompt}
           ariaLabel={`Pregunta del bloque ${block.id}`}

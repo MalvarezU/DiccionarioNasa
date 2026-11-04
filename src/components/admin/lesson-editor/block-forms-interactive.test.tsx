@@ -1,6 +1,6 @@
 import { vi, describe, it, expect } from "vitest"
 import { useState } from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import type { LessonBlock } from "@/lib/courses/blocks"
@@ -82,6 +82,16 @@ describe("FormQuiz", () => {
     await user.clear(input)
     await user.type(input, "Nueva pregunta")
     expect(input.value).toBe("Nueva pregunta")
+  })
+
+  it("el prompt con HTML del editor se guarda como texto plano", () => {
+    // El editor emite el contenido completo en un onChange (no tecla por tecla).
+    const onChange = vi.fn()
+    render(<FormQuiz block={quizBlock} onChange={onChange} errores={[]} />)
+    const input = screen.getByLabelText("Pregunta 1") as HTMLTextAreaElement
+    fireEvent.change(input, { target: { value: "<p>hola</p><p>mundo</p>" } })
+    const ultimo = onChange.mock.calls[onChange.mock.calls.length - 1]![0] as any
+    expect(ultimo.questions[0].prompt).toBe("hola mundo")
   })
 
   it("chips de opciones renderizan con la correcta marcada", () => {
@@ -205,6 +215,15 @@ describe("FormListening", () => {
     await user.clear(input)
     await user.type(input, "Nueva")
     expect(input.value).toBe("Nueva")
+  })
+
+  it("la pregunta con HTML del editor se guarda como texto plano", () => {
+    const onChange = vi.fn()
+    render(<FormListening block={listeningBlock} onChange={onChange} errores={[]} />)
+    const input = screen.getByLabelText(/Pregunta del bloque/) as HTMLTextAreaElement
+    fireEvent.change(input, { target: { value: "<p>¿Qué</p><p>escuchaste?</p>" } })
+    const ultimo = onChange.mock.calls[onChange.mock.calls.length - 1]![0] as any
+    expect(ultimo.question).toBe("¿Qué escuchaste?")
   })
 
   it("agregar opción añade una vacía", async () => {

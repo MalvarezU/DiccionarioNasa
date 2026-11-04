@@ -16,6 +16,7 @@ import { useEffect, useRef } from "react"
 import { useEditor, useEditorState, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import { TEXT_BLOCK_PROSE } from "@/lib/courses/lesson-html"
+import { htmlToPlainText } from "@/lib/html-to-text"
 import { Bold, Heading1, Heading2, Heading3, Italic, List, Redo2, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -95,6 +96,15 @@ export function EditorTextoRico({
   useEffect(() => {
     if (!editor) return
     if (value === ultimoHtml.current) return
+    // Las instrucciones de quiz/escucha llegan en TEXTO PLANO (el form
+    // normaliza el HTML del editor al guardar). Si el documento actual tiene
+    // el mismo contenido sin tags, NO resincronizar: setContent recrea el doc
+    // y destruye la selección (mismo motivo del guard string de arriba: cursor
+    // roto y toggles que no aplican al texto ya seleccionado).
+    if (htmlToPlainText(editor.getHTML()) === htmlToPlainText(value)) {
+      ultimoHtml.current = value
+      return
+    }
     editor.commands.setContent(value, { emitUpdate: false })
     ultimoHtml.current = value
   }, [editor, value])
