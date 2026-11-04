@@ -1,19 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Newsreader, Public_Sans } from "next/font/google";
+import { Inter, Source_Serif_4 } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { SessionProvider } from "@/components/session-provider";
 
-const newsreader = Newsreader({
-  variable: "--font-newsreader",
-  subsets: ["latin"],
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
+  subsets: ["latin", "latin-ext"],
   display: "swap",
 });
 
-const publicSans = Public_Sans({
-  variable: "--font-public-sans",
-  subsets: ["latin"],
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin", "latin-ext"],
   display: "swap",
 });
 
@@ -58,7 +58,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${newsreader.variable} ${publicSans.variable} antialiased min-h-screen flex flex-col bg-background text-foreground`}
+        className={`${sourceSerif.variable} ${inter.variable} font-sans antialiased min-h-screen flex flex-col bg-background text-foreground`}
       >
         <SessionProvider>
           {children}

@@ -37,9 +37,9 @@ test.describe("editor de texto — tipografía unificada", () => {
       .first()
       .evaluate((el) => getComputedStyle(el).fontFamily)
 
-    // Ambos lados deben resolver a Newsreader (la variable montada por next/font).
-    expect(fuenteEditor.toLowerCase()).toContain("newsreader")
-    expect(fuentePreview.toLowerCase()).toContain("newsreader")
+    // Both sides must resolve to Source Serif 4 (the variable mounted by next/font).
+    expect(fuenteEditor.toLowerCase()).toContain("source serif")
+    expect(fuentePreview.toLowerCase()).toContain("source serif")
     // Y deben coincidir entre sí.
     expect(fuenteEditor).toBe(fuentePreview)
   })
