@@ -1,46 +1,35 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import {
-  BookOpen,
-  Volume2,
-  Globe,
-  GraduationCap,
-  Gamepad2,
-  Heart,
-  Users,
-  Sparkles,
-} from "lucide-react";
+import { Heart, Users, Globe } from "lucide-react";
 import { NavBar } from "@/components/navbar";
 import { InstallBanner } from "@/components/pwa/install-banner";
 import { SiteFooter } from "@/components/site-footer";
 import { InstallSectionLazy } from "@/components/pwa/install-section-lazy";
-import { DownloadBanner } from "@/components/download-banner";
-import { WordOfDayCard } from "@/components/word-of-day-card";
+import { HeroWordOfDay } from "@/components/hero-word";
+import { ModuleSwitcher } from "@/components/module-switcher";
+import { SearchBar } from "@/components/search-bar";
 import { WordDetailCard } from "@/components/word-detail-card";
+import { useWordOfDay } from "@/hooks/use-word-of-day";
 
-/** Los 3 módulos de la plataforma: se eligen desde el hero. */
-const MODULES = [
-  {
-    href: "/diccionario",
-    icon: BookOpen,
-    title: "Diccionario",
-    cta: "Explorar diccionario",
-  },
-  { href: "/juegos", icon: Gamepad2, title: "Juegos", cta: "Jugar ahora" },
-  {
-    href: "/cursos",
-    icon: GraduationCap,
-    title: "Cursos",
-    cta: "Ver cursos",
-  },
-] as const;
+function HeroWordSkeleton() {
+  return (
+    <div aria-hidden="true" className="motion-safe:animate-pulse">
+      <div className="h-3 w-40 rounded bg-white/20" />
+      <div className="mt-4 h-24 w-3/4 rounded bg-white/10 sm:h-28" />
+      <div className="mt-4 flex items-center gap-4">
+        <div className="h-12 w-12 rounded-full bg-white/20" />
+        <div className="h-6 w-1/3 rounded bg-white/10" />
+      </div>
+    </div>
+  );
+}
 
 function HomeContent() {
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const { word, date, isLoading, isFromCache } = useWordOfDay();
 
   const handleWordSelect = useCallback((wordId: string) => {
     setSelectedWordId(wordId);
@@ -53,108 +42,68 @@ function HomeContent() {
       <InstallBanner destino="/#instalar" />
 
       <main id="contenido" className="flex-1">
-        {/* Hero — bienvenida a la plataforma */}
-        <section className="relative isolate pb-12 sm:pb-16 pt-16 sm:pt-24">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#1B2733]/85 via-[#1B2733]/55 to-[#1B2733]/35 z-10" />
+        {/* Hero palabra-primero: la palabra del día absorbe el WOTD */}
+        <section className="relative isolate overflow-hidden bg-[#1B2733]">
+          {/* Mobile / tablet: foto de fondo + velo pizarra */}
+          <div className="absolute inset-0 lg:hidden" aria-hidden="true">
+            <Image
+              src="/banner.webp"
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <div className="absolute inset-0 bg-[#1B2733]/80" />
+          </div>
+          {/* Desktop: foto a la derecha con máscara pizarra izq → transparente */}
           <div
-            className="absolute inset-0 opacity-[0.08] z-0"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232F3E4E' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-              backgroundRepeat: "repeat",
-            }}
+            className="absolute inset-y-0 right-0 hidden w-5/12 lg:block"
             aria-hidden="true"
-          />
-          <Image
-            src="/banner.webp"
-            alt=""
-            fill
-            sizes="100vw"
-            className="object-cover opacity-[0.6] z-0"
-            aria-hidden="true"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
+          >
+            <Image
+              src="/banner.webp"
+              alt=""
+              fill
+              sizes="42vw"
+              className="object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#1B2733] via-[#1B2733]/25 to-transparent" />
+          </div>
 
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 text-center z-20">
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur"
-              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}
-            >
-              <Sparkles className="h-3 w-3" aria-hidden="true" />
-              Plataforma de la lengua Nasa Yuwe
-            </span>
-            <h1
-              className="mt-4 text-4xl sm:text-5xl md:text-6xl font-serif font-semibold tracking-tight text-[#F6EEDC]"
-              style={{ textShadow: "0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)" }}
-            >
-              Bienvenido a Piiyaak
-            </h1>
-            <p
-              className="mt-3 text-lg sm:text-xl text-white font-medium"
-              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.7)" }}
-            >
-              Diccionario, juegos y cursos para aprender y preservar el Nasa Yuwe
-            </p>
-            <p
-              className="mt-4 max-w-2xl mx-auto text-base sm:text-lg text-white/90 leading-relaxed"
-              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}
-            >
-              Tres caminos en un solo lugar: consulta el diccionario bilingüe,
-              practica con juegos didácticos y sigue una ruta de aprendizaje paso
-              a paso.
-            </p>
+          <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:py-24">
+            <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+              <div className="lg:col-span-7">
+                {isLoading ? (
+                  <HeroWordSkeleton />
+                ) : (
+                  <HeroWordOfDay
+                    word={word}
+                    date={date}
+                    isFromCache={isFromCache}
+                    onVerFicha={handleWordSelect}
+                  />
+                )}
 
-            {/* Los 3 módulos de la plataforma, integrados en el banner */}
-            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
-              {MODULES.map((m, i) => {
-                const Icon = m.icon;
-                const principal = i === 0;
-                return (
-                  <Link
-                    key={m.href}
-                    href={m.href}
-                    className={`group inline-flex items-center justify-center gap-2.5 rounded-xl px-5 py-3 text-sm font-medium transition-colors duration-200 backdrop-blur-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F6EEDC] ${
-                      principal
-                        ? "bg-[#F6EEDC] text-[#2F3E4E] shadow-lg hover:bg-[#FFF9EC] hover:shadow-xl sm:px-6"
-                        : "border border-[#F6EEDC]/40 bg-black/25 text-[#F6EEDC] hover:bg-[#F6EEDC]/15 hover:border-[#F6EEDC]/60"
-                    }`}
-                  >
-                    <Icon
-                      className="h-4 w-4 shrink-0"
-                    />
-                    {principal ? m.cta : m.title}
-                  </Link>
-                );
-              })}
-            </div>
+                <p className="mt-6 text-base text-white/85 sm:text-lg">
+                  Diccionario bilingüe, juegos y una ruta paso a paso
+                </p>
 
-            <div
-              className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8"
-              style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
-            >
-              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90">
-                <BookOpen className="h-4 w-4 text-white" />
-                <span>Diccionario bilingüe</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90">
-                <Volume2 className="h-4 w-4 text-white" />
-                <span>Pronunciación guiada</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm sm:text-base text-white/90">
-                <Globe className="h-4 w-4 text-white" />
-                <span>Español ↔ Nasa Yuwe</span>
+                <div className="mt-6 max-w-xl">
+                  <ModuleSwitcher />
+                </div>
+
+                <div className="mt-4 max-w-xl">
+                  <SearchBar variant="inline" onWordSelect={handleWordSelect} />
+                </div>
               </div>
             </div>
           </div>
-        </section>
-
-        {/* Download para uso sin conexión */}
-        <DownloadBanner />
-
-        {/* Word of the Day */}
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-8 sm:pb-10">
-          <WordOfDayCard onWordSelect={handleWordSelect} />
         </section>
 
         {/* About Section */}
