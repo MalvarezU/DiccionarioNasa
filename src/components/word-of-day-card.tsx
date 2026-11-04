@@ -201,8 +201,8 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
         </CardHeader>
         <CardContent className="pt-0">
           <div className="flex flex-col items-center justify-center py-6 gap-3">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/30">
-              <WifiOff className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-50">
+              <WifiOff className="h-6 w-6 text-amber-600" />
             </div>
             <p className="text-sm text-muted-foreground text-center">
               Conéctate para descubrir la palabra del día

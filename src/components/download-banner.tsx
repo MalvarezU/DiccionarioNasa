@@ -141,7 +141,7 @@ export function DownloadBanner() {
           mt-2 flex items-center gap-2 rounded-lg border px-3 py-1.5
           ${
             bannerState === "error"
-              ? "border-[#A44A3A]/25 bg-[#F1DCDC]"
+              ? "border-[#A44A3A]/25 bg-[#F1DCD2]"
               : "border-outline-variant/30 bg-surface-container-high"
           }
         `}

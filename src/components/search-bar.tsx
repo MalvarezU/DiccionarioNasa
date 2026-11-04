@@ -241,8 +241,8 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* HU1.1.8 — Offline indicator BELOW the input */}
         {!isOnline && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
-            <CloudOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+            <CloudOff className="h-3.5 w-3.5 text-amber-600" />
+            <span className="text-xs font-medium text-amber-700">
               Búsqueda local (sin conexión)
             </span>
           </div>
@@ -251,7 +251,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Online indicator */}
         {isOnline && esGrande && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
-            <Cloud className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            <Cloud className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
             <span className="text-xs font-medium text-muted-foreground">
               Búsqueda en línea
             </span>
@@ -267,7 +267,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           >
             {/* Offline banner — context-aware for local DB readiness */}
             {!isOnline && (
-              <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 dark:text-amber-400 dark:bg-amber-950/30 dark:border-amber-900 flex items-center gap-1.5">
+              <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
                 <CloudOff className="h-3 w-3" />
                 {localDBReady
                   ? "Sin conexión — mostrando resultados locales"

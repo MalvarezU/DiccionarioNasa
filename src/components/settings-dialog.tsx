@@ -152,21 +152,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <div
             className={`flex items-center gap-3 p-3 rounded-lg border ${
               isOnline
-                ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900"
-                : "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900"
+                ? "bg-emerald-50 border-emerald-200"
+                : "bg-amber-50 border-amber-200"
             }`}
           >
             {isOnline ? (
-              <Wifi className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <Wifi className="h-5 w-5 text-emerald-600 shrink-0" />
             ) : (
-              <WifiOff className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <WifiOff className="h-5 w-5 text-amber-600 shrink-0" />
             )}
             <div className="min-w-0">
               <p
                 className={`text-sm font-medium ${
                   isOnline
-                    ? "text-emerald-700 dark:text-emerald-400"
-                    : "text-amber-700 dark:text-amber-400"
+                    ? "text-emerald-700"
+                    : "text-amber-700"
                 }`}
               >
                 {isOnline ? "Conectado a internet" : "Sin conexión a internet"}
@@ -192,7 +192,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <span className="text-muted-foreground">Estado</span>
                 <p className="font-medium text-foreground">
                   {isReady ? (
-                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <span className="flex items-center gap-1 text-emerald-600">
                       <CheckCircle2 className="h-3 w-3" />
                       Descargada
                     </span>
@@ -202,7 +202,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       Descargando...
                     </span>
                   ) : (
-                    <span className="text-amber-600 dark:text-amber-400">
+                    <span className="text-amber-600">
                       No descargada
                     </span>
                   )}
@@ -243,13 +243,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
           {/* ─── Success message after sync completes ───────────── */}
           {effectiveFeedback === "success" && !isDownloading && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                <p className="text-sm font-medium text-emerald-700">
                   Sincronización completada
                 </p>
-                <p className="text-xs text-emerald-600 dark:text-emerald-500">
+                <p className="text-xs text-emerald-600">
                   Última actualización: {formattedLastSync ?? "ahora"}
                 </p>
               </div>
@@ -258,9 +258,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
           {/* ─── Offline message when user tries to sync ────────── */}
           {effectiveFeedback === "offline" && !isDownloading && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900">
-              <CloudOff className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <CloudOff className="h-5 w-5 text-amber-600 shrink-0" />
+              <p className="text-sm font-medium text-amber-700">
                 Sin conexión a internet. Conéctate para sincronizar.
               </p>
             </div>
