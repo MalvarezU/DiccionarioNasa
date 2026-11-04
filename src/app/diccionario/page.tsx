@@ -107,6 +107,18 @@ function DiccionarioContent() {
     setPanelOpen(true);
   }, []);
 
+  // Open the panel from a ?panel= query param (cross-page entry from NavBar)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const panel = params.get("panel");
+    if (panel === "favorites" || panel === "history") {
+      setPanelTab(panel);
+      setPanelOpen(true);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
+
   // Listen for custom events from NavBar to open the panel
   useEffect(() => {
     const handler = (e: Event) => {

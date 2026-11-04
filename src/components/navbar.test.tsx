@@ -7,6 +7,11 @@ vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
 }))
 
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(),
+  useRouter: vi.fn(),
+}))
+
 vi.mock("@/hooks/use-online-status", () => ({
   useOnlineStatus: vi.fn(),
 }))
@@ -26,6 +31,7 @@ vi.mock("./settings-dialog", () => ({
 }))
 
 import { useSession, signOut } from "next-auth/react"
+import { usePathname, useRouter } from "next/navigation"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import { NavBar } from "./navbar"
 
@@ -50,6 +56,8 @@ describe("NavBar", () => {
     vi.clearAllMocks()
     mockOnline(true)
     mockSession(null)
+    vi.mocked(usePathname).mockReturnValue("/")
+    vi.mocked(useRouter).mockReturnValue({ push: vi.fn() } as any)
   })
 
   it("renders the app name as a link", () => {

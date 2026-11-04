@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock, Gamepad2, GraduationCap } from "lucide-react"
 import { useOnlineStatus } from "@/hooks/use-online-status"
@@ -26,9 +26,20 @@ import { SkipLink } from "@/components/skip-link"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AuthModal } from "@/components/auth-modal"
 
-/** Dispatch a custom event to open the favorites/history panel from the page */
-function dispatchOpenPanel(tab: "favorites" | "history") {
-  window.dispatchEvent(new CustomEvent("open-panel", { detail: { tab } }))
+/** Open the favorites/history panel.
+ *  - On /diccionario: dispatch the in-page "open-panel" event (no navigation).
+ *  - Elsewhere: navigate to /diccionario with ?panel=... so the page opens it.
+ */
+function dispatchOpenPanel(
+  tab: "favorites" | "history",
+  pathname: string | null,
+  router: { push: (href: string) => void },
+) {
+  if (pathname === "/diccionario") {
+    window.dispatchEvent(new CustomEvent("open-panel", { detail: { tab } }))
+  } else {
+    router.push(`/diccionario?panel=${tab}`)
+  }
 }
 
 /** Los 3 módulos de la plataforma Piiyaak. */
@@ -41,6 +52,7 @@ const NAV_ITEMS = [
 export function NavBar() {
   const isOnline = useOnlineStatus()
   const pathname = usePathname()
+  const router = useRouter()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const { data: session, status } = useSession()
@@ -176,14 +188,14 @@ export function NavBar() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="cursor-pointer"
-                    onClick={() => dispatchOpenPanel("favorites")}
+                    onClick={() => dispatchOpenPanel("favorites", pathname, router)}
                   >
                     <Heart className="mr-2 h-4 w-4 text-primary" />
                     Mis favoritos
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="cursor-pointer"
-                    onClick={() => dispatchOpenPanel("history")}
+                    onClick={() => dispatchOpenPanel("history", pathname, router)}
                   >
                     <Clock className="mr-2 h-4 w-4 text-primary" />
                     Mi historial
