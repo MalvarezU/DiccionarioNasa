@@ -5,16 +5,69 @@ import { QRCodeSVG } from "qrcode.react"
 import { Check, Copy, Download, MonitorDown, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useInstallPrompt } from "./use-install-prompt"
+
+type ManualVariant = "android" | "desktop" | "ios"
+
+const MANUAL_CONTENT: Record<
+  ManualVariant,
+  { title: string; description: string; steps: string[] }
+> = {
+  android: {
+    title: "Instalar en Android",
+    description: "Seguí estos pasos en Chrome de Android.",
+    steps: [
+      "Abrí esta página en Chrome de Android.",
+      "Tocá ⋮ → “Instalar aplicación”.",
+    ],
+  },
+  desktop: {
+    title: "Instalar en tu equipo",
+    description: "Chrome o Edge en Windows, Mac o Linux.",
+    steps: [
+      "Buscá el icono de instalación en la barra de direcciones (monitor con flecha).",
+      "Confirmá la instalación.",
+    ],
+  },
+  ios: {
+    title: "Instalar en iPhone / iPad",
+    description: "Safari no ofrece botón directo; son 2 toques.",
+    steps: [
+      "Tocá Compartir (el cuadrado con flecha).",
+      "Elegí “Añadir a pantalla de inicio”.",
+    ],
+  },
+}
+
+/** iOS Safari never fires `beforeinstallprompt`: manual steps are the only path. */
+function isIOSDevice(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false
+  const ua = navigator.userAgent ?? ""
+  if (/iPad|iPhone|iPod/.test(ua)) return true
+  // iPadOS 13+ reports itself as Macintosh when touch is available
+  return /Macintosh/.test(ua) && navigator.maxTouchPoints > 1
+}
 
 /**
  * Sección "Instalá Piiyaak" de la home. Vive en chunk separado (dynamic +
  * ssr:false desde InstallSectionLazy): el QR y su runtime nunca tocan
  * la carga inicial.
+ *
+ * The install action is always visible: with a native prompt the button
+ * installs directly, otherwise it opens a dialog with the manual steps
+ * for the current platform (Android, desktop, or iOS).
  */
 export function InstallSection() {
-  const { instalPromptDisponible, instalar } = useInstallPrompt()
+  const { instalPromptDisponible, instalada, instalar } = useInstallPrompt()
   const [copiado, setCopiado] = useState(false)
+  const [manual, setManual] = useState<ManualVariant | null>(null)
   const origen = typeof window !== "undefined" ? window.location.origin : ""
 
   const copiar = async () => {
@@ -26,6 +79,16 @@ export function InstallSection() {
       // clipboard no disponible (http/permisos): no se rompe nada
     }
   }
+
+  const accionar = (origen: Exclude<ManualVariant, "ios">) => {
+    if (instalPromptDisponible) {
+      void instalar()
+      return
+    }
+    setManual(isIOSDevice() ? "ios" : origen)
+  }
+
+  const contenido = manual ? MANUAL_CONTENT[manual] : null
 
   return (
     <section id="instalar" aria-labelledby="instalar-titulo" className="scroll-mt-20">
@@ -52,17 +115,15 @@ export function InstallSection() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {instalPromptDisponible ? (
-                <Button className="gap-2 w-full" onClick={() => void instalar()}>
-                  <Download className="h-4 w-4" />
-                  Instalar ahora
-                </Button>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Abrí esta página en Chrome de Android y tocá ⋮ → “Instalar
-                  aplicación”.
-                </p>
-              )}
+              <Button
+                className="gap-2 w-full"
+                disabled={instalada}
+                aria-haspopup={instalPromptDisponible || instalada ? undefined : "dialog"}
+                onClick={() => accionar("android")}
+              >
+                {instalada ? <Check className="h-4 w-4" /> : <Download className="h-4 w-4" />}
+                {instalada ? "Ya instalada" : "Instalar ahora"}
+              </Button>
             </CardContent>
           </Card>
 
@@ -77,17 +138,16 @@ export function InstallSection() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {instalPromptDisponible ? (
-                <Button variant="outline" className="gap-2 w-full" onClick={() => void instalar()}>
-                  <Download className="h-4 w-4" />
-                  Instalar en el equipo
-                </Button>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Buscá el icono de instalación en la barra de direcciones
-                  (monitor con flecha) y confirmá.
-                </p>
-              )}
+              <Button
+                variant="outline"
+                className="gap-2 w-full"
+                disabled={instalada}
+                aria-haspopup={instalPromptDisponible || instalada ? undefined : "dialog"}
+                onClick={() => accionar("desktop")}
+              >
+                {instalada ? <Check className="h-4 w-4" /> : <Download className="h-4 w-4" />}
+                {instalada ? "Ya instalada" : "Instalar en el equipo"}
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -119,6 +179,24 @@ export function InstallSection() {
           </div>
         </div>
       </div>
+
+      <Dialog open={manual !== null} onOpenChange={(abierto) => { if (!abierto) setManual(null) }}>
+        <DialogContent className="sm:max-w-md">
+          {contenido && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{contenido.title}</DialogTitle>
+                <DialogDescription>{contenido.description}</DialogDescription>
+              </DialogHeader>
+              <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
+                {contenido.steps.map((paso) => (
+                  <li key={paso}>{paso}</li>
+                ))}
+              </ol>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }
