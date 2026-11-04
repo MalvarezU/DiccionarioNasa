@@ -90,6 +90,7 @@ describe("InstallSection", () => {
     expect(android).toBeDefined()
     expect(escritorio).toBeDefined()
     expect(android).toHaveAttribute("aria-haspopup", "dialog")
+    expect(escritorio).toHaveAttribute("aria-haspopup", "dialog")
   })
 
   it("sin prompt: Android abre el modal con sus pasos manuales", async () => {
@@ -117,16 +118,20 @@ describe("InstallSection", () => {
     })
   })
 
-  it("con prompt nativo instala directo sin abrir el modal", async () => {
+  it("con prompt nativo abre el modal primero; la acción real vive dentro", async () => {
     render(<InstallSection />)
     const { prompt } = dispararPromptNativo()
     const boton = await screen.findByRole("button", { name: "Instalar ahora" })
-    expect(boton).not.toHaveAttribute("aria-haspopup")
+    expect(boton).toHaveAttribute("aria-haspopup", "dialog")
     fireEvent.click(boton)
+    // El trigger solo abre el modal: el prompt nativo no dispara directo.
+    expect(prompt).not.toHaveBeenCalled()
+    const dialogo = await screen.findByRole("dialog")
+    expect(dialogo.textContent ?? "").toContain("Abrí esta página en Chrome de Android")
+    fireEvent.click(screen.getByRole("button", { name: "Instalar ahora" }))
     await waitFor(() => {
       expect(prompt).toHaveBeenCalled()
     })
-    expect(screen.queryByRole("dialog")).toBeNull()
   })
 
   it("en iOS el modal muestra los pasos de Safari", async () => {

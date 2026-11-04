@@ -5,64 +5,20 @@ import { QRCodeSVG } from "qrcode.react"
 import { Check, Copy, Download, MonitorDown, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { InstallDialog, type InstallVariant } from "./install-dialog"
+import { isIOSDevice } from "./is-ios"
 import { useInstallPrompt } from "./use-install-prompt"
 
-type ManualVariant = "android" | "desktop" | "ios"
-
-const MANUAL_CONTENT: Record<
-  ManualVariant,
-  { title: string; description: string; steps: string[] }
-> = {
-  android: {
-    title: "Instalar en Android",
-    description: "Seguí estos pasos en Chrome de Android.",
-    steps: [
-      "Abrí esta página en Chrome de Android.",
-      "Tocá ⋮ → “Instalar aplicación”.",
-    ],
-  },
-  desktop: {
-    title: "Instalar en tu equipo",
-    description: "Chrome o Edge en Windows, Mac o Linux.",
-    steps: [
-      "Buscá el icono de instalación en la barra de direcciones (monitor con flecha).",
-      "Confirmá la instalación.",
-    ],
-  },
-  ios: {
-    title: "Instalar en iPhone / iPad",
-    description: "Safari no ofrece botón directo; son 2 toques.",
-    steps: [
-      "Tocá Compartir (el cuadrado con flecha).",
-      "Elegí “Añadir a pantalla de inicio”.",
-    ],
-  },
-}
-
-/** iOS Safari never fires `beforeinstallprompt`: manual steps are the only path. */
-function isIOSDevice(): boolean {
-  if (typeof window === "undefined" || typeof navigator === "undefined") return false
-  const ua = navigator.userAgent ?? ""
-  if (/iPad|iPhone|iPod/.test(ua)) return true
-  // iPadOS 13+ reports itself as Macintosh when touch is available
-  return /Macintosh/.test(ua) && navigator.maxTouchPoints > 1
-}
+type ManualVariant = InstallVariant
 
 /**
  * Sección "Instalá Piiyaak" de la home. Vive en chunk separado (dynamic +
  * ssr:false desde InstallSectionLazy): el QR y su runtime nunca tocan
  * la carga inicial.
  *
- * The install action is always visible: with a native prompt the button
- * installs directly, otherwise it opens a dialog with the manual steps
- * for the current platform (Android, desktop, or iOS).
+ * Every install trigger opens the shared dialog first; the real install
+ * action lives inside the modal so the native browser prompt never fires
+ * from a bare button.
  */
 export function InstallSection() {
   const { instalPromptDisponible, instalada, instalar } = useInstallPrompt()
@@ -81,14 +37,8 @@ export function InstallSection() {
   }
 
   const accionar = (origen: Exclude<ManualVariant, "ios">) => {
-    if (instalPromptDisponible) {
-      void instalar()
-      return
-    }
     setManual(isIOSDevice() ? "ios" : origen)
   }
-
-  const contenido = manual ? MANUAL_CONTENT[manual] : null
 
   return (
     <section id="instalar" aria-labelledby="instalar-titulo" className="scroll-mt-20">
@@ -118,7 +68,7 @@ export function InstallSection() {
               <Button
                 className="gap-2 w-full"
                 disabled={instalada}
-                aria-haspopup={instalPromptDisponible || instalada ? undefined : "dialog"}
+                aria-haspopup="dialog"
                 onClick={() => accionar("android")}
               >
                 {instalada ? <Check className="h-4 w-4" /> : <Download className="h-4 w-4" />}
@@ -142,7 +92,7 @@ export function InstallSection() {
                 variant="outline"
                 className="gap-2 w-full"
                 disabled={instalada}
-                aria-haspopup={instalPromptDisponible || instalada ? undefined : "dialog"}
+                aria-haspopup="dialog"
                 onClick={() => accionar("desktop")}
               >
                 {instalada ? <Check className="h-4 w-4" /> : <Download className="h-4 w-4" />}
@@ -180,23 +130,14 @@ export function InstallSection() {
         </div>
       </div>
 
-      <Dialog open={manual !== null} onOpenChange={(abierto) => { if (!abierto) setManual(null) }}>
-        <DialogContent className="sm:max-w-md">
-          {contenido && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{contenido.title}</DialogTitle>
-                <DialogDescription>{contenido.description}</DialogDescription>
-              </DialogHeader>
-              <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
-                {contenido.steps.map((paso) => (
-                  <li key={paso}>{paso}</li>
-                ))}
-              </ol>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <InstallDialog
+        open={manual !== null}
+        onOpenChange={(abierto) => { if (!abierto) setManual(null) }}
+        variant={manual ?? "android"}
+        instalPromptDisponible={instalPromptDisponible}
+        instalada={instalada}
+        onInstalar={instalar}
+      />
     </section>
   )
 }

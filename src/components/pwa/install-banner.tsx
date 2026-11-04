@@ -4,17 +4,22 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Download, X, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { InstallDialog, type InstallVariant } from "./install-dialog"
+import { isIOSDevice } from "./is-ios"
 import { useInstallPrompt } from "./use-install-prompt"
 import { useMounted } from "@/hooks/use-mounted"
 
 const DISMISS_KEY = "pwa-banner-dismissed-at"
 const REAPARECE_MS = 30 * 24 * 60 * 60 * 1000 // 30 días
 
+type BannerVariant = Extract<InstallVariant, "android" | "ios">
+
 /**
  * Banner de instalación de la PWA. Liviano a propósito: sin QR ni lógica
  * pesada (eso vive en la sección lazy de la home).
  *
- * - Con prompt nativo (Chrome/Android/PC): "Instalar" instala directo.
+ * - Con prompt nativo (Chrome/Android/PC): "Instalar" abre el modal propio
+ *   y la acción real vive dentro (el prompt nativo nunca dispara directo).
  * - Sin prompt (iOS Safari, Firefox): "Cómo instalarla" lleva a #instalar.
  * - Instalada o descartada hace <30 días: no se muestra.
  */
@@ -22,6 +27,8 @@ export function InstallBanner({ destino = "/#instalar" }: { destino?: string }) 
   const { instalPromptDisponible, instalada, instalar } = useInstallPrompt()
   const mounted = useMounted()
   const [oculto, setOculto] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [variant, setVariant] = useState<BannerVariant>("android")
   const router = useRouter()
 
   useEffect(() => {
@@ -36,6 +43,11 @@ export function InstallBanner({ destino = "/#instalar" }: { destino?: string }) 
   }, [mounted])
 
   if (!mounted || oculto || instalada) return null
+
+  const abrirModal = () => {
+    setVariant(isIOSDevice() ? "ios" : "android")
+    setDialogOpen(true)
+  }
 
   const verComo = () => {
     if (destino.startsWith("/#")) {
@@ -64,7 +76,7 @@ export function InstallBanner({ destino = "/#instalar" }: { destino?: string }) 
           </span>
         </p>
         {instalPromptDisponible ? (
-          <Button size="sm" className="gap-1.5" onClick={() => void instalar()}>
+          <Button size="sm" className="gap-1.5" aria-haspopup="dialog" onClick={abrirModal}>
             <Download className="h-3.5 w-3.5" />
             Instalar
           </Button>
@@ -91,6 +103,15 @@ export function InstallBanner({ destino = "/#instalar" }: { destino?: string }) 
           <X className="h-4 w-4" />
         </Button>
       </div>
+
+      <InstallDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        variant={variant}
+        instalPromptDisponible={instalPromptDisponible}
+        instalada={instalada}
+        onInstalar={instalar}
+      />
     </div>
   )
 }
