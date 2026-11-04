@@ -56,7 +56,7 @@ export function DashboardActivity({ stats, onViewAll, isAdmin = false }: Dashboa
   return (
     <>
     <div>
-      <Card>
+      <Card className="rounded-2xl border border-outline-variant/30">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
