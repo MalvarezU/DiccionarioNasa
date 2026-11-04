@@ -232,15 +232,15 @@ export function FlashcardGame({
     return (
       <Card className="max-w-2xl mx-auto">
         <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
-          <CheckCircle2 className="h-16 w-16 text-secondary" />
+          <CheckCircle2 className="h-16 w-16 text-[#5E6B45]" />
           <h3 className="text-2xl font-serif text-foreground">¡Completado!</h3>
           <p className="text-muted-foreground">
-            Acertaste <strong className="text-secondary">{correctCount}</strong> de{" "}
+            Acertaste <strong className="text-[#4C5738]">{correctCount}</strong> de{" "}
             <strong>{total}</strong> palabras
           </p>
           <Badge
             variant="secondary"
-            className="gap-1.5 text-sm bg-secondary/10 text-secondary border border-secondary/20"
+            className="gap-1.5 text-sm bg-[#E3E6D2] text-[#4C5738] border border-[#5E6B45]/30"
           >
             {correctCount >= total * 0.8
               ? "¡Excelente!"
@@ -248,7 +248,7 @@ export function FlashcardGame({
                 ? "Buen trabajo"
                 : "Sigue practicando"}
           </Badge>
-          <Button onClick={handleRestart} variant="outline" className="gap-2 mt-2">
+          <Button onClick={handleRestart} variant="outline" className="gap-2 mt-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]">
             <RefreshCw className="h-4 w-4" />
             Jugar de nuevo
           </Button>
@@ -264,7 +264,7 @@ export function FlashcardGame({
           variant={direction === "es-nasa" ? "default" : "outline"}
           size="sm"
           onClick={() => handleDirectionChange("es-nasa")}
-          className="gap-1.5"
+          className="gap-1.5 min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]"
         >
           <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
           Español → Nasa Yuwe
@@ -273,7 +273,7 @@ export function FlashcardGame({
           variant={direction === "nasa-es" ? "default" : "outline"}
           size="sm"
           onClick={() => handleDirectionChange("nasa-es")}
-          className="gap-1.5"
+          className="gap-1.5 min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]"
         >
           <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
           Nasa Yuwe → Español
@@ -281,12 +281,12 @@ export function FlashcardGame({
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
+          <span className="text-[#4C5738]">
             Pregunta {currentIndex + 1} de {total}
           </span>
           <div className="flex items-center gap-3">
             {streak >= 2 && (
-              <Badge variant="secondary" className="gap-1 bg-secondary/10 text-secondary">
+              <Badge variant="secondary" className="gap-1 bg-[#E3E6D2] text-[#4C5738]">
                 <Flame className="h-3.5 w-3.5" aria-hidden="true" />
                 Racha: {streak}
               </Badge>
@@ -299,7 +299,7 @@ export function FlashcardGame({
         </div>
         <Progress
           value={((currentIndex + 1) / total) * 100}
-          className="h-2"
+          className="h-2 bg-[#E0CFAE] [&_[data-slot=progress-indicator]]:bg-[#5E6B45]"
           aria-label={`Progreso: pregunta ${currentIndex + 1} de ${total}`}
         />
       </div>
@@ -327,22 +327,22 @@ export function FlashcardGame({
               disabled={showResult}
               onClick={() => handleAnswer(idx)}
               data-testid="flash-option"
-              className={`h-auto py-5 text-lg font-medium transition-all ${
+              className={`h-auto min-h-11 py-5 text-lg font-medium transition-all focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45] ${
                 showResult
                   ? isCorrect
-                    ? "border-secondary bg-secondary/10 text-secondary"
+                    ? "border-[#5E6B45] bg-[#E3E6D2] text-[#4C5738]"
                     : isSelected && !isCorrect
-                      ? "border-destructive bg-destructive/10 text-destructive"
+                      ? "border-[#A44A3A] bg-[#F1DCD2] text-[#A44A3A]"
                       : "opacity-50"
                   : "hover:border-primary hover:bg-primary/5"
               }`}
             >
               <span className="flex items-center gap-2">
                 {showResult && isCorrect && (
-                  <CheckCircle2 className="h-5 w-5 text-secondary" />
+                  <CheckCircle2 className="h-5 w-5 text-[#4C5738]" />
                 )}
                 {showResult && isSelected && !isCorrect && (
-                  <XCircle className="h-5 w-5 text-destructive" />
+                  <XCircle className="h-5 w-5 text-[#A44A3A]" />
                 )}
                 {option}
               </span>
@@ -353,7 +353,7 @@ export function FlashcardGame({
 
       {selectedAnswer !== null && (
         <div className="flex justify-center">
-          <Button onClick={handleNext} className="gap-2">
+          <Button onClick={handleNext} className="gap-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]">
             {currentIndex + 1 >= total ? "Ver resultados" : "Siguiente"}
           </Button>
         </div>

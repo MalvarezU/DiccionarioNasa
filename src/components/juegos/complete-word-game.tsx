@@ -184,13 +184,13 @@ export function CompleteWordGame({
     return (
       <Card className="max-w-2xl mx-auto">
         <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
-          <CheckCircle2 className="h-16 w-16 text-secondary" />
+          <CheckCircle2 className="h-16 w-16 text-[#5E6B45]" />
           <h3 className="text-2xl font-serif text-foreground">¡Completado!</h3>
           <p className="text-muted-foreground">
-            Completaste <strong className="text-secondary">{correctCount}</strong> de{" "}
+            Completaste <strong className="text-[#4C5738]">{correctCount}</strong> de{" "}
             <strong>{questions.length}</strong> palabras
           </p>
-          <Button onClick={handleRestart} variant="outline" className="gap-2 mt-2">
+          <Button onClick={handleRestart} variant="outline" className="gap-2 mt-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]">
             <RefreshCw className="h-4 w-4" />
             Jugar de nuevo
           </Button>
@@ -206,7 +206,7 @@ export function CompleteWordGame({
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
+          <span className="text-[#4C5738]">
             Palabra {questionIndex + 1} de {questions.length}
           </span>
           <div className="flex gap-3" role="group" aria-label="Dificultad">
@@ -222,6 +222,7 @@ export function CompleteWordGame({
                 variant={nivelState === n.value ? "default" : "outline"}
                 size="sm"
                 aria-pressed={nivelState === n.value}
+                className="min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]"
                 onClick={() => {
                   if (n.value === nivelState) return
                   setNivelState(n.value)
@@ -241,16 +242,16 @@ export function CompleteWordGame({
         </div>
         <Progress
           value={((questionIndex + 1) / questions.length) * 100}
-          className="h-2"
+          className="h-2 bg-[#E0CFAE] [&_[data-slot=progress-indicator]]:bg-[#5E6B45]"
         />
       </div>
 
       <Card
         className={`border-2 transition-colors ${
           status === "correct"
-            ? "border-secondary bg-secondary/5"
+            ? "border-[#5E6B45] bg-[#E3E6D2]"
             : status === "wrong"
-              ? "border-destructive bg-destructive/5"
+              ? "border-[#A44A3A] bg-[#F1DCD2]"
               : status === "failed"
                 ? "border-muted-foreground bg-muted/20"
                 : "border-primary/20"
@@ -281,15 +282,15 @@ export function CompleteWordGame({
                     maxLength={1}
                     aria-label={`Letra ${idx + 1} de ${current.word.spanish.length}`}
                     aria-invalid={isWrong}
-                    className={`w-10 h-14 sm:w-12 sm:h-16 text-center text-2xl font-bold uppercase p-0 ${
+                    className={`w-10 h-14 sm:w-12 sm:h-16 text-center text-2xl font-bold uppercase p-0 focus-visible:border-[#5E6B45] focus-visible:ring-[#5E6B45]/40 ${
                       status === "correct"
-                        ? "border-secondary text-secondary"
+                        ? "border-[#5E6B45] text-[#4C5738]"
                         : status === "wrong"
-                          ? "border-destructive text-destructive"
+                          ? "border-[#A44A3A] text-[#A44A3A]"
                           : status === "failed"
                             ? isCorrect
-                              ? "border-secondary text-secondary"
-                              : "border-destructive text-destructive line-through"
+                              ? "border-[#5E6B45] text-[#4C5738]"
+                              : "border-[#A44A3A] text-[#A44A3A] line-through"
                             : "border-primary"
                     }`}
                   />
@@ -329,27 +330,27 @@ export function CompleteWordGame({
             />
           ))}
           </span>
-          <span className="text-xs text-muted-foreground ml-1">
+          <span className="rounded-full bg-[#F0E3C6] px-2 py-0.5 text-xs font-medium text-[#7A5F33] ml-1">
             Intentos: {attempts}/{maxAttempts}
           </span>
         </div>
 
         {status === "playing" && (
-          <Button onClick={handleCheck} className="gap-2">
+          <Button onClick={handleCheck} className="gap-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]">
             Verificar
           </Button>
         )}
         {status === "correct" && (
-          <div className="flex items-center gap-2 text-secondary" role="status">
+          <div className="flex items-center gap-2 text-[#4C5738]" role="status">
             <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
             <span className="font-medium">¡Correcto!</span>
-            <Button onClick={handleNext} variant="outline" className="gap-2 ml-2">
+            <Button onClick={handleNext} variant="outline" className="gap-2 ml-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]">
               Siguiente
             </Button>
           </div>
         )}
         {status === "wrong" && (
-          <div className="flex items-center gap-2 text-destructive" role="alert">
+          <div className="flex items-center gap-2 text-[#A44A3A]" role="alert">
             <XCircle className="h-5 w-5" aria-hidden="true" />
             <span className="font-medium">Incorrecto, inténtalo de nuevo</span>
           </div>
