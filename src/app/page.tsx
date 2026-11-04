@@ -51,7 +51,7 @@ function HomeContent() {
 
       <main id="contenido" className="flex-1">
         {/* Hero — bienvenida a la plataforma */}
-        <section data-hero className="relative isolate pb-12 sm:pb-16 pt-28 sm:pt-36 sm:min-h-[92svh]">
+        <section data-hero className="relative isolate pb-12 sm:pb-16 pt-28 sm:pt-36 sm:flex sm:min-h-svh sm:flex-col sm:justify-center">
           <div className="absolute inset-0 bg-gradient-to-b from-[#1B2733]/60 via-[#1B2733]/35 to-[#1B2733]/10 z-10" />
           <div
             className="absolute inset-0 opacity-[0.08] z-0"
@@ -73,7 +73,7 @@ function HomeContent() {
             }}
           />
 
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 text-center z-20">
+          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 text-center z-20">
             <h1
               className="mt-4 text-4xl sm:text-5xl md:text-6xl font-serif font-semibold tracking-tight text-[#F6EEDC]"
               style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.5)" }}
