@@ -50,12 +50,11 @@ function HomeContent() {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
-      <InstallBanner destino="/#instalar" />
 
       <main id="contenido" className="flex-1">
         {/* Hero — bienvenida a la plataforma */}
-        <section className="relative isolate pb-12 sm:pb-16 pt-16 sm:pt-24">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#1B2733]/85 via-[#1B2733]/55 to-[#1B2733]/35 z-10" />
+        <section data-hero className="relative isolate pb-12 sm:pb-16 pt-16 sm:pt-24">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1B2733]/60 via-[#1B2733]/35 to-[#1B2733]/10 z-10" />
           <div
             className="absolute inset-0 opacity-[0.08] z-0"
             style={{
@@ -69,7 +68,7 @@ function HomeContent() {
             alt=""
             fill
             sizes="100vw"
-            className="object-cover opacity-[0.6] z-0"
+            className="object-cover opacity-100 z-0"
             aria-hidden="true"
             onError={(e) => {
               e.currentTarget.style.display = "none";
@@ -78,27 +77,27 @@ function HomeContent() {
 
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 text-center z-20">
             <span
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur"
-              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-[#1B2733]/40 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur"
+              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
             >
               <Sparkles className="h-3 w-3" aria-hidden="true" />
               Plataforma de la lengua Nasa Yuwe
             </span>
             <h1
               className="mt-4 text-4xl sm:text-5xl md:text-6xl font-serif font-semibold tracking-tight text-[#F6EEDC]"
-              style={{ textShadow: "0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)" }}
+              style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.5)" }}
             >
               Bienvenido a Piiyaak
             </h1>
             <p
               className="mt-3 text-lg sm:text-xl text-white font-medium"
-              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.7)" }}
+              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.6)" }}
             >
               Diccionario, juegos y cursos para aprender y preservar el Nasa Yuwe
             </p>
             <p
               className="mt-4 max-w-2xl mx-auto text-base sm:text-lg text-white/90 leading-relaxed"
-              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}
+              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
             >
               Tres caminos en un solo lugar: consulta el diccionario bilingüe,
               practica con juegos didácticos y sigue una ruta de aprendizaje paso
@@ -150,6 +149,7 @@ function HomeContent() {
         </section>
 
         {/* Download para uso sin conexión */}
+        <InstallBanner destino="/#instalar" />
         <DownloadBanner />
 
         {/* Word of the Day */}

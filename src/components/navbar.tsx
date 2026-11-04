@@ -77,6 +77,37 @@ export function NavBar() {
 
   const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "Usuario"
 
+  /** Home hero overlay: while the hero photo is behind the header, the
+   *  header floats frosted over it (ivory items); past the hero it uses
+   *  the standard solid header. Fixed in BOTH home states so the switch
+   *  never shifts layout 56px. Non-home routes keep the sticky header.
+   *  Initial false + sync check in effect: no window read during render,
+   *  so no hydration mismatch. */
+  const isHome = pathname === "/"
+  const [heroTop, setHeroTop] = useState(false)
+  const isHeroTop = isHome && heroTop
+
+  useEffect(() => {
+    if (!isHome) return
+    let raf = 0
+    const check = () => {
+      const hero = document.querySelector("[data-hero]")
+      setHeroTop((hero?.getBoundingClientRect().bottom ?? 0) > 56)
+    }
+    const schedule = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(check)
+    }
+    check()
+    window.addEventListener("scroll", schedule, { passive: true })
+    window.addEventListener("resize", schedule)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener("scroll", schedule)
+      window.removeEventListener("resize", schedule)
+    }
+  }, [isHome])
+
   /** Ruta activa: prefijo exacto (o "/" para la portada). SSR: pathname es null. */
   const isActive = (href: string) =>
     !pathname ? false : href === "/" ? pathname === "/" : pathname.startsWith(href)
@@ -84,12 +115,36 @@ export function NavBar() {
   return (
     <>
       <SkipLink />
-      <header className="sticky top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90">
+      {isHeroTop && (
+        <style>{`@supports not (backdrop-filter: blur(4px)){.navbar-hero-top{background-color:rgb(27 39 51/.9)}}@media (prefers-contrast: more){.navbar-hero-top{background-color:rgb(27 39 51/.9)}}`}</style>
+      )}
+      <header
+        className={
+          isHeroTop
+            ? "fixed inset-x-0 top-0 z-50 h-14 bg-[#1B2733]/25 backdrop-blur-md backdrop-brightness-[.92] border-b border-white/10 motion-safe:transition-[background-color,border-color] motion-safe:duration-300 navbar-hero-top"
+            : isHome
+              ? "fixed inset-x-0 top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90 motion-safe:transition-[background-color,border-color] motion-safe:duration-300"
+              : "sticky top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90"
+        }
+        style={isHeroTop ? { textShadow: "0 1px 3px rgba(0,0,0,.5)" } : undefined}
+      >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
           {/* Logo / App Name — links to home */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <BookOpen className="h-5 w-5 text-primary group-hover:text-primary/80 transition-colors" />
-            <span className="hidden min-[400px]:inline font-serif font-semibold text-lg tracking-tight text-primary group-hover:text-primary/80 transition-colors">
+            <BookOpen
+              className={
+                isHeroTop
+                  ? "h-5 w-5 text-[#F6EEDC]/90 transition-colors group-hover:text-[#F6EEDC]"
+                  : "h-5 w-5 text-primary group-hover:text-primary/80 transition-colors"
+              }
+            />
+            <span
+              className={
+                isHeroTop
+                  ? "hidden min-[400px]:inline font-serif font-semibold text-lg tracking-tight text-[#F6EEDC]/90 transition-colors group-hover:text-[#F6EEDC]"
+                  : "hidden min-[400px]:inline font-serif font-semibold text-lg tracking-tight text-primary group-hover:text-primary/80 transition-colors"
+              }
+            >
               Piiyaak
             </span>
           </Link>
@@ -143,7 +198,11 @@ export function NavBar() {
             {isOnline ? (
               <Badge
                 variant="secondary"
-                className="gap-1.5 text-2xs font-normal bg-secondary/10 text-secondary border border-secondary/20"
+                className={
+                  isHeroTop
+                    ? "gap-1.5 text-2xs font-normal bg-white/10 text-[#F6EEDC] border border-white/20"
+                    : "gap-1.5 text-2xs font-normal bg-secondary/10 text-secondary border border-secondary/20"
+                }
               >
                 <Wifi className="h-3 w-3" />
                 <span className="hidden sm:inline">En línea</span>
@@ -151,9 +210,13 @@ export function NavBar() {
             ) : (
               <Badge
                 variant="secondary"
-                className="gap-1.5 text-2xs font-normal bg-tertiary/10 text-tertiary border border-tertiary/20"
+                className={
+                  isHeroTop
+                    ? "gap-1.5 text-2xs font-normal bg-white/10 text-[#F6EEDC] border border-white/20"
+                    : "gap-1.5 text-2xs font-normal bg-tertiary/10 text-tertiary border border-tertiary/20"
+                }
               >
-                <WifiOff className="h-3 w-3" />
+                <WifiOff className={isHeroTop ? "h-3 w-3 text-amber-300" : "h-3 w-3"} />
                 <span className="hidden sm:inline">Sin conexión</span>
               </Badge>
             )}
@@ -170,9 +233,19 @@ export function NavBar() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground"
+                    className={
+                      isHeroTop
+                        ? "gap-1.5 text-xs sm:text-sm text-[#F6EEDC]/90 hover:text-[#F6EEDC] hover:bg-white/10"
+                        : "gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground"
+                    }
                   >
-                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary shrink-0">
+                    <div
+                      className={
+                        isHeroTop
+                          ? "flex items-center justify-center h-6 w-6 rounded-full bg-white/10 text-[#F6EEDC] shrink-0"
+                          : "flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary shrink-0"
+                      }
+                    >
                       <span className="text-2xs font-bold uppercase">
                         {userName.charAt(0)}
                       </span>
@@ -224,7 +297,11 @@ export function NavBar() {
               <Button
                 variant="default"
                 size="sm"
-                className="gap-1.5 text-xs sm:text-sm bg-primary hover:bg-[#22303D] transition-colors"
+                className={
+                  isHeroTop
+                    ? "gap-1.5 text-xs sm:text-sm bg-[#F6EEDC] text-[#2F3E4E] hover:bg-[#FFF9EC] transition-colors"
+                    : "gap-1.5 text-xs sm:text-sm bg-primary hover:bg-[#22303D] transition-colors"
+                }
                 onClick={() => setAuthModalOpen(true)}
                 aria-label="Iniciar sesión"
               >
@@ -240,7 +317,11 @@ export function NavBar() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-8 text-muted-foreground hover:text-foreground"
+                    className={
+                      isHeroTop
+                        ? "size-8 text-[#F6EEDC]/90 hover:text-[#F6EEDC] hover:bg-white/10"
+                        : "size-8 text-muted-foreground hover:text-foreground"
+                    }
                     onClick={() => setSettingsOpen(true)}
                     aria-label="Configuración"
                   >
