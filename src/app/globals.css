@@ -151,6 +151,21 @@
     background-color: var(--background);
     scrollbar-gutter: stable;
   }
+  /* Radix (react-remove-scroll-bar) compensates the disappearing classic
+     scrollbar by injecting `margin-right: {gap}px !important` on <body>
+     (selector: body[data-scroll-locked]) when a dialog locks scroll. With
+     scrollbar-gutter: stable on <html> that space is already reserved, so
+     the compensation double-counts it: content squeezes 15px (layout
+     jump) and the reserved band doubles (30px) next to dark sections.
+     The gutter already guarantees a constant content width, so the
+     injected compensation is neutralized. The `html` qualifier raises
+     specificity above the runtime-injected `body[data-scroll-locked]`
+     rule, and !important inside @layer base wins by cascade order for
+     important author declarations. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
   /* Paint the reserved 15px gutter as a custom scrollbar (Chromium/Safari):
      ivory track keeps the gutter on-system over dark side content (hero
      photo, slate footer), and the softened-slate thumb reads as part of
