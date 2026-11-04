@@ -125,19 +125,19 @@ function DiccionarioContent() {
         {/* Hero del diccionario */}
         <section className="relative isolate overflow-hidden bg-background pb-12 sm:pb-16 pt-12 sm:pt-16">
           <div
-            className="absolute inset-0 opacity-[0.05]"
+            className="absolute inset-0 opacity-[0.08]"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232563eb' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232F3E4E' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
               backgroundRepeat: "repeat",
             }}
             aria-hidden="true"
           />
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 text-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-outline-variant/30 bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-outline-variant/30 bg-background/60 px-3 py-1 text-xs font-medium text-[#2F3E4E]/70">
               <BookOpen className="h-3 w-3 text-primary" aria-hidden="true" />
               Diccionario bilingüe
             </span>
-            <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold font-serif tracking-tight text-primary">
+            <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-primary">
               Diccionario Nasa Yuwe
             </h1>
             <p className="mt-3 text-lg sm:text-xl font-medium text-foreground">

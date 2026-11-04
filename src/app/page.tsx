@@ -55,11 +55,11 @@ function HomeContent() {
       <main className="flex-1">
         {/* Hero — bienvenida a la plataforma */}
         <section className="relative isolate pb-12 sm:pb-16 pt-16 sm:pt-24">
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/50 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1B2733]/85 via-[#1B2733]/55 to-[#1B2733]/35 z-10" />
           <div
-            className="absolute inset-0 opacity-[0.06] z-0"
+            className="absolute inset-0 opacity-[0.08] z-0"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232563eb' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232F3E4E' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
               backgroundRepeat: "repeat",
             }}
             aria-hidden="true"
@@ -85,7 +85,7 @@ function HomeContent() {
               Plataforma de la lengua Nasa Yuwe
             </span>
             <h1
-              className="mt-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white"
+              className="mt-4 text-4xl sm:text-5xl md:text-6xl font-serif font-semibold tracking-tight text-[#F6EEDC]"
               style={{ textShadow: "0 2px 8px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.6)" }}
             >
               Bienvenido a Piiyaak
@@ -114,16 +114,14 @@ function HomeContent() {
                   <Link
                     key={m.href}
                     href={m.href}
-                    className={`group inline-flex items-center justify-center gap-2.5 rounded-xl px-5 py-3 text-sm font-medium transition-all duration-200 backdrop-blur-md ${
+                    className={`group inline-flex items-center justify-center gap-2.5 rounded-xl px-5 py-3 text-sm font-medium transition-colors duration-200 backdrop-blur-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F6EEDC] ${
                       principal
-                        ? "bg-white/95 text-primary shadow-lg hover:bg-white hover:shadow-xl sm:px-6"
-                        : "border border-white/35 bg-black/25 text-white hover:bg-white/15 hover:border-white/60"
+                        ? "bg-[#F6EEDC] text-[#2F3E4E] shadow-lg hover:bg-[#FFF9EC] hover:shadow-xl sm:px-6"
+                        : "border border-[#F6EEDC]/40 bg-black/25 text-[#F6EEDC] hover:bg-[#F6EEDC]/15 hover:border-[#F6EEDC]/60"
                     }`}
                   >
                     <Icon
-                      className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
-                        principal ? "" : "group-hover:scale-110"
-                      }`}
+                      className="h-4 w-4 shrink-0"
                     />
                     {principal ? m.cta : m.title}
                   </Link>
