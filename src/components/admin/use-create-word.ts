@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useToast } from "@/hooks/use-toast"
 import { type PreviewWordData } from "./WordPreviewModal"
 import { useWordAudio } from "./use-word-audio"
 import { useWordIllustration } from "./use-word-illustration"
@@ -25,8 +26,8 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const { toast } = useToast()
 
   const audio = useWordAudio()
   const illustration = useWordIllustration()
@@ -76,17 +77,14 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
         })
 
         if (res.ok) {
-          resetForm()
-          setSuccessMessage(
+          const message =
             targetStatus === "DRAFT"
               ? "Ficha guardada como borrador"
               : "Ficha guardada y publicada"
-          )
-          setTimeout(() => {
-            setSuccessMessage(null)
-            onOpenChange(false)
-            onCreated()
-          }, 1500)
+          resetForm()
+          toast({ title: message })
+          onOpenChange(false)
+          onCreated()
         } else {
           const data = await res.json()
           setSubmitError(data.message || "Error al crear la ficha")
@@ -97,14 +95,13 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
         setIsSubmitting(false)
       }
     },
-    [form, audioUrl, illustrationUrl, resetForm, onOpenChange, onCreated]
+    [form, audioUrl, illustrationUrl, resetForm, toast, onOpenChange, onCreated]
   )
 
   const handleClose = useCallback(() => {
     if (!isSubmitting) {
       setFieldErrors({})
       setSubmitError(null)
-      setSuccessMessage(null)
       resetForm()
       onOpenChange(false)
     }
@@ -125,7 +122,6 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
     form,
     fieldErrors,
     submitError,
-    successMessage,
     previewOpen,
     setPreviewOpen,
     isSubmitting,

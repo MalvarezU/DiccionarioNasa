@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("@/components/ui/select", () => ({
@@ -18,6 +18,11 @@ vi.mock("@/components/ui/select", () => ({
 vi.mock("./WordPreviewModal", () => ({
   WordPreviewModal: ({ open }: { open: boolean }) =>
     open ? <div data-testid="preview-modal" /> : null,
+}))
+
+const toastMock = vi.fn()
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: vi.fn(() => ({ toast: toastMock })),
 }))
 
 import { EditWordModal, type WordForEdit } from "./EditWordModal"
@@ -102,18 +107,24 @@ describe("EditWordModal", () => {
     )
   })
 
-  it("shows success message after updating", async () => {
+  it("toasts and closes immediately after updating", async () => {
     vi.mocked(global.fetch).mockResolvedValue(
       Response.json({ id: "w1" }) as never
     )
-    renderModal()
+    const { onOpenChange, onSaved } = renderModal()
     const user = userEvent.setup()
     const spanishInput = screen.getByDisplayValue("Casa")
     await user.clear(spanishInput)
     await user.type(spanishInput, "Casita")
     await user.click(screen.getByText("Guardar cambios"))
 
-    expect(await screen.findByText("Ficha actualizada correctamente")).toBeDefined()
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Ficha actualizada correctamente" })
+      )
+    })
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(onSaved).toHaveBeenCalled()
   })
 
   it("shows error on API failure", async () => {
@@ -157,6 +168,23 @@ describe("EditWordModal", () => {
       "/api/admin/words/w1",
       expect.objectContaining({ method: "PATCH" })
     )
+  })
+
+  it("toasts and keeps modal open on status transition", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      Response.json({ id: "w1", status: "PUBLISHED" }) as never
+    )
+    const { onOpenChange, onSaved } = renderModal({ ...mockWord, status: "DRAFT", audioUrl: "/audio/test.wav" })
+    const user = userEvent.setup()
+    await user.click(screen.getByText("Publicar"))
+
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Estado cambiado a "Publicada"' })
+      )
+    })
+    expect(onSaved).toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
   })
 
   it("shows warning dialog when publishing without audio", async () => {

@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("@/components/ui/select", () => ({
@@ -18,6 +18,11 @@ vi.mock("@/components/ui/select", () => ({
 vi.mock("./WordPreviewModal", () => ({
   WordPreviewModal: ({ open }: { open: boolean }) =>
     open ? <div data-testid="preview-modal" /> : null,
+}))
+
+const toastMock = vi.fn()
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: vi.fn(() => ({ toast: toastMock })),
 }))
 
 import { CreateWordModal } from "./CreateWordModal"
@@ -87,17 +92,42 @@ describe("CreateWordModal", () => {
     )
   })
 
-  it("shows success message after creating as draft", async () => {
+  it("toasts and closes immediately after creating as draft", async () => {
     vi.mocked(global.fetch).mockResolvedValue(
       Response.json({ id: "new1" }) as never
     )
-    renderModal()
+    const { onOpenChange, onCreated } = renderModal()
     const user = userEvent.setup()
     await user.type(screen.getByPlaceholderText("palabra en español"), "Casa")
     await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "Yat")
     await user.click(screen.getByText("Guardar como borrador"))
 
-    expect(await screen.findByText("Ficha guardada como borrador")).toBeDefined()
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Ficha guardada como borrador" })
+      )
+    })
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(onCreated).toHaveBeenCalled()
+  })
+
+  it("toasts and closes immediately after creating as published", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      Response.json({ id: "new1" }) as never
+    )
+    const { onOpenChange, onCreated } = renderModal()
+    const user = userEvent.setup()
+    await user.type(screen.getByPlaceholderText("palabra en español"), "Casa")
+    await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "Yat")
+    await user.click(screen.getByText("Guardar y publicar"))
+
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Ficha guardada y publicada" })
+      )
+    })
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(onCreated).toHaveBeenCalled()
   })
 
   it("shows error message when API returns error", async () => {

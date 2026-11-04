@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("next-auth/react", () => ({
@@ -31,6 +31,11 @@ vi.mock("@/lib/admin-utils", async (importOriginal) => {
     WORD_CATEGORIES: [{ value: "sustantivo", label: "Sustantivo" }],
   }
 })
+
+const toastMock = vi.fn()
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: vi.fn(() => ({ toast: toastMock })),
+}))
 
 import { useSession } from "next-auth/react"
 import AdminPalabrasPage from "./page"
@@ -132,28 +137,42 @@ describe("AdminPalabrasPage [F2]", () => {
     expect(screen.getByText(/El campo.*Nasa Yuwe.*es obligatorio/)).toBeDefined()
   })
 
-  it("CreateWordModal submits and shows success", async () => {
+  it("CreateWordModal toasts and closes on draft submit", async () => {
     mockWordsList()
     const user = userEvent.setup()
     render(<AdminPalabrasPage />)
     await user.click(screen.getAllByRole("button", { name: "Nueva ficha" })[0])
     await user.type(screen.getByPlaceholderText("palabra en español"), "sol")
     await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "ate")
-    vi.mocked(fetch).mockResolvedValue(Response.json({ message: "ok" }))
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ message: "ok" }))
     await user.click(screen.getByText("Guardar como borrador"))
-    expect(await screen.findByText("Ficha guardada como borrador")).toBeDefined()
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Ficha guardada como borrador" })
+      )
+    })
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText("palabra en español")).toBeNull()
+    })
   })
 
-  it("CreateWordModal submits and publishes", async () => {
+  it("CreateWordModal toasts and closes on publish", async () => {
     mockWordsList()
     const user = userEvent.setup()
     render(<AdminPalabrasPage />)
     await user.click(screen.getAllByRole("button", { name: "Nueva ficha" })[0])
     await user.type(screen.getByPlaceholderText("palabra en español"), "luna")
     await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "ate")
-    vi.mocked(fetch).mockResolvedValue(Response.json({ message: "ok" }))
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ message: "ok" }))
     await user.click(screen.getByText("Guardar y publicar"))
-    expect(await screen.findByText("Ficha guardada y publicada")).toBeDefined()
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Ficha guardada y publicada" })
+      )
+    })
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText("palabra en español")).toBeNull()
+    })
   })
 
   it("opens ImportCorpusModal and shows format info", async () => {

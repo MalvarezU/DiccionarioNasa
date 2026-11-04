@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
 import { WORD_STATUSES } from "@/lib/admin-utils"
 import { type PreviewWordData } from "./WordPreviewModal"
 import { useWordAudio } from "./use-word-audio"
@@ -36,8 +37,8 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const { toast } = useToast()
 
   const audio = useWordAudio()
   const illustration = useWordIllustration()
@@ -106,12 +107,9 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
           }
         }
 
-        setSuccessMessage("Ficha actualizada correctamente")
-        setTimeout(() => {
-          setSuccessMessage(null)
-          onOpenChange(false)
-          onSaved()
-        }, 1500)
+        toast({ title: "Ficha actualizada correctamente" })
+        onOpenChange(false)
+        onSaved()
       } else {
         setSubmitError(data.error || data.message || "Error al actualizar la ficha")
       }
@@ -120,13 +118,12 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
     } finally {
       setIsSubmitting(false)
     }
-  }, [form, word, originalForm, audioUrl, audioChanged, illustrationUrl, illustrationChanged, onOpenChange, onSaved])
+  }, [form, word, originalForm, audioUrl, audioChanged, illustrationUrl, illustrationChanged, toast, onOpenChange, onSaved])
 
   const handleClose = useCallback(() => {
     if (!isSubmitting && !isTransitioning) {
       setFieldErrors({})
       setSubmitError(null)
-      setSuccessMessage(null)
       onOpenChange(false)
     }
   }, [isSubmitting, isTransitioning, onOpenChange])
@@ -150,11 +147,8 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
         setOriginalForm((prev) => ({ ...prev, status: newStatus }))
 
         const statusLabel = WORD_STATUSES.find((s) => s.value === newStatus)?.label || newStatus
-        setSuccessMessage(`Estado cambiado a "${statusLabel}"`)
-        setTimeout(() => {
-          setSuccessMessage(null)
-          onSaved()
-        }, 1500)
+        toast({ title: `Estado cambiado a "${statusLabel}"` })
+        onSaved()
       } else {
         setSubmitError(data.error || 'Error al cambiar el estado')
       }
@@ -165,7 +159,7 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
       setShowPublishNoAudioWarning(false)
       setPendingStatusTransition(null)
     }
-  }, [word, onSaved])
+  }, [word, toast, onSaved])
 
   const handleStatusTransition = useCallback(async (newStatus: string) => {
     if (!word) return
@@ -194,7 +188,6 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
     form,
     fieldErrors,
     submitError,
-    successMessage,
     previewOpen,
     setPreviewOpen,
     isSubmitting,

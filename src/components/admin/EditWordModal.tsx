@@ -27,10 +27,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -72,7 +68,6 @@ export function EditWordModal({
     form,
     fieldErrors,
     submitError,
-    successMessage,
     previewOpen,
     setPreviewOpen,
     isSubmitting,
@@ -106,17 +101,6 @@ export function EditWordModal({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-        {successMessage && (
-          <Card className="border border-secondary/30 bg-secondary/5 mb-4">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-secondary shrink-0" />
-                <p className="text-sm font-medium text-secondary">{successMessage}</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
