@@ -67,10 +67,6 @@ export function useAdminStats() {
     fetchStats(true)
   }, [fetchStats])
 
-  const refreshAfterMutation = useCallback(() => {
-    fetchStats(true)
-  }, [fetchStats])
-
   const statusSum = useMemo(() => {
     if (!stats) return 0
     return stats.publishedCount + stats.draftCount + stats.archivedCount
@@ -97,6 +93,5 @@ export function useAdminStats() {
     sumMatchesTotal,
     publishedWithAudio,
     handleRefresh,
-    refreshAfterMutation,
   }
 }
