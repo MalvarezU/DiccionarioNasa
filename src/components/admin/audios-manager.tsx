@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Mic, Loader2, Search, Trash2, UploadCloud, Volume2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "./confirm-dialog"
 import { WordUploadDialog } from "./word-upload-dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -75,6 +76,7 @@ export function AudiosManager() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingWord, setPendingWord] = useState<Row | null>(null)
+  const [confirmQuitar, setConfirmQuitar] = useState<{ id: string; spanish: string } | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [bulk, setBulk] = useState<BulkRow[]>([])
@@ -316,7 +318,8 @@ export function AudiosManager() {
                   variant="ghost"
                   size="sm"
                   disabled={saving}
-                  onClick={() => void saveAudio(w.id, null)}
+                  onClick={() => setConfirmQuitar({ id: w.id, spanish: w.spanish })}
+                  aria-label={`Quitar el audio de ${w.spanish}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -470,13 +473,13 @@ export function AudiosManager() {
                       className={
                         "w-24 shrink-0 text-right text-xs font-medium " +
                         (b.status === "ok"
-                          ? "text-emerald-600"
+                          ? "text-secondary"
                           : b.status === "error"
                             ? "text-destructive"
                             : b.status === "subiendo"
-                              ? "text-blue-600"
+                              ? "text-primary"
                               : accion === "omitir" && b.wordId
-                                ? "text-amber-600"
+                                ? "text-tertiary"
                                 : "text-muted-foreground")
                       }
                     >
@@ -510,6 +513,17 @@ export function AudiosManager() {
           </p>
         )}
       </div>
+      <ConfirmDialog
+        open={confirmQuitar !== null}
+        onOpenChange={(v) => !v && setConfirmQuitar(null)}
+        titulo={confirmQuitar ? `¿Quitar el audio de "${confirmQuitar.spanish}"?` : ""}
+        descripcion="El audio se desasocia de la palabra. Esta acción no se puede deshacer."
+        accionLabel="Quitar"
+        onConfirm={() => {
+          if (confirmQuitar) void saveAudio(confirmQuitar.id, null)
+          setConfirmQuitar(null)
+        }}
+      />
     </div>
   )
 }

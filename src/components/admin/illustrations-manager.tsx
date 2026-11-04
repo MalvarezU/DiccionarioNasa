@@ -390,8 +390,9 @@ export function IllustrationsManager() {
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold">Subida en lote</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Seleccioná varios audios: el nombre (sin extensión) debe coincidir con el español o
-              nasa yuwe de la ficha. Se comprimen a Ogg 24kbps de a uno.
+              Seleccioná varias imágenes: el nombre (sin extensión) debe coincidir con el español
+              o nasa yuwe de la ficha. Se recortan a cuadrado 512×512 y se comprimen a WebP de a
+              una.
             </p>
           </div>
         </div>
@@ -486,13 +487,13 @@ export function IllustrationsManager() {
                       className={
                         "w-24 shrink-0 text-right text-xs font-medium " +
                         (b.status === "ok"
-                          ? "text-emerald-600"
+                          ? "text-secondary"
                           : b.status === "error"
                             ? "text-destructive"
                             : b.status === "subiendo"
-                              ? "text-blue-600"
+                              ? "text-primary"
                               : accion === "omitir" && b.wordId
-                                ? "text-amber-600"
+                                ? "text-tertiary"
                                 : "text-muted-foreground")
                       }
                     >
