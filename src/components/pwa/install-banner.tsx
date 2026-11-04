@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Download, X, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useInstallPrompt } from "./use-install-prompt"
+import { useMounted } from "@/hooks/use-mounted"
 
 const DISMISS_KEY = "pwa-banner-dismissed-at"
 const REAPARECE_MS = 30 * 24 * 60 * 60 * 1000 // 30 días
@@ -19,19 +20,22 @@ const REAPARECE_MS = 30 * 24 * 60 * 60 * 1000 // 30 días
  */
 export function InstallBanner({ destino = "/#instalar" }: { destino?: string }) {
   const { instalPromptDisponible, instalada, instalar } = useInstallPrompt()
-  // El dismiss se lee una sola vez al montar (sin efecto: evita renders en cascada)
-  const [oculto, setOculto] = useState(() => {
-    if (typeof window === "undefined") return true
-    try {
-      const ts = Number(localStorage.getItem(DISMISS_KEY) ?? "0")
-      return Date.now() - ts < REAPARECE_MS
-    } catch {
-      return false
-    }
-  })
+  const mounted = useMounted()
+  const [oculto, setOculto] = useState(false)
   const router = useRouter()
 
-  if (oculto || instalada) return null
+  useEffect(() => {
+    if (!mounted) return
+    try {
+      const ts = Number(localStorage.getItem(DISMISS_KEY) ?? "0")
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (Date.now() - ts < REAPARECE_MS) setOculto(true)
+    } catch {
+      // keep false
+    }
+  }, [mounted])
+
+  if (!mounted || oculto || instalada) return null
 
   const verComo = () => {
     if (destino.startsWith("/#")) {
