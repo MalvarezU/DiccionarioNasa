@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AdminBreadcrumbs } from "./admin-breadcrumbs"
 
 interface NavItem {
   title: string
@@ -134,12 +135,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
-          <SidebarTrigger />
+          <SidebarTrigger aria-label="Abrir o cerrar el menú lateral" />
           <Separator orientation="vertical" className="h-6" />
           <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-            <p className="truncate text-sm font-medium text-muted-foreground">
-              Panel de administración
-            </p>
+            <AdminBreadcrumbs />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               {status === "loading" ? (
                 <span className="flex items-center gap-2" aria-busy="true" aria-label="Cargando sesión">

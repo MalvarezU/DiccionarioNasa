@@ -8,10 +8,12 @@ export interface Crumb {
 /**
  * Migas de pan de las páginas públicas (Inicio / Cursos / …).
  * Enlace en oliva, página actual en pizarra.
+ * `className` permite ajustar el nav al contenedor (el admin lo usa
+ * sin margen y con scroll horizontal seguro en pantallas angostas).
  */
-export function Breadcrumbs({ items }: { items: Crumb[] }) {
+export function Breadcrumbs({ items, className = "mb-4" }: { items: Crumb[]; className?: string }) {
   return (
-    <nav aria-label="breadcrumb" className="mb-4">
+    <nav aria-label="breadcrumb" className={className}>
       <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm">
         {items.map((item, i) => {
           const isLast = i === items.length - 1

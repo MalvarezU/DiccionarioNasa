@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("next-auth/react", () => ({
   useSession: vi.fn(),
+}))
+
+const replaceMock = vi.fn()
+let mockSearchParams = new URLSearchParams()
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/admin/palabras",
+  useRouter: () => ({ replace: replaceMock }),
+  useSearchParams: () => mockSearchParams,
 }))
 
 vi.mock("@/components/ui/select", () => ({
@@ -50,6 +59,7 @@ function mockFetchWords(words: typeof mockWords) {
 describe("AdminPalabrasPage [F2]", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchParams = new URLSearchParams()
     global.fetch = vi.fn()
     vi.mocked(useSession).mockReturnValue({
       data: { user: { role: "admin" } as never, expires: "2099" },
@@ -73,7 +83,7 @@ describe("AdminPalabrasPage [F2]", () => {
     const user = userEvent.setup()
     render(<AdminPalabrasPage />)
 
-    expect(await screen.findByText("No se encontraron palabras")).toBeDefined()
+    expect(await screen.findByText("No hay fichas todavía")).toBeDefined()
     const botones = screen.getAllByRole("button", { name: "Nueva ficha" })
     expect(botones.length).toBeGreaterThan(0)
     await user.click(botones[0])
@@ -192,5 +202,58 @@ describe("AdminPalabrasPage [F2]", () => {
     expect(await screen.findByText("Editar ficha")).toBeDefined()
     expect(screen.getByDisplayValue("agua")).toBeDefined()
     expect(screen.getByDisplayValue("yu'")).toBeDefined()
+  })
+
+  // ═══════════════════════════════════════
+  // Fase 4: filtros y paginación persisten en la URL
+  // ═══════════════════════════════════════
+
+  it("inicializa la vista desde ?q/?filtro/?page", async () => {
+    mockSearchParams = new URLSearchParams("q=Casa&filtro=PUBLISHED&page=2")
+    mockFetchWords(mockWords)
+    render(<AdminPalabrasPage />)
+
+    expect(await screen.findByText("Casa")).toBeDefined()
+    const url = String(vi.mocked(fetch).mock.calls[0][0])
+    expect(url).toContain("page=2")
+    expect(url).toContain("search=Casa")
+    expect(url).toContain("status=PUBLISHED")
+    expect(screen.getByPlaceholderText("Buscar palabra...")).toHaveProperty("value", "Casa")
+  })
+
+  it("ignora valores inválidos de la URL y cae a los defaults", async () => {
+    mockSearchParams = new URLSearchParams("filtro=XXX&page=zzz")
+    mockFetchWords(mockWords)
+    render(<AdminPalabrasPage />)
+
+    expect(await screen.findByText("Casa")).toBeDefined()
+    const url = String(vi.mocked(fetch).mock.calls[0][0])
+    expect(url).toContain("page=1")
+    expect(url).not.toContain("status=")
+    expect(url).not.toContain("search=")
+  })
+
+  it("Buscar espeja la vista en la URL con replace", async () => {
+    mockFetchWords(mockWords)
+    render(<AdminPalabrasPage />)
+    expect(await screen.findByText("Casa")).toBeDefined()
+
+    fireEvent.change(screen.getByPlaceholderText("Buscar palabra..."), {
+      target: { value: "sol" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Buscar" }))
+
+    expect(replaceMock).toHaveBeenCalledWith("/admin/palabras?q=sol", { scroll: false })
+    const lastUrl = String(vi.mocked(fetch).mock.calls.at(-1)?.[0])
+    expect(lastUrl).toContain("search=sol")
+  })
+
+  it("Limpiar filtros deja la URL sin query", async () => {
+    mockSearchParams = new URLSearchParams("q=Casa")
+    mockFetchWords([])
+    render(<AdminPalabrasPage />)
+
+    fireEvent.click(await screen.findByRole("button", { name: "Limpiar búsqueda y filtro" }))
+    expect(replaceMock).toHaveBeenCalledWith("/admin/palabras", { scroll: false })
   })
 })

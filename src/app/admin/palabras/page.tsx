@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { useSession } from "next-auth/react"
 import { Plus, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { CreateWordModal } from "@/components/admin/CreateWordModal"
 import { ImportCorpusModal } from "@/components/admin/ImportCorpusModal"
 import { EditWordModal } from "@/components/admin/EditWordModal"
 import { WordListContent } from "@/components/admin/word-list-content"
+import { WordTableSkeleton } from "@/components/skeletons"
 import { type WordForEdit } from "@/components/admin/word-form"
 
 /**
@@ -48,21 +49,24 @@ export default function AdminPalabrasPage() {
         }
       />
 
-      <WordListContent
-        key={listKey}
-        onEditWord={(w) => {
-          setEditingWord(w)
-          setEditOpen(true)
-        }}
-        onBulkActionDone={refreshList}
-        canBulkArchive={isAdmin}
-        emptyAction={
-          <Button onClick={() => setCreateOpen(true)} className="mt-2 gap-2" size="sm">
-            <Plus className="h-4 w-4" />
-            Nueva ficha
-          </Button>
-        }
-      />
+      {/* Suspense: useWordList lee ?q/?filtro/?page con useSearchParams */}
+      <Suspense fallback={<WordTableSkeleton rows={5} />}>
+        <WordListContent
+          key={listKey}
+          onEditWord={(w) => {
+            setEditingWord(w)
+            setEditOpen(true)
+          }}
+          onBulkActionDone={refreshList}
+          canBulkArchive={isAdmin}
+          emptyAction={
+            <Button onClick={() => setCreateOpen(true)} className="mt-2 gap-2" size="sm">
+              <Plus className="h-4 w-4" />
+              Nueva ficha
+            </Button>
+          }
+        />
+      </Suspense>
 
       <CreateWordModal open={createOpen} onOpenChange={setCreateOpen} onCreated={refreshList} />
       <ImportCorpusModal open={importOpen} onOpenChange={setImportOpen} onImported={refreshList} />
