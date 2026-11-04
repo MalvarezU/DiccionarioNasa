@@ -12,7 +12,6 @@ import {
   Trash2,
   Heart,
   Clock,
-  AlertTriangle,
 } from "lucide-react"
 import {
   Card,
@@ -33,16 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { ConfirmDialog } from "@/components/admin/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 
@@ -340,34 +330,21 @@ export function UserManagementSection() {
       </Card>
 
       {/* Delete confirmation dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              ¿Eliminar este usuario?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Se eliminará permanentemente la cuenta de{" "}
-              <strong>{deleteTarget?.email}</strong> junto con todos sus favoritos e historial.
-              Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Eliminar usuario
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        titulo="¿Eliminar este usuario?"
+        descripcion={
+          <>
+            Se eliminará permanentemente la cuenta de{" "}
+            <strong>{deleteTarget?.email}</strong> junto con todos sus favoritos e historial.
+            Esta acción no se puede deshacer.
+          </>
+        }
+        accionLabel="Eliminar usuario"
+        processing={isDeleting}
+        onConfirm={handleDelete}
+      />
     </>
   )
 }
