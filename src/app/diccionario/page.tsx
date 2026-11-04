@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import {
   Leaf,
@@ -16,17 +16,11 @@ import { WordDetailCard } from "@/components/word-detail-card";
 import { SiteFooter } from "@/components/site-footer";
 import { ExploreSection } from "@/components/explore-section";
 import { WordOfDayCard } from "@/components/word-of-day-card";
+import { WordCard } from "@/components/word-card";
 import { FavoritesHistoryPanel } from "@/components/favorites-history-panel";
 import { recordLocalHistory } from "@/lib/demo-storage";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { FeaturedWordsGridSkeleton } from "@/components/skeletons";
+import { WordCardSkeleton } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FeaturedWord {
@@ -36,6 +30,7 @@ interface FeaturedWord {
   pronunciation: string | null;
   category: string | null;
   culturalContext: string | null;
+  audioUrl: string | null;
 }
 
 type TabType = "featured" | "explore";
@@ -53,6 +48,28 @@ function DiccionarioContent() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<"favorites" | "history">("favorites");
 
+  // Single audio at a time across featured cards
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const featuredGridRef = useRef<HTMLDivElement | null>(null);
+
+  const pauseGridAudio = useCallback((exceptId: string | null) => {
+    featuredGridRef.current
+      ?.querySelectorAll("audio")
+      .forEach((el) => {
+        if (el.getAttribute("data-word-id") !== exceptId) el.pause();
+      });
+  }, []);
+
+  const handlePlayState = useCallback(
+    (id: string | null) => {
+      setPlayingId(id);
+      // Pause every other card. Their own onPause handler syncs the icon
+      // locally without notifying back, so there is no feedback loop.
+      if (id) pauseGridAudio(id);
+    },
+    [pauseGridAudio]
+  );
+
   // Fetch featured words
   useEffect(() => {
     const fetchFeatured = async () => {
@@ -69,8 +86,13 @@ function DiccionarioContent() {
     fetchFeatured();
   }, []);
 
-  const handleWordClick = (word: FeaturedWord) => {
-    setSelectedWordId(word.id);
+  const handleWordClick = (wordId: string) => {
+    // Stop featured audio before opening the detail modal
+    if (playingId) {
+      pauseGridAudio(null);
+      setPlayingId(null);
+    }
+    setSelectedWordId(wordId);
     setDetailOpen(true);
   };
 
@@ -210,49 +232,26 @@ function DiccionarioContent() {
               </div>
 
               {featuredWords.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                <div
+                  ref={featuredGridRef}
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+                >
                   {featuredWords.map((word) => (
-                    <Card
+                    <WordCard
                       key={word.id}
-                      className="group cursor-pointer transition-all duration-200 bg-surface-container-low border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
-                      onClick={() => handleWordClick(word)}
-                    >
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="font-serif text-lg text-primary group-hover:text-primary/80 transition-colors">
-                            {word.nasaYuwe}
-                          </CardTitle>
-                          {word.category && (
-                            <Badge
-                              variant="secondary"
-                              className="text-2xs shrink-0 px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
-                            >
-                              {word.category}
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <p className="text-sm font-medium text-foreground">
-                          {word.spanish}
-                        </p>
-                        {word.pronunciation && (
-                          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                            <Volume2 className="h-3 w-3 text-secondary" />
-                            [{word.pronunciation}]
-                          </p>
-                        )}
-                        {word.culturalContext && (
-                          <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                            {word.culturalContext}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
+                      word={word}
+                      variant="grid"
+                      onOpen={handleWordClick}
+                      onPlayState={handlePlayState}
+                    />
                   ))}
                 </div>
               ) : (
-                <FeaturedWordsGridSkeleton count={6} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <WordCardSkeleton key={i} />
+                  ))}
+                </div>
               )}
             </TabsContent>
 

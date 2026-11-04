@@ -269,6 +269,31 @@ function FeaturedWordsGridSkeleton({ count = 6 }: { count?: number }) {
   )
 }
 
+/**
+ * Réplica de `WordCard` (variante grid): badge de categoría + botón de
+ * audio de 40px en la fila superior, título serif de 28px en Nasa Yuwe,
+ * palabra en español y línea de pronunciación.
+ */
+function WordCardSkeleton() {
+  return (
+    <div
+      data-slot="skeleton-word-card"
+      data-testid="skeleton-word-card"
+      className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+      </div>
+      <div className="mt-3 space-y-2">
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+    </div>
+  )
+}
+
 /** Lista de historial: grupos de fecha con filas. */
 function HistorySkeleton({ count = 5 }: { count?: number }) {
   return (
@@ -653,6 +678,7 @@ export {
   StatsGridSkeleton,
   WordDetailSkeleton,
   WordResultSkeleton,
+  WordCardSkeleton,
   WordTableSkeleton,
   WordTableRowSkeleton,
 }
