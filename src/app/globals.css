@@ -140,6 +140,46 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Reserve the scrollbar gutter on the root element so opening a Radix
+     dialog (body scroll-lock removes the classic scrollbar) never widens
+     the viewport: no layout jump, and the fixed header stays aligned with
+     the page content. The ivory page background on <html> (instead of the
+     browser default white) keeps the gutter and overscroll areas on-system
+     for every dialog, not just settings. Scroll-lock itself is untouched —
+     the background stays non-scrollable while a modal is open. */
+  html {
+    background-color: var(--background);
+    scrollbar-gutter: stable;
+  }
+  /* Paint the reserved 15px gutter as a custom scrollbar (Chromium/Safari):
+     ivory track keeps the gutter on-system over dark side content (hero
+     photo, slate footer), and the softened-slate thumb reads as part of
+     the palette. Thumb #6e7a88 is a desaturated mix toward slate #2f3e4e
+     (blue undertone, not neutral gray) with 3.8:1 contrast on ivory
+     #f6eedc — passes 3:1 non-text. No transitions by design, so there is
+     nothing for prefers-reduced-motion to neutralize. */
+  ::-webkit-scrollbar {
+    width: 15px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #6e7a88;
+    border-radius: 999px;
+    border: 3px solid var(--background);
+  }
+  /* Firefox fallback for the painted gutter: same thumb/track pair.
+     Kept out of Chromium's reach on purpose — when `scrollbar-width` is
+     anything but `auto`, Chromium drops `::-webkit-scrollbar` rendering
+     entirely, which would unpaint the 15px gutter. The `@supports not
+     selector(...)` gate is only true where the webkit pseudos don't exist. */
+  @supports not selector(::-webkit-scrollbar) {
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: #6e7a88 var(--background);
+    }
+  }
   body {
     @apply bg-background text-foreground;
   }
