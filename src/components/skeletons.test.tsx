@@ -6,6 +6,8 @@ import {
   CourseGridSkeleton,
   ExploreListSkeleton,
   FavoritesGridSkeleton,
+  FeaturedWordCardSkeleton,
+  FeaturedWordsGridSkeleton,
   HistorySkeleton,
   HomeSkeleton,
   SearchResultsSkeleton,
@@ -28,6 +30,8 @@ describe("skeletons", () => {
       [<CourseGridSkeleton key="c" />, "skeleton-course-grid"],
       [<ExploreListSkeleton key="d" />, "skeleton-explore-list"],
       [<FavoritesGridSkeleton key="e" />, "skeleton-favorites-grid"],
+      [<FeaturedWordCardSkeleton key="e2" />, "skeleton-featured-word-card"],
+      [<FeaturedWordsGridSkeleton key="e3" />, "skeleton-featured-words-grid"],
       [<HistorySkeleton key="f" />, "skeleton-history"],
       [<SearchResultsSkeleton key="g" />, "skeleton-search-results"],
       [<WordDetailSkeleton key="h" />, "skeleton-word-detail"],
@@ -52,6 +56,9 @@ describe("skeletons", () => {
 
     const { container: favs } = render(<FavoritesGridSkeleton count={8} />)
     expect(favs.querySelectorAll('[data-slot="skeleton-favorite-card"]')).toHaveLength(8)
+
+    const { container: destacadas } = render(<FeaturedWordsGridSkeleton count={6} />)
+    expect(destacadas.querySelectorAll('[data-slot="skeleton-featured-word-card"]')).toHaveLength(6)
 
     const { container: tabla } = render(<WordTableSkeleton rows={5} />)
     expect(tabla.querySelectorAll('[data-slot="skeleton-table-row"]')).toHaveLength(5)

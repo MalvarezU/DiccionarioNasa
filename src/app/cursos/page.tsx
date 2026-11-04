@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { GraduationCap } from "lucide-react"
 import { NavBar } from "@/components/navbar"
 import { CourseCard, type CourseSummary } from "@/components/cursos/course-card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { CourseListSkeleton } from "@/components/skeletons"
 
 export default function CursosPage() {
   const [courses, setCourses] = useState<CourseSummary[] | null>(null)
@@ -42,11 +42,7 @@ export default function CursosPage() {
         </p>
 
         {courses === null ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-busy="true" aria-label="Cargando cursos">
-            {[0, 1, 2].map((i) => (
-              <Skeleton key={i} className="h-48 rounded-xl" />
-            ))}
-          </div>
+          <CourseListSkeleton />
         ) : courses.length === 0 ? (
           <p className="text-muted-foreground">
             Aún no hay cursos publicados. Vuelve pronto.

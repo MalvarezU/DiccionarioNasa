@@ -160,7 +160,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
             <Filter className="h-4 w-4" />
             Filtrar por categoría
             {selectedCategory && (
-              <Badge variant="secondary" className="text-2xs px-1.5 py-0 h-4">
+              <Badge variant="secondary" className="text-2xs px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20">
                 {getCategoryDisplay(selectedCategory)}
               </Badge>
             )}
@@ -383,7 +383,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                                     <Badge
                                       key={cat}
                                       variant="secondary"
-                                      className="text-2xs px-1 py-0 h-3.5 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
+                                      className="text-2xs px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
                                     >
                                       {getCategoryDisplay(cat)}
                                     </Badge>

@@ -230,6 +230,45 @@ function FavoritesGridSkeleton({ count = 4 }: { count?: number }) {
   )
 }
 
+/**
+ * Réplica de la tarjeta de Destacadas: título serif en Nasa Yuwe, badge de
+ * categoría, palabra en español, pronunciación y contexto cultural.
+ */
+function FeaturedWordCardSkeleton() {
+  return (
+    <div
+      data-slot="skeleton-featured-word-card"
+      className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-4"
+    >
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-4/5" />
+      </div>
+    </div>
+  )
+}
+
+/** Rejilla de Destacadas: mismas columnas y gaps que la grilla real. */
+function FeaturedWordsGridSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div
+      data-slot="skeleton-featured-words-grid"
+      data-testid="skeleton-featured-words-grid"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3"
+    >
+      {Array.from({ length: count }, (_, i) => (
+        <FeaturedWordCardSkeleton key={i} />
+      ))}
+    </div>
+  )
+}
+
 /** Lista de historial: grupos de fecha con filas. */
 function HistorySkeleton({ count = 5 }: { count?: number }) {
   return (
@@ -600,6 +639,8 @@ export {
   CourseListSkeleton,
   CoursePlayerSkeleton,
   ExploreListSkeleton,
+  FeaturedWordCardSkeleton,
+  FeaturedWordsGridSkeleton,
   GameBoardSkeleton,
   GameCardSkeleton,
   GamesHomeSkeleton,

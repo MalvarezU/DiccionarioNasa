@@ -12,7 +12,7 @@ const JUEGOS = [
     title: "Flashcards",
     description:
       "Se muestra una palabra y eliges la traducción correcta entre 4 opciones. ¡Racha de aciertos!",
-    color: "from-primary to-primary-container",
+    color: "bg-primary",
     locked: false,
   },
   {
@@ -21,7 +21,7 @@ const JUEGOS = [
     title: "Memoria",
     description:
       "Voltea las cartas y encuentra las parejas entre palabras en español y Nasa Yuwe.",
-    color: "from-secondary to-secondary-container",
+    color: "bg-secondary",
     locked: false,
   },
   {
@@ -30,7 +30,7 @@ const JUEGOS = [
     title: "Completar palabra",
     description:
       "Escribe las letras que faltan para completar la palabra. ¡Tienes 3 intentos!",
-    color: "from-tertiary to-tertiary-container",
+    color: "bg-tertiary",
     locked: false,
   },
 ] as const
@@ -64,13 +64,13 @@ export default function JuegosPage() {
                 className={`transition-all ${
                   juego.locked
                     ? "opacity-60"
-                    : "group cursor-pointer hover:shadow-lg hover:-translate-y-1"
+                    : "group cursor-pointer hover:shadow-md hover:border-primary/40"
                 }`}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-3">
                     <div
-                      className={`flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${juego.color} mb-3`}
+                      className={`flex items-center justify-center w-14 h-14 rounded-2xl ${juego.color} mb-3`}
                     >
                       <Icon className="h-7 w-7 text-white" />
                     </div>
@@ -101,7 +101,7 @@ export default function JuegosPage() {
                   ) : (
                     <Button
                       variant="ghost"
-                      className="mt-4 gap-1.5 px-0 text-primary hover:text-primary/80 hover:bg-transparent group-hover:gap-2.5 transition-all"
+                      className="mt-4 gap-1.5 px-0 text-primary hover:text-primary/80 hover:bg-transparent"
                     >
                       Jugar ahora
                       <ArrowRight className="h-4 w-4" />

@@ -276,7 +276,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
                 </span>
               )}
               {wordData.category && (
-                <Badge variant="secondary" className="text-2xs px-1.5 py-0 h-4 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors">
+                <Badge variant="secondary" className="text-2xs px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20">
                   {wordData.category}
                 </Badge>
               )}

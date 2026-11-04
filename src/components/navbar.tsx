@@ -209,7 +209,7 @@ export function NavBar() {
               <Button
                 variant="default"
                 size="sm"
-                className="gap-1.5 text-xs sm:text-sm bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity"
+                className="gap-1.5 text-xs sm:text-sm bg-primary hover:bg-[#22303D] transition-colors"
                 onClick={() => setAuthModalOpen(true)}
               >
                 <LogIn className="h-4 w-4" />

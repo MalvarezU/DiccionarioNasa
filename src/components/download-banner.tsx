@@ -207,7 +207,7 @@ export function DownloadBanner() {
             <Button
               size="sm"
               onClick={handleDownload}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="bg-primary hover:bg-[#22303D] text-primary-foreground"
             >
               <Download className="size-4" />
               <span className="hidden sm:inline">Descargar</span>

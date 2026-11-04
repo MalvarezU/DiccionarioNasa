@@ -26,6 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FeaturedWordsGridSkeleton } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FeaturedWord {
@@ -201,7 +202,7 @@ function DiccionarioContent() {
                   {featuredWords.map((word) => (
                     <Card
                       key={word.id}
-                      className="group cursor-pointer transition-all duration-200 bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
+                      className="group cursor-pointer transition-all duration-200 bg-surface-container-low border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
                       onClick={() => handleWordClick(word)}
                     >
                       <CardHeader className="pb-2">
@@ -212,7 +213,7 @@ function DiccionarioContent() {
                           {word.category && (
                             <Badge
                               variant="secondary"
-                              className="text-2xs shrink-0 bg-tertiary/10 text-tertiary border border-tertiary/20 hover:bg-tertiary-fixed hover:text-foreground transition-colors"
+                              className="text-2xs shrink-0 px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
                             >
                               {word.category}
                             </Badge>
@@ -239,9 +240,7 @@ function DiccionarioContent() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">Cargando palabras...</p>
-                </div>
+                <FeaturedWordsGridSkeleton count={6} />
               )}
             </TabsContent>
 

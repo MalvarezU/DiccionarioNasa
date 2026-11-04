@@ -9,7 +9,7 @@ import { NavBar } from "@/components/navbar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Skeleton } from "@/components/ui/skeleton"
+import { CoursePlayerSkeleton } from "@/components/skeletons"
 import { ModuleAccordion, type RealModule } from "@/components/cursos/module-accordion"
 import {
   fetchWordsByIds,
@@ -181,9 +181,7 @@ export default function CursoDetailPage({
       <div className="min-h-screen flex flex-col">
         <NavBar />
         <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8" aria-busy="true" aria-label="Cargando curso">
-          <Skeleton className="h-10 w-2/3 rounded" />
-          <Skeleton className="mt-4 h-4 w-full rounded" />
-          <Skeleton className="mt-8 h-40 rounded-xl" />
+          <CoursePlayerSkeleton />
         </main>
       </div>
     )
@@ -215,7 +213,7 @@ export default function CursoDetailPage({
         {/* Header del curso */}
         <div className="space-y-3 mb-8">
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-container">
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary">
               <GraduationCap className="h-6 w-6 text-white" />
             </div>
             <div>

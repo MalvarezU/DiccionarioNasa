@@ -221,8 +221,8 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               sobreOscuro
                 ? "h-14 text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-white placeholder:text-white/70 border-white/30 hover:border-white/60 focus-visible:border-white focus-visible:ring-white/30"
                 : esGrande
-                  ? "h-14 text-lg rounded-xl pr-10 bg-surface-container-low border shadow-md focus-visible:border-primary/60 focus-visible:ring-primary/20 text-foreground placeholder:text-muted-foreground focus-visible:shadow-lg"
-                  : "h-10 pr-9 bg-surface-container-low border-outline-variant/20 focus-visible:border-primary/50 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:shadow-md"
+                  ? "h-14 text-lg rounded-xl pr-10 bg-surface-container-low border shadow-md focus-visible:border-secondary/60 focus-visible:ring-secondary/25 text-foreground placeholder:text-muted-foreground focus-visible:shadow-lg"
+                  : "h-10 pr-9 bg-surface-container-low border-border focus-visible:border-secondary/60 focus-visible:ring-secondary/25 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:shadow-md"
             }`}
             aria-label="Buscar palabras en el diccionario"
             aria-expanded={showDropdown}
@@ -290,7 +290,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                 <Button
                   variant="default"
                   size="sm"
-                  className="gap-1.5 bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity"
+                  className="gap-1.5 bg-primary hover:bg-[#22303D] transition-colors"
                   disabled={!isOnline}
                   onClick={() => {
                     setSuggestOpen(true);
@@ -353,7 +353,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                         {result.category && (
                           <Badge
                             variant="secondary"
-                            className="text-2xs px-1.5 py-0 h-4 bg-tertiary/10 text-tertiary border border-tertiary/20"
+                            className="text-2xs px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
                           >
                             {result.category}
                           </Badge>

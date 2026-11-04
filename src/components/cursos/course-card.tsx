@@ -26,7 +26,7 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
     <Card
       className={`transition-all ${
         navEnabled
-          ? "group cursor-pointer hover:shadow-lg hover:-translate-y-1"
+          ? "group cursor-pointer hover:shadow-md hover:border-primary/40"
           : "opacity-70"
       }`}
     >
@@ -44,7 +44,7 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
                     className="w-12 h-12 rounded-xl object-cover border border-outline-variant/20 shrink-0"
                   />
                 ) : (
-                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-container">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary">
                     <GraduationCap className="h-6 w-6 text-white" />
                   </div>
                 )}
@@ -74,7 +74,7 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
             <div className="flex items-center justify-end">
               <Button
                 variant="ghost"
-                className="gap-1.5 px-0 text-primary hover:text-primary/80 hover:bg-transparent group-hover:gap-2.5 transition-all"
+                className="gap-1.5 px-0 text-primary hover:text-primary/80 hover:bg-transparent"
               >
                 {course.progressPct !== null && course.progressPct > 0 ? "Continuar" : "Comenzar"}
                 <ArrowRight className="h-4 w-4" />
