@@ -1,7 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Mic, Loader2, Search, Trash2, UploadCloud, Volume2 } from "lucide-react"
+import { Mic, Search, Trash2, Volume2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "./confirm-dialog"
 import { WordUploadDialog } from "./word-upload-dialog"
@@ -9,54 +8,33 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { AudioPicker } from "@/components/media/audio-picker"
 import { compressToOpus } from "@/lib/audio/compress-audio"
-import { matchIllustrationFiles } from "@/lib/media/bulk-match"
 import {
-  bulkActionFor,
-  type BulkPolicy,
-  type BulkRowDecision,
-} from "@/lib/media/bulk-policy"
+  useMediaWordsManager,
+  type MediaManagerConfig,
+} from "./use-media-words-manager"
+import { MediaBulkCard, type MediaBulkCardTexts } from "./media-bulk-card"
 
-type Row = {
-  id: string
-  spanish: string
-  nasaYuwe: string
-  category: string | null
-  audioUrl: string | null
+const audioConfig: Extract<MediaManagerConfig, { field: "audioUrl" }> = {
+  field: "audioUrl",
+  filterParam: "audio",
+  uploadEndpoint: "/api/admin/upload-audio",
+  compress: async (file) => (await compressToOpus(file)).file,
+  readUploadedUrl: (body) => (typeof body.audioUrl === "string" ? body.audioUrl : undefined),
+  buildSavePayload: (url) => ({ audioUrl: url }),
 }
 
-type BulkRow = {
-  file: File
-  wordId: string | null
-  wordLabel: string | null
-  hasExisting: boolean
-  decision: BulkRowDecision
-  reason: string | null
-  status: "pendiente" | "subiendo" | "ok" | "error"
-  detail?: string
-}
-
-const PAGE_SIZE = 20
-
-async function fetchWords(params: Record<string, string>) {
-  const qs = new URLSearchParams({ pageSize: String(PAGE_SIZE), ...params })
-  const res = await fetch(`/api/admin/words?${qs}`)
-  if (!res.ok) throw new Error("No se pudo cargar la lista")
-  return (await res.json()) as { words: Row[]; total: number; totalPages: number }
-}
-
-async function fetchAllWords(): Promise<Row[]> {
-  const all: Row[] = []
-  let page = 1
-  for (;;) {
-    const qs = new URLSearchParams({ page: String(page), pageSize: "100" })
-    const res = await fetch(`/api/admin/words?${qs}`)
-    if (!res.ok) throw new Error("No se pudo cargar el diccionario")
-    const body = (await res.json()) as { words: Row[]; total: number }
-    all.push(...body.words)
-    if (all.length >= body.total || body.words.length === 0) break
-    page += 1
-  }
-  return all
+const audioBulkTexts: MediaBulkCardTexts = {
+  description:
+    "Seleccioná varios audios: el nombre (sin extensión) debe coincidir con el español o nasa yuwe de la ficha. Se comprimen a Ogg 24kbps de a uno.",
+  chooseLabel: "Elegir archivos",
+  fileAccept: "audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg",
+  fileInputAriaLabel: "Elegir audios para el lote",
+  policyLabel: "Si la ficha ya tiene audio:",
+  policySelectId: "bulk-policy-aud",
+  keepTitle: "Conservar el audio actual",
+  replaceTitle: "Reemplazar por el nuevo audio",
+  omittedWord: "omitidos",
+  emptyHint: "Seleccioná archivos para previsualizar el lote y su estado.",
 }
 
 /**
@@ -66,163 +44,36 @@ async function fetchAllWords(): Promise<Row[]> {
  * 24kbps mono en el cliente antes de subir.
  */
 export function AudiosManager() {
-  const [words, setWords] = useState<Row[]>([])
-  const [total, setTotal] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState("")
-  const [filter, setFilter] = useState<"all" | "with" | "without">("without")
-  const [category, setCategory] = useState("")
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [pendingWord, setPendingWord] = useState<Row | null>(null)
-  const [confirmQuitar, setConfirmQuitar] = useState<{ id: string; spanish: string } | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  const [bulk, setBulk] = useState<BulkRow[]>([])
-  const [bulkPolicy, setBulkPolicy] = useState<BulkPolicy>("skip-existing")
-  const [bulkRunning, setBulkRunning] = useState(false)
-  const [bulkDone, setBulkDone] = useState<{ ok: number; omitidos: number; errores: number } | null>(null)
-
-  const filtersRef = useRef({ page: 1, search: "", filter: "all" as typeof filter, category: "" })
-  filtersRef.current = { page, search, filter, category }
-
-  const loadSeq = useRef(0)
-  const load = useCallback(async () => {
-    const seq = ++loadSeq.current
-    const f = filtersRef.current
-    setLoading(true)
-    setError(null)
-    try {
-      const params: Record<string, string> = { page: String(f.page) }
-      if (f.search.trim()) params.search = f.search.trim()
-      if (f.filter !== "all") params.audio = f.filter
-      if (f.category.trim()) params.category = f.category.trim()
-      const body = await fetchWords(params)
-      if (seq !== loadSeq.current) return
-      setWords(body.words)
-      setTotal(body.total)
-      setTotalPages(body.totalPages)
-    } catch (err) {
-      if (seq !== loadSeq.current) return
-      setError(err instanceof Error ? err.message : "Error al cargar")
-    } finally {
-      if (seq === loadSeq.current) setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void load()
-  }, [page, search, filter, category, load])
-
-  function resetPage() {
-    setPage(1)
-  }
-
-  async function saveAudio(wordId: string, url: string | null) {
-    setSaving(true)
-    try {
-      const res = await fetch(`/api/admin/words/${wordId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audioUrl: url }),
-      })
-      if (!res.ok) throw new Error("No se pudo guardar")
-      setPendingWord(null)
-      await load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function prepareBulk(files: FileList | null) {
-    if (!files || files.length === 0) return
-    setBulkDone(null)
-    setBulkRunning(false)
-    try {
-      const all = await fetchAllWords()
-      const { matched, unmatched } = matchIllustrationFiles(Array.from(files), all)
-      const byFile = new Map(matched.map((m) => [m.file.name, m]))
-      const byId = new Map(all.map((w) => [w.id, w]))
-      setBulk(
-        Array.from(files).map((file) => {
-          const m = byFile.get(file.name)
-          if (m) {
-            return {
-              file,
-              wordId: m.wordId,
-              wordLabel: m.wordLabel,
-              hasExisting: !!byId.get(m.wordId)?.audioUrl,
-              decision: "auto" as const,
-              reason: null,
-              status: "pendiente" as const,
-            }
-          }
-          const u = unmatched.find((x) => x.file.name === file.name)
-          return {
-            file,
-            wordId: null,
-            wordLabel: null,
-            hasExisting: false,
-            decision: "auto" as const,
-            reason: u?.reason ?? "sin coincidencia",
-            status: "pendiente" as const,
-          }
-        })
-      )
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al preparar el lote")
-    }
-  }
-
-  async function runBulk() {
-    const targets = bulk
-      .map((b, i) => ({ ...b, i }))
-      .filter((b) => bulkActionFor(b, bulkPolicy) === "subir" && b.status !== "ok")
-    if (targets.length === 0) return
-    setBulkRunning(true)
-    setBulkDone(null)
-    let ok = 0
-    let errores = 0
-    for (const t of targets) {
-      setBulk((prev) => prev.map((b, i) => (i === t.i ? { ...b, status: "subiendo" as const } : b)))
-      try {
-        const res = await compressToOpus(t.file)
-        const fd = new FormData()
-        fd.append("file", res.file)
-        const up = await fetch("/api/admin/upload-audio", { method: "POST", body: fd })
-        const body = (await up.json().catch(() => ({}))) as { audioUrl?: string; message?: string }
-        if (!up.ok || !body.audioUrl) throw new Error(body.message ?? "falló la subida")
-        const put = await fetch(`/api/admin/words/${t.wordId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ audioUrl: body.audioUrl }),
-        })
-        if (!put.ok) throw new Error("falló el guardado en la ficha")
-        ok += 1
-        setBulk((prev) => prev.map((b, i) => (i === t.i ? { ...b, status: "ok" as const } : b)))
-      } catch (err) {
-        errores += 1
-        const detail = err instanceof Error ? err.message : "error"
-        setBulk((prev) =>
-          prev.map((b, i) => (i === t.i ? { ...b, status: "error" as const, detail } : b))
-        )
-      }
-    }
-    // Solo cuentan como omitidas las filas CON coincidencia que la política
-    // salta (p.ej. ya tiene el medio). Las filas sin coincidencia se
-    // muestran aparte como "sin coincidencia" y no entran al conteo.
-    const omitidos = bulk.filter((b) => b.wordId !== null && bulkActionFor(b, bulkPolicy) === "omitir").length
-    setBulkRunning(false)
-    setBulkDone({ ok, omitidos, errores })
-    await load()
-  }
-
-  function setRowDecision(index: number, decision: BulkRow["decision"]) {
-    setBulk((prev) => prev.map((b, i) => (i === index ? { ...b, decision } : b)))
-  }
+  const {
+    words,
+    total,
+    totalPages,
+    page,
+    setPage,
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    category,
+    setCategory,
+    loading,
+    error,
+    pendingWord,
+    setPendingWord,
+    confirmQuitar,
+    setConfirmQuitar,
+    saving,
+    bulk,
+    bulkPolicy,
+    setBulkPolicy,
+    bulkRunning,
+    bulkDone,
+    resetPage,
+    saveMedia,
+    prepareBulk,
+    runBulk,
+    setRowDecision,
+  } = useMediaWordsManager(audioConfig)
 
   return (
     <div className="space-y-8">
@@ -362,157 +213,23 @@ export function AudiosManager() {
           saving={saving}
         >
           <AudioPicker
-            onSubida={(url) => void saveAudio(pendingWord.id, url)}
+            onSubida={(url) => void saveMedia(pendingWord.id, url)}
             onCancelar={() => setPendingWord(null)}
           />
         </WordUploadDialog>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-        {/* Header */}
-        <div className="flex items-start gap-3 border-b bg-muted/30 px-5 py-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <UploadCloud className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold">Subida en lote</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Seleccioná varios audios: el nombre (sin extensión) debe coincidir con el español o
-              nasa yuwe de la ficha. Se comprimen a Ogg 24kbps de a uno.
-            </p>
-          </div>
-        </div>
-
-        {/* Controles */}
-        <div className="flex flex-wrap items-center gap-3 px-5 py-4">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-input bg-muted/20 px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/40">
-            <UploadCloud className="h-4 w-4 text-muted-foreground" />
-            <span>Elegir archivos</span>
-            <input
-              type="file"
-              accept="audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg"
-              multiple
-              onChange={(e) => void prepareBulk(e.target.files)}
-              className="sr-only"
-              aria-label="Elegir audios para el lote"
-              disabled={bulkRunning}
-            />
-          </label>
-
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground" htmlFor="bulk-policy-aud">
-              Si la ficha ya tiene audio:
-            </label>
-            <select
-              id="bulk-policy-aud"
-              className="h-9 rounded-md border bg-background px-2 text-xs"
-              value={bulkPolicy}
-              onChange={(e) => setBulkPolicy(e.target.value as BulkPolicy)}
-              disabled={bulkRunning}
-            >
-              <option value="skip-existing">Omitir (no toca lo existente)</option>
-              <option value="replace-all">Reemplazar todos</option>
-              <option value="per-row">Decidir uno por uno</option>
-            </select>
-          </div>
-
-          <Button
-            type="button"
-            size="sm"
-            disabled={
-              bulkRunning ||
-              !bulk.some((b) => bulkActionFor(b, bulkPolicy) === "subir" && b.status !== "ok")
-            }
-            onClick={() => void runBulk()}
-            className="ml-auto"
-          >
-            {bulkRunning ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-1 h-4 w-4" />}
-            Subir lote
-          </Button>
-        </div>
-
-        {/* Lista */}
-        {bulk.length > 0 ? (
-          <div className="border-t">
-            <ul className="max-h-72 divide-y divide-border overflow-auto">
-              {bulk.map((b, i) => {
-                const accion = bulkActionFor(b, bulkPolicy)
-                return (
-                  <li key={`${b.file.name}-${i}`} className="flex items-center gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-muted/30">
-                    <span className="min-w-0 flex-1 truncate font-mono text-xs">{b.file.name}</span>
-                    {b.wordLabel ? (
-                      <span className="truncate text-xs text-muted-foreground">→ {b.wordLabel}</span>
-                    ) : (
-                      <span className="text-xs font-medium text-destructive">→ {b.reason}</span>
-                    )}
-                    {b.wordId && b.hasExisting && bulkPolicy === "per-row" && b.status === "pendiente" ? (
-                      <span className="flex shrink-0 gap-1">
-                        <Button
-                          type="button"
-                          variant={b.decision === "omitir" ? "secondary" : "ghost"}
-                          size="sm"
-                          className="h-6 px-2 text-xs"
-                          onClick={() => setRowDecision(i, "omitir")}
-                          title="Conservar el audio actual"
-                        >
-                          Omitir
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={b.decision === "subir" ? "secondary" : "ghost"}
-                          size="sm"
-                          className="h-6 px-2 text-xs"
-                          onClick={() => setRowDecision(i, "subir")}
-                          title="Reemplazar por el nuevo audio"
-                        >
-                          Reemplazar
-                        </Button>
-                      </span>
-                    ) : null}
-                    <span
-                      className={
-                        "w-24 shrink-0 text-right text-xs font-medium " +
-                        (b.status === "ok"
-                          ? "text-secondary"
-                          : b.status === "error"
-                            ? "text-destructive"
-                            : b.status === "subiendo"
-                              ? "text-primary"
-                              : accion === "omitir" && b.wordId
-                                ? "text-tertiary"
-                                : "text-muted-foreground")
-                      }
-                    >
-                      {b.status === "ok"
-                        ? "✓ listo"
-                        : b.status === "error"
-                          ? `✗ ${b.detail ?? ""}`
-                          : b.status === "subiendo"
-                            ? "…subiendo"
-                            : accion === "omitir" && b.wordId
-                              ? "⊘ ya tiene"
-                              : "pendiente"}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-
-            {bulkDone ? (
-              <div className="border-t bg-muted/30 px-5 py-3 text-sm" aria-live="polite">
-                <p className="text-sm">
-                  Lote terminado: {bulkDone.ok} subidas, {bulkDone.omitidos} omitidos, {bulkDone.errores}{" "}
-                  errores.
-                </p>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <p className="border-t px-5 py-4 text-xs text-muted-foreground">
-            Seleccioná archivos para previsualizar el lote y su estado.
-          </p>
-        )}
-      </div>
+      <MediaBulkCard
+        bulk={bulk}
+        bulkPolicy={bulkPolicy}
+        bulkRunning={bulkRunning}
+        bulkDone={bulkDone}
+        onChooseFiles={(files) => void prepareBulk(files)}
+        onPolicyChange={setBulkPolicy}
+        onRun={() => void runBulk()}
+        onRowDecision={setRowDecision}
+        texts={audioBulkTexts}
+      />
       <ConfirmDialog
         open={confirmQuitar !== null}
         onOpenChange={(v) => !v && setConfirmQuitar(null)}
@@ -520,7 +237,7 @@ export function AudiosManager() {
         descripcion="El audio se desasocia de la palabra. Esta acción no se puede deshacer."
         accionLabel="Quitar"
         onConfirm={() => {
-          if (confirmQuitar) void saveAudio(confirmQuitar.id, null)
+          if (confirmQuitar) void saveMedia(confirmQuitar.id, null)
           setConfirmQuitar(null)
         }}
       />
