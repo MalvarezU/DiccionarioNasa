@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { SkipLink } from "@/components/skip-link"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AuthModal } from "@/components/auth-modal"
 
@@ -70,12 +71,13 @@ export function NavBar() {
 
   return (
     <>
+      <SkipLink />
       <header className="sticky top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
           {/* Logo / App Name — links to home */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
             <BookOpen className="h-5 w-5 text-primary group-hover:text-primary/80 transition-colors" />
-            <span className="font-serif font-semibold text-lg tracking-tight text-primary group-hover:text-primary/80 transition-colors">
+            <span className="hidden min-[400px]:inline font-serif font-semibold text-lg tracking-tight text-primary group-hover:text-primary/80 transition-colors">
               Piiyaak
             </span>
           </Link>
@@ -102,20 +104,21 @@ export function NavBar() {
                 ))}
               </nav>
 
-              <nav className="flex md:hidden items-center gap-0.5">
+              <nav className="flex md:hidden items-center gap-0.5" aria-label="Secciones">
                 {NAV_ITEMS.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     aria-label={item.label}
                     aria-current={isActive(item.href) ? "page" : undefined}
-                    className={`flex items-center justify-center h-8 w-8 rounded-md transition-colors ${
+                    className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[56px] px-2 rounded-md transition-colors ${
                       isActive(item.href)
                         ? "text-primary bg-primary/10"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                     }`}
                   >
-                    <item.icon className="h-4 w-4" />
+                    <item.icon className="h-4 w-4" aria-hidden="true" />
+                    <span className="text-xs leading-none font-medium">{item.label}</span>
                   </Link>
                 ))}
               </nav>

@@ -1,12 +1,21 @@
 import { Type } from "lucide-react"
 import { NavBar } from "@/components/navbar"
+import { SiteFooter } from "@/components/site-footer"
+import { Breadcrumbs } from "@/components/breadcrumbs"
 import { CompleteWordGame } from "@/components/juegos/complete-word-game"
 
 export default function CompletarPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
+      <main id="contenido" className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
+        <Breadcrumbs
+          items={[
+            { label: "Inicio", href: "/" },
+            { label: "Juegos", href: "/juegos" },
+            { label: "Completar la palabra" },
+          ]}
+        />
         <div className="flex items-center gap-2 mb-2">
           <Type className="h-7 w-7 text-primary" />
           <h1 className="text-3xl font-serif font-bold text-primary">
@@ -18,6 +27,7 @@ export default function CompletarPage() {
         </p>
         <CompleteWordGame nivel="medio" />
       </main>
+      <SiteFooter />
     </div>
   )
 }

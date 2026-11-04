@@ -6,6 +6,8 @@ import { GraduationCap, ArrowLeft, BookOpen, CheckCircle2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { NavBar } from "@/components/navbar"
+import { SiteFooter } from "@/components/site-footer"
+import { Breadcrumbs } from "@/components/breadcrumbs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -180,9 +182,10 @@ export default function CursoDetailPage({
     return (
       <div className="min-h-screen flex flex-col">
         <NavBar />
-        <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8" aria-busy="true" aria-label="Cargando curso">
+        <main id="contenido" className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8" aria-busy="true" aria-label="Cargando curso">
           <CoursePlayerSkeleton />
         </main>
+        <SiteFooter />
       </div>
     )
   }
@@ -200,7 +203,14 @@ export default function CursoDetailPage({
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8">
+      <main id="contenido" className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8">
+        <Breadcrumbs
+          items={[
+            { label: "Inicio", href: "/" },
+            { label: "Cursos", href: "/cursos" },
+            { label: course.title },
+          ]}
+        />
         {/* Back link */}
         <Link
           href="/cursos"
@@ -293,6 +303,7 @@ export default function CursoDetailPage({
           </p>
         )}
       </main>
+      <SiteFooter />
     </div>
   )
 }

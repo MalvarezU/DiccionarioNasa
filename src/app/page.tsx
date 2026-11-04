@@ -52,7 +52,7 @@ function HomeContent() {
       <NavBar />
       <InstallBanner destino="/#instalar" />
 
-      <main className="flex-1">
+      <main id="contenido" className="flex-1">
         {/* Hero — bienvenida a la plataforma */}
         <section className="relative isolate pb-12 sm:pb-16 pt-16 sm:pt-24">
           <div className="absolute inset-0 bg-gradient-to-b from-[#1B2733]/85 via-[#1B2733]/55 to-[#1B2733]/35 z-10" />

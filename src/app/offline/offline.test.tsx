@@ -10,6 +10,6 @@ describe("/offline [B3.2]", () => {
   it("explica el estado y ofrece reintentar", () => {
     render(<OfflinePage />)
     expect(screen.getByText("Sin conexión")).toBeDefined()
-    expect(screen.getByText(/Reintentar inicio/)).toBeDefined()
+    expect(screen.getByText("Reintentar")).toBeDefined()
   })
 })

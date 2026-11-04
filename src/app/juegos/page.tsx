@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { Gamepad2, Brain, Type, ArrowRight, Lock } from "lucide-react"
 import { NavBar } from "@/components/navbar"
+import { SiteFooter } from "@/components/site-footer"
+import { Breadcrumbs } from "@/components/breadcrumbs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -39,7 +41,8 @@ export default function JuegosPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
+      <main id="contenido" className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
+        <Breadcrumbs items={[{ label: "Inicio", href: "/" }, { label: "Juegos" }]} />
         {/* Hero */}
         <div className="flex items-center justify-between mb-8">
           <div className="space-y-2">
@@ -120,6 +123,7 @@ export default function JuegosPage() {
           })}
         </div>
       </main>
+      <SiteFooter />
     </div>
   )
 }

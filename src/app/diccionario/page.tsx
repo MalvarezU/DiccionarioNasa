@@ -122,7 +122,7 @@ function DiccionarioContent() {
       <NavBar />
       <InstallBanner destino="/#instalar" />
 
-      <main className="flex-1">
+      <main id="contenido" className="flex-1">
         {/* Hero del diccionario */}
         <section className="relative isolate overflow-hidden bg-background pb-12 sm:pb-16 pt-12 sm:pt-16">
           <div

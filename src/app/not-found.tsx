@@ -13,7 +13,7 @@ export default function NotFound() {
     <div className="min-h-screen flex flex-col">
       <NavBar />
 
-      <main className="flex-1 flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+      <main id="contenido" className="flex-1 flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
         <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted/60">
           <Compass className="h-8 w-8 text-primary" />
         </div>

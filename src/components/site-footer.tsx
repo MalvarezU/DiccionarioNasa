@@ -7,7 +7,7 @@ import Link from "next/link";
  */
 export function SiteFooter() {
   return (
-    <footer className="mt-auto bg-black text-white">
+    <footer className="mt-auto bg-[#22303D] text-[#F6EEDC]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Logo + Brand */}
@@ -18,13 +18,13 @@ export function SiteFooter() {
                 alt="YBC Logo"
                 width={72}
                 height={72}
-                className="rounded-full border-2 border-white/30"
+                className="rounded-full border-2 border-[#F6EEDC]/25"
               />
               <div>
-                <p className="font-serif text-lg font-bold text-white">
+                <p className="font-serif text-lg font-bold text-[#F6EEDC]">
                   Grupo YBC
                 </p>
-                <p className="text-xs text-white/70">
+                <p className="text-xs text-[#F6EEDC]/80">
                   Piiyaak · Plataforma de la lengua Nasa Yuwe
                 </p>
               </div>
@@ -33,43 +33,43 @@ export function SiteFooter() {
 
           {/* Navigation Links */}
           <div className="flex flex-col items-center gap-3">
-            <p className="text-xs font-semibold text-white uppercase tracking-wider mb-1">
+            <p className="text-xs font-semibold text-[#F6EEDC] uppercase tracking-wider mb-1">
               Navegación
             </p>
             <nav className="flex flex-col items-center gap-2">
               <Link
                 href="/diccionario"
-                className="text-xs text-white/70 hover:text-white transition-colors duration-200"
+                className="text-xs text-[#F6EEDC]/80 hover:text-[#F6EEDC] transition-colors duration-200"
               >
                 Diccionario
               </Link>
               <Link
                 href="/juegos"
-                className="text-xs text-white/70 hover:text-white transition-colors duration-200"
+                className="text-xs text-[#F6EEDC]/80 hover:text-[#F6EEDC] transition-colors duration-200"
               >
                 Juegos
               </Link>
               <Link
                 href="/cursos"
-                className="text-xs text-white/70 hover:text-white transition-colors duration-200"
+                className="text-xs text-[#F6EEDC]/80 hover:text-[#F6EEDC] transition-colors duration-200"
               >
                 Cursos
               </Link>
               <Link
                 href="/#acerca"
-                className="text-xs text-white/70 hover:text-white transition-colors duration-200"
+                className="text-xs text-[#F6EEDC]/80 hover:text-[#F6EEDC] transition-colors duration-200"
               >
                 Acerca del proyecto
               </Link>
               <Link
                 href="/#instalar"
-                className="text-xs text-white/70 hover:text-white transition-colors duration-200"
+                className="text-xs text-[#F6EEDC]/80 hover:text-[#F6EEDC] transition-colors duration-200"
               >
                 Descargar app
               </Link>
               <Link
                 href="/admin"
-                className="text-xs text-white/70 hover:text-white transition-colors duration-200"
+                className="text-xs text-[#F6EEDC]/80 hover:text-[#F6EEDC] transition-colors duration-200"
               >
                 Administración
               </Link>
@@ -78,18 +78,18 @@ export function SiteFooter() {
 
           {/* Acknowledgment + Version */}
           <div className="flex flex-col items-center md:items-end gap-3">
-            <p className="text-xs text-white/70 text-center md:text-right max-w-xs leading-relaxed">
+            <p className="text-xs text-[#F6EEDC]/80 text-center md:text-right max-w-xs leading-relaxed">
               Piiyaak es una herramienta de preservación lingüística y cultural
               del pueblo Nasa (Páez) de Colombia.
             </p>
-            <p className="text-2xs text-white/50">Versión 1.0.0</p>
+            <p className="text-2xs text-[#F6EEDC]/60">Versión 1.0.0</p>
           </div>
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-8 pt-6 border-t border-white/20">
+        <div className="mt-8 pt-6 border-t border-[#F6EEDC]/15">
           <p
-            className="text-center text-2xs text-white/50"
+            className="text-center text-2xs text-[#F6EEDC]/60"
             suppressHydrationWarning
           >
             © {new Date().getFullYear()} Piiyaak · Proyecto de preservación de

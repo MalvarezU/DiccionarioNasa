@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import { GraduationCap } from "lucide-react"
 import { NavBar } from "@/components/navbar"
+import { SiteFooter } from "@/components/site-footer"
+import { Breadcrumbs } from "@/components/breadcrumbs"
 import { CourseCard, type CourseSummary } from "@/components/cursos/course-card"
 import { CourseListSkeleton } from "@/components/skeletons"
 
@@ -28,7 +30,8 @@ export default function CursosPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
+      <main id="contenido" className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
+        <Breadcrumbs items={[{ label: "Inicio", href: "/" }, { label: "Cursos" }]} />
         {/* Hero */}
         <div className="flex items-center gap-2 mb-2">
           <GraduationCap className="h-7 w-7 text-primary" />
@@ -55,6 +58,7 @@ export default function CursosPage() {
           </div>
         )}
       </main>
+      <SiteFooter />
     </div>
   )
 }
