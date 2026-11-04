@@ -16,6 +16,10 @@ vi.mock("@/hooks/use-online-status", () => ({
   useOnlineStatus: vi.fn(),
 }))
 
+vi.mock("@/hooks/use-pwa-mode", () => ({
+  usePwaMode: vi.fn(),
+}))
+
 vi.mock("@/hooks/use-toast", () => ({
   useToast: vi.fn(() => ({ toast: vi.fn() })),
 }))
@@ -33,6 +37,7 @@ vi.mock("./settings-dialog", () => ({
 import { useSession, signOut } from "next-auth/react"
 import { usePathname, useRouter } from "next/navigation"
 import { useOnlineStatus } from "@/hooks/use-online-status"
+import { usePwaMode } from "@/hooks/use-pwa-mode"
 import { NavBar } from "./navbar"
 
 function mockSession(session: { user?: { name?: string; email?: string; role?: string } } | null) {
@@ -51,10 +56,15 @@ function mockOnline(online: boolean) {
   vi.mocked(useOnlineStatus).mockReturnValue(online)
 }
 
+function mockPwaMode(isPwa: boolean, ready = true) {
+  vi.mocked(usePwaMode).mockReturnValue({ isPwa, ready })
+}
+
 describe("NavBar", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockOnline(true)
+    mockPwaMode(true, true)
     mockSession(null)
     vi.mocked(usePathname).mockReturnValue("/")
     vi.mocked(useRouter).mockReturnValue({ push: vi.fn() } as any)
@@ -178,5 +188,38 @@ describe("NavBar — aviso ?auth=required del middleware", () => {
     window.history.replaceState(null, "", "/")
     render(<NavBar />)
     expect(screen.queryByTestId("auth-modal")).toBeNull()
+  })
+})
+
+describe("NavBar — PWA-only gating (badge + settings)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockOnline(true)
+    mockSession(null)
+    vi.mocked(usePathname).mockReturnValue("/")
+    vi.mocked(useRouter).mockReturnValue({ push: vi.fn() } as any)
+  })
+
+  it("hides the connection badge outside the installed PWA", () => {
+    mockPwaMode(false, true)
+    render(<NavBar />)
+    expect(screen.queryByText("En línea")).toBeNull()
+    expect(screen.queryByText("Sin conexión")).toBeNull()
+  })
+
+  it("hides badge and settings while not ready (pre-hydration)", () => {
+    mockPwaMode(false, false)
+    render(<NavBar />)
+    expect(screen.queryByText("En línea")).toBeNull()
+    expect(screen.queryByLabelText("Configuración")).toBeNull()
+    // The rest of the cluster stays: login is still reachable.
+    expect(screen.getByRole("button", { name: /iniciar sesión/i })).toBeDefined()
+  })
+
+  it("hides the settings button outside the installed PWA but keeps login", () => {
+    mockPwaMode(false, true)
+    render(<NavBar />)
+    expect(screen.queryByLabelText("Configuración")).toBeNull()
+    expect(screen.getByRole("button", { name: /iniciar sesión/i })).toBeDefined()
   })
 })

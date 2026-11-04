@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock, Gamepad2, GraduationCap } from "lucide-react"
 import { useOnlineStatus } from "@/hooks/use-online-status"
+import { usePwaMode } from "@/hooks/use-pwa-mode"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -51,6 +52,7 @@ const NAV_ITEMS = [
 
 export function NavBar() {
   const isOnline = useOnlineStatus()
+  const { isPwa, ready } = usePwaMode()
   const pathname = usePathname()
   const router = useRouter()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -194,32 +196,34 @@ export function NavBar() {
 
           {/* Right side: connection + auth + settings */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {/* Connection Status */}
-            {isOnline ? (
-              <Badge
-                variant="secondary"
-                className={
-                  isHeroTop
-                    ? "gap-1.5 text-2xs font-normal bg-white/10 text-[#F6EEDC] border border-white/20"
-                    : "gap-1.5 text-2xs font-normal bg-secondary/10 text-secondary border border-secondary/20"
-                }
-              >
-                <Wifi className="h-3 w-3" />
-                <span className="hidden sm:inline">En línea</span>
-              </Badge>
-            ) : (
-              <Badge
-                variant="secondary"
-                className={
-                  isHeroTop
-                    ? "gap-1.5 text-2xs font-normal bg-white/10 text-[#F6EEDC] border border-white/20"
-                    : "gap-1.5 text-2xs font-normal bg-tertiary/10 text-tertiary border border-tertiary/20"
-                }
-              >
-                <WifiOff className={isHeroTop ? "h-3 w-3 text-amber-300" : "h-3 w-3"} />
-                <span className="hidden sm:inline">Sin conexión</span>
-              </Badge>
-            )}
+            {/* Connection Status — PWA-only: hidden in regular browser tabs */}
+            {ready &&
+              isPwa &&
+              (isOnline ? (
+                <Badge
+                  variant="secondary"
+                  className={
+                    isHeroTop
+                      ? "gap-1.5 text-2xs font-normal bg-white/10 text-[#F6EEDC] border border-white/20"
+                      : "gap-1.5 text-2xs font-normal bg-secondary/10 text-secondary border border-secondary/20"
+                  }
+                >
+                  <Wifi className="h-3 w-3" />
+                  <span className="hidden sm:inline">En línea</span>
+                </Badge>
+              ) : (
+                <Badge
+                  variant="secondary"
+                  className={
+                    isHeroTop
+                      ? "gap-1.5 text-2xs font-normal bg-white/10 text-[#F6EEDC] border border-white/20"
+                      : "gap-1.5 text-2xs font-normal bg-tertiary/10 text-tertiary border border-tertiary/20"
+                  }
+                >
+                  <WifiOff className={isHeroTop ? "h-3 w-3 text-amber-300" : "h-3 w-3"} />
+                  <span className="hidden sm:inline">Sin conexión</span>
+                </Badge>
+              ))}
 
             {/* Auth: skeleton mientras carga la sesión, luego login o dropdown */}
             {isLoadingSession ? (
@@ -310,29 +314,31 @@ export function NavBar() {
               </Button>
             )}
 
-            {/* Settings Button */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={
-                      isHeroTop
-                        ? "size-8 text-[#F6EEDC]/90 hover:text-[#F6EEDC] hover:bg-white/10"
-                        : "size-8 text-muted-foreground hover:text-foreground"
-                    }
-                    onClick={() => setSettingsOpen(true)}
-                    aria-label="Configuración"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Configuración</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* Settings Button — PWA-only: hidden in regular browser tabs */}
+            {ready && isPwa && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={
+                        isHeroTop
+                          ? "size-8 text-[#F6EEDC]/90 hover:text-[#F6EEDC] hover:bg-white/10"
+                          : "size-8 text-muted-foreground hover:text-foreground"
+                      }
+                      onClick={() => setSettingsOpen(true)}
+                      aria-label="Configuración"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Configuración</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
       </header>
