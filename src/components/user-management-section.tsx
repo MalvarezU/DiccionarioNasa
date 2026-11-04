@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 
 interface UserRow {
   id: string
@@ -69,6 +70,8 @@ export function UserManagementSection() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  // El input tipea al instante; el GET espera 300ms sin cambios.
+  const debouncedSearch = useDebouncedValue(search)
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true)
@@ -77,7 +80,7 @@ export function UserManagementSection() {
       // el comportamiento previo para instalaciones reales (<100 usuarios)
       // y la API queda acotada.
       const query = new URLSearchParams({ pageSize: "100" })
-      if (search) query.set("search", search)
+      if (debouncedSearch) query.set("search", debouncedSearch)
       const res = await fetch(`/api/admin/users?${query}`)
       if (res.ok) {
         const data = await res.json()
@@ -96,7 +99,7 @@ export function UserManagementSection() {
     } finally {
       setIsLoading(false)
     }
-  }, [search, toast])
+  }, [debouncedSearch, toast])
 
   useEffect(() => {
     fetchUsers()

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { MediaPicker } from "@/components/media/media-picker"
 import { IllustrationLightbox } from "@/components/media/illustration-lightbox"
+import { SearchResultsSkeleton } from "@/components/skeletons"
 import { compressToIllustration } from "@/lib/media/compress-image"
 import {
   useMediaWordsManager,
@@ -22,6 +23,8 @@ const illustrationConfig: Extract<MediaManagerConfig, { field: "illustrationUrl"
   compress: compressToIllustration,
   readUploadedUrl: (body) => (typeof body.url === "string" ? body.url : undefined),
   buildSavePayload: (url) => ({ illustrationUrl: url }),
+  savedToast: "Ilustración guardada",
+  removedToast: "Ilustración quitada",
 }
 
 const illustrationBulkTexts: MediaBulkCardTexts = {
@@ -56,6 +59,7 @@ export function IllustrationsManager() {
     category,
     setCategory,
     loading,
+    isInitialLoading,
     error,
     pendingWord,
     setPendingWord,
@@ -134,9 +138,18 @@ export function IllustrationsManager() {
         </p>
       </div>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
 
       {/* Lista */}
+      {isInitialLoading ? (
+        <div aria-busy="true" aria-label="Cargando fichas">
+          <SearchResultsSkeleton count={5} />
+        </div>
+      ) : (
       <ul className="divide-y divide-border rounded-lg border">
         {words.map((w) => (
           <li key={w.id} className="flex items-center gap-3 p-3">
@@ -185,6 +198,7 @@ export function IllustrationsManager() {
           </li>
         ) : null}
       </ul>
+      )}
 
       {/* Paginación */}
       <div className="flex items-center gap-2">

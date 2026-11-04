@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { matchIllustrationFiles } from "@/lib/media/bulk-match"
 import {
   bulkActionFor,
@@ -58,6 +60,8 @@ export type MediaManagerConfig =
       compress: (file: File) => Promise<File>
       readUploadedUrl: (body: Record<string, unknown>) => string | undefined
       buildSavePayload: (url: string | null) => { audioUrl: string | null }
+      savedToast: string
+      removedToast: string
     }
   | {
       field: "illustrationUrl"
@@ -66,6 +70,8 @@ export type MediaManagerConfig =
       compress: (file: File) => Promise<File>
       readUploadedUrl: (body: Record<string, unknown>) => string | undefined
       buildSavePayload: (url: string | null) => { illustrationUrl: string | null }
+      savedToast: string
+      removedToast: string
     }
 
 export interface UseMediaWordsManagerResult<F extends MediaField> {
@@ -81,6 +87,8 @@ export interface UseMediaWordsManagerResult<F extends MediaField> {
   category: string
   setCategory: (category: string) => void
   loading: boolean
+  /** Carga inicial sin datos viejos: la lista muestra skeleton. */
+  isInitialLoading: boolean
   error: string | null
   pendingWord: WordRow<F> | null
   setPendingWord: (word: WordRow<F> | null) => void
@@ -147,6 +155,13 @@ export function useMediaWordsManager<F extends MediaField>(
   const [pendingWord, setPendingWord] = useState<Row | null>(null)
   const [confirmQuitar, setConfirmQuitar] = useState<MediaConfirmTarget | null>(null)
   const [saving, setSaving] = useState(false)
+  const { toast } = useToast()
+
+  // El texto tipea al instante; la red espera 300ms sin cambios (un GET por
+  // pausa, no uno por tecla). La lista congela los datos viejos mientras
+  // tanto: loading solo decide el skeleton inicial.
+  const debouncedSearch = useDebouncedValue(search)
+  const debouncedCategory = useDebouncedValue(category)
 
   const [bulk, setBulk] = useState<MediaBulkRow[]>([])
   const [bulkPolicy, setBulkPolicy] = useState<BulkPolicy>("skip-existing")
@@ -157,7 +172,7 @@ export function useMediaWordsManager<F extends MediaField>(
   // (Si leyera del closure, un refresh disparado por un upload anterior
   // usaría el filtro viejo y pisaría la lista con datos obsoletos.)
   const filtersRef = useRef({ page: 1, search: "", filter: "without" as MediaFilter, category: "" })
-  filtersRef.current = { page, search, filter, category }
+  filtersRef.current = { page, search: debouncedSearch, filter, category: debouncedCategory }
 
   const loadSeq = useRef(0)
   const load = useCallback(async () => {
@@ -188,7 +203,7 @@ export function useMediaWordsManager<F extends MediaField>(
 
   useEffect(() => {
     void load()
-  }, [page, search, filter, category, load])
+  }, [page, debouncedSearch, filter, debouncedCategory, load])
 
   function resetPage() {
     setPage(1)
@@ -204,9 +219,14 @@ export function useMediaWordsManager<F extends MediaField>(
       })
       if (!res.ok) throw new Error("No se pudo guardar")
       setPendingWord(null)
+      toast({ title: url ? config.savedToast : config.removedToast })
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar")
+      toast({
+        title: "No se pudo guardar",
+        description: err instanceof Error ? err.message : "Intentá de nuevo",
+        variant: "destructive",
+      })
     } finally {
       setSaving(false)
     }
@@ -316,6 +336,7 @@ export function useMediaWordsManager<F extends MediaField>(
     category,
     setCategory,
     loading,
+    isInitialLoading: loading && words.length === 0,
     error,
     pendingWord,
     setPendingWord,

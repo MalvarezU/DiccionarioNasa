@@ -92,7 +92,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
               <Plus className="h-4 w-4" />
             </Button>
           </form>
-          {error && <p className="text-sm text-destructive shrink-0">{error}</p>}
+          {error && !detail ? <p className="text-sm text-destructive shrink-0">{error}</p> : null}
           {loading ? (
             <div aria-busy="true" aria-label="Cargando cursos">
               <CourseManagerListSkeleton />
@@ -202,12 +202,16 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                     />
                   )}
                 </div>
+                {error ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    {error}
+                  </p>
+                ) : null}
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleSaveCourse} className="gap-1.5">
                     <Pencil className="h-3.5 w-3.5" />
                     Guardar curso
-                  </Button>
-                  <Button
+                  </Button>                  <Button
                     size="sm"
                     variant="outline"
                     asChild

@@ -49,7 +49,7 @@ export interface WordListContentProps {
   onBulkActionDone: () => void
   /** Editor: sin archivado en lote (CA-30). Default true (admin). */
   canBulkArchive?: boolean
-  /** Visible o montado. El modal pasa su `open`; la página inline usa el default `true`. */
+  /** Visible o montado. La página inline usa el default `true`. */
   open?: boolean
   /** Acción extra en el empty state (la página inline pasa "Nueva ficha"). */
   emptyAction?: ReactNode
@@ -70,7 +70,7 @@ function getStatusBadge(status: string) {
 
 /**
  * Contenido de la gestión de fichas, sin envoltorio.
- * Lo usan el modal (WordListModal) y la página inline (/admin/palabras).
+ * Lo usa la página inline (/admin/palabras).
  */
 export function WordListContent({
   onEditWord,
@@ -82,6 +82,7 @@ export function WordListContent({
   const {
     words,
     isLoading,
+    error,
     page,
     totalPages,
     total,
@@ -101,8 +102,11 @@ export function WordListContent({
     toggleSelectAll,
     handleBulkAction,
     clearSelection,
+    clearFilters,
     dismissBulkResult,
   } = useWordList({ open, onBulkActionDone })
+
+  const hasActiveFilter = searchQuery.trim() !== "" || statusFilter !== "all"
 
   return (
     <div className="space-y-4 py-2">
@@ -156,6 +160,12 @@ export function WordListContent({
           </div>
         </div>
       )}
+
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
 
       {bulkResult && (
         <Card className="border-secondary/30 bg-secondary/5">
@@ -306,8 +316,23 @@ export function WordListContent({
       ) : (
         <div className="flex flex-col items-center justify-center py-12 gap-2">
           <BookOpen className="h-8 w-8 text-muted-foreground/30" />
-          <p className="text-xs text-muted-foreground">No se encontraron palabras</p>
-          {emptyAction}
+          {hasActiveFilter ? (
+            <>
+              <p className="text-xs text-muted-foreground">
+                {searchQuery.trim()
+                  ? `Sin resultados para "${searchQuery.trim()}"`
+                  : "Sin resultados con este filtro"}
+              </p>
+              <Button variant="outline" size="sm" onClick={clearFilters} className="h-8 text-xs">
+                Limpiar búsqueda y filtro
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">No hay fichas todavía</p>
+              {emptyAction}
+            </>
+          )}
         </div>
       )}
     </div>

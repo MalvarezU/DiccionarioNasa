@@ -17,7 +17,7 @@ interface UseWordListArgs {
 
 /**
  * Lista paginada de fichas con búsqueda, filtro, selección y acciones en lote.
- * La UI vive en WordListModal.tsx.
+ * La UI vive en word-list-content.tsx (página inline /admin/palabras).
  */
 export function useWordList({ open, onBulkActionDone }: UseWordListArgs) {
   const prevOpenRef = useRef(false)
@@ -32,6 +32,7 @@ export function useWordList({ open, onBulkActionDone }: UseWordListArgs) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkAction, setIsBulkAction] = useState(false)
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const searchQueryRef = useRef(searchQuery)
   const statusFilterRef = useRef(statusFilter)
@@ -53,9 +54,12 @@ export function useWordList({ open, onBulkActionDone }: UseWordListArgs) {
         setWords(data.words)
         setTotalPages(data.totalPages)
         setTotal(data.total)
+        setError(null)
+      } else {
+        setError("No se pudieron cargar las fichas. Intentá de nuevo.")
       }
     } catch {
-      // Silently fail
+      setError("No se pudieron cargar las fichas. Revisá tu conexión.")
     } finally {
       setIsLoading(false)
     }
@@ -158,11 +162,16 @@ export function useWordList({ open, onBulkActionDone }: UseWordListArgs) {
           action: targetStatus === "PUBLISHED" ? "publicadas" : "archivadas",
         })
         setSelectedIds(new Set())
+        setError(null)
         fetchWords(page, searchQuery, statusFilter)
         onBulkActionDone()
+      } else {
+        const body = (await res.json().catch(() => null)) as { message?: string } | null
+        // La selección se conserva para reintentar.
+        setError(body?.message ?? "No se pudo actualizar la selección. Intentá de nuevo.")
       }
     } catch {
-      // Silently fail
+      setError("No se pudo actualizar la selección. Revisá tu conexión.")
     } finally {
       setIsBulkAction(false)
     }
@@ -171,6 +180,15 @@ export function useWordList({ open, onBulkActionDone }: UseWordListArgs) {
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set())
   }, [])
+
+  const clearFilters = useCallback(() => {
+    setSearchQuery("")
+    setStatusFilter("all")
+    setPage(1)
+    setSelectedIds(new Set())
+    setError(null)
+    fetchWords(1, "", "all")
+  }, [fetchWords])
 
   const dismissBulkResult = useCallback(() => {
     setBulkResult(null)
@@ -188,6 +206,7 @@ export function useWordList({ open, onBulkActionDone }: UseWordListArgs) {
   return {
     words,
     isLoading,
+    error,
     page,
     totalPages,
     total,
@@ -207,6 +226,7 @@ export function useWordList({ open, onBulkActionDone }: UseWordListArgs) {
     toggleSelectAll,
     handleBulkAction,
     clearSelection,
+    clearFilters,
     dismissBulkResult,
   }
 }

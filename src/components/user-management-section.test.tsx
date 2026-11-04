@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("next-auth/react", () => ({
@@ -95,9 +95,12 @@ describe("UserManagementSection", () => {
     expect(await screen.findByText("Admin User")).toBeDefined()
     const searchInput = screen.getByPlaceholderText("Buscar por email o nombre...")
     await userEvent.setup().type(searchInput, "test")
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("search=test")
-    )
+    // El buscador espera 300ms sin teclas antes de disparar el GET.
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("search=test")
+      )
+    })
   })
 
   it("cycles user role user->editor on toggle [B1.5]", async () => {
