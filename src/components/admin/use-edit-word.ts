@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { WORD_STATUSES } from "@/lib/admin-utils"
 import { type PreviewWordData } from "./WordPreviewModal"
+import { wordStatusToastTitle, wordSuccessToastTitle } from "./word-toast"
 import { useWordAudio } from "./use-word-audio"
 import { useWordIllustration } from "./use-word-illustration"
 import {
@@ -107,7 +108,7 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
           }
         }
 
-        toast({ title: "Ficha actualizada correctamente" })
+        toast({ title: wordSuccessToastTitle("Ficha actualizada correctamente") })
         onOpenChange(false)
         onSaved()
       } else {
@@ -147,7 +148,7 @@ export function useEditWord({ open, word, onOpenChange, onSaved }: UseEditWordAr
         setOriginalForm((prev) => ({ ...prev, status: newStatus }))
 
         const statusLabel = WORD_STATUSES.find((s) => s.value === newStatus)?.label || newStatus
-        toast({ title: `Estado cambiado a "${statusLabel}"` })
+        toast({ title: wordStatusToastTitle(newStatus, `Estado cambiado a "${statusLabel}"`) })
         onSaved()
       } else {
         setSubmitError(data.error || 'Error al cambiar el estado')

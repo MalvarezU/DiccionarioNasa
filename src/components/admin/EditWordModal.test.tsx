@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { ReactNode } from "react"
 
 vi.mock("@/components/ui/select", () => ({
   Select: ({ children, value, onValueChange }: any) => (
@@ -26,6 +27,21 @@ vi.mock("@/hooks/use-toast", () => ({
 }))
 
 import { EditWordModal, type WordForEdit } from "./EditWordModal"
+
+/**
+ * The toast title is a ReactNode (icon + text). Render it and assert on
+ * its text content plus the feedback icon instead of matching the raw
+ * object shape.
+ */
+function expectToastWithText(text: string) {
+  expect(toastMock).toHaveBeenCalledTimes(1)
+  const { title } = toastMock.mock.calls[0][0] as { title: ReactNode }
+  const { container } = render(<>{title}</>)
+  expect(container).toHaveTextContent(text)
+  const icon = container.querySelector("svg")
+  expect(icon).not.toBeNull()
+  expect(icon?.classList.contains("text-secondary")).toBe(true)
+}
 
 const mockWord: WordForEdit = {
   id: "w1",
@@ -119,10 +135,9 @@ describe("EditWordModal", () => {
     await user.click(screen.getByText("Guardar cambios"))
 
     await waitFor(() => {
-      expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Ficha actualizada correctamente" })
-      )
+      expect(toastMock).toHaveBeenCalledTimes(1)
     })
+    expectToastWithText("Ficha actualizada correctamente")
     expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(onSaved).toHaveBeenCalled()
   })
@@ -179,10 +194,9 @@ describe("EditWordModal", () => {
     await user.click(screen.getByText("Publicar"))
 
     await waitFor(() => {
-      expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Estado cambiado a "Publicada"' })
-      )
+      expect(toastMock).toHaveBeenCalledTimes(1)
     })
+    expectToastWithText('Estado cambiado a "Publicada"')
     expect(onSaved).toHaveBeenCalled()
     expect(onOpenChange).not.toHaveBeenCalledWith(false)
   })

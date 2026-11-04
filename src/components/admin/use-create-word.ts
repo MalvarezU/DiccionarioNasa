@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { type PreviewWordData } from "./WordPreviewModal"
+import { wordSuccessToastTitle } from "./word-toast"
 import { useWordAudio } from "./use-word-audio"
 import { useWordIllustration } from "./use-word-illustration"
 import {
@@ -82,7 +83,7 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
               ? "Ficha guardada como borrador"
               : "Ficha guardada y publicada"
           resetForm()
-          toast({ title: message })
+          toast({ title: wordSuccessToastTitle(message) })
           onOpenChange(false)
           onCreated()
         } else {

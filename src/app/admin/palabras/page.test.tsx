@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { ReactNode } from "react"
 
 vi.mock("next-auth/react", () => ({
   useSession: vi.fn(),
@@ -39,6 +40,21 @@ vi.mock("@/hooks/use-toast", () => ({
 
 import { useSession } from "next-auth/react"
 import AdminPalabrasPage from "./page"
+
+/**
+ * The word-flow toast title is a ReactNode (icon + text). Render it and
+ * assert on its text content plus the feedback icon instead of matching
+ * the raw object shape.
+ */
+function expectToastWithText(text: string) {
+  expect(toastMock).toHaveBeenCalledTimes(1)
+  const { title } = toastMock.mock.calls[0][0] as { title: ReactNode }
+  const { container } = render(<>{title}</>)
+  expect(container).toHaveTextContent(text)
+  const icon = container.querySelector("svg")
+  expect(icon).not.toBeNull()
+  expect(icon?.classList.contains("text-secondary")).toBe(true)
+}
 
 const mockWords = [
   {
@@ -147,10 +163,9 @@ describe("AdminPalabrasPage [F2]", () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({ message: "ok" }))
     await user.click(screen.getByText("Guardar como borrador"))
     await waitFor(() => {
-      expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Ficha guardada como borrador" })
-      )
+      expect(toastMock).toHaveBeenCalledTimes(1)
     })
+    expectToastWithText("Ficha guardada como borrador")
     await waitFor(() => {
       expect(screen.queryByPlaceholderText("palabra en español")).toBeNull()
     })
@@ -166,10 +181,9 @@ describe("AdminPalabrasPage [F2]", () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({ message: "ok" }))
     await user.click(screen.getByText("Guardar y publicar"))
     await waitFor(() => {
-      expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Ficha guardada y publicada" })
-      )
+      expect(toastMock).toHaveBeenCalledTimes(1)
     })
+    expectToastWithText("Ficha guardada y publicada")
     await waitFor(() => {
       expect(screen.queryByPlaceholderText("palabra en español")).toBeNull()
     })
