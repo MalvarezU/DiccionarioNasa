@@ -226,17 +226,17 @@ export function UserManagementSection() {
           {isLoading ? (
             <UsersTableSkeleton />
           ) : users.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/20 px-4 py-12">
               <Users className="h-10 w-10 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
                 {search ? "No se encontraron usuarios" : "No hay usuarios registrados"}
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border">
               <Table>
-                <TableHeader>
-                  <TableRow>
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="hover:bg-muted/40">
                     <TableHead>Usuario</TableHead>
                     <TableHead>Rol</TableHead>
                     <TableHead className="hidden sm:table-cell">Favoritos</TableHead>
@@ -277,18 +277,18 @@ export function UserManagementSection() {
                         )}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1 text-sm tabular-nums text-muted-foreground">
                           <Heart className="h-3 w-3" />
                           {user._count?.favorites ?? 0}
                         </span>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1 text-sm tabular-nums text-muted-foreground">
                           <Clock className="h-3 w-3" />
                           {user._count?.viewHistory ?? 0}
                         </span>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                      <TableCell className="hidden whitespace-nowrap text-sm tabular-nums text-muted-foreground md:table-cell">
                         {formatDate(user.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">

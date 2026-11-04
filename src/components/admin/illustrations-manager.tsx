@@ -150,9 +150,9 @@ export function IllustrationsManager() {
           <SearchResultsSkeleton count={5} />
         </div>
       ) : (
-      <ul className="divide-y divide-border rounded-lg border">
+      <ul className="divide-y divide-border rounded-lg border bg-card">
         {words.map((w) => (
-          <li key={w.id} className="flex items-center gap-3 p-3">
+          <li key={w.id} className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/30 focus-within:bg-muted/30">
             {w.illustrationUrl ? (
               <IllustrationLightbox url={w.illustrationUrl} alt={`${w.spanish}`} thumbSize={64} />
             ) : (
@@ -174,8 +174,8 @@ export function IllustrationsManager() {
               </div>
             </div>
             <div className="flex shrink-0 gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setPendingWord(w)}>
-                <ImagePlus className="mr-1 h-3.5 w-3.5" />
+              <Button type="button" variant="outline" size="sm" onClick={() => setPendingWord(w)} className="gap-1.5">
+                <ImagePlus className="h-3.5 w-3.5" />
                 {w.illustrationUrl ? "Reemplazar" : "Subir"}
               </Button>
               {w.illustrationUrl ? (
@@ -185,6 +185,7 @@ export function IllustrationsManager() {
                   size="sm"
                   disabled={saving}
                   onClick={() => setConfirmQuitar({ id: w.id, spanish: w.spanish })}
+                  aria-label={`Quitar la ilustración de ${w.spanish}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -205,7 +206,7 @@ export function IllustrationsManager() {
         <Button type="button" variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
           Anterior
         </Button>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm tabular-nums text-muted-foreground">
           Página {page} de {totalPages}
         </span>
         <Button

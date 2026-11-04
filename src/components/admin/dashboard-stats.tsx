@@ -34,7 +34,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               <p className="text-sm font-medium text-muted-foreground">
                 Total de palabras
               </p>
-              <p className="text-5xl font-bold text-primary mt-1 tracking-tight">
+              <p className="text-5xl font-bold tabular-nums text-primary mt-1 tracking-tight">
                 {formatNumber(stats.totalWords)}
               </p>
               <p className="text-xs text-muted-foreground mt-2">
@@ -54,7 +54,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Publicadas</p>
-                <p className="text-4xl font-bold text-secondary mt-1 tracking-tight">
+                <p className="text-4xl font-bold tabular-nums text-secondary mt-1 tracking-tight">
                   {formatNumber(stats.publishedCount)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">Visibles al público</p>
@@ -84,7 +84,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Borrador</p>
-                <p className="text-4xl font-bold text-tertiary mt-1 tracking-tight">
+                <p className="text-4xl font-bold tabular-nums text-tertiary mt-1 tracking-tight">
                   {formatNumber(stats.draftCount)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">Pendientes de publicación</p>
@@ -114,7 +114,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Archivadas</p>
-                <p className="text-4xl font-bold text-muted-foreground mt-1 tracking-tight">
+                <p className="text-4xl font-bold tabular-nums text-muted-foreground mt-1 tracking-tight">
                   {formatNumber(stats.archivedCount)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">Retiradas del público</p>
@@ -152,7 +152,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               <div>
                 <p className="text-sm font-medium text-foreground">Verificación de consistencia</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Publicadas ({formatNumber(stats.publishedCount)}) + Borrador ({formatNumber(stats.draftCount)}) + Archivadas ({formatNumber(stats.archivedCount)}) = <span className="font-semibold text-foreground">{formatNumber(statusSum)}</span>
+                  Publicadas ({formatNumber(stats.publishedCount)}) + Borrador ({formatNumber(stats.draftCount)}) + Archivadas ({formatNumber(stats.archivedCount)}) = <span className="font-semibold tabular-nums text-foreground">{formatNumber(statusSum)}</span>
                 </p>
               </div>
             </div>
@@ -185,7 +185,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-tertiary">{formatNumber(stats.publishedWithoutAudio)}</p>
+            <p className="text-2xl font-bold tabular-nums text-tertiary">{formatNumber(stats.publishedWithoutAudio)}</p>
             <p className="text-xs text-muted-foreground mt-1">Publicadas sin grabación</p>
             {stats.publishedCount > 0 && (
               <div className="mt-2">
@@ -211,7 +211,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-secondary">{formatNumber(publishedWithAudio)}</p>
+            <p className="text-2xl font-bold tabular-nums text-secondary">{formatNumber(publishedWithAudio)}</p>
             <p className="text-xs text-muted-foreground mt-1">Publicadas con grabación</p>
             {stats.publishedCount > 0 && (
               <div className="mt-2">
@@ -237,7 +237,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatNumber(stats.recentWords)}</p>
+            <p className="text-2xl font-bold tabular-nums text-foreground">{formatNumber(stats.recentWords)}</p>
             <p className="text-xs text-muted-foreground mt-1">Creadas en la última semana</p>
           </CardContent>
         </Card>
@@ -250,7 +250,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatNumber(stats.totalFavorites)}</p>
+            <p className="text-2xl font-bold tabular-nums text-foreground">{formatNumber(stats.totalFavorites)}</p>
             <p className="text-xs text-muted-foreground mt-1">Palabras marcadas como favoritas</p>
           </CardContent>
         </Card>
@@ -281,7 +281,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               </>
             )}
           </div>
-          <div className="mt-3 flex items-center justify-center gap-6 text-xs">
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-1.5 text-xs tabular-nums">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-secondary inline-block" />
               <span className="text-muted-foreground">Con audio:</span>

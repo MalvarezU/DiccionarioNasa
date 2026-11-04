@@ -118,7 +118,7 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-end gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5">
         <Button
           variant="outline"
           size="sm"
@@ -130,7 +130,7 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
           {isRefreshing ? "Actualizando..." : "Actualizar"}
         </Button>
         {lastRefreshed && (
-          <span className="text-2xs text-muted-foreground">
+          <span className="text-2xs tabular-nums text-muted-foreground">
             Última actualización: {lastRefreshed.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
@@ -141,7 +141,7 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
           <Link
             key={s.href}
             href={s.href}
-            className="group rounded-lg border border-outline-variant/20 bg-card p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
+            className="group rounded-lg border border-outline-variant/20 bg-card p-4 transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shrink-0">
@@ -150,7 +150,7 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold group-hover:text-primary">{s.titulo}</p>
                 <p className="text-xs text-muted-foreground truncate">{s.desc}</p>
-                {s.conteo && <p className="text-2xs text-muted-foreground mt-0.5">{s.conteo}</p>}
+                {s.conteo && <p className="text-2xs tabular-nums text-muted-foreground mt-0.5">{s.conteo}</p>}
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
             </div>
@@ -176,7 +176,7 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
                 <li key={p.texto}>
                   <Link
                     href={p.href}
-                    className="group flex items-center justify-between gap-2 py-2 text-sm"
+                    className="group flex items-center justify-between gap-2 rounded-sm py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
                     <span className="group-hover:text-primary">{p.texto}</span>
                     <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:translate-x-0.5 group-hover:text-primary transition-transform" />

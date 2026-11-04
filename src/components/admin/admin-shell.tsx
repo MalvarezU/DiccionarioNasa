@@ -134,7 +134,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur sm:px-6">
           <SidebarTrigger aria-label="Abrir o cerrar el menú lateral" />
           <Separator orientation="vertical" className="h-6" />
           <div className="flex min-w-0 flex-1 items-center justify-between gap-3">

@@ -72,7 +72,7 @@ export function DashboardActivity({ stats, onViewAll, isAdmin = false }: Dashboa
               variant="ghost"
               size="sm"
               onClick={onViewAll}
-              className="text-xs text-primary gap-1 h-7"
+              className="h-7 shrink-0 gap-1 text-xs text-primary"
             >
               Ver todo
               <ScrollText className="h-3 w-3" />
@@ -83,8 +83,8 @@ export function DashboardActivity({ stats, onViewAll, isAdmin = false }: Dashboa
           {stats.recentAuditLogs.length > 0 ? (
             <div className="max-h-96 overflow-auto">
               <Table>
-                <TableHeader>
-                  <TableRow>
+                <TableHeader className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--border)]">
+                  <TableRow className="hover:bg-transparent">
                     <TableHead className="w-[120px]">Fecha/Hora</TableHead>
                     <TableHead className="w-[100px]">Acción</TableHead>
                     <TableHead>Entidad</TableHead>
@@ -95,7 +95,7 @@ export function DashboardActivity({ stats, onViewAll, isAdmin = false }: Dashboa
                   {stats.recentAuditLogs.map((log) => (
                     <TableRow
                       key={log.id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className="cursor-pointer transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
                       onClick={() => openDetail(log)}
                       tabIndex={0}
                       role="button"
@@ -107,7 +107,7 @@ export function DashboardActivity({ stats, onViewAll, isAdmin = false }: Dashboa
                         }
                       }}
                     >
-                      <TableCell className="text-2xs text-muted-foreground whitespace-nowrap">
+                      <TableCell className="text-2xs tabular-nums whitespace-nowrap text-muted-foreground">
                         <span title={formatDate(log.createdAt)}>{formatTimeAgo(log.createdAt)}</span>
                       </TableCell>
                       <TableCell>
@@ -133,7 +133,7 @@ export function DashboardActivity({ stats, onViewAll, isAdmin = false }: Dashboa
               </Table>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-8 gap-2">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 px-4 py-8">
               <Clock className="h-8 w-8 text-muted-foreground/30" />
               <p className="text-xs text-muted-foreground">Sin actividad registrada</p>
             </div>

@@ -110,7 +110,7 @@ export function WordListContent({
 
   return (
     <div className="space-y-4 py-2">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 text-sm tabular-nums text-muted-foreground">
         <span>{formatNumber(total)} palabra{total !== 1 ? "s" : ""}</span>
         {statusFilter !== "all" && (
           <>
@@ -130,9 +130,10 @@ export function WordListContent({
           <div className="flex gap-2 ml-auto">
             <Button
               size="sm"
+              variant="secondary"
               onClick={() => handleBulkAction("PUBLISHED")}
               disabled={isBulkAction}
-              className="h-8 gap-1.5 text-xs bg-secondary hover:bg-secondary/90 text-white"
+              className="h-8 gap-1.5 text-xs"
             >
               {isBulkAction ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
               Publicar seleccionadas
@@ -226,10 +227,10 @@ export function WordListContent({
         <WordTableSkeleton rows={5} />
       ) : words.length > 0 ? (
         <>
-          <div className="rounded-md border overflow-hidden [&_[data-slot=table-container]]:overflow-visible">
+          <div className="overflow-hidden rounded-md border bg-card [&_[data-slot=table-container]]:overflow-visible">
             <Table className="table-fixed w-full">
-              <TableHeader>
-                <TableRow>
+              <TableHeader className="bg-muted/40">
+                <TableRow className="hover:bg-muted/40">
                   <TableHead className="w-[40px] pl-4">
                     <Checkbox
                       checked={allCurrentSelected ? true : someCurrentSelected ? "indeterminate" : false}
@@ -247,7 +248,7 @@ export function WordListContent({
               </TableHeader>
               <TableBody>
                 {words.map((w) => (
-                  <TableRow key={w.id} className={selectedIds.has(w.id) ? "bg-primary/5" : ""}>
+                  <TableRow key={w.id} className={selectedIds.has(w.id) ? "bg-primary/[0.04] hover:bg-primary/[0.07]" : ""}>
                     <TableCell className="pl-4">
                       <Checkbox
                         checked={selectedIds.has(w.id)}
@@ -268,7 +269,7 @@ export function WordListContent({
                         <VolumeX className="h-4 w-4 text-muted-foreground/30" />
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -286,8 +287,8 @@ export function WordListContent({
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs tabular-nums text-muted-foreground">
                 Página {page} de {totalPages} ({formatNumber(total)} total)
               </p>
               <div className="flex items-center gap-2">
@@ -296,7 +297,7 @@ export function WordListContent({
                   size="sm"
                   disabled={page <= 1}
                   onClick={() => handlePageChange(page - 1)}
-                  className="h-7 text-xs"
+                  className="h-8 text-xs"
                 >
                   Anterior
                 </Button>
@@ -305,7 +306,7 @@ export function WordListContent({
                   size="sm"
                   disabled={page >= totalPages}
                   onClick={() => handlePageChange(page + 1)}
-                  className="h-7 text-xs"
+                  className="h-8 text-xs"
                 >
                   Siguiente
                 </Button>
@@ -314,7 +315,7 @@ export function WordListContent({
           )}
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 gap-2">
+        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/20 px-4 py-12">
           <BookOpen className="h-8 w-8 text-muted-foreground/30" />
           {hasActiveFilter ? (
             <>

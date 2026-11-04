@@ -149,9 +149,9 @@ export function AudiosManager() {
           <SearchResultsSkeleton count={5} />
         </div>
       ) : (
-      <ul className="divide-y divide-border rounded-lg border">
+      <ul className="divide-y divide-border rounded-lg border bg-card">
         {words.map((w) => (
-          <li key={w.id} className="flex items-center gap-3 p-3">
+          <li key={w.id} className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/30 focus-within:bg-muted/30">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-outline-variant/30 bg-muted">
               <Mic className="h-4 w-4 text-muted-foreground" />
             </div>
@@ -172,8 +172,8 @@ export function AudiosManager() {
               ) : null}
             </div>
             <div className="flex shrink-0 gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setPendingWord(w)}>
-                <Volume2 className="mr-1 h-3.5 w-3.5" />
+              <Button type="button" variant="outline" size="sm" onClick={() => setPendingWord(w)} className="gap-1.5">
+                <Volume2 className="h-3.5 w-3.5" />
                 {w.audioUrl ? "Reemplazar" : "Subir"}
               </Button>
               {w.audioUrl ? (
@@ -203,7 +203,7 @@ export function AudiosManager() {
         <Button type="button" variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
           Anterior
         </Button>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm tabular-nums text-muted-foreground">
           Página {page} de {totalPages}
         </span>
         <Button
