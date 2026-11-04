@@ -67,11 +67,16 @@ export default function RootLayout({
         {/* Register service worker for offline app shell */}
         <Script id="sw-register" strategy="afterInteractive">{`
           if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
+            var reg = function() {
               navigator.serviceWorker.register('/sw.js').catch(function(err) {
                 console.warn('SW registration failed:', err);
               });
-            });
+            };
+            if (document.readyState === 'complete') {
+              reg();
+            } else {
+              window.addEventListener('load', reg, { once: true });
+            }
           }
         `}</Script>
       </body>
