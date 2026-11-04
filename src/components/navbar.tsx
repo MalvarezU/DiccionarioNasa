@@ -121,7 +121,7 @@ export function NavBar() {
       <header
         className={
           isHeroTop
-            ? "fixed inset-x-0 top-0 z-50 h-14 bg-[#1B2733]/25 backdrop-blur-md backdrop-brightness-[.92] border-b border-white/10 motion-safe:transition-[background-color,border-color] motion-safe:duration-300 navbar-hero-top"
+            ? "fixed inset-x-0 top-0 z-50 h-14 bg-[#1B2733]/25 backdrop-blur-sm backdrop-brightness-[.92] border-b border-white/10 motion-safe:transition-[background-color,border-color] motion-safe:duration-300 navbar-hero-top"
             : isHome
               ? "fixed inset-x-0 top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90 motion-safe:transition-[background-color,border-color] motion-safe:duration-300"
               : "sticky top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90"
