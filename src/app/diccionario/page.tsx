@@ -130,6 +130,17 @@ function DiccionarioContent() {
     setPanelOpen(true);
   }, []);
 
+  // Open the tab from a ?tab= query param (entry from search "Ver todas")
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (tab === "explore" || tab === "featured") {
+      setActiveTab(tab);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
+
   // Open the panel from a ?panel= query param (cross-page entry from NavBar)
   useEffect(() => {
     if (typeof window === "undefined") return;

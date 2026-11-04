@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Loader2, Volume2, CloudOff, Cloud, Database, WifiOff, Lightbulb } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from "react";
+import { Search, Loader2, Volume2, Pause, Play, CloudOff, Cloud, Database, WifiOff, Lightbulb } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useOnlineStatus } from "@/hooks/use-online-status";
+import { useSingleAudio } from "@/hooks/use-single-audio";
 import { useToast } from "@/hooks/use-toast";
 import { SuggestWordModal } from "@/components/suggest-word-modal";
 import { WordDetailCard } from "@/components/word-detail-card";
@@ -18,6 +19,197 @@ interface SearchResult {
   nasaYuwe: string;
   pronunciation: string | null;
   category: string | null;
+  audioUrl?: string | null;
+}
+
+/** Accent-insensitive compare so grouping matches the API ranking (LIKE collation). */
+function normalizeForGroup(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+interface SearchGroup {
+  key: "exact" | "nasa" | "spanish";
+  label: string;
+  start: number;
+  items: SearchResult[];
+}
+
+/**
+ * Cheap, stable client grouping. Preserves the API relevance order inside
+ * each group: exact (either field equals the query) → match in Nasa Yuwe →
+ * match in Spanish (the rest).
+ */
+function groupSearchResults(results: SearchResult[], query: string): SearchGroup[] {
+  const q = normalizeForGroup(query.trim());
+  const exact: SearchResult[] = [];
+  const nasa: SearchResult[] = [];
+  const spanish: SearchResult[] = [];
+  for (const r of results) {
+    const nYu = normalizeForGroup(r.nasaYuwe);
+    const es = normalizeForGroup(r.spanish);
+    if (nYu === q || es === q) exact.push(r);
+    else if (nYu.includes(q)) nasa.push(r);
+    else spanish.push(r);
+  }
+  const groups: SearchGroup[] = [];
+  let start = 0;
+  const push = (key: SearchGroup["key"], label: string, items: SearchResult[]) => {
+    if (items.length === 0) return;
+    groups.push({ key, label, start, items });
+    start += items.length;
+  };
+  push("exact", "Coincidencia exacta", exact);
+  push("nasa", "En Nasa Yuwe", nasa);
+  push("spanish", "En español", spanish);
+  return groups;
+}
+
+interface SearchResultRowProps {
+  result: SearchResult;
+  index: number;
+  highlighted: boolean;
+  esGrande: boolean;
+  onSelect: (result: SearchResult) => void;
+  onHighlight: (index: number) => void;
+  onPlayState: (playingId: string | null) => void;
+}
+
+/**
+ * Single dropdown row (56px min height). The inline play button is local to
+ * the row and never propagates the click; the parent pauses other rows via
+ * `onPlayState`. Same local-audio pattern as WordCard.
+ */
+function SearchResultRow({
+  result,
+  index,
+  highlighted,
+  esGrande,
+  onSelect,
+  onHighlight,
+  onPlayState,
+}: SearchResultRowProps) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const hasAudio = Boolean(result.audioUrl);
+
+  // Stop playback if the row unmounts while sounding (dropdown closes).
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+    };
+  }, []);
+
+  const togglePlay = useCallback(
+    (event: React.MouseEvent) => {
+      event.stopPropagation();
+      const audio = audioRef.current;
+      if (!audio) return;
+      if (isPlaying) {
+        audio.pause();
+        setIsPlaying(false);
+        onPlayState(null);
+      } else {
+        onPlayState(result.id);
+        const playback = audio.play();
+        if (playback) {
+          playback
+            .then(() => setIsPlaying(true))
+            .catch(() => {
+              setIsPlaying(false);
+              onPlayState(null);
+            });
+        } else {
+          setIsPlaying(true);
+        }
+      }
+    },
+    [isPlaying, onPlayState, result.id]
+  );
+
+  const playLabel = isPlaying
+    ? "Pausar"
+    : `Escuchar pronunciación de ${result.nasaYuwe}`;
+
+  return (
+    <li
+      key={result.id}
+      id={`search-option-${index}`}
+      data-search-item
+      role="option"
+      aria-selected={highlighted}
+      className={`
+        flex items-center gap-3 cursor-pointer transition-all min-h-14
+        ${esGrande ? "px-4 py-3" : "px-3 py-2.5"}
+        ${
+          highlighted
+            ? "bg-surface-container-high text-foreground border-l-4 border-primary"
+            : "hover:bg-surface-container-high text-foreground border-l-4 border-transparent hover:border-primary/50"
+        }
+      `}
+      onClick={() => onSelect(result)}
+      onMouseEnter={() => onHighlight(index)}
+    >
+      {hasAudio && (
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label={playLabel}
+          aria-pressed={isPlaying}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary/10 transition-colors hover:bg-secondary/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+        >
+          {isPlaying ? (
+            <Pause className="h-4 w-4 text-secondary" aria-hidden="true" />
+          ) : (
+            <Play className="ml-0.5 h-4 w-4 text-secondary" aria-hidden="true" />
+          )}
+        </button>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className={`font-medium ${esGrande ? "text-base" : "text-sm"}`}>
+            {result.nasaYuwe}
+          </span>
+          <span className={`text-muted-foreground ${esGrande ? "text-sm" : "text-xs"}`}>
+            — {result.spanish}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          {result.pronunciation && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Volume2 className="h-3 w-3 text-secondary" />
+              [{result.pronunciation}]
+            </span>
+          )}
+          {result.category && (
+            <Badge
+              variant="secondary"
+              className="text-2xs px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
+            >
+              {result.category}
+            </Badge>
+          )}
+        </div>
+      </div>
+      {hasAudio && (
+        <audio
+          ref={audioRef}
+          data-word-id={result.id}
+          src={result.audioUrl ?? undefined}
+          preload="none"
+          className="hidden"
+          aria-hidden="true"
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => {
+            setIsPlaying(false);
+            onPlayState(null);
+          }}
+        />
+      )}
+    </li>
+  );
 }
 
 interface SearchBarProps {
@@ -46,7 +238,8 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   const debouncedQuery = useDebounce(query, 300);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
+  const { containerRef: listRef, handlePlayState, stopAll } =
+    useSingleAudio<HTMLUListElement>();
 
   /** Campo grande (presencia de hero), sea sobre imagen o sobre fondo claro. */
   const esGrande = variant !== "inline";
@@ -55,6 +248,16 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   const showDropdown = isOpen && debouncedQuery.length >= 2;
   const hasNoResults = showDropdown && !isLoading && results.length === 0;
   const [localDBReady, setLocalDBReady] = useState<boolean | null>(null);
+
+  // Client-side grouping; flat order drives global highlightedIndex.
+  const groups = useMemo(
+    () => groupSearchResults(results, debouncedQuery),
+    [results, debouncedQuery]
+  );
+  const flatResults = useMemo(
+    () => groups.flatMap((g) => g.items),
+    [groups]
+  );
 
   // Check local DB readiness on mount and when going offline
   useEffect(() => {
@@ -127,12 +330,13 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
+        stopAll();
         setIsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [stopAll]);
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -145,6 +349,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
 
   const handleSelect = useCallback(
     (result: SearchResult) => {
+      stopAll();
       setQuery("");
       setIsOpen(false);
       // Open the word detail card
@@ -153,40 +358,45 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
       // Also notify parent if callback provided
       onWordSelect?.(result.id);
     },
-    [onWordSelect]
+    [onWordSelect, stopAll]
   );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (!isOpen || results.length === 0) return;
+      if (!isOpen || flatResults.length === 0) return;
 
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
           setHighlightedIndex((prev) =>
-            prev < results.length - 1 ? prev + 1 : 0
+            prev < flatResults.length - 1 ? prev + 1 : 0
           );
           break;
         case "ArrowUp":
           e.preventDefault();
           setHighlightedIndex((prev) =>
-            prev > 0 ? prev - 1 : results.length - 1
+            prev > 0 ? prev - 1 : flatResults.length - 1
           );
           break;
         case "Enter":
           e.preventDefault();
-          if (highlightedIndex >= 0 && highlightedIndex < results.length) {
-            handleSelect(results[highlightedIndex]);
+          if (highlightedIndex >= 0 && highlightedIndex < flatResults.length) {
+            handleSelect(flatResults[highlightedIndex]);
           }
           break;
         case "Escape":
+          stopAll();
           setIsOpen(false);
           inputRef.current?.blur();
           break;
       }
     },
-    [isOpen, results, highlightedIndex, handleSelect]
+    [isOpen, flatResults, highlightedIndex, handleSelect, stopAll]
   );
+
+  const handleHighlight = useCallback((index: number) => {
+    setHighlightedIndex(index);
+  }, []);
 
   return (
     <>
@@ -308,6 +518,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                 )}
               </div>
             ) : (
+              <>
               <ul
                 ref={listRef}
                 id="search-results-list"
@@ -315,54 +526,55 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                 role="listbox"
                 aria-label="Resultados de búsqueda"
               >
-                {results.map((result, index) => (
-                  <li
-                    key={result.id}
-                    id={`search-option-${index}`}
-                    data-search-item
-                    role="option"
-                    aria-selected={index === highlightedIndex}
-                    className={`
-                      flex items-center gap-3 cursor-pointer transition-all
-                      ${esGrande ? "px-4 py-3" : "px-3 py-2.5"}
-                      ${
-                        index === highlightedIndex
-                          ? "bg-surface-container-high text-foreground border-l-4 border-primary"
-                          : "hover:bg-surface-container-high text-foreground border-l-4 border-transparent hover:border-primary/50"
-                      }
-                    `}
-                    onClick={() => handleSelect(result)}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`font-medium ${esGrande ? "text-base" : "text-sm"}`}>
-                          {result.nasaYuwe}
-                        </span>
-                        <span className={`text-muted-foreground ${esGrande ? "text-sm" : "text-xs"}`}>
-                          — {result.spanish}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {result.pronunciation && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Volume2 className="h-3 w-3 text-secondary" />
-                            [{result.pronunciation}]
-                          </span>
-                        )}
-                        {result.category && (
-                          <Badge
-                            variant="secondary"
-                            className="text-2xs px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
-                          >
-                            {result.category}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </li>
+                {groups.map((group) => (
+                  <Fragment key={group.key}>
+                    <li
+                      role="presentation"
+                      className="flex items-center justify-between px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      <span>{group.label}</span>
+                      <span>{group.items.length}</span>
+                    </li>
+                    {group.items.map((result, i) => (
+                      <SearchResultRow
+                        key={result.id}
+                        result={result}
+                        index={group.start + i}
+                        highlighted={group.start + i === highlightedIndex}
+                        esGrande={esGrande}
+                        onSelect={handleSelect}
+                        onHighlight={handleHighlight}
+                        onPlayState={handlePlayState}
+                      />
+                    ))}
+                  </Fragment>
                 ))}
               </ul>
+              {results.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-outline-variant/20 px-3 py-2 text-xs text-muted-foreground">
+                  <span className="hidden items-center gap-1 sm:flex">
+                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↑</kbd>
+                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↓</kbd>
+                    <span>navegar</span>
+                    <span aria-hidden="true">·</span>
+                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↵</kbd>
+                    <span>abrir</span>
+                    <span aria-hidden="true">·</span>
+                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">esc</kbd>
+                    <span>cerrar</span>
+                  </span>
+                  <span className="ml-auto">
+                    {results.length} {results.length === 1 ? "resultado" : "resultados"}
+                  </span>
+                  <a
+                    href="/diccionario?tab=explore"
+                    className="font-medium text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+                  >
+                    Ver todas en Explorar A-Z →
+                  </a>
+                </div>
+              )}
+              </>
             )}
           </div>
         )}

@@ -64,9 +64,10 @@ export async function GET(request: NextRequest) {
         nasaYuwe: string
         pronunciation: string | null
         category: string | null
+        audioUrl: string | null
       }>
     >`
-      SELECT id, spanish, \`nasaYuwe\`, pronunciation, category
+      SELECT id, spanish, \`nasaYuwe\`, pronunciation, category, audioUrl
       FROM DictionaryWord
       WHERE status = 'PUBLISHED'
         AND (
