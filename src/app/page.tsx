@@ -66,7 +66,7 @@ function HomeContent() {
             alt=""
             fill
             sizes="100vw"
-            className="object-cover opacity-100 z-0"
+            className="object-cover sm:object-[50%_30%] opacity-100 z-0"
             aria-hidden="true"
             onError={(e) => {
               e.currentTarget.style.display = "none";
