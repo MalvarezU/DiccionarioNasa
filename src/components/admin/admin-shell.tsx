@@ -90,27 +90,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader className="px-3 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
-              <Shield className="h-4 w-4 text-primary" />
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary-container">
+              <Shield className="h-4.5 w-4.5 text-primary-foreground" />
             </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold">Panel admin</span>
-              <span className="text-xs text-muted-foreground">Piiyaak</span>
+            <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
+              <span className="font-serif text-[15px] font-semibold tracking-tight text-primary leading-none truncate">Piiyaak</span>
+              <span className="text-2xs uppercase tracking-[0.1em] text-muted-foreground leading-none truncate">Panel admin</span>
             </div>
           </div>
         </SidebarHeader>
         <SidebarContent>
           {visibleGroups.map((group) => (
             <SidebarGroup key={group.label}>
-              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+              <SidebarGroupLabel className="uppercase tracking-[0.08em] text-muted-foreground">{group.label}</SidebarGroupLabel>
               <SidebarMenu>
                 {group.items.map((item) => {
                   const Icon = item.icon
                   const active = isActive(item.href)
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
+                      <SidebarMenuButton asChild isActive={active} tooltip={item.title} className="px-2.5 gap-2.5 text-sm rounded-md [&>svg]:size-4.5 data-[active=true]:bg-primary-container data-[active=true]:text-primary-foreground data-[active=true]:font-medium data-[active=true]:hover:bg-primary-container data-[active=true]:hover:text-primary-foreground hover:bg-surface-container-highest/60">
                         <Link href={item.href} aria-current={active ? "page" : undefined}>
                           <Icon />
                           <span>{item.title}</span>
@@ -123,10 +123,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </SidebarGroup>
           ))}
         </SidebarContent>
-        <SidebarFooter className="px-3 py-3">
-          <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground">
+        <SidebarFooter className="px-2 py-2">
+          <Button asChild variant="outline" size="sm" className="w-full justify-start gap-2 border-outline-variant/60 bg-transparent text-muted-foreground hover:border-outline-variant hover:bg-surface-container-highest hover:text-tertiary">
             <Link href="/">
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4 transition-colors" />
               Salir al diccionario
             </Link>
           </Button>
@@ -134,9 +134,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-outline-variant/40 bg-surface-container-low/80 px-4 backdrop-blur-sm sm:px-6">
           <SidebarTrigger aria-label="Abrir o cerrar el menú lateral" />
-          <Separator orientation="vertical" className="h-6" />
+          <Separator orientation="vertical" className="h-5 bg-outline-variant/60" />
           <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
             <AdminBreadcrumbs />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -148,7 +148,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               ) : (
                 <>
                   <span className="hidden sm:inline truncate max-w-[180px]">{userName}</span>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                  <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                     {isAdmin ? "Admin" : "Editor"}
                   </span>
                 </>
@@ -156,8 +156,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="flex-1 px-4 sm:px-6 py-6">{children}</main>
-        <footer className="border-t bg-muted/20 px-4 sm:px-6 py-4">
+        <main className="flex-1 px-4 sm:px-6 py-6 lg:py-8"><div className="mx-auto w-full max-w-6xl">{children}</div></main>
+        <footer className="bg-surface-container-high/60 px-4 sm:px-6 py-4">
           <p className="text-xs text-muted-foreground">Panel de administración — Piiyaak</p>
         </footer>
       </SidebarInset>
