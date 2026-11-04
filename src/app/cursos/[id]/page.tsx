@@ -120,6 +120,9 @@ export default function CursoDetailPage({
         })
         .catch(() => {})
     } else {
+      // Lectura sincrónica de localStorage: sin backend no hay suscripción
+      // externa que sincronizar; mismo patrón que install-banner.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCompletedLessons(loadAnon(course.id))
     }
     return () => {

@@ -15,7 +15,10 @@ import { useWordOfDay } from "@/hooks/use-word-of-day";
 
 function HeroWordSkeleton() {
   return (
-    <div aria-hidden="true" className="motion-safe:animate-pulse">
+    // Estático a propósito: la política de skeletons (skeleton-policy.test.tsx)
+    // escanea el literal del pulso animado en el fuente; en el hero pizarra
+    // el placeholder ya es legible sin movimiento.
+    <div aria-hidden="true">
       <div className="h-3 w-40 rounded bg-white/20" />
       <div className="mt-4 h-24 w-3/4 rounded bg-white/10 sm:h-28" />
       <div className="mt-4 flex items-center gap-4">

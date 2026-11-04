@@ -137,7 +137,7 @@ test.describe("Piiyaak público (Screenplay)", () => {
     await visitante.intenta(IrA.a("/cursos"));
     expect(await visitante.pregunta(CursoListado.titulado("Nasa Yuwe Básico"))).toBe(true);
     await visitante.intenta(AbrirCursoPublico.titulado("Nasa Yuwe Básico"));
-    expect(await visitante.pregunta(ModuloVisible.conPatron(/Módulo 1/))).toBe(true);
+    expect(await visitante.pregunta(ModuloVisible.conPatron(/Módulo 1:/))).toBe(true);
     // Numeración persistida "1.1" visible en la primera lección
     expect(await visitante.pregunta(LeccionNumerada.conPatron(/1\.1 · Lección/))).toBe(true);
   });
