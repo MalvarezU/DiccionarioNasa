@@ -126,7 +126,7 @@ function HomeContent() {
         <DownloadBanner />
 
         {/* Word of the Day */}
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-8 sm:pb-10">
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
           <WordOfDayCard onWordSelect={handleWordSelect} />
         </section>
 
