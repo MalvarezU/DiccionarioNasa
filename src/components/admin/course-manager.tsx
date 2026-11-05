@@ -3,22 +3,9 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import { Plus, Trash2, Pencil, Save, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye, X, ChevronDown } from "lucide-react"
+import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye, X, ChevronDown } from "lucide-react"
 import * as Accordion from "@radix-ui/react-accordion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -28,9 +15,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
 import { MediaPicker } from "@/components/media/media-picker"
 import { CourseManagerListSkeleton } from "@/components/skeletons"
-import { STATUS_LABEL } from "./course-types"
+import { STATUS_LABEL, lessonSinContenido } from "./course-types"
 import { useCourseManager } from "./use-course-manager"
 import { ConfirmDialog } from "./confirm-dialog"
 
@@ -38,6 +37,13 @@ import { ConfirmDialog } from "./confirm-dialog"
 type GuardPendiente =
   | { kind: "curso"; id: string }
   | { kind: "leccion"; url: string }
+
+/** Chip tonal por estado del curso activo (sistema editorial). */
+const ESTADO_CHIP: Record<string, string> = {
+  DRAFT: "border-outline-variant/40 text-muted-foreground",
+  PUBLISHED: "border-transparent bg-secondary-container text-secondary",
+  ARCHIVED: "border-transparent bg-tertiary-fixed text-tertiary",
+}
 
 /**
  * Suspense requerido por useSearchParams (bailout CSR en prerender).
@@ -81,12 +87,11 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     clearError,
     selectedId,
     detail,
+    isDirty,
     newTitle,
     setNewTitle,
     creating,
-    isSavingCourse,
     savingCourse,
-    isDirty,
     editTitle,
     setEditTitle,
     editDesc,
@@ -243,6 +248,57 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     }
   }, [openMods, detail])
 
+  /** Form documental plegable con persistencia local por curso (default: expandido). */
+  const [formAbierto, setFormAbierto] = useState(true)
+  const formInitRef = useRef<string | null>(null)
+  const chevronRef = useRef<HTMLButtonElement>(null)
+  const prevFormAbiertoRef = useRef(true)
+
+  useEffect(() => {
+    if (!detail) return
+    if (formInitRef.current !== detail.id) {
+      formInitRef.current = detail.id
+      let stored: boolean | null = null
+      try {
+        const raw = localStorage.getItem(`cm-form:${detail.id}`)
+        if (raw !== null) {
+          const parsed: unknown = JSON.parse(raw)
+          if (typeof parsed === "boolean") stored = parsed
+        }
+      } catch {
+        stored = null
+      }
+      prevFormAbiertoRef.current = stored ?? true
+      setFormAbierto(stored ?? true)
+    }
+  }, [detail])
+
+  useEffect(() => {
+    if (!detail || formInitRef.current !== detail.id) return
+    try {
+      localStorage.setItem(`cm-form:${detail.id}`, JSON.stringify(formAbierto))
+    } catch {
+      // localStorage no disponible: el plegado sigue funcionando en memoria.
+    }
+  }, [formAbierto, detail])
+
+  /** Plegar no descarta dirty: el borrador vive en el hook y sobrevive al desmontaje. */
+  function toggleForm() {
+    setFormAbierto((prev) => !prev)
+  }
+
+  // Si el form se pliega con el foco dentro, el contenido desmontado deja
+  // el foco en <body>: devolverlo al chevron. Solo en transicion, nunca al montar.
+  useEffect(() => {
+    if (prevFormAbiertoRef.current && !formAbierto) {
+      const activo = document.activeElement
+      if (!activo || activo === document.body || !document.contains(activo)) {
+        chevronRef.current?.focus()
+      }
+    }
+    prevFormAbiertoRef.current = formAbierto
+  }, [formAbierto])
+
   const continuarGuard = useCallback(
     (g: GuardPendiente) => {
       if (g.kind === "curso") {
@@ -294,6 +350,61 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     continuarGuard(g)
   }
 
+  /** Resumen del curso activo: conteos desde el árbol + lecciones vacías
+      (content ya presente en GET detail, sin fetch extra). */
+  const modulosActivos = detail?.modules ?? []
+  /** Portada vigente: edicion en curso o la guardada del detalle. */
+  const portadaActual =
+    typeof editCover === "string" ? editCover : editCover === null ? null : (detail?.coverImage ?? null)
+  const leccionesActivas = modulosActivos.flatMap((m) => m.lessons)
+  const sinContenido = leccionesActivas.filter(lessonSinContenido).length
+
+  /** Fila maestra "Estructura": opera directo sobre openMods. */
+  const todosAbiertos =
+    modulosActivos.length > 0 && modulosActivos.every((m) => openMods.includes(m.id))
+
+  function toggleEstructura() {
+    if (!detail) return
+    setOpenMods(todosAbiertos ? [] : detail.modules.map((m) => m.id))
+  }
+
+  /** Inputs de alta de lección por módulo (re-foco post-alta en cadena). */
+  const lessonInputRefs = useRef(new Map<string, HTMLInputElement>())
+  const listaRef = useRef<HTMLDivElement>(null)
+
+  function despuesDePintar(fn: () => void) {
+    if (typeof requestAnimationFrame !== "undefined") requestAnimationFrame(fn)
+    else fn()
+  }
+
+  /** Altas con feel editorial: scroll a la fila nueva + re-foco del input. */
+  async function onCreateCourse(e: React.FormEvent) {
+    const id = await handleCreate(e)
+    if (!id || !listaRef.current) return
+    const lista = listaRef.current
+    despuesDePintar(() => {
+      lista.querySelector(`[data-course-id="${id}"]`)?.scrollIntoView({ block: "nearest" })
+    })
+  }
+
+  async function onAddModule(e: React.FormEvent) {
+    const id = await handleAddModule(e)
+    if (!id) return
+    despuesDePintar(() => {
+      document.querySelector(`[data-module-id="${id}"]`)?.scrollIntoView({ block: "nearest" })
+    })
+  }
+
+  async function onAddLesson(e: React.FormEvent, moduleId: string) {
+    const id = await handleAddLesson(e, moduleId)
+    if (!id) return
+    despuesDePintar(() => {
+      // Scroll instantáneo (behavior auto): respeta reduced-motion por defecto.
+      document.querySelector(`[data-lesson-id="${id}"]`)?.scrollIntoView({ block: "nearest" })
+      lessonInputRefs.current.get(moduleId)?.focus()
+    })
+  }
+
   // Selección inicial: ?curso= si apunta a un curso real, si no el primero.
   const initDoneRef = useRef(false)
   useEffect(() => {
@@ -316,7 +427,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     requestSelect(cursoParam)
   }, [cursoParam, selectedId, courses, requestSelect])
 
-  // Salida por pestaña/cierre/recarga con cambios sin guardar (mirror lessonId/page).
+  // Salida por pestaña/cierre/recarga con cambios sin guardar.
   useEffect(() => {
     if (!isDirty) return
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -328,8 +439,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Lista: altura acotada al layout en desktop; solo la lista scrollea,
-          el form queda fijo. En móvil, flujo natural sin tope. */}
+      {/* Lista */}
       <Card className="lg:col-span-1 flex flex-col rounded-2xl border-outline-variant/30 lg:max-h-[calc(100dvh-13rem)] lg:overflow-hidden" data-testid="cursos-card">
         <CardHeader className="shrink-0">
           <CardTitle className="flex items-center gap-2.5 text-base text-secondary">
@@ -345,7 +455,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-          <form onSubmit={handleCreate} className="flex gap-2 shrink-0">
+          <form onSubmit={onCreateCourse} className="flex gap-2 shrink-0">
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
@@ -378,7 +488,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               </button>
             ))}
           </div>
-          {errorCourse && (
+          {errorCourse && !detail ? (
             <div className="flex items-start gap-2 shrink-0" role="alert">
               <p className="flex-1 text-sm text-destructive">{errorCourse}</p>
               <Button
@@ -392,7 +502,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>
-          )}
+          ) : null}
           {loading ? (
             <div aria-busy="true" aria-label="Cargando cursos">
               <CourseManagerListSkeleton />
@@ -403,11 +513,13 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               data-testid="cursos-lista"
               role="region"
               aria-label="Lista de cursos"
+              ref={listaRef}
             >
               {cursosFiltrados.map((c) => (
                 <button
                   key={c.id}
                   type="button"
+                  data-course-id={c.id}
                   onClick={() => requestSelect(c.id)}
                   className={`w-full text-left p-3 rounded-xl border border-outline-variant/30 transition-colors ${
                     selectedId === c.id
@@ -437,135 +549,280 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
       </Card>
 
       {/* Detalle */}
-      <Card className="lg:col-span-2 h-fit rounded-2xl border-outline-variant/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2.5 text-base text-secondary">
+      <Card
+        className="lg:col-span-2 flex flex-col rounded-2xl border-outline-variant/30 lg:h-[calc(100dvh-13rem)] lg:overflow-hidden"
+        data-testid="curso-detalle"
+      >
+        <CardHeader className="shrink-0">
+          <CardTitle className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-secondary/20 bg-secondary/10">
               <BookOpen className="h-4 w-4 text-secondary" aria-hidden="true" />
             </span>
-            {detail ? detail.title : "Selecciona un curso"}
+            <span className="block min-w-0 truncate font-serif text-xl tracking-tight text-primary md:text-2xl">
+              {detail ? detail.title : "Selecciona un curso"}
+            </span>
           </CardTitle>
+          {detail ? (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1" data-testid="curso-resumen">
+              <Badge variant="outline" className={`text-xs ${ESTADO_CHIP[detail.status] ?? ""}`}>
+                {STATUS_LABEL[detail.status] ?? detail.status}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="border-outline-variant/30 text-xs font-normal tabular-nums text-muted-foreground"
+              >
+                {modulosActivos.length} módulo{modulosActivos.length === 1 ? "" : "s"}
+                {" · "}
+                {leccionesActivas.length} lección{leccionesActivas.length === 1 ? "" : "es"}
+              </Badge>
+              {sinContenido > 0 ? (
+                <Badge
+                  variant="outline"
+                  className="border-destructive/25 bg-destructive/5 text-xs text-destructive"
+                >
+                  {sinContenido} sin contenido
+                </Badge>
+              ) : null}
+              {stats ? (
+                <Badge
+                  variant="outline"
+                  data-testid="curso-stats"
+                  className="border-outline-variant/30 text-xs font-normal tabular-nums text-muted-foreground"
+                >
+                  {stats.alumnos} alumno{stats.alumnos === 1 ? "" : "s"}
+                  {stats.promedioPct !== null && ` · avance promedio ${stats.promedioPct}%`}
+                  {" · "}
+                  {stats.completadas} lección{stats.completadas === 1 ? "" : "es"} completada
+                  {stats.completadas === 1 ? "" : "s"} en total
+                </Badge>
+              ) : null}
+            </div>
+          ) : null}
         </CardHeader>
-        <CardContent>
+        <CardContent
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          data-testid="curso-detalle-contenido"
+        >
           {!detail ? (
             <p className="text-sm text-muted-foreground">
               Elige un curso de la lista para editar sus módulos y lecciones.
             </p>
           ) : (
             <div className="space-y-4">
-              <div className="grid gap-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="course-title">Título</Label>
-                  <Input
-                    id="course-title"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="course-desc">Descripción</Label>
-                  <Textarea
-                    id="course-desc"
-                    rows={2}
-                    value={editDesc}
-                    onChange={(e) => setEditDesc(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Estado</Label>
-                  <Select value={editStatus} onValueChange={setEditStatus}>
-                    <SelectTrigger className="w-[200px]" aria-label="Estado del curso">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DRAFT">Borrador</SelectItem>
-                      <SelectItem value="PUBLISHED">Publicado</SelectItem>
-                      <SelectItem value="ARCHIVED">Archivado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {/* Portada del catálogo (fase 5): sube a Postgres, se muestra en /cursos */}
-                <div className="grid gap-2">
-                  <Label>Portada</Label>
-                  {editCover ? (
-                    <div className="flex items-center gap-3">
-                      <img src={editCover} alt="Portada del curso" className="h-14 w-24 rounded-md object-cover border border-outline-variant/30" />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditCover(null)}
-                      >
-                        Quitar portada
-                      </Button>
-                    </div>
-                  ) : (
-                    <MediaPicker
-                      etiqueta="Imagen de portada del curso"
-                      onSubida={(url) => setEditCover(url)}
-                    />
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => void handleSaveCourse()} disabled={isSavingCourse} className="gap-1.5">
-                    {isSavingCourse ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {isSavingCourse ? "Guardando..." : "Guardar curso"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    asChild
-                    title="La vista previa abre el curso como lo vería el estudiante (los borradores son visibles para editores)."
+              {/* Form documental plegable */}
+              <div className={`rounded-xl border border-outline-variant/30 bg-background ${formAbierto ? "p-5" : "px-3 py-2"}`}>
+                <div className="flex items-center gap-2">
+                  <button
+                    ref={chevronRef}
+                    type="button"
+                    onClick={toggleForm}
+                    aria-expanded={formAbierto}
+                    aria-controls="form-curso"
+                    aria-label={formAbierto ? "Colapsar detalles del curso" : "Expandir detalles del curso"}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
                   >
-                    <a href={`/cursos/${detail.id}`} target="_blank" rel="noopener noreferrer">
-                      <Eye className="h-3.5 w-3.5" />
-                      Ver como estudiante
-                    </a>
-                  </Button>
-                  {canDelete && (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => setConfirmPendiente({ kind: "course", titulo: detail?.title ?? "" })}
-                      className="gap-1.5"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Eliminar
-                    </Button>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${formAbierto ? "rotate-180" : ""}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                  {formAbierto ? (
+                    <span className="text-sm font-medium">Detalles del curso</span>
+                  ) : (
+                    <span className="flex min-w-0 flex-1 items-center gap-2" data-testid="form-resumen">
+                      {portadaActual ? (
+                          <img
+                          src={portadaActual}
+                          alt=""
+                          aria-hidden="true"
+                          className="h-8 w-14 shrink-0 rounded-md border border-outline-variant/30 object-cover"
+                        />
+                      ) : null}
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                        {editTitle || detail.title}
+                      </span>
+                      <Badge variant="outline" className={`shrink-0 text-xs ${ESTADO_CHIP[editStatus] ?? ""}`}>
+                        {STATUS_LABEL[editStatus] ?? editStatus}
+                      </Badge>
+                      <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                        <Button size="sm" onClick={() => void handleSaveCourse()} className="h-8 gap-1.5">
+                          <Pencil className="h-3.5 w-3.5" />
+                          Guardar curso
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          asChild
+                          className="h-8 w-8"
+                          aria-label="Ver como estudiante"
+                          title="La vista previa abre el curso como lo vería el estudiante (los borradores son visibles para editores)."
+                        >
+                          <a href={`/cursos/${detail.id}`} target="_blank" rel="noopener noreferrer">
+                            <Eye className="h-3.5 w-3.5" />
+                          </a>
+                        </Button>
+                        {canDelete && (
+                          <Button
+                            size="icon"
+                            variant="destructive"
+                            onClick={() => setConfirmPendiente({ kind: "course", titulo: detail?.title ?? "" })}
+                            className="h-8 w-8"
+                            aria-label="Eliminar"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </span>
+                    </span>
                   )}
                 </div>
-                {stats ? (
-                  <p className="text-2xs text-muted-foreground mt-2" data-testid="curso-stats">
-                    {stats.alumnos} alumno{stats.alumnos === 1 ? "" : "s"}
-                    {stats.promedioPct !== null && ` · avance promedio ${stats.promedioPct}%`}
-                    {" · "}
-                    {stats.completadas} lección{stats.completadas === 1 ? "" : "es"} completada
-                    {stats.completadas === 1 ? "" : "s"} en total
-                  </p>
-                ) : null}
-                {errorCourse && (
-                  <div role="alert" className="flex items-start gap-2">
-                    <p className="flex-1 text-sm text-destructive">{errorCourse}</p>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6 shrink-0"
-                      aria-label="Descartar error"
-                      onClick={clearError}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                {formAbierto ? (
+                  <div id="form-curso" role="region" aria-label="Detalles del curso" className="pt-3">
+                    <div className="grid gap-4">
+                      <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
+                        <div className="grid gap-2">
+                          <Label htmlFor="course-title">Título</Label>
+                          <Input
+                            id="course-title"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Estado</Label>
+                          <Select value={editStatus} onValueChange={setEditStatus}>
+                            <SelectTrigger className="w-full" aria-label="Estado del curso">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="DRAFT">Borrador</SelectItem>
+                              <SelectItem value="PUBLISHED">Publicado</SelectItem>
+                              <SelectItem value="ARCHIVED">Archivado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="course-desc">Descripción</Label>
+                        <Input
+                          id="course-desc"
+                          value={editDesc}
+                          onChange={(e) => setEditDesc(e.target.value)}
+                        />
+                      </div>
+                      {/* Portada */}
+                      <div className="grid gap-2">
+                        <Label>Portada</Label>
+                        {portadaActual ? (
+                          <div className="flex items-center gap-3">
+                            <img src={portadaActual} alt="Portada del curso" className="h-14 w-24 rounded-md object-cover border border-outline-variant/30" />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditCover(null)}
+                            >
+                              Quitar portada
+                            </Button>
+                          </div>
+                        ) : (
+                          <MediaPicker
+                            compact
+                            textoBoton="Subir portada"
+                            etiqueta="Imagen de portada del curso"
+                            onSubida={(url) => setEditCover(url)}
+                          />
+                        )}
+                      </div>
+                      {errorCourse ? (
+                        <div role="alert" className="flex items-start gap-2">
+                          <p className="flex-1 text-sm text-destructive">{errorCourse}</p>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 shrink-0"
+                            aria-label="Descartar error"
+                            onClick={clearError}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : null}
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => void handleSaveCourse()} className="gap-1.5">
+                          <Pencil className="h-3.5 w-3.5" />
+                          Guardar curso
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          asChild
+                          title="La vista previa abre el curso como lo vería el estudiante (los borradores son visibles para editores)."
+                        >
+                          <a href={`/cursos/${detail.id}`} target="_blank" rel="noopener noreferrer">
+                            <Eye className="h-3.5 w-3.5" />
+                            Ver como estudiante
+                          </a>
+                        </Button>
+                        {canDelete && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setConfirmPendiente({ kind: "course", titulo: detail?.title ?? "" })}
+                            className="gap-1.5"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Eliminar
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
+                ) : null}
               </div>
+
+              {stats ? (
+                <p className="text-2xs text-muted-foreground" data-testid="curso-stats">
+                  {stats.alumnos} alumno{stats.alumnos === 1 ? "" : "s"}
+                  {stats.promedioPct !== null && ` · avance promedio ${stats.promedioPct}%`}
+                  {" · "}
+                  {stats.completadas} lección{stats.completadas === 1 ? "" : "es"} completada
+                  {stats.completadas === 1 ? "" : "s"} en total
+                </p>
+              ) : null}
 
               <Separator />
 
-              {/* Módulos */}
+              {/* Estructura */}
               <div className="space-y-3">
-                <h4 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Módulos</h4>
-                <form onSubmit={handleAddModule} className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h4 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Estructura</h4>
+                  <span
+                    className="text-2xs tabular-nums text-muted-foreground"
+                    data-testid="estructura-conteo"
+                  >
+                    {modulosActivos.length} {modulosActivos.length === 1 ? "módulo" : "módulos"}
+                    {" · "}
+                    {leccionesActivas.length} {leccionesActivas.length === 1 ? "lección" : "lecciones"}
+                    {" · "}
+                    {sinContenido} sin contenido
+                  </span>
+                  {modulosActivos.length > 0 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="ml-auto h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={toggleEstructura}
+                      aria-expanded={todosAbiertos}
+                      data-testid="estructura-toggle"
+                    >
+                      {todosAbiertos ? "Colapsar todo" : "Expandir todo"}
+                    </Button>
+                  ) : null}
+                </div>
+                <form onSubmit={(e) => void onAddModule(e)} className="flex gap-2">
                   <Input
                     value={newModuleTitle}
                     onChange={(e) => setNewModuleTitle(e.target.value)}
@@ -578,7 +835,8 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                     {savingModule ? "Añadiendo..." : "Añadir"}
                   </Button>
                 </form>
-                {errorModule && (
+
+                {errorModule ? (
                   <div role="alert" className="flex items-start gap-2">
                     <p className="flex-1 text-sm text-destructive">{errorModule}</p>
                     <Button
@@ -592,7 +850,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                       <X className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                )}
+                ) : null}
 
                 <Accordion.Root
                   type="multiple"
@@ -600,8 +858,8 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                   onValueChange={setOpenMods}
                   className="space-y-3"
                 >
-                {(detail.modules ?? []).map((mod, modIdx, modArr) => (
-                  <Accordion.Item key={mod.id} value={mod.id} className="rounded-xl border border-outline-variant/30 p-3 space-y-2">
+                {(detail.modules ?? []).map((mod, modIdx) => (
+                  <Accordion.Item key={mod.id} value={mod.id} data-module-id={mod.id} className="group rounded-xl border border-outline-variant/30 p-3 space-y-2">
                     <Accordion.Header className="flex items-center gap-2">
                       <span
                         aria-hidden="true"
@@ -640,14 +898,16 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                       )}
                       <Accordion.Trigger
                         aria-label={`${openMods.includes(mod.id) ? "Colapsar" : "Expandir"} módulo ${mod.title}`}
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted [&[data-state=open]>svg]:rotate-180"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted [&[data-state=open]>svg]:rotate-180"
                       >
                         <ChevronDown className="h-3.5 w-3.5 transition-transform" aria-hidden="true" />
                       </Accordion.Trigger>
+                      {/* Acciones en reveal en lg */}
+                      <span className="flex items-center gap-1 lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7"
+                        className="h-8 w-8"
                         aria-label={`Subir ${mod.title}`}
                         title={modIdx === 0 ? "Ya es el primer módulo" : `Subir ${mod.title}`}
                         disabled={modIdx === 0}
@@ -658,10 +918,10 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7"
+                        className="h-8 w-8"
                         aria-label={`Bajar ${mod.title}`}
-                        title={modIdx === modArr.length - 1 ? "Ya es el último módulo" : `Bajar ${mod.title}`}
-                        disabled={modIdx === modArr.length - 1}
+                        title={modIdx === (detail?.modules?.length ?? 0) - 1 ? "Ya es el último módulo" : `Bajar ${mod.title}`}
+                        disabled={modIdx === (detail?.modules?.length ?? 0) - 1}
                         onClick={() => void moveModule(mod.id, 1)}
                       >
                         <ArrowDown className="h-3.5 w-3.5" />
@@ -670,13 +930,14 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
                           aria-label={`Eliminar ${mod.title}`}
                           onClick={() => setConfirmPendiente({ kind: "module", id: mod.id, titulo: mod.title })}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
+                      </span>
                     </Accordion.Header>
 
                     {/* Lecciones */}
@@ -687,62 +948,63 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                             (a.lessonNumber ?? Number.MAX_SAFE_INTEGER) -
                               (b.lessonNumber ?? Number.MAX_SAFE_INTEGER) || a.order - b.order
                         )
-                        .map((les, lesIdx, lesArr) => (
+                        .map((les) => (
                         <div
                           key={les.id}
                           data-testid="lesson-row"
+                          data-lesson-id={les.id}
                           data-lesson-title={les.title}
-                          className="flex items-center gap-2 text-sm p-2 rounded-xl border border-outline-variant/30 bg-muted/30"
+                          className="group flex items-center gap-2 text-sm p-2 rounded-xl border border-outline-variant/30 bg-muted/30"
                         >
-                          <Badge variant="outline" className="border-secondary/20 bg-secondary/10 text-secondary text-2xs shrink-0">
+                          <Badge variant="outline" className="border-secondary/20 bg-secondary/10 text-secondary text-2xs tabular-nums shrink-0">
                             {modIdx + 1}.{les.lessonNumber ?? "?"}
                           </Badge>
                           <span className="flex-1">{les.title}</span>
+                          <span className="flex items-center gap-1 lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6"
+                            className="h-8 w-8"
                             aria-label={`Contenido de lección ${les.title}`}
                             onClick={() => requestLesson(`/admin/cursos/${detail.id}/lecciones/${les.id}`)}
                           >
-                            <Pencil className="h-3 w-3" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6"
+                            className="h-8 w-8"
                             aria-label={`Subir lección ${les.title}`}
-                            title={lesIdx === 0 ? "Ya es la primera lección" : `Subir lección ${les.title}`}
-                            disabled={lesIdx === 0}
                             onClick={() => void moveLesson(mod.id, les.id, -1)}
                           >
-                            <ArrowUp className="h-3 w-3" />
+                            <ArrowUp className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6"
+                            className="h-8 w-8"
                             aria-label={`Bajar lección ${les.title}`}
-                            title={lesIdx === lesArr.length - 1 ? "Ya es la última lección" : `Bajar lección ${les.title}`}
-                            disabled={lesIdx === lesArr.length - 1}
                             onClick={() => void moveLesson(mod.id, les.id, 1)}
                           >
-                            <ArrowDown className="h-3 w-3" />
+                            <ArrowDown className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            aria-label={`Eliminar lección ${les.title}`}
-                            onClick={() => setConfirmPendiente({ kind: "lesson", id: les.id, titulo: les.title })}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          {canDelete && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              aria-label={`Eliminar lección ${les.title}`}
+                              onClick={() => setConfirmPendiente({ kind: "lesson", id: les.id, titulo: les.title })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          </span>
                         </div>
                       ))}
 
                       <form
-                        onSubmit={(e) => void handleAddLesson(e, mod.id)}
+                        onSubmit={(e) => void onAddLesson(e, mod.id)}
                         className="flex flex-wrap gap-2 pt-1"
                       >
                         <Input
@@ -752,6 +1014,10 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                           aria-label={`Título de nueva lección en ${mod.title}`}
                           className="flex-1 min-w-[140px] h-8 text-xs"
                           disabled={!!savingLesson[mod.id]}
+                          ref={(el) => {
+                            if (el) lessonInputRefs.current.set(mod.id, el)
+                            else lessonInputRefs.current.delete(mod.id)
+                          }}
                         />
                         <Button
                           type="submit"
@@ -763,7 +1029,8 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                           {savingLesson[mod.id] ? "Añadiendo..." : "Añadir lección"}
                         </Button>
                       </form>
-                      {errorLesson[mod.id] && (
+
+                      {errorLesson[mod.id] ? (
                         <div role="alert" className="flex items-start gap-2">
                           <p className="flex-1 text-sm text-destructive">{errorLesson[mod.id]}</p>
                           <Button
@@ -777,7 +1044,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                             <X className="h-3.5 w-3.5" />
                           </Button>
                         </div>
-                      )}
+                      ) : null}
                     </Accordion.Content>
                   </Accordion.Item>
                 ))}
@@ -787,32 +1054,6 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
           )}
         </CardContent>
       </Card>
-
-      {/* Guard CU-1: salir con ediciones sin guardar */}
-      <AlertDialog open={guard !== null} onOpenChange={(v) => !v && !savingCourse && setGuard(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Guardar cambios antes de salir?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tenés cambios sin guardar en este curso. Podés guardarlos, descartarlos o volver para seguir editando.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel disabled={savingCourse}>Cancelar</AlertDialogCancel>
-            <Button type="button" variant="outline" disabled={savingCourse} onClick={descartarYContinuar}>
-              Descartar
-            </Button>
-            <Button type="button" disabled={savingCourse} onClick={() => void guardarYContinuar()} className="gap-1.5">
-              {savingCourse && <Loader2 className="h-4 w-4 animate-spin" />}
-              Guardar cambios
-            </Button>
-            <Button type="button" disabled={savingCourse} onClick={() => void guardarYContinuar()} className="gap-1.5">
-              {savingCourse && <Loader2 className="h-4 w-4 animate-spin" />}
-              Guardar y continuar
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <ConfirmDialog
         open={confirmPendiente !== null}
@@ -844,6 +1085,37 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
           }
         }}
       />
+
+      <AlertDialog open={guard !== null} onOpenChange={(v) => !v && !savingCourse && setGuard(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Tenés cambios sin guardar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Guardá tus cambios en este curso antes de continuar o se perderán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={savingCourse}>Cancelar</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={savingCourse}
+              onClick={descartarYContinuar}
+            >
+              Descartar
+            </Button>
+            <Button
+              type="button"
+              disabled={savingCourse}
+              onClick={() => void guardarYContinuar()}
+              className="gap-1.5"
+            >
+              {savingCourse ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+              Guardar y continuar
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

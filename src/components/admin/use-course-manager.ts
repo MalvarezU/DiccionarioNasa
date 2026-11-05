@@ -147,9 +147,10 @@ export function useCourseManager() {
     }
   }, [failCourse])
 
-  async function handleCreate(e: React.FormEvent) {
+  /** Crea el curso y devuelve su id (para scroll post-alta); null si falla. */
+  async function handleCreate(e: React.FormEvent): Promise<string | null> {
     e.preventDefault()
-    if (!newTitle.trim()) return
+    if (!newTitle.trim()) return null
     setCreating(true)
     try {
       const data = await api("/api/courses", {
@@ -158,9 +159,12 @@ export function useCourseManager() {
       })
       setNewTitle("")
       await loadCourses()
-      await loadDetail(data.course.id)
+      const id = typeof data?.course?.id === "string" ? (data.course.id as string) : null
+      if (id) await loadDetail(id)
+      return id
     } catch (err) {
       failCourse("No se pudo crear el curso", err, "Error al crear")
+      return null
     } finally {
       setCreating(false)
     }
@@ -220,22 +224,26 @@ export function useCourseManager() {
     }
   }
 
-  async function handleAddModule(e: React.FormEvent) {
+  /** Crea el módulo y devuelve su id (para scroll post-alta); null si falla. */
+  async function handleAddModule(e: React.FormEvent): Promise<string | null> {
     e.preventDefault()
-    if (!detail || !newModuleTitle.trim() || savingModuleRef.current) return
+    if (!detail || !newModuleTitle.trim() || savingModuleRef.current) return null
     savingModuleRef.current = true
     setSavingModule(true)
     setErrorModule(null)
     try {
-      await api("/api/modules", {
+      const data = await api("/api/modules", {
         method: "POST",
         body: JSON.stringify({ courseId: detail.id, title: newModuleTitle.trim() }),
       })
       setNewModuleTitle("")
       await loadDetail(detail.id)
       toast({ title: successToastTitle("Módulo añadido") })
+      const id = typeof data?.module?.id === "string" ? (data.module.id as string) : null
+      return id
     } catch (err) {
       failModule("No se pudo añadir el módulo", err, "Error al crear módulo")
+      return null
     } finally {
       savingModuleRef.current = false
       setSavingModule(false)
@@ -299,12 +307,13 @@ export function useCourseManager() {
     }))
   }
 
-  async function handleAddLesson(e: React.FormEvent, moduleId: string) {
+  /** Crea la lección y devuelve su id (para scroll + foco post-alta); null si falla. */
+  async function handleAddLesson(e: React.FormEvent, moduleId: string): Promise<string | null> {
     e.preventDefault()
-    if (!detail) return
-    if (savingLessonRef.current.has(moduleId)) return
+    if (!detail) return null
+    if (savingLessonRef.current.has(moduleId)) return null
     const form = lessonForm(moduleId)
-    if (!form.title.trim()) return
+    if (!form.title.trim()) return null
     savingLessonRef.current.add(moduleId)
     setSavingLesson((prev) => ({ ...prev, [moduleId]: true }))
     setErrorLesson((prev) => {
@@ -314,7 +323,7 @@ export function useCourseManager() {
       return next
     })
     try {
-      await api(`/api/modules/${moduleId}/lessons`, {
+      const data = await api(`/api/modules/${moduleId}/lessons`, {
         method: "POST",
         // Alta mínima: solo título. El contenido (texto, quiz, juego...)
         // se arma en el creador único de bloques.
@@ -328,8 +337,11 @@ export function useCourseManager() {
       }))
       await loadDetail(detail.id)
       toast({ title: successToastTitle("Lección añadida") })
+      const id = typeof data?.lesson?.id === "string" ? (data.lesson.id as string) : null
+      return id
     } catch (err) {
       failLesson(moduleId, "No se pudo añadir la lección", err, "Error al crear lección")
+      return null
     } finally {
       savingLessonRef.current.delete(moduleId)
       setSavingLesson((prev) => ({ ...prev, [moduleId]: false }))

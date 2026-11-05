@@ -31,11 +31,17 @@ export function MediaPicker({
   onCancelar,
   etiqueta,
   variant = "block",
+  compact = false,
+  textoBoton = "Elegir",
 }: {
   onSubida: (url: string) => void
   onCancelar?: () => void
   etiqueta?: string
   variant?: MediaPickerVariant
+  /** Fila unica (boton h-8 + hint corta) para conductos angostos. */
+  compact?: boolean
+  /** Etiqueta del boton en modo compacto. */
+  textoBoton?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [subiendo, setSubiendo] = useState(false)
@@ -67,6 +73,37 @@ export function MediaPicker({
     } finally {
       setSubiendo(false)
     }
+  }
+
+  // Fila unica sin las 3 lineas de ayuda: boton h-8 outline + hint corta.
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2">
+        <Input
+          ref={inputRef}
+          type="file"
+          accept={ACCEPT}
+          onChange={alElegir}
+          className="hidden"
+          aria-label="Elegir imagen del dispositivo"
+          disabled={subiendo}
+          tabIndex={-1}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0"
+          onClick={() => inputRef.current?.click()}
+          disabled={subiendo}
+        >
+          {subiendo ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+          {textoBoton}
+        </Button>
+        <p className="text-xs text-muted-foreground">PNG, JPG, WebP o AVIF.</p>
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      </div>
+    )
   }
 
   return (
