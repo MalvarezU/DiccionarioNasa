@@ -22,6 +22,9 @@ export function useCourseManager() {
   const { toast } = useToast()
   const [courses, setCourses] = useState<CourseListItem[]>([])
   const [loading, setLoading] = useState(true)
+  /** Refetch en curso con la lista anterior visible (sin re-skeletonizar). */
+  const [refreshing, setRefreshing] = useState(false)
+  const didInitCoursesRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<Course | null>(null)
@@ -32,6 +35,11 @@ export function useCourseManager() {
   const [editTitle, setEditTitle] = useState("")
   const [editDesc, setEditDesc] = useState("")
   const [editStatus, setEditStatus] = useState<string>("DRAFT")
+  /** Guardando el curso (diálogo de guard + botón Guardar). */
+  const [savingCourse, setSavingCourse] = useState(false)
+  const savingCourseRef = useRef(false)
+  /** Token anti-race: solo la última respuesta de loadDetail pinta. */
+  const loadSeqRef = useRef(0)
   /** Portada: undefined = sin cambios; string/null = setear/quitar. */
   const [editCover, setEditCover] = useState<string | null | undefined>(undefined)
   /** Stats de progreso (solo editor+). */
@@ -45,7 +53,9 @@ export function useCourseManager() {
   const [lessonForms, setLessonForms] = useState<Record<string, LessonForm>>({})
 
   const loadCourses = useCallback(async () => {
-    setLoading(true)
+    const isInitial = !didInitCoursesRef.current
+    if (isInitial) setLoading(true)
+    else setRefreshing(true)
     setError(null)
     try {
       const data = await api("/api/courses?all=1")
@@ -53,7 +63,9 @@ export function useCourseManager() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al cargar")
     } finally {
-      setLoading(false)
+      didInitCoursesRef.current = true
+      if (isInitial) setLoading(false)
+      else setRefreshing(false)
     }
   }, [])
 
@@ -62,9 +74,11 @@ export function useCourseManager() {
   }, [loadCourses])
 
   const loadDetail = useCallback(async (id: string) => {
+    const seq = ++loadSeqRef.current
     setSelectedId(id)
     try {
       const data = await api(`/api/courses/${id}`)
+      if (loadSeqRef.current !== seq) return
       setDetail(data.course)
       setStats((data as { stats?: CourseStats }).stats ?? null)
       setEditTitle(data.course.title)
@@ -72,6 +86,7 @@ export function useCourseManager() {
       setEditStatus(data.course.status)
       setEditCover(undefined)
     } catch (e) {
+      if (loadSeqRef.current !== seq) return
       setError(e instanceof Error ? e.message : "Error al cargar el curso")
     }
   }, [])
@@ -95,8 +110,10 @@ export function useCourseManager() {
     }
   }
 
-  async function handleSaveCourse() {
-    if (!detail) return
+  async function handleSaveCourse(): Promise<boolean> {
+    if (!detail || savingCourseRef.current) return false
+    savingCourseRef.current = true
+    setSavingCourse(true)
     try {
       await api(`/api/courses/${detail.id}`, {
         method: "PATCH",
@@ -110,8 +127,13 @@ export function useCourseManager() {
       await loadCourses()
       await loadDetail(detail.id)
       toast({ title: successToastTitle("Curso guardado") })
+      return true
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar")
+      return false
+    } finally {
+      savingCourseRef.current = false
+      setSavingCourse(false)
     }
   }
 
@@ -249,15 +271,26 @@ export function useCourseManager() {
   }
 
 
+  /** Cambios sin guardar en el form del curso (título, descripción, estado, portada). */
+  const isDirty =
+    detail !== null &&
+    (editTitle !== detail.title ||
+      editDesc !== (detail.description ?? "") ||
+      editStatus !== detail.status ||
+      editCover !== undefined)
+
   return {
     courses,
     loading,
+    refreshing,
     error,
     selectedId,
     detail,
+    isDirty,
     newTitle,
     setNewTitle,
     creating,
+    savingCourse,
     editTitle,
     setEditTitle,
     editDesc,

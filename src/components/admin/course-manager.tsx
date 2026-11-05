@@ -1,10 +1,19 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,8 +32,35 @@ import { STATUS_LABEL } from "./course-types"
 import { useCourseManager } from "./use-course-manager"
 import { ConfirmDialog } from "./confirm-dialog"
 
+/** Navegación pendiente frenada por el guard de cambios sin guardar. */
+type GuardPendiente =
+  | { kind: "curso"; id: string }
+  | { kind: "leccion"; url: string }
+
+/**
+ * Suspense requerido por useSearchParams (bailout CSR en prerender).
+ * El fallback reusa el skeleton de lista: solo se ve en prerender/build.
+ */
 export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
+  return (
+    <Suspense
+      fallback={
+        <div aria-busy="true" aria-label="Cargando cursos">
+          <CourseManagerListSkeleton />
+        </div>
+      }
+    >
+      <CourseManagerInner canDelete={canDelete} />
+    </Suspense>
+  )
+}
+
+function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [initialCurso] = useState(() => searchParams.get("curso"))
+  const [guard, setGuard] = useState<GuardPendiente | null>(null)
   const [confirmPendiente, setConfirmPendiente] = useState<{
     kind: "course" | "module" | "lesson"
     id?: string
@@ -35,12 +71,15 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
   const {
     courses,
     loading,
+    refreshing,
     error,
     selectedId,
     detail,
+    isDirty,
     newTitle,
     setNewTitle,
     creating,
+    savingCourse,
     editTitle,
     setEditTitle,
     editDesc,
@@ -68,6 +107,101 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     moveLesson,
   } = useCourseManager()
 
+  /** Espeja la selección en ?curso= sin entrada al historial ni scroll. */
+  const syncCursoUrl = useCallback(
+    (id: string | null) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (id) params.set("curso", id)
+      else params.delete("curso")
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [router, pathname, searchParams]
+  )
+
+  const continuarGuard = useCallback(
+    (g: GuardPendiente) => {
+      if (g.kind === "curso") {
+        syncCursoUrl(g.id)
+        void loadDetail(g.id)
+      } else {
+        router.push(g.url)
+      }
+    },
+    [syncCursoUrl, loadDetail, router]
+  )
+
+  /** Cambio de curso pasando por el guard si hay cambios sin guardar. */
+  const requestSelect = useCallback(
+    (id: string) => {
+      if (id === selectedId) return
+      if (isDirty) {
+        setGuard({ kind: "curso", id })
+        return
+      }
+      syncCursoUrl(id)
+      void loadDetail(id)
+    },
+    [selectedId, isDirty, syncCursoUrl, loadDetail]
+  )
+
+  /** Ida al editor de lección pasando por el guard si hay cambios. */
+  const requestLesson = useCallback(
+    (url: string) => {
+      if (isDirty) setGuard({ kind: "leccion", url })
+      else router.push(url)
+    },
+    [isDirty, router]
+  )
+
+  async function guardarYContinuar() {
+    if (!guard || savingCourse) return
+    const ok = await handleSaveCourse()
+    if (!ok) return
+    const g = guard
+    setGuard(null)
+    continuarGuard(g)
+  }
+
+  function descartarYContinuar() {
+    if (!guard || savingCourse) return
+    const g = guard
+    setGuard(null)
+    continuarGuard(g)
+  }
+
+  // Selección inicial: ?curso= si apunta a un curso real, si no el primero.
+  const initDoneRef = useRef(false)
+  useEffect(() => {
+    if (initDoneRef.current || loading || courses.length === 0) return
+    initDoneRef.current = true
+    const target =
+      initialCurso && courses.some((c) => c.id === initialCurso)
+        ? initialCurso
+        : courses[0]!.id
+    if (target !== initialCurso) syncCursoUrl(target)
+    void loadDetail(target)
+  }, [loading, courses, initialCurso, syncCursoUrl, loadDetail])
+
+  // Deep-link / atrás: si la URL pide otro curso existente, ir pasando por el guard.
+  const cursoParam = searchParams.get("curso")
+  useEffect(() => {
+    if (!initDoneRef.current) return
+    if (!cursoParam || cursoParam === selectedId) return
+    if (!courses.some((c) => c.id === cursoParam)) return
+    requestSelect(cursoParam)
+  }, [cursoParam, selectedId, courses, requestSelect])
+
+  // Salida por pestaña/cierre/recarga con cambios sin guardar (mirror lessonId/page).
+  useEffect(() => {
+    if (!isDirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener("beforeunload", onBeforeUnload)
+    return () => window.removeEventListener("beforeunload", onBeforeUnload)
+  }, [isDirty])
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Lista: altura acotada al layout en desktop; solo la lista scrollea,
@@ -79,6 +213,11 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
               <GraduationCap className="h-4 w-4 text-secondary" aria-hidden="true" />
             </span>
             Cursos ({courses.length})
+            {refreshing ? (
+              <span role="status" aria-label="Actualizando cursos" className="ml-auto flex shrink-0">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
+              </span>
+            ) : null}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
@@ -110,7 +249,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => void loadDetail(c.id)}
+                  onClick={() => requestSelect(c.id)}
                   className={`w-full text-left p-3 rounded-xl border border-outline-variant/30 transition-colors ${
                     selectedId === c.id
                       ? "border-secondary bg-secondary/5"
@@ -325,7 +464,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                             variant="ghost"
                             className="h-6 w-6"
                             aria-label={`Contenido de lección ${les.title}`}
-                            onClick={() => router.push(`/admin/cursos/${detail.id}/lecciones/${les.id}`)}
+                            onClick={() => requestLesson(`/admin/cursos/${detail.id}/lecciones/${les.id}`)}
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
@@ -420,6 +559,36 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
           }
         }}
       />
+      <AlertDialog open={guard !== null} onOpenChange={(v) => !v && !savingCourse && setGuard(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Tenés cambios sin guardar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Guardá tus cambios en este curso antes de continuar o se perderán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={savingCourse}>Cancelar</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={savingCourse}
+              onClick={descartarYContinuar}
+            >
+              Descartar
+            </Button>
+            <Button
+              type="button"
+              disabled={savingCourse}
+              onClick={() => void guardarYContinuar()}
+              className="gap-1.5"
+            >
+              {savingCourse ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+              Guardar y continuar
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
