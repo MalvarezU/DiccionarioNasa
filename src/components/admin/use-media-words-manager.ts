@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { successToastTitle } from "./word-toast"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { matchIllustrationFiles } from "@/lib/media/bulk-match"
 import {
@@ -219,7 +220,7 @@ export function useMediaWordsManager<F extends MediaField>(
       })
       if (!res.ok) throw new Error("No se pudo guardar")
       setPendingWord(null)
-      toast({ title: url ? config.savedToast : config.removedToast })
+      toast({ title: successToastTitle(url ? config.savedToast : config.removedToast) })
       await load()
     } catch (err) {
       toast({

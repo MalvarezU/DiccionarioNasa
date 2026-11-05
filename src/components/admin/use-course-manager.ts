@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { successToastTitle } from "./word-toast"
 import { type CourseStats } from "./course-types"
 import {
   api,
@@ -108,7 +109,7 @@ export function useCourseManager() {
       })
       await loadCourses()
       await loadDetail(detail.id)
-      toast({ title: "Curso guardado" })
+      toast({ title: successToastTitle("Curso guardado") })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar")
     }
