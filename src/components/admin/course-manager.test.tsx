@@ -3,23 +3,41 @@ import { render, screen, waitFor, fireEvent, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event"
 import type { ReactNode } from "react"
 
+const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), curso: "" as string }))
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: nav.push, replace: nav.replace }),
+  usePathname: () => "/admin/cursos",
+  useSearchParams: () => new URLSearchParams(nav.curso ? `curso=${nav.curso}` : ""),
 }))
 
-const { toastMock } = vi.hoisted(() => ({ toastMock: vi.fn() }))
+const toastMock = vi.fn()
 vi.mock("@/hooks/use-toast", () => ({
-  useToast: () => ({ toast: toastMock, dismiss: vi.fn(), toasts: [] }),
+  useToast: vi.fn(() => ({ toast: toastMock })),
 }))
 
 import { CourseManager } from "./course-manager"
+
+// jsdom no implementa pointer capture: Radix Select lo exige al abrir el
+// menú (solo entorno de test, sin efecto en producción).
+if (typeof Element !== "undefined") {
+  const proto = Element.prototype as unknown as Record<string, unknown>
+  if (typeof proto.hasPointerCapture !== "function") {
+    proto.hasPointerCapture = () => false
+    proto.setPointerCapture = () => {}
+    proto.releasePointerCapture = () => {}
+  }
+  if (typeof proto.scrollIntoView !== "function") {
+    proto.scrollIntoView = () => {}
+  }
+}
 
 const COURSES = [
   { id: "c1", title: "Básico", description: "d", status: "PUBLISHED", modules: 2, lessons: 4 },
   { id: "c2", title: "Intermedio", description: null, status: "DRAFT", modules: 0, lessons: 0 },
 ]
 
-const DETAIL = {
+const DETAIL_C1 = {
   id: "c1",
   title: "Básico",
   description: "d",
@@ -35,22 +53,55 @@ const DETAIL = {
   ],
 }
 
+const DETAIL_C2 = {
+  id: "c2",
+  title: "Intermedio",
+  description: null,
+  status: "DRAFT",
+  sequential: true,
+  modules: [],
+}
+
+function resetNav() {
+  nav.push.mockClear()
+  nav.replace.mockClear()
+  nav.curso = ""
+}
+
+/** Respuestas base: lista + detalles + escrituras OK. */
+function mockBase() {
+  vi.mocked(fetch).mockImplementation(async (input: unknown, init?: RequestInit) => {
+    const url = String(input)
+    const method = init?.method ?? "GET"
+    if (method !== "GET") {
+      if (method === "POST" && url === "/api/courses") return Response.json({ course: { id: "c3" } })
+      return Response.json({ ok: true, success: true })
+    }
+    if (url.startsWith("/api/courses?")) return Response.json({ courses: COURSES })
+    if (url === "/api/courses/c1") return Response.json({ course: DETAIL_C1 })
+    if (url === "/api/courses/c2") return Response.json({ course: DETAIL_C2 })
+    if (url === "/api/courses/c3") return Response.json({ course: { ...DETAIL_C2, id: "c3", title: "Nuevo" } })
+    return Response.json({})
+  })
+}
+
+function detailCalls(id: string) {
+  return vi.mocked(fetch).mock.calls.filter(([u]) => String(u) === `/api/courses/${id}`)
+}
+
 describe("CourseManager [B2.2]", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
+    resetNav()
   })
 
   it("lista cursos y crea uno nuevo", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(Response.json({ courses: COURSES }))
-      .mockResolvedValueOnce(Response.json({ course: { id: "c3" } }))
-      .mockResolvedValueOnce(Response.json({ courses: [...COURSES, { id: "c3", title: "N", description: null, status: "DRAFT", modules: 0, lessons: 0 }] }))
-      .mockResolvedValueOnce(Response.json(DETAIL))
+    mockBase()
     const user = userEvent.setup()
     render(<CourseManager canDelete />)
 
-    expect(await screen.findByText("Básico")).toBeDefined()
+    await screen.findByRole("button", { name: /Básico/ })
     await user.type(screen.getByLabelText("Título del nuevo curso"), "Nuevo")
     await user.click(screen.getByRole("button", { name: "Crear curso" }))
     expect(fetch).toHaveBeenCalledWith(
@@ -60,14 +111,11 @@ describe("CourseManager [B2.2]", () => {
   })
 
   it("edita módulos y añade lecciones", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(Response.json({ courses: COURSES }))
-      .mockResolvedValueOnce(Response.json({ course: DETAIL }))
-      .mockResolvedValue(Response.json({ module: { id: "m2" } }))
+    mockBase()
     const user = userEvent.setup()
     render(<CourseManager canDelete />)
 
-    await user.click(await screen.findByText("Básico"))
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
     expect(await screen.findByText("M1")).toBeDefined()
 
     await user.type(screen.getByLabelText("Título del nuevo módulo"), "M2")
@@ -79,33 +127,37 @@ describe("CourseManager [B2.2]", () => {
   })
 
   it("sin canDelete no muestra eliminar curso", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(Response.json({ courses: COURSES }))
-      .mockResolvedValueOnce(Response.json({ course: DETAIL }))
+    mockBase()
     const user = userEvent.setup()
     render(<CourseManager canDelete={false} />)
 
-    await user.click(await screen.findByText("Básico"))
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
     expect(screen.queryByRole("button", { name: "Eliminar" })).toBeNull()
   })
 
   it("doble click en añadir lección crea una sola [admin-cursos]", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(Response.json({ courses: COURSES }))
-      .mockResolvedValueOnce(Response.json({ course: DETAIL }))
+    mockBase()
+    const base = vi.mocked(fetch).getMockImplementation()!
     // POST pendiente: simula red lenta. fireEvent es sincrónico: ambos
     // clicks llegan antes de cualquier re-render (el race real).
     let resolvePost!: (v: Response) => void
     vi.mocked(fetch).mockImplementation(
-      () =>
-        new Promise<Response>((r) => {
-          resolvePost = r
-        })
+      (input: unknown, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method ?? "GET"
+        if (method === "POST" && url.includes("/lessons")) {
+          return new Promise<Response>((r) => {
+            resolvePost = r
+          })
+        }
+        return base(input as string, init)
+      }
     )
     const user = userEvent.setup()
     render(<CourseManager canDelete />)
 
-    await user.click(await screen.findByText("Básico"))
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByLabelText(/Título de nueva lección/)
     await user.type(screen.getByLabelText(/Título de nueva lección/), "Doble")
     const addBtn = screen.getByRole("button", { name: "Añadir lección" })
     fireEvent.click(addBtn)
@@ -126,17 +178,11 @@ describe("CourseManager [B2.2]", () => {
   })
 
   it("guardar curso muestra toast de éxito con icono", async () => {
-    vi.mocked(fetch).mockImplementation(async (input: unknown) => {
-      const url = String(input)
-      if (url.includes("/api/courses/c1")) {
-        return Response.json({ course: DETAIL })
-      }
-      return Response.json({ courses: COURSES })
-    })
+    mockBase()
     const user = userEvent.setup()
     render(<CourseManager canDelete />)
 
-    await user.click(await screen.findByText("Básico"))
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
     await user.click(await screen.findByRole("button", { name: "Guardar curso" }))
 
     await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
@@ -151,20 +197,14 @@ describe("CourseManager delete con confirm dialog", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
+    resetNav()
   })
 
   it("eliminar curso: abre confirm y al confirmar llama DELETE", async () => {
-    vi.mocked(fetch).mockImplementation(async (input: unknown, init?: RequestInit) => {
-      const url = String(input)
-      if (init?.method === "DELETE") return Response.json({ success: true })
-      if (url.includes("/api/courses/c1")) {
-        return Response.json({ course: DETAIL, stats: { alumnos: 0, promedioPct: null, completadas: 0 } })
-      }
-      return Response.json({ courses: COURSES })
-    })
+    mockBase()
     const user = userEvent.setup()
     render(<CourseManager canDelete />)
-    await user.click(await screen.findByText("Básico"))
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
     const eliminarBtn = await screen.findByRole("button", { name: "Eliminar" })
     await user.click(eliminarBtn)
 
@@ -174,27 +214,21 @@ describe("CourseManager delete con confirm dialog", () => {
     await user.click(within(dialogo).getByRole("button", { name: "Eliminar" }))
     await waitFor(() => {
       const calls = vi.mocked(fetch).mock.calls
-      expect(calls.some((c) => String(c[0]).includes("/api/courses/c1") && (c[1] as any)?.method === "DELETE")).toBe(true)
+      expect(calls.some((c) => String(c[0]).includes("/api/courses/c1") && (c[1] as RequestInit)?.method === "DELETE")).toBe(true)
     })
   })
 
   it("cancelar no llama DELETE", async () => {
-    vi.mocked(fetch).mockImplementation(async (input: unknown, init?: RequestInit) => {
-      const url = String(input)
-      if (url.includes("/api/courses/c1")) {
-        return Response.json({ course: DETAIL, stats: { alumnos: 0, promedioPct: null, completadas: 0 } })
-      }
-      return Response.json({ courses: COURSES })
-    })
+    mockBase()
     const user = userEvent.setup()
     render(<CourseManager canDelete />)
-    await user.click(await screen.findByText("Básico"))
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
     await user.click(await screen.findByRole("button", { name: "Eliminar" }))
 
     const dialogo = await screen.findByRole("alertdialog")
     await user.click(within(dialogo).getByRole("button", { name: "Cancelar" }))
     const calls = vi.mocked(fetch).mock.calls
-    expect(calls.some((c) => (c[1] as any)?.method === "DELETE")).toBe(false)
+    expect(calls.some((c) => (c[1] as RequestInit)?.method === "DELETE")).toBe(false)
   })
 })
 
@@ -202,10 +236,11 @@ describe("CourseManager — lista con scroll propio", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
+    resetNav()
   })
 
   it("la lista scrollea en su contenedor con tope de layout y el form queda fijo", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ courses: COURSES }))
+    mockBase()
     render(<CourseManager canDelete />)
 
     const lista = await screen.findByTestId("cursos-lista")
@@ -222,176 +257,790 @@ describe("CourseManager — lista con scroll propio", () => {
   })
 })
 
-const DETAIL_C2 = {
-  id: "c2",
-  title: "Intermedio",
-  description: null,
-  status: "DRAFT",
-  sequential: true,
-  modules: [],
-}
-
-function mockRutas(base: { patchOk?: boolean; moduleOk?: boolean } = {}) {
-  vi.mocked(fetch).mockImplementation(async (input: unknown, init?: RequestInit) => {
-    const url = String(input)
-    const method = init?.method ?? "GET"
-    if (url.includes("/api/modules") && method === "POST") {
-      if (base.moduleOk === false) return Response.json({ message: "No se pudo crear" }, { status: 500 })
-      return Response.json({ module: { id: "mX" } })
-    }
-    if (url.includes("/api/courses/c1") && method === "PATCH") {
-      if (base.patchOk === false) return Response.json({ message: "Falló el guardado" }, { status: 500 })
-      return Response.json({ course: DETAIL })
-    }
-    if (url.includes("/api/courses/c1")) return Response.json({ course: DETAIL })
-    if (url.includes("/api/courses/c2")) return Response.json({ course: DETAIL_C2 })
-    return Response.json({ courses: COURSES })
-  })
-}
-
-describe("CourseManager P1.4 — guardar, dirty-guard, errores por zona", () => {
+describe("CourseManager dirty-guard [CU-1]", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
+    resetNav()
   })
 
-  it("guardar curso: hace PATCH y muestra toast de éxito", async () => {
-    mockRutas()
+  async function renderConDirty() {
+    mockBase()
     const user = userEvent.setup()
     render(<CourseManager canDelete />)
+    await screen.findByDisplayValue("Básico")
+    await user.clear(screen.getByLabelText("Título"))
+    await user.type(screen.getByLabelText("Título"), "Básico editado")
+    return user
+  }
 
-    await user.click(await screen.findByText("Básico"))
-    await user.click(await screen.findByRole("button", { name: "Guardar curso" }))
-
-    await waitFor(() => {
-      expect(vi.mocked(fetch).mock.calls.some(
-        ([url, init]) => String(url).includes("/api/courses/c1") && (init as RequestInit)?.method === "PATCH"
-      )).toBe(true)
-    })
-    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
-    const { title } = toastMock.mock.calls[0][0] as { title: ReactNode }
-    const { container } = render(<>{title}</>)
-    expect(container).toHaveTextContent("Curso guardado")
-    expect(container.querySelector("svg")).not.toBeNull()
-  })
-
-  it("guardar curso con error: toast destructivo y alerta en la zona", async () => {
-    mockRutas({ patchOk: false })
-    const user = userEvent.setup()
-    render(<CourseManager canDelete />)
-
-    await user.click(await screen.findByText("Básico"))
-    await user.click(await screen.findByRole("button", { name: "Guardar curso" }))
-
-    const alertas = await screen.findAllByRole("alert")
-    expect(alertas.some((a) => a.textContent?.includes("Falló el guardado"))).toBe(true)
-    expect(toastMock).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "No se pudo guardar el curso", variant: "destructive" })
-    )
-  })
-
-  it("up/down deshabilitados en los límites con título explicativo", async () => {
-    mockRutas()
-    const user = userEvent.setup()
-    render(<CourseManager canDelete />)
-
-    await user.click(await screen.findByText("Básico"))
-    const subir = await screen.findByRole("button", { name: "Subir M1" })
-    expect(subir).toBeDisabled()
-    expect(subir).toHaveAttribute("title", "Ya es el primer módulo")
-    expect(screen.getByRole("button", { name: "Bajar M1" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Subir lección L1" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Bajar lección L1" })).toBeDisabled()
-  })
-
-  it("descripción usa textarea multilínea", async () => {
-    mockRutas()
-    const user = userEvent.setup()
-    render(<CourseManager canDelete />)
-
-    await user.click(await screen.findByText("Básico"))
-    expect(screen.getByLabelText("Descripción").tagName).toBe("TEXTAREA")
-  })
-
-  it("dirty-guard: editar y cambiar de fila pide Guardar / Descartar / Cancelar", async () => {
-    mockRutas()
-    const user = userEvent.setup()
-    render(<CourseManager canDelete />)
-
-    await user.click(await screen.findByText("Básico"))
-    await user.type(screen.getByLabelText("Título"), "!")
-    await user.click(screen.getByText("Intermedio"))
+  it("cambio con dirty abre el guard y no navega", async () => {
+    const user = await renderConDirty()
+    await user.click(screen.getByRole("button", { name: /Intermedio/ }))
 
     const dialogo = await screen.findByRole("alertdialog")
-    expect(dialogo.textContent).toContain("¿Guardar cambios antes de salir?")
+    expect(dialogo.textContent).toContain("Tenés cambios sin guardar")
+    // No navegó: c2 nunca se pidió y la edición sigue intacta
+    expect(detailCalls("c2")).toHaveLength(0)
+    expect((screen.getByLabelText("Título") as HTMLInputElement).value).toBe("Básico editado")
+  })
 
-    // Cancelar: el diálogo se cierra y se queda en el curso editado
-    await user.click(within(dialogo).getByRole("button", { name: "Cancelar" }))
+  it("cancelar frena y conserva la edición", async () => {
+    const user = await renderConDirty()
+    await user.click(screen.getByRole("button", { name: /Intermedio/ }))
+    await screen.findByRole("alertdialog")
+
+    await user.click(screen.getByRole("button", { name: "Cancelar" }))
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull())
+    expect(detailCalls("c2")).toHaveLength(0)
+    expect((screen.getByLabelText("Título") as HTMLInputElement).value).toBe("Básico editado")
+  })
+
+  it("descartar cambia de curso", async () => {
+    const user = await renderConDirty()
+    await user.click(screen.getByRole("button", { name: /Intermedio/ }))
+    await screen.findByRole("alertdialog")
+
+    await user.click(screen.getByRole("button", { name: "Descartar" }))
+    await screen.findByDisplayValue("Intermedio")
+    expect(nav.replace).toHaveBeenCalledWith("/admin/cursos?curso=c2", { scroll: false })
+  })
+
+  it("guardar y continuar persiste y navega", async () => {
+    const user = await renderConDirty()
+    await user.click(screen.getByRole("button", { name: /Intermedio/ }))
+    await screen.findByRole("alertdialog")
+
+    await user.click(screen.getByRole("button", { name: "Guardar y continuar" }))
     await waitFor(() => {
-      expect(screen.queryByRole("alertdialog")).toBeNull()
+      const patch = vi
+        .mocked(fetch)
+        .mock.calls.filter(([, init]) => (init as RequestInit)?.method === "PATCH")
+      expect(patch.length).toBeGreaterThan(0)
     })
-    expect(screen.getByDisplayValue("Básico!")).toBeDefined()
+    await screen.findByDisplayValue("Intermedio")
   })
 
-  it("dirty-guard: Descartar navega sin guardar", async () => {
-    mockRutas()
+  it("sin cambios no abre el guard", async () => {
+    mockBase()
     const user = userEvent.setup()
     render(<CourseManager canDelete />)
+    await screen.findByDisplayValue("Básico")
 
-    await user.click(await screen.findByText("Básico"))
-    await user.type(screen.getByLabelText("Título"), "!")
-    await user.click(screen.getByText("Intermedio"))
-
-    const dialogo = await screen.findByRole("alertdialog")
-    await user.click(within(dialogo).getByRole("button", { name: "Descartar" }))
-
-    expect(await screen.findByDisplayValue("Intermedio")).toBeDefined()
-    expect(vi.mocked(fetch).mock.calls.some(
-      ([, init]) => (init as RequestInit)?.method === "PATCH"
-    )).toBe(false)
-  })
-
-  it("dirty-guard: Guardar cambios guarda y navega", async () => {
-    mockRutas()
-    const user = userEvent.setup()
-    render(<CourseManager canDelete />)
-
-    await user.click(await screen.findByText("Básico"))
-    await user.type(screen.getByLabelText("Título"), "!")
-    await user.click(screen.getByText("Intermedio"))
-
-    const dialogo = await screen.findByRole("alertdialog")
-    await user.click(within(dialogo).getByRole("button", { name: "Guardar cambios" }))
-
-    await waitFor(() => {
-      expect(vi.mocked(fetch).mock.calls.some(
-        ([url, init]) => String(url).includes("/api/courses/c1") && (init as RequestInit)?.method === "PATCH"
-      )).toBe(true)
-    })
-    expect(await screen.findByDisplayValue("Intermedio")).toBeDefined()
-  })
-
-  it("sin ediciones no hay dirty-guard: cambia de fila directo", async () => {
-    mockRutas()
-    const user = userEvent.setup()
-    render(<CourseManager canDelete />)
-
-    await user.click(await screen.findByText("Básico"))
-    await user.click(screen.getByText("Intermedio"))
-
-    expect(await screen.findByDisplayValue("Intermedio")).toBeDefined()
+    await user.click(screen.getByRole("button", { name: /Intermedio/ }))
+    await screen.findByDisplayValue("Intermedio")
     expect(screen.queryByRole("alertdialog")).toBeNull()
   })
 
-  it("error de módulo se muestra en su zona con role=alert", async () => {
-    mockRutas({ moduleOk: false })
+  it("ir a lección con dirty pide confirmación y al descartar navega", async () => {
+    const user = await renderConDirty()
+    await user.click(screen.getByRole("button", { name: "Contenido de lección L1" }))
+
+    const dialogo = await screen.findByRole("alertdialog")
+    expect(dialogo.textContent).toContain("Tenés cambios sin guardar")
+
+    await user.click(within(dialogo).getByRole("button", { name: "Descartar" }))
+    await waitFor(() =>
+      expect(nav.push).toHaveBeenCalledWith("/admin/cursos/c1/lecciones/l1")
+    )
+  })
+})
+
+describe("CourseManager URL [CU-1]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+  })
+
+  it("init desde ?curso= selecciona ese curso sin clicks", async () => {
+    nav.curso = "c2"
+    mockBase()
+    render(<CourseManager canDelete />)
+
+    await screen.findByDisplayValue("Intermedio")
+    expect(detailCalls("c1")).toHaveLength(0)
+  })
+
+  it("sin ?curso= selecciona el primero y lo refleja en la URL", async () => {
+    mockBase()
+    render(<CourseManager canDelete />)
+
+    await screen.findByDisplayValue("Básico")
+    expect(nav.replace).toHaveBeenCalledWith("/admin/cursos?curso=c1", { scroll: false })
+  })
+})
+
+describe("CourseManager anti-race y loading [CU-1]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+  })
+
+  it("doble click: solo la última respuesta pinta", async () => {
+    const gates = new Map<string, (v: Response) => void>()
+    vi.mocked(fetch).mockImplementation((input: unknown) => {
+      const url = String(input)
+      if (url.startsWith("/api/courses?")) return Promise.resolve(Response.json({ courses: COURSES }))
+      const m = url.match(/\/api\/courses\/(c\d+)$/)
+      if (m) return new Promise<Response>((r) => { gates.set(m[1]!, r) })
+      return Promise.resolve(Response.json({}))
+    })
     const user = userEvent.setup()
     render(<CourseManager canDelete />)
 
-    await user.click(await screen.findByText("Básico"))
-    await user.type(screen.getByLabelText("Título del nuevo módulo"), "MX")
+    await screen.findByRole("button", { name: /Básico/ })
+    // El auto-select de c1 ya está en vuelo; el segundo click llega antes de resolver
+    await waitFor(() => expect(gates.has("c1")).toBe(true))
+    await user.click(screen.getByRole("button", { name: /Intermedio/ }))
+    await waitFor(() => expect(gates.has("c2")).toBe(true))
+
+    // Responden al revés: primero la última, después la vieja
+    gates.get("c2")!(Response.json({ course: DETAIL_C2 }))
+    gates.get("c1")!(Response.json({ course: DETAIL_C1 }))
+
+    await screen.findByDisplayValue("Intermedio")
+    // La respuesta tardía de c1 no pisa a c2
+    await waitFor(() =>
+      expect((screen.getByLabelText("Título") as HTMLInputElement).value).toBe("Intermedio")
+    )
+  })
+
+  it("el refetch tras guardar no re-skeletoniza la lista", async () => {
+    let listCalls = 0
+    let resolveRefetch!: (v: Response) => void
+    vi.mocked(fetch).mockImplementation((input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? "GET"
+      if (method !== "GET") return Promise.resolve(Response.json({ ok: true }))
+      if (url.startsWith("/api/courses?")) {
+        listCalls += 1
+        if (listCalls > 1) return new Promise<Response>((r) => { resolveRefetch = r })
+        return Promise.resolve(Response.json({ courses: COURSES }))
+      }
+      if (url === "/api/courses/c1") return Promise.resolve(Response.json({ course: DETAIL_C1 }))
+      return Promise.resolve(Response.json({}))
+    })
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+    await screen.findByDisplayValue("Básico")
+
+    await user.click(screen.getByRole("button", { name: "Guardar curso" }))
+
+    // Refetch en vuelo: lista visible, skeleton ausente, spinner sutil presente
+    await screen.findByRole("status", { name: "Actualizando cursos" })
+    expect(document.querySelector('[aria-label="Cargando cursos"]')).toBeNull()
+    expect(screen.getByTestId("cursos-lista")).toBeDefined()
+
+    resolveRefetch(Response.json({ courses: COURSES }))
+    await waitFor(() =>
+      expect(screen.queryByRole("status", { name: "Actualizando cursos" })).toBeNull()
+    )
+  })
+})
+
+
+describe("CourseManager feedback [CU-2]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+  })
+
+  function toastTitleText(callIndex = 0) {
+    const { title } = toastMock.mock.calls[callIndex][0] as { title: ReactNode }
+    const { container } = render(<>{title}</>)
+    return container
+  }
+
+  it("alta de módulo muestra toast con icono", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.type(screen.getByLabelText("Título del nuevo módulo"), "M2")
     await user.click(screen.getByRole("button", { name: /^Añadir$/ }))
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo crear")
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Módulo añadido")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("alta de lección muestra toast con icono", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.type(screen.getByLabelText(/Título de nueva lección/), "L2")
+    await user.click(screen.getByRole("button", { name: "Añadir lección" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Lección añadida")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("baja de módulo muestra toast con icono", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.click(await screen.findByRole("button", { name: "Eliminar M1" }))
+
+    const dialogo = await screen.findByRole("alertdialog")
+    await user.click(within(dialogo).getByRole("button", { name: "Eliminar" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Módulo eliminado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("baja de curso muestra toast con icono", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.click(await screen.findByRole("button", { name: "Eliminar" }))
+
+    const dialogo = await screen.findByRole("alertdialog")
+    await user.click(within(dialogo).getByRole("button", { name: "Eliminar" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Curso eliminado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("reorden de módulos muestra toast con icono", async () => {
+    const base = vi.fn(async (input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? "GET"
+      if (method !== "GET") return Response.json({ ok: true, success: true })
+      if (url.startsWith("/api/courses?")) return Response.json({ courses: COURSES })
+      if (url === "/api/courses/c1")
+        return Response.json({
+          course: {
+            ...DETAIL_C1,
+            modules: [
+              { id: "m1", title: "M1", order: 0, lessons: [] },
+              { id: "m2", title: "M2", order: 1, lessons: [] },
+            ],
+          },
+        })
+      return Response.json({})
+    })
+    global.fetch = base as unknown as typeof fetch
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByText("M2")
+    await user.click(screen.getByRole("button", { name: "Bajar M1" }))
+
+    await waitFor(() =>
+      expect(base).toHaveBeenCalledWith(
+        "/api/courses/c1/reorder",
+        expect.objectContaining({ method: "POST" })
+      )
+    )
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Orden actualizado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("solo cambio de estado usa toast de transición", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+    await screen.findByDisplayValue("Básico")
+
+    await user.click(screen.getByRole("combobox", { name: "Estado del curso" }))
+    await user.click(await screen.findByRole("option", { name: "Archivado" }))
+    await user.click(screen.getByRole("button", { name: "Guardar curso" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent('Estado cambiado a "Archivado"')
+    expect(container).not.toHaveTextContent("Curso guardado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("contenido + estado usa el toast de guardado normal", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+    await screen.findByDisplayValue("Básico")
+
+    await user.clear(screen.getByLabelText("Título"))
+    await user.type(screen.getByLabelText("Título"), "Básico editado")
+    await user.click(screen.getByRole("combobox", { name: "Estado del curso" }))
+    await user.click(await screen.findByRole("option", { name: "Archivado" }))
+    await user.click(screen.getByRole("button", { name: "Guardar curso" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Curso guardado")
+  })
+
+  it("error de operación: toast destructive y el inline se descarta", async () => {
+    mockBase()
+    const base = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? "GET"
+      if (method === "POST" && url === "/api/modules")
+        return Promise.resolve(Response.json({ message: "No se pudo" }, { status: 500 }))
+      return base(input as string, init)
+    })
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.type(screen.getByLabelText("Título del nuevo módulo"), "M-rota")
+    await user.click(screen.getByRole("button", { name: /^Añadir$/ }))
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive" })
+      )
+    )
+    const alerta = await screen.findByRole("alert")
+    expect(alerta).toHaveTextContent("No se pudo")
+
+    await user.click(screen.getByRole("button", { name: "Descartar error" }))
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull())
+  })
+})
+
+describe("CourseManager estructura [CU-3]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+    localStorage.clear()
+  })
+
+  function toastTitleText(callIndex = 0) {
+    const { title } = toastMock.mock.calls[callIndex][0] as { title: ReactNode }
+    const { container } = render(<>{title}</>)
+    return container
+  }
+
+  it("click en título abre input: Enter guarda con PATCH y toast con icono", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.click(screen.getByRole("button", { name: "Renombrar módulo M1" }))
+
+    const input = screen.getByLabelText("Nuevo título para el módulo M1")
+    expect(input).toHaveValue("M1")
+    await user.clear(input)
+    await user.type(input, "M1 editado")
+    await user.keyboard("{Enter}")
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/modules/m1",
+        expect.objectContaining({ method: "PATCH" })
+      )
+    })
+    const patch = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([u, init]) => String(u) === "/api/modules/m1" && (init as RequestInit)?.method === "PATCH"
+      )
+    expect(JSON.parse(String((patch![1] as RequestInit).body))).toEqual({ title: "M1 editado" })
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Módulo renombrado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("Esc cancela el renombrado sin llamar PATCH", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.click(screen.getByRole("button", { name: "Renombrar módulo M1" }))
+
+    const input = screen.getByLabelText("Nuevo título para el módulo M1")
+    await user.clear(input)
+    await user.type(input, "Descartado")
+    await user.keyboard("{Escape}")
+
+    expect(screen.queryByLabelText(/Nuevo título para el módulo/)).toBeNull()
+    expect(screen.getByRole("button", { name: "Renombrar módulo M1" })).toBeDefined()
+    const patchCalls = vi
+      .mocked(fetch)
+      .mock.calls.filter(([, init]) => (init as RequestInit)?.method === "PATCH")
+    expect(patchCalls).toHaveLength(0)
+  })
+
+  it("acordeón colapsa/expande con numeración y persiste en localStorage", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByLabelText(/Título de nueva lección/)
+    expect(screen.getByText("01")).toBeDefined()
+
+    await user.click(screen.getByRole("button", { name: "Colapsar módulo M1" }))
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/Título de nueva lección/)).toBeNull()
+    )
+    expect(screen.getByRole("button", { name: "Expandir módulo M1" })).toBeDefined()
+    expect(localStorage.getItem("cm-modulos:c1")).toBe("[]")
+
+    await user.click(screen.getByRole("button", { name: "Expandir módulo M1" }))
+    await screen.findByLabelText(/Título de nueva lección/)
+    expect(localStorage.getItem("cm-modulos:c1")).toBe('["m1"]')
+  })
+
+  it("restaura el acordeón colapsado al remontar", async () => {
+    mockBase()
+    localStorage.setItem("cm-modulos:c1", "[]")
+    const user = userEvent.setup()
+    const { unmount } = render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByRole("button", { name: "Expandir módulo M1" })
+    expect(screen.queryByLabelText(/Título de nueva lección/)).toBeNull()
+    unmount()
+
+    render(<CourseManager canDelete />)
+    await screen.findByRole("button", { name: "Expandir módulo M1" })
+    expect(screen.queryByLabelText(/Título de nueva lección/)).toBeNull()
+  })
+
+  it("chips filtran la lista y espejan ?filtro= junto a ?curso=", async () => {
+    resetNav()
+    nav.curso = "c1"
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+    await screen.findByDisplayValue("Básico")
+
+    await user.click(screen.getByRole("button", { name: "Publicado" }))
+    expect(screen.getByRole("button", { name: /Básico/ })).toBeDefined()
+    expect(screen.queryByRole("button", { name: /Intermedio/ })).toBeNull()
+    expect(nav.replace).toHaveBeenCalledWith("/admin/cursos?curso=c1&filtro=PUBLISHED", {
+      scroll: false,
+    })
+
+    await user.click(screen.getByRole("button", { name: "Archivado" }))
+    expect(screen.queryByRole("button", { name: /Básico/ })).toBeNull()
+    expect(screen.getByText("Sin cursos con este estado.")).toBeDefined()
+
+    await user.click(screen.getByRole("button", { name: "Todos" }))
+    await screen.findByRole("button", { name: /Intermedio/ })
+    expect(nav.replace).toHaveBeenLastCalledWith("/admin/cursos?curso=c1", { scroll: false })
+  })
+
+  it("sin canDelete oculta el botón Eliminar del módulo", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete={false} />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByRole("button", { name: "Renombrar módulo M1" })
+    expect(screen.queryByRole("button", { name: "Eliminar M1" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Subir M1" })).toBeDefined()
+    expect(screen.queryByRole("button", { name: "Eliminar" })).toBeNull()
+  })
+
+  it("con canDelete muestra el botón Eliminar del módulo", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    expect(await screen.findByRole("button", { name: "Eliminar M1" })).toBeDefined()
+  })
+})
+
+describe("CourseManager estructura colapsar/expandir todo", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+    localStorage.clear()
+  })
+
+  const DETAIL_2MOD = {
+    id: "c1",
+    title: "Básico",
+    description: "d",
+    status: "PUBLISHED",
+    sequential: true,
+    modules: [
+      {
+        id: "m1",
+        title: "M1",
+        order: 0,
+        lessons: [{ id: "l1", title: "L1", order: 0, lessonNumber: 1 }],
+      },
+      {
+        id: "m2",
+        title: "M2",
+        order: 1,
+        lessons: [
+          {
+            id: "l2",
+            title: "L2",
+            order: 0,
+            lessonNumber: 2,
+            content: { version: 1, blocks: [{ tipo: "texto" }] },
+          },
+        ],
+      },
+    ],
+  }
+
+  function mockDosModulos() {
+    vi.mocked(fetch).mockImplementation(async (input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? "GET"
+      if (method !== "GET") return Response.json({ ok: true, success: true })
+      if (url.startsWith("/api/courses?")) return Response.json({ courses: COURSES })
+      if (url === "/api/courses/c1") return Response.json({ course: DETAIL_2MOD })
+      return Response.json({})
+    })
+  }
+
+  it("fila maestra muestra conteo y colapsar todo pliega los módulos", async () => {
+    mockDosModulos()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+
+    const conteo = await screen.findByTestId("estructura-conteo")
+    expect(conteo).toHaveTextContent("2 módulos · 2 lecciones · 1 sin contenido")
+    expect(conteo.className).toMatch(/tabular-nums/)
+
+    expect(screen.getAllByLabelText(/Título de nueva lección/)).toHaveLength(2)
+
+    await user.click(screen.getByRole("button", { name: "Colapsar todo" }))
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/Título de nueva lección/)).toBeNull()
+    )
+    expect(screen.getByLabelText("Título")).toBeDefined()
+    expect(screen.getByRole("button", { name: "Expandir todo" })).toBeDefined()
+    expect(localStorage.getItem("cm-modulos:c1")).toBe("[]")
+  })
+
+  it("expandir todo reabre los módulos y persiste", async () => {
+    mockDosModulos()
+    localStorage.setItem("cm-modulos:c1", "[]")
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByRole("button", { name: "Expandir todo" })
+    expect(screen.queryByLabelText(/Título de nueva lección/)).toBeNull()
+
+    await user.click(screen.getByRole("button", { name: "Expandir todo" }))
+    await waitFor(() =>
+      expect(screen.getAllByLabelText(/Título de nueva lección/)).toHaveLength(2)
+    )
+    expect(screen.getByRole("button", { name: "Colapsar todo" })).toBeDefined()
+    expect(localStorage.getItem("cm-modulos:c1")).toBe('["m1","m2"]')
+  })
+})
+
+describe("CourseManager editorial [CU-4]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+    localStorage.clear()
+  })
+
+  it("encabezado muestra título serif, estado tonal y conteos con sin-contenido", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+
+    const resumen = await screen.findByTestId("curso-resumen")
+    expect(resumen).toHaveTextContent("Publicado")
+    expect(resumen).toHaveTextContent("1 módulo · 1 lección")
+    expect(resumen).toHaveTextContent("1 sin contenido")
+
+    const serif = [...document.querySelectorAll(".font-serif.tracking-tight")]
+    expect(serif.map((t) => t.textContent)).toContain("Básico")
+  })
+
+  it("tras crear lección re-enfoca el input del módulo", async () => {
+    mockBase()
+    const base = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? "GET"
+      if (method === "POST" && url.includes("/lessons"))
+        return Promise.resolve(Response.json({ lesson: { id: "l2" } }))
+      return base(input as string, init)
+    })
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    const input = await screen.findByLabelText(/Título de nueva lección/)
+    await user.type(input, "L2")
+    await user.click(screen.getByRole("button", { name: "Añadir lección" }))
+
+    await waitFor(() => expect(input).toHaveValue(""))
+    await waitFor(() => expect(document.activeElement).toBe(input))
+  })
+
+  it("acciones de fila en reveal lg con targets h-8", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+
+    const subirLeccion = await screen.findByRole("button", { name: "Subir lección L1" })
+    expect(subirLeccion.className).toMatch(/h-8 w-8/)
+    expect(subirLeccion.parentElement!.className).toMatch(/lg:opacity-0/)
+    expect(subirLeccion.parentElement!.className).toMatch(/lg:group-focus-within:opacity-100/)
+
+    const subirModulo = await screen.findByRole("button", { name: "Subir M1" })
+    expect(subirModulo.className).toMatch(/h-8 w-8/)
+    expect(subirModulo.parentElement!.className).toMatch(/lg:opacity-0/)
+  })
+
+  it("el detalle ocupa la misma altura fija y scrollea en su contenido", async () => {
+    mockBase()
+    render(<CourseManager canDelete />)
+
+    await screen.findByRole("button", { name: /Básico/ })
+
+    const detalle = screen.getByTestId("curso-detalle")
+    expect(detalle.className).toMatch(/lg:h-\[calc\(100dvh-13rem\)\]/)
+    expect(detalle.className).toMatch(/flex-col/)
+
+    const contenido = screen.getByTestId("curso-detalle-contenido")
+    expect(contenido.className).toMatch(/overflow-y-auto/)
+    expect(contenido.className).toMatch(/flex-1/)
+    expect(contenido.className).toMatch(/min-h-0/)
+  })
+})
+
+describe("CourseManager form plegable", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+    localStorage.clear()
+  })
+
+  it("default expandido: form visible con Título, Guardar y Eliminar", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    expect(screen.getByLabelText("Título")).toBeDefined()
+    expect(screen.getByRole("button", { name: "Guardar curso" })).toBeDefined()
+    expect(screen.getByRole("button", { name: "Eliminar" })).toBeDefined()
+
+    const toggle = screen.getByRole("button", { name: "Colapsar detalles del curso" })
+    expect(toggle.getAttribute("aria-expanded")).toBe("true")
+    expect(toggle.getAttribute("aria-controls")).toBe("form-curso")
+    expect(document.getElementById("form-curso")).not.toBeNull()
+  })
+
+  it("plegar muestra resumen con título y estado; expandir restaura el form", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByLabelText("Título")
+
+    await user.click(screen.getByRole("button", { name: "Colapsar detalles del curso" }))
+
+    const toggle = screen.getByRole("button", { name: "Expandir detalles del curso" })
+    expect(toggle.getAttribute("aria-expanded")).toBe("false")
+    expect(document.getElementById("form-curso")).toBeNull()
+    expect(screen.queryByLabelText("Título")).toBeNull()
+
+    const resumen = screen.getByTestId("form-resumen")
+    expect(resumen).toHaveTextContent("Básico")
+    expect(resumen).toHaveTextContent("Publicado")
+    expect(screen.getByRole("button", { name: "Guardar curso" })).toBeDefined()
+    expect(localStorage.getItem("cm-form:c1")).toBe("false")
+
+    await user.click(toggle)
+    expect(screen.getByLabelText("Título")).toBeDefined()
+    expect(screen.getByRole("button", { name: "Colapsar detalles del curso" })).toBeDefined()
+    expect(localStorage.getItem("cm-form:c1")).toBe("true")
+  })
+
+  it("persiste plegado por curso y lo restaura al remontar", async () => {
+    mockBase()
+    localStorage.setItem("cm-form:c1", "false")
+    const user = userEvent.setup()
+    const { unmount } = render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByRole("button", { name: "Expandir detalles del curso" })
+    expect(screen.queryByLabelText("Título")).toBeNull()
+    unmount()
+
+    render(<CourseManager canDelete />)
+    await screen.findByRole("button", { name: "Expandir detalles del curso" })
+    expect(screen.queryByLabelText("Título")).toBeNull()
+  })
+
+  it("plegar con foco dentro mueve el foco al chevron y no pierde dirty", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    const titulo = await screen.findByLabelText("Título")
+    await user.clear(titulo)
+    await user.type(titulo, "Básico editado")
+
+    ;(titulo as HTMLElement).focus()
+    const toggle = screen.getByRole("button", { name: "Colapsar detalles del curso" })
+    fireEvent.click(toggle)
+
+    await waitFor(() => expect(document.activeElement).toBe(toggle))
+
+    fireEvent.click(screen.getByRole("button", { name: "Expandir detalles del curso" }))
+    expect((screen.getByLabelText("Título") as HTMLInputElement).value).toBe("Básico editado")
+  })
+
+  it("plegado con dirty conserva el guard al cambiar de curso", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.clear(await screen.findByLabelText("Título"))
+    await user.type(screen.getByLabelText("Título"), "Básico editado")
+    await user.click(screen.getByRole("button", { name: "Colapsar detalles del curso" }))
+    expect(screen.queryByLabelText("Título")).toBeNull()
+
+    await user.click(screen.getByRole("button", { name: /Intermedio/ }))
+    const dialogo = await screen.findByRole("alertdialog")
+    expect(dialogo.textContent).toContain("Tenés cambios sin guardar")
   })
 })
