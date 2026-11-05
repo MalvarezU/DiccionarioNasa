@@ -451,8 +451,13 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* HU1.1.8 — Offline indicator BELOW the input */}
         {!isOnline && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
-            <CloudOff className="h-3.5 w-3.5 text-amber-600" />
-            <span className="text-xs font-medium text-amber-700">
+            <CloudOff
+              className={`h-3.5 w-3.5 ${sobreOscuro ? "text-amber-300" : "text-amber-600"}`}
+            />
+            <span
+              className={`text-xs font-medium ${sobreOscuro ? "text-amber-200" : "text-amber-700"}`}
+              style={sobreOscuro ? { textShadow: "0 1px 4px rgba(0,0,0,0.7)" } : undefined}
+            >
               Búsqueda local (sin conexión)
             </span>
           </div>
@@ -461,8 +466,14 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Online indicator */}
         {isOnline && esGrande && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
-            <Cloud className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-            <span className="text-xs font-medium text-muted-foreground">
+            <Cloud
+              className={`h-3.5 w-3.5 ${sobreOscuro ? "text-emerald-300" : "text-emerald-600"}`}
+              aria-hidden="true"
+            />
+            <span
+              className={`text-xs font-medium ${sobreOscuro ? "text-white/80" : "text-muted-foreground"}`}
+              style={sobreOscuro ? { textShadow: "0 1px 4px rgba(0,0,0,0.7)" } : undefined}
+            >
               Búsqueda en línea
             </span>
           </div>

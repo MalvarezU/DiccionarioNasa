@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock, Gamepad2, GraduationCap } from "lucide-react"
@@ -79,18 +80,19 @@ export function NavBar() {
 
   const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "Usuario"
 
-  /** Home hero overlay: while the hero photo is behind the header, the
+  /** Hero overlay: while the hero photo is behind the header, the
    *  header floats frosted over it (ivory items); past the hero it uses
-   *  the standard solid header. Fixed in BOTH home states so the switch
-   *  never shifts layout 56px. Non-home routes keep the sticky header.
+   *  the standard solid header. Applies to the two hero routes ("/" and
+   *  "/diccionario"); every other route keeps the sticky header. Fixed
+   *  in BOTH hero states so the switch never shifts layout 56px.
    *  Initial false + sync check in effect: no window read during render,
    *  so no hydration mismatch. */
-  const isHome = pathname === "/"
+  const hasHero = pathname === "/" || pathname === "/diccionario"
   const [heroTop, setHeroTop] = useState(false)
-  const isHeroTop = isHome && heroTop
+  const isHeroTop = hasHero && heroTop
 
   useEffect(() => {
-    if (!isHome) return
+    if (!hasHero) return
     let raf = 0
     const check = () => {
       const hero = document.querySelector("[data-hero]")
@@ -108,7 +110,9 @@ export function NavBar() {
       window.removeEventListener("scroll", schedule)
       window.removeEventListener("resize", schedule)
     }
-  }, [isHome])
+    // Re-run on route change so the threshold always measures the
+    // current page hero ("/" and "/diccionario" each own one).
+  }, [hasHero, pathname])
 
   /** Ruta activa: prefijo exacto (o "/" para la portada). SSR: pathname es null. */
   const isActive = (href: string) =>
@@ -124,20 +128,28 @@ export function NavBar() {
         className={
           isHeroTop
             ? "fixed inset-x-0 top-0 z-50 h-14 bg-[#1B2733]/25 backdrop-blur-sm backdrop-brightness-[.92] border-b border-white/10 motion-safe:transition-[background-color,border-color] motion-safe:duration-300 navbar-hero-top"
-            : isHome
+            : hasHero
               ? "fixed inset-x-0 top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90 motion-safe:transition-[background-color,border-color] motion-safe:duration-300"
               : "sticky top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90"
         }
         style={isHeroTop ? { textShadow: "0 1px 3px rgba(0,0,0,.5)" } : undefined}
       >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
-          {/* Logo / App Name — links to home */}
+          {/* Logo / App Name — links to home.
+              logoPiiyaakblanco.png is the white badge version (transparent
+              background); the serif wordmark stays for legibility at small
+              sizes. */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <BookOpen
+            <Image
+              src="/logoPiiyaakblanco.png"
+              alt="Piiyaak"
+              width={25}
+              height={28}
+              priority
               className={
                 isHeroTop
-                  ? "h-5 w-5 text-[#F6EEDC]/90 transition-colors group-hover:text-[#F6EEDC]"
-                  : "h-5 w-5 text-primary group-hover:text-primary/80 transition-colors"
+                  ? "h-7 w-auto rounded-md ring-1 ring-white/25"
+                  : "h-7 w-auto rounded-md ring-1 ring-black/10"
               }
             />
             <span

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import {
   Leaf,
   BookOpen,
@@ -168,43 +169,66 @@ function DiccionarioContent() {
       <InstallBanner destino="/#instalar" />
 
       <main id="contenido" className="flex-1">
-        {/* Hero del diccionario */}
-        <section className="relative isolate overflow-hidden bg-background pb-12 sm:pb-16 pt-12 sm:pt-16">
+        {/* Hero del diccionario — foto banner2 con overlay pizarra (mismo
+            tratamiento que el hero home; stops reforzados porque la foto
+            es clara: muro blanco sobreexpuesto). data-hero: el header
+            frosted mide este hero para mutar a sólido al salir de él.
+            pt-28 despeja el header fijo; en sm+ centra en 72svh. */}
+        <section data-hero className="relative isolate overflow-hidden bg-background pb-12 sm:pb-16 pt-28 sm:pt-36 sm:flex sm:min-h-[72svh] sm:flex-col sm:justify-center">
+          <Image
+            src="/banner2.jpg"
+            alt=""
+            fill
+            sizes="100vw"
+            priority
+            className="object-cover object-[50%_35%] z-0"
+            aria-hidden="true"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1B2733]/70 via-[#1B2733]/55 to-[#1B2733]/30 z-10" />
           <div
-            className="absolute inset-0 opacity-[0.08]"
+            className="absolute inset-0 opacity-[0.08] z-0"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232F3E4E' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232F3E4E' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4H2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
               backgroundRepeat: "repeat",
             }}
             aria-hidden="true"
           />
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 text-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-outline-variant/30 bg-background/60 px-3 py-1 text-xs font-medium text-[#2F3E4E]/70">
-              <BookOpen className="h-3 w-3 text-primary" aria-hidden="true" />
+          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 text-center z-20">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium text-[#F6EEDC] backdrop-blur-md">
+              <BookOpen className="h-3 w-3 text-[#F6EEDC]" aria-hidden="true" />
               Diccionario bilingüe
             </span>
-            <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-primary">
+            <h1
+              className="mt-4 text-3xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-[#F6EEDC]"
+              style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.5)" }}
+            >
               Diccionario Nasa Yuwe
             </h1>
-            <p className="mt-3 text-lg sm:text-xl font-medium text-foreground">
+            <p
+              className="mt-3 text-lg sm:text-xl font-medium text-white"
+              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.6)" }}
+            >
               Busca palabras, pronunciaciones y contexto cultural
             </p>
 
             <div className="mt-8 sm:mt-10">
-              <SearchBar variant="hero-light" />
+              <SearchBar variant="hero" />
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm sm:text-base text-muted-foreground">
+            <div
+              className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm sm:text-base text-white/90"
+              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
+            >
               <div className="flex items-center gap-2">
-                <Leaf className="h-4 w-4 text-primary" />
+                <Leaf className="h-4 w-4 text-[#F6EEDC]" />
                 <span>Palabras de la comunidad</span>
               </div>
               <div className="flex items-center gap-2">
-                <Volume2 className="h-4 w-4 text-primary" />
+                <Volume2 className="h-4 w-4 text-[#F6EEDC]" />
                 <span>Pronunciación guiada</span>
               </div>
               <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-primary" />
+                <BookOpen className="h-4 w-4 text-[#F6EEDC]" />
                 <span>Español ↔ Nasa Yuwe</span>
               </div>
             </div>
