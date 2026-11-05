@@ -303,6 +303,17 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
   const leccionesActivas = modulosActivos.flatMap((m) => m.lessons)
   const sinContenido = leccionesActivas.filter(lessonSinContenido).length
 
+  /** Fila maestra "Estructura": opera directo sobre openMods (la misma
+      fuente del acordeón CU-3, sin estado paralelo); la persistencia en
+      localStorage la hace el efecto existente. */
+  const todosAbiertos =
+    modulosActivos.length > 0 && modulosActivos.every((m) => openMods.includes(m.id))
+
+  function toggleEstructura() {
+    if (!detail) return
+    setOpenMods(todosAbiertos ? [] : detail.modules.map((m) => m.id))
+  }
+
   /** Inputs de alta de lección por módulo (re-foco post-alta en cadena). */
   const lessonInputRefs = useRef(new Map<string, HTMLInputElement>())
   const listaRef = useRef<HTMLDivElement>(null)
@@ -376,7 +387,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Lista: altura acotada al layout en desktop; solo la lista scrollea,
           el form queda fijo. En móvil, flujo natural sin tope. */}
-      <Card className="lg:col-span-1 flex flex-col rounded-2xl border-outline-variant/30 lg:max-h-[calc(100dvh-13rem)] lg:overflow-hidden" data-testid="cursos-card">
+      <Card className="lg:col-span-1 flex flex-col rounded-2xl border-outline-variant/30 lg:h-[calc(100dvh-12rem)] lg:overflow-hidden" data-testid="cursos-card">
         <CardHeader className="shrink-0">
           <CardTitle className="flex items-center gap-2.5 text-base text-secondary">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-secondary/20 bg-secondary/10">
@@ -484,9 +495,14 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
         </CardContent>
       </Card>
 
-      {/* Detalle */}
-      <Card className="lg:col-span-2 h-fit rounded-2xl border-outline-variant/30">
-        <CardHeader>
+      {/* Detalle: altura fija en desktop con scroll interno; el form
+          documental y la estructura comparten el área scrolleable, la
+          página no scrollea. En móvil, flujo natural sin tope. */}
+      <Card
+        className="lg:col-span-2 flex flex-col rounded-2xl border-outline-variant/30 lg:h-[calc(100dvh-12rem)] lg:overflow-hidden"
+        data-testid="curso-detalle"
+      >
+        <CardHeader className="shrink-0">
           <CardTitle className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-secondary/20 bg-secondary/10">
               <BookOpen className="h-4 w-4 text-secondary" aria-hidden="true" />
@@ -519,7 +535,10 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
             </div>
           ) : null}
         </CardHeader>
-        <CardContent>
+        <CardContent
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          data-testid="curso-detalle-contenido"
+        >
           {!detail ? (
             <p className="text-sm text-muted-foreground">
               Elige un curso de la lista para editar sus módulos y lecciones.
@@ -638,9 +657,35 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
 
               <Separator />
 
-              {/* Módulos */}
+              {/* Estructura: fila maestra con conteo + colapsar/expandir todo.
+                  Colapsado deja solo el form documental y los encabezados. */}
               <div className="space-y-3">
-                <h4 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Módulos</h4>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h4 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Estructura</h4>
+                  <span
+                    className="text-2xs tabular-nums text-muted-foreground"
+                    data-testid="estructura-conteo"
+                  >
+                    {modulosActivos.length} {modulosActivos.length === 1 ? "módulo" : "módulos"}
+                    {" · "}
+                    {leccionesActivas.length} {leccionesActivas.length === 1 ? "lección" : "lecciones"}
+                    {" · "}
+                    {sinContenido} sin contenido
+                  </span>
+                  {modulosActivos.length > 0 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="ml-auto h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={toggleEstructura}
+                      aria-expanded={todosAbiertos}
+                      data-testid="estructura-toggle"
+                    >
+                      {todosAbiertos ? "Colapsar todo" : "Expandir todo"}
+                    </Button>
+                  ) : null}
+                </div>
                 <form onSubmit={onAddModule} className="flex gap-2">
                   <Input
                     value={newModuleTitle}

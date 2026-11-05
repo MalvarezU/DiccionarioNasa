@@ -239,7 +239,7 @@ describe("CourseManager — lista con scroll propio", () => {
     resetNav()
   })
 
-  it("la lista scrollea en su contenedor con tope de layout y el form queda fijo", async () => {
+  it("la lista scrollea en su contenedor con altura fija y el form queda fijo", async () => {
     mockBase()
     render(<CourseManager canDelete />)
 
@@ -249,11 +249,27 @@ describe("CourseManager — lista con scroll propio", () => {
     expect(lista.className).toMatch(/min-h-0/)
 
     const card = screen.getByTestId("cursos-card")
-    expect(card.className).toMatch(/lg:max-h-\[calc\(100dvh-13rem\)\]/)
+    expect(card.className).toMatch(/lg:h-\[calc\(100dvh-12rem\)\]/)
 
     // El form de alta queda fuera del área scrolleable (siempre visible)
     expect(lista.querySelector('input[aria-label="Título del nuevo curso"]')).toBeNull()
     expect(screen.getByLabelText("Título del nuevo curso")).toBeDefined()
+  })
+
+  it("el detalle ocupa la misma altura fija y scrollea en su contenido", async () => {
+    mockBase()
+    render(<CourseManager canDelete />)
+
+    await screen.findByRole("button", { name: /Básico/ })
+
+    const detalle = screen.getByTestId("curso-detalle")
+    expect(detalle.className).toMatch(/lg:h-\[calc\(100dvh-12rem\)\]/)
+    expect(detalle.className).toMatch(/flex-col/)
+
+    const contenido = screen.getByTestId("curso-detalle-contenido")
+    expect(contenido.className).toMatch(/overflow-y-auto/)
+    expect(contenido.className).toMatch(/flex-1/)
+    expect(contenido.className).toMatch(/min-h-0/)
   })
 })
 
@@ -769,6 +785,98 @@ describe("CourseManager estructura [CU-3]", () => {
 
     await user.click(await screen.findByRole("button", { name: /Básico/ }))
     expect(await screen.findByRole("button", { name: "Eliminar M1" })).toBeDefined()
+  })
+})
+
+describe("CourseManager estructura colapsar/expandir todo", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+    localStorage.clear()
+  })
+
+  const DETAIL_2MOD = {
+    id: "c1",
+    title: "Básico",
+    description: "d",
+    status: "PUBLISHED",
+    sequential: true,
+    modules: [
+      {
+        id: "m1",
+        title: "M1",
+        order: 0,
+        lessons: [{ id: "l1", title: "L1", order: 0, lessonNumber: 1 }],
+      },
+      {
+        id: "m2",
+        title: "M2",
+        order: 1,
+        lessons: [
+          {
+            id: "l2",
+            title: "L2",
+            order: 0,
+            lessonNumber: 2,
+            content: { version: 1, blocks: [{ tipo: "texto" }] },
+          },
+        ],
+      },
+    ],
+  }
+
+  function mockDosModulos() {
+    vi.mocked(fetch).mockImplementation(async (input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? "GET"
+      if (method !== "GET") return Response.json({ ok: true, success: true })
+      if (url.startsWith("/api/courses?")) return Response.json({ courses: COURSES })
+      if (url === "/api/courses/c1") return Response.json({ course: DETAIL_2MOD })
+      return Response.json({})
+    })
+  }
+
+  it("fila maestra muestra conteo y colapsar todo pliega los módulos", async () => {
+    mockDosModulos()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+
+    const conteo = await screen.findByTestId("estructura-conteo")
+    expect(conteo).toHaveTextContent("2 módulos · 2 lecciones · 1 sin contenido")
+    expect(conteo.className).toMatch(/tabular-nums/)
+
+    // Abiertos por defecto: un input de alta por módulo
+    expect(screen.getAllByLabelText(/Título de nueva lección/)).toHaveLength(2)
+
+    await user.click(screen.getByRole("button", { name: "Colapsar todo" }))
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/Título de nueva lección/)).toBeNull()
+    )
+    // Colapsado: el form documental sigue visible, el toggle ofrece expandir
+    expect(screen.getByLabelText("Título")).toBeDefined()
+    expect(screen.getByRole("button", { name: "Expandir todo" })).toBeDefined()
+    expect(localStorage.getItem("cm-modulos:c1")).toBe("[]")
+  })
+
+  it("expandir todo reabre los módulos y persiste", async () => {
+    mockDosModulos()
+    localStorage.setItem("cm-modulos:c1", "[]")
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByRole("button", { name: "Expandir todo" })
+    expect(screen.queryByLabelText(/Título de nueva lección/)).toBeNull()
+
+    await user.click(screen.getByRole("button", { name: "Expandir todo" }))
+    await waitFor(() =>
+      expect(screen.getAllByLabelText(/Título de nueva lección/)).toHaveLength(2)
+    )
+    expect(screen.getByRole("button", { name: "Colapsar todo" })).toBeDefined()
+    expect(localStorage.getItem("cm-modulos:c1")).toBe('["m1","m2"]')
   })
 })
 

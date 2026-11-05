@@ -10,7 +10,7 @@ export default function AdminCoursesPage() {
 
   return (
     <>
-      <AdminPageHeader title="Gestión de cursos" />
+      <AdminPageHeader title="Gestión de cursos" compact />
       <CourseManager canDelete={userRole === "admin"} />
       <p className="mt-6 text-xs text-muted-foreground">
         Los cursos publicados aparecen en /cursos. Las lecciones referencian
