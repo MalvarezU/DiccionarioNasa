@@ -38,6 +38,17 @@ Editor de texto rico (Tiptap v3) para el bloque `text` de una lección, su valid
 - `route.put.test.ts` (nuevo): 15 casos (auth, 404, body inválido, null content, oversize, título duplicado, sanitización server-side, XSS en image/video, id duplicado).
 - `page.test.tsx`: +2 casos (error de red, autosave no dispara con blocks vacío).
 
+## Fase E2E (Playwright)
+
+Archivo: `e2e/editor-texto-edge.spec.ts` (proyecto `editor-texto-edge`, depende de `setup`).
+Ejecutado contra BD local (MariaDB, `scripts/e2e-local.sh`). Resultado: **5 passed, 2 flaky** (autosave y "documento limpio" pasan en retry por cold start del dev server; Ctrl+Z y XSS pasan a la primera).
+
+Escenarios:
+1. Autosave persiste el contenido tras recargar la página.
+2. Documento limpio no muestra "Cambios sin guardar".
+3. Ctrl+Z dentro del editor deshace a nivel Tiptap.
+4. Sanitizer: payload con `<script>` no se guarda ni se ejecuta (canary con `page.on("dialog")`).
+
 ## Verificación
 
 ```
