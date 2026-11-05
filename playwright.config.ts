@@ -52,6 +52,12 @@ export default defineConfig({
       use: { storageState: "e2e/.auth/admin.json" },
     },
     {
+      name: "editor-texto-edge",
+      testMatch: /editor-texto-edge\.spec\.ts/,
+      dependencies: ["setup"],
+      use: { storageState: "e2e/.auth/admin.json" },
+    },
+    {
       // Blindaje /admin (middleware): sin sesión, sin storageState.
       name: "guard",
       testMatch: /admin-guard\.spec\.ts/,
