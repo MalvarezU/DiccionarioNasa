@@ -97,6 +97,73 @@ function CourseListSkeleton() {
   )
 }
 
+/* ------------------------------------------ listado editorial (F2 bandas) -- */
+
+/**
+ * Réplica de las bandas del listado editorial: hero (título serif clamp +
+ * summary + CTA), tira de continuación, featured (portada 2/3 + aside) y 3
+ * filas de índice. Alturas fijas a propósito: el swap al dato real no mueve
+ * layout (CLS ≈ 0, ver §F del plan de rediseño).
+ */
+function CourseListBandsSkeleton() {
+  return (
+    <div
+      data-slot="skeleton-course-list-bands"
+      data-testid="skeleton-course-list-bands"
+      className="space-y-8"
+      aria-hidden="true"
+    >
+      {/* Hero: 2 cols en xl */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Skeleton className="h-[3.5rem] w-56" />
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-full max-w-xl" />
+          <Skeleton className="h-4 w-2/3 max-w-xl" />
+          <Skeleton className="h-10 w-48 rounded-md" />
+        </div>
+      </div>
+      {/* Resume band */}
+      <div className="rounded-xl border border-outline-variant/30 px-5 py-4 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-72 max-w-full" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-1.5 w-56 max-w-full rounded-full" />
+          </div>
+          <Skeleton className="h-10 w-32 shrink-0 rounded-md" />
+        </div>
+      </div>
+      {/* Featured: portada 2/3 + aside */}
+      <div className="grid gap-0 overflow-hidden rounded-xl border border-outline-variant/30 md:grid-cols-3">
+        <Skeleton className="min-h-52 rounded-none md:col-span-2 md:min-h-64" />
+        <div className="space-y-3 p-5 sm:p-6">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </div>
+      {/* Index rows */}
+      <div className="border-t border-outline-variant/40">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="flex items-center gap-4 border-b border-outline-variant/40 py-4 sm:gap-6">
+            <Skeleton className="h-8 w-10 shrink-0" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-56 max-w-full" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+            <Skeleton className="hidden h-5 w-20 rounded-full sm:block" />
+            <Skeleton className="h-4 w-4 shrink-0 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------- diccionario */
 
 /**
@@ -706,6 +773,7 @@ export {
   ButtonSkeleton,
   CourseCardSkeleton,
   CourseGridSkeleton,
+  CourseListBandsSkeleton,
   CourseListSkeleton,
   CoursePlayerSkeleton,
   ExploreListSkeleton,
