@@ -150,4 +150,15 @@ describe("GET /api/courses/[id]/manifest [F3]", () => {
     expect(res.status).toBe(404)
     expect((await res.json()).message).toBe("Curso no encontrado")
   })
+
+  it("lessonNumber null (legacy) pasa tal cual sin romper el manifest", async () => {
+    const legacy = publishedCourse()
+    ;(legacy.modules[0].lessons[0] as { lessonNumber: number | null }).lessonNumber = null
+    vi.mocked(db.course.findUnique).mockResolvedValue(legacy as never)
+    const res = await GET({} as never, params("c1"))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.modules[0].lessons[0].lessonNumber).toBeNull()
+    expect(JSON.stringify(body)).not.toMatch(/"lessonNumber":"/)
+  })
 })

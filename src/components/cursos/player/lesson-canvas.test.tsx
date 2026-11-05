@@ -117,4 +117,49 @@ describe("LessonCanvas", () => {
     // El contenido no se monta en estado bloqueado
     expect(screen.queryByRole("button", { name: /Marcar como completada/ })).toBeNull()
   })
+
+  it("lessonNumber null (legacy): título sin número, sin 'null' visible", () => {
+    const { container } = render(
+      <LessonCanvas {...props({ lesson: lesson({ lessonNumber: null }) })} />
+    )
+    expect(screen.getByRole("heading", { level: 2, name: "Hola" })).toBeDefined()
+    expect(container.textContent).not.toMatch(/null/)
+    // Sin badge numérico serif: el h2 es el único titular
+    expect(container.querySelector(".font-serif.text-xl")).toBeNull()
+  })
+
+  it("bloques audio/video sin fuente no dejan img/audio/iframe rotos", () => {
+    const { container } = render(
+      <LessonCanvas
+        {...props({
+          lesson: lesson({
+            content: {
+              version: 2,
+              blocks: [
+                { id: "b-a", type: "audio", media: { source: "upload" } },
+                { id: "b-v", type: "video", youtubeId: "", title: "Clase" },
+                { id: "b-i", type: "image", url: "", alt: "Foto" },
+              ],
+            },
+          }),
+        })}
+      />
+    )
+    expect(container.querySelector("audio")).toBeNull()
+    expect(container.querySelector("iframe")).toBeNull()
+    expect(container.querySelector("img")).toBeNull()
+    // Sin errores de consola por src vacío
+    expect(container.querySelector('[src=""]')).toBeNull()
+  })
+
+  it("título larguísimo sin espacios: wrap en 2 líneas, sin overflow", () => {
+    const longTitle = "nasa".repeat(50)
+    const { container } = render(
+      <LessonCanvas {...props({ lesson: lesson({ title: longTitle }) })} />
+    )
+    const h2 = screen.getByRole("heading", { level: 2 })
+    expect(h2.className).toMatch(/line-clamp-2/)
+    expect(h2.textContent).toBe(longTitle)
+    expect(container.textContent).not.toMatch(/null/)
+  })
 })

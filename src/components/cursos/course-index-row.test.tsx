@@ -54,4 +54,24 @@ describe("CourseIndexRow", () => {
     )
     expect(screen.getByText("Borrador")).toBeDefined()
   })
+
+  it("título truncado lleva title nativo con el texto completo", () => {
+    render(<CourseIndexRow course={base} index={0} />)
+    const heading = screen.getByText("Nasa Yuwe básico").closest("h3")
+    expect(heading?.getAttribute("title")).toBe("Nasa Yuwe básico")
+    expect(heading?.className).toMatch(/truncate/)
+  })
+
+  it("título de 200 caracteres sin espacios no rompe el layout", () => {
+    const longTitle = "nasa".repeat(50) // 200 caracteres, un solo token
+    const { container } = render(
+      <CourseIndexRow course={{ ...base, title: longTitle }} index={0} />
+    )
+    const heading = container.querySelector("h3")
+    expect(heading?.getAttribute("title")).toBe(longTitle)
+    expect(heading?.className).toMatch(/truncate/)
+    // La fila no desborda: el contenedor central cede (min-w-0 + flex-1)
+    expect(container.querySelector(".min-w-0.flex-1")).not.toBeNull()
+    expect(document.body.textContent).not.toMatch(/null/)
+  })
 })

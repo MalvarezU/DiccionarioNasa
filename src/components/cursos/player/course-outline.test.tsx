@@ -160,4 +160,63 @@ describe("CourseOutline", () => {
     expect(madre).not.toHaveAttribute("aria-disabled")
     expect(screen.queryByText(/para desbloquear este módulo/)).toBeNull()
   })
+
+  it("lessonNumber null (legacy): sin número, sin 'null' visible, sin crash", () => {
+    const legacy: PlayerCourse = {
+      ...course,
+      modules: [
+        {
+          id: "m1",
+          title: "Saludos",
+          lessons: [{ id: "l10", title: "Lección vieja", lessonNumber: null, content: null }],
+        },
+      ],
+    }
+    render(<CourseOutline {...props({ course: legacy, activeLessonId: "l10" })} />)
+    const btn = lessonButton(/Lección vieja/)
+    expect(btn).toBeDefined()
+    expect(btn.textContent).not.toMatch(/null/)
+    expect(btn.textContent).not.toMatch(/\d+\.\d+/)
+    // Activa: el círculo lleva el ícono Play, no un número
+    expect(btn.querySelector("svg")).not.toBeNull()
+    expect(btn).toHaveAttribute("title", "Lección vieja")
+  })
+
+  it("módulo vacío (0 lecciones): pill 0/0, sin botones seleccionables", () => {
+    const withEmpty: PlayerCourse = {
+      ...course,
+      modules: [
+        { id: "m0", title: "Vacío", lessons: [] },
+        ...course.modules,
+      ],
+    }
+    render(<CourseOutline {...props({ course: withEmpty, activeLessonId: "l11" })} />)
+    const nav = screen.getByRole("navigation", { name: /Contenido de/ })
+    expect(within(nav).getByText("0/0")).toBeDefined()
+    // El módulo vacío no aporta botones: siguen siendo 3 lecciones navegables
+    expect(screen.getAllByRole("button")).toHaveLength(3)
+    // El roving tabindex ignora el módulo vacío (no hay id fantasma)
+    const buttons = screen.getAllByRole("button")
+    expect(buttons.filter((b) => (b as HTMLButtonElement).tabIndex === 0)).toHaveLength(1)
+  })
+
+  it("título larguísimo sin espacios: truncate + title nativo", () => {
+    const longTitle = "nasa".repeat(50)
+    const long: PlayerCourse = {
+      ...course,
+      modules: [
+        {
+          id: "m1",
+          title: "Saludos",
+          lessons: [{ id: "l10", title: longTitle, lessonNumber: 1, content: null }],
+        },
+      ],
+    }
+    const { container } = render(
+      <CourseOutline {...props({ course: long, activeLessonId: "l10" })} />
+    )
+    const btn = container.querySelector('[data-lesson-button]')
+    expect(btn?.getAttribute("title")).toBe(longTitle)
+    expect(btn?.querySelector(".truncate")).not.toBeNull()
+  })
 })

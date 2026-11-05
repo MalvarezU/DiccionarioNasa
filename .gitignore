@@ -75,6 +75,7 @@ public/audio/*.mp3
 docs/*
 !docs/database.md
 !docs/media.md
+!docs/cursos-rediseno.md
 worklog.md
 agent-ctx/
 

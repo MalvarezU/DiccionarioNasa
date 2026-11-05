@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, configure } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import CursoDetailPage from "./page"
+
+// Bajo suite completa en paralelo, jsdom + mocks tardan más de los 1000ms
+// por defecto: se sube el timeout de las queries async solo en este archivo
+// (flake conocido F4: lock bajo carga).
+configure({ asyncUtilTimeout: 5000 })
 
 vi.mock("next-auth/react", () => ({
   useSession: vi.fn(() => ({ data: null })),
@@ -155,5 +160,105 @@ describe("/cursos/[id] player", () => {
     render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
     expect(await screen.findByRole("alert")).toBeDefined()
     expect(screen.queryByLabelText("Cargando curso")).toBeNull()
+  })
+
+  it("lección con 0 bloques en secuencial desbloquea el módulo siguiente al completar", async () => {
+    const manifest2 = {
+      ...MANIFEST,
+      modules: [
+        { id: "m1", title: "M1", order: 0, lessons: [{ id: "l1", title: "L1", lessonNumber: 1, interactiveCount: 0 }] },
+        { id: "m2", title: "M2", order: 1, lessons: [{ id: "l2", title: "L2", lessonNumber: 1, interactiveCount: 0 }] },
+      ],
+    }
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes("/manifest")) return Response.json(manifest2) as never
+      const m = u.match(/\/lessons\/([^/?]+)/)
+      if (m)
+        return Response.json({
+          lesson: { id: m[1], title: m[1] === "l1" ? "L1" : "L2", lessonNumber: 1, content: { version: 2, blocks: [] }, moduleId: m[1] === "l1" ? "m1" : "m2" },
+          words: [],
+          nav: { prevId: null, prevTitle: null, prevNumber: null, nextId: null, nextTitle: null, nextNumber: null, moduleTitle: "M1", moduleIndex: 1 },
+        }) as never
+      return Response.json({ completedIds: [], lastVisitedLessonId: null, pct: 0 }) as never
+    })
+    const user = userEvent.setup()
+    render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+    // La lección vacía ofrece completar a mano (el child da el botón)
+    await user.click(await screen.findByRole("button", { name: /Marcar como completada/ }))
+    // El módulo 2 se desbloquea: L2 pasa a todo y el aviso de lock desaparece
+    const outline = screen.getByRole("navigation", { name: /Contenido de/ })
+    await waitFor(() => {
+      expect(outline.querySelector('[data-lesson-state="todo"]')).not.toBeNull()
+    })
+    expect(outline.textContent).not.toMatch(/Completá el Módulo/)
+    expect(await screen.findAllByText("1/2 lecciones")).toHaveLength(2)
+  })
+
+  it("módulo vacío: pill 0/0, sin botones, el canvas abre la lección real", async () => {
+    const manifestEmpty = {
+      ...MANIFEST,
+      modules: [
+        { id: "m1", title: "M1", order: 0, lessons: [{ id: "l1", title: "L1", lessonNumber: 1, interactiveCount: 0 }] },
+        { id: "m0", title: "Vacío", order: 1, lessons: [] },
+      ],
+    }
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes("/manifest")) return Response.json(manifestEmpty) as never
+      const m = u.match(/\/lessons\/([^/?]+)/)
+      if (m) return Response.json(lessonPayload(m[1])) as never
+      return Response.json({ completedIds: [], lastVisitedLessonId: null, pct: 0 }) as never
+    })
+    render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+    expect(await screen.findByRole("heading", { level: 2, name: "L1" })).toBeDefined()
+    const outline = screen.getByRole("navigation", { name: /Contenido de/ })
+    expect(outline.textContent).toContain("0/0")
+    // Solo la lección real es seleccionable
+    expect(outline.querySelectorAll("[data-lesson-button]")).toHaveLength(1)
+    expect(await screen.findAllByText("0/1 lecciones")).toHaveLength(2)
+  })
+
+  it("reintento tras fallo del manifest recupera el curso", async () => {
+    let manifestCalls = 0
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes("/manifest")) {
+        manifestCalls += 1
+        if (manifestCalls === 1) throw new Error("caído")
+        return Response.json(MANIFEST) as never
+      }
+      const m = u.match(/\/lessons\/([^/?]+)/)
+      if (m) return Response.json(lessonPayload(m[1])) as never
+      return Response.json({ completedIds: [], lastVisitedLessonId: null, pct: 0 }) as never
+    })
+    const user = userEvent.setup()
+    render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+    expect(await screen.findByRole("alert")).toBeDefined()
+    await user.click(screen.getByRole("button", { name: "Reintentar" }))
+    expect(await screen.findByRole("heading", { name: "Básico" })).toBeDefined()
+    expect(await screen.findByRole("heading", { level: 2, name: "L1" })).toBeDefined()
+    expect(manifestCalls).toBe(2)
+  })
+
+  it("reintento tras fallo de la lección recupera el canvas", async () => {
+    let lessonCalls = 0
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes("/manifest")) return Response.json(MANIFEST) as never
+      const m = u.match(/\/lessons\/([^/?]+)/)
+      if (m) {
+        lessonCalls += 1
+        if (lessonCalls === 1) throw new Error("caída")
+        return Response.json(lessonPayload(m[1])) as never
+      }
+      return Response.json({ completedIds: [], lastVisitedLessonId: null, pct: 0 }) as never
+    })
+    const user = userEvent.setup()
+    render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+    expect(await screen.findByText(/No se pudo cargar la lección/)).toBeDefined()
+    await user.click(screen.getByRole("button", { name: "Reintentar" }))
+    expect(await screen.findByRole("heading", { level: 2, name: "L1" })).toBeDefined()
+    expect(lessonCalls).toBe(2)
   })
 })

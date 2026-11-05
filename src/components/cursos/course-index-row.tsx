@@ -46,7 +46,7 @@ export function CourseIndexRow({ course, index }: CourseIndexRowProps) {
           {number}
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-serif text-lg font-bold text-primary">
+          <h3 className="truncate font-serif text-lg font-bold text-primary" title={course.title}>
             {navEnabled ? (
               <Link
                 href={`/cursos/${course.id}`}

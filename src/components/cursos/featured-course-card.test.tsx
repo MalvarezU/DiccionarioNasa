@@ -50,4 +50,16 @@ describe("FeaturedCourseCard", () => {
     expect(screen.getByText("Sin contenido")).toBeDefined()
     expect(screen.queryByText("Comenzar")).toBeNull()
   })
+
+  it("coverImage vacía o ausente usa placeholder vellum-high (sin img rota)", () => {
+    for (const coverImage of [undefined, null, ""]) {
+      const { container, unmount } = render(
+        <FeaturedCourseCard course={{ ...base, coverImage }} />
+      )
+      expect(container.querySelector("img")).toBeNull()
+      expect(container.querySelector('[src=""]')).toBeNull()
+      expect(container.querySelector("svg")).not.toBeNull()
+      unmount()
+    }
+  })
 })
