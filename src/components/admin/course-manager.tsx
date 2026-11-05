@@ -3,11 +3,12 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye } from "lucide-react"
+import { Plus, Trash2, Pencil, Save, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -17,6 +18,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { MediaPicker } from "@/components/media/media-picker"
 import { CourseManagerListSkeleton } from "@/components/skeletons"
 import { STATUS_LABEL } from "./course-types"
@@ -31,16 +41,22 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     titulo?: string
   } | null>(null)
   const [procesando, setProcesando] = useState(false)
+  // Dirty-guard: id del curso al que se quiso navegar con ediciones sin guardar.
+  const [navegacionPendiente, setNavegacionPendiente] = useState<string | null>(null)
 
   const {
     courses,
     loading,
-    error,
+    errorCourse,
+    errorModule,
+    errorLesson,
     selectedId,
     detail,
     newTitle,
     setNewTitle,
     creating,
+    isSavingCourse,
+    isDirty,
     editTitle,
     setEditTitle,
     editDesc,
@@ -68,6 +84,33 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     moveLesson,
   } = useCourseManager()
 
+  /** Cambio de fila: con ediciones sin guardar se pide confirmación antes de salir. */
+  function handleSelectCourse(id: string) {
+    if (id === selectedId) return
+    if (isDirty) {
+      setNavegacionPendiente(id)
+      return
+    }
+    void loadDetail(id)
+  }
+
+  /** Guarda y, si tuvo éxito, continúa a la fila pendiente del dirty-guard. */
+  async function handleGuardarYSalir() {
+    if (!navegacionPendiente) return
+    const ok = await handleSaveCourse()
+    if (!ok) return
+    const destino = navegacionPendiente
+    setNavegacionPendiente(null)
+    if (destino !== selectedId) await loadDetail(destino)
+  }
+
+  /** Descarta las ediciones y continúa a la fila pendiente del dirty-guard. */
+  function handleDescartarYSalir() {
+    const destino = navegacionPendiente
+    setNavegacionPendiente(null)
+    if (destino) void loadDetail(destino)
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Lista: altura acotada al layout en desktop; solo la lista scrollea,
@@ -92,7 +135,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
               <Plus className="h-4 w-4" />
             </Button>
           </form>
-          {error && <p className="text-sm text-destructive shrink-0">{error}</p>}
+          {errorCourse && <p role="alert" className="text-sm text-destructive shrink-0">{errorCourse}</p>}
           {loading ? (
             <div aria-busy="true" aria-label="Cargando cursos">
               <CourseManagerListSkeleton />
@@ -108,7 +151,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => void loadDetail(c.id)}
+                  onClick={() => handleSelectCourse(c.id)}
                   className={`w-full text-left p-3 rounded-lg border transition-colors ${
                     selectedId === c.id
                       ? "border-primary bg-primary/5"
@@ -160,8 +203,9 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="course-desc">Descripción</Label>
-                  <Input
+                  <Textarea
                     id="course-desc"
+                    rows={2}
                     value={editDesc}
                     onChange={(e) => setEditDesc(e.target.value)}
                   />
@@ -203,9 +247,9 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSaveCourse} className="gap-1.5">
-                    <Pencil className="h-3.5 w-3.5" />
-                    Guardar curso
+                  <Button size="sm" onClick={() => void handleSaveCourse()} disabled={isSavingCourse} className="gap-1.5">
+                    {isSavingCourse ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    {isSavingCourse ? "Guardando..." : "Guardar curso"}
                   </Button>
                   <Button
                     size="sm"
@@ -239,6 +283,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                     {stats.completadas === 1 ? "" : "s"} en total
                   </p>
                 ) : null}
+                {errorCourse && <p role="alert" className="text-sm text-destructive">{errorCourse}</p>}
               </div>
 
               <Separator />
@@ -259,8 +304,9 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                     {savingModule ? "Añadiendo..." : "Añadir"}
                   </Button>
                 </form>
+                {errorModule && <p role="alert" className="text-sm text-destructive">{errorModule}</p>}
 
-                {(detail.modules ?? []).map((mod, modIdx) => (
+                {(detail.modules ?? []).map((mod, modIdx, modArr) => (
                   <div key={mod.id} className="rounded-lg border border-outline-variant/20 p-3 space-y-2">
                     <div className="flex items-center gap-2">
                       <p className="flex-1 text-sm font-medium">{mod.title}</p>
@@ -269,6 +315,8 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                         variant="ghost"
                         className="h-7 w-7"
                         aria-label={`Subir ${mod.title}`}
+                        title={modIdx === 0 ? "Ya es el primer módulo" : `Subir ${mod.title}`}
+                        disabled={modIdx === 0}
                         onClick={() => void moveModule(mod.id, -1)}
                       >
                         <ArrowUp className="h-3.5 w-3.5" />
@@ -278,6 +326,8 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                         variant="ghost"
                         className="h-7 w-7"
                         aria-label={`Bajar ${mod.title}`}
+                        title={modIdx === modArr.length - 1 ? "Ya es el último módulo" : `Bajar ${mod.title}`}
+                        disabled={modIdx === modArr.length - 1}
                         onClick={() => void moveModule(mod.id, 1)}
                       >
                         <ArrowDown className="h-3.5 w-3.5" />
@@ -301,7 +351,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                             (a.lessonNumber ?? Number.MAX_SAFE_INTEGER) -
                               (b.lessonNumber ?? Number.MAX_SAFE_INTEGER) || a.order - b.order
                         )
-                        .map((les) => (
+                        .map((les, lesIdx, lesArr) => (
                         <div
                           key={les.id}
                           data-testid="lesson-row"
@@ -326,6 +376,8 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                             variant="ghost"
                             className="h-6 w-6"
                             aria-label={`Subir lección ${les.title}`}
+                            title={lesIdx === 0 ? "Ya es la primera lección" : `Subir lección ${les.title}`}
+                            disabled={lesIdx === 0}
                             onClick={() => void moveLesson(mod.id, les.id, -1)}
                           >
                             <ArrowUp className="h-3 w-3" />
@@ -335,6 +387,8 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                             variant="ghost"
                             className="h-6 w-6"
                             aria-label={`Bajar lección ${les.title}`}
+                            title={lesIdx === lesArr.length - 1 ? "Ya es la última lección" : `Bajar lección ${les.title}`}
+                            disabled={lesIdx === lesArr.length - 1}
                             onClick={() => void moveLesson(mod.id, les.id, 1)}
                           >
                             <ArrowDown className="h-3 w-3" />
@@ -373,6 +427,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                           {savingLesson[mod.id] ? "Añadiendo..." : "Añadir lección"}
                         </Button>
                       </form>
+                      {errorLesson[mod.id] && <p role="alert" className="text-sm text-destructive">{errorLesson[mod.id]}</p>}
                     </div>
                   </div>
                 ))}
@@ -381,6 +436,33 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Dirty-guard: salir con ediciones sin guardar (Guardar / Descartar / Cancelar) */}
+      <AlertDialog
+        open={navegacionPendiente !== null}
+        onOpenChange={(v) => {
+          if (!v && !isSavingCourse) setNavegacionPendiente(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Guardar cambios antes de salir?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tenés cambios sin guardar en este curso. Podés guardarlos, descartarlos o volver para seguir editando.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSavingCourse}>Cancelar</AlertDialogCancel>
+            <Button type="button" variant="outline" disabled={isSavingCourse} onClick={handleDescartarYSalir}>
+              Descartar
+            </Button>
+            <Button type="button" disabled={isSavingCourse} onClick={() => void handleGuardarYSalir()} className="gap-1.5">
+              {isSavingCourse && <Loader2 className="h-4 w-4 animate-spin" />}
+              Guardar cambios
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ConfirmDialog
         open={confirmPendiente !== null}
