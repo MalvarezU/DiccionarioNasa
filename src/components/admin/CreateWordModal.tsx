@@ -6,7 +6,6 @@ import {
   Pencil,
   Loader2,
   AlertTriangle,
-  CheckCircle2,
 } from "lucide-react"
 import {
   Dialog,
@@ -16,10 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -55,7 +50,6 @@ export function CreateWordModal({
     form,
     fieldErrors,
     submitError,
-    successMessage,
     previewOpen,
     setPreviewOpen,
     isSubmitting,
@@ -70,9 +64,9 @@ export function CreateWordModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="flex flex-col gap-0 p-0 overflow-hidden sm:max-w-2xl md:max-w-3xl">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
+          <DialogTitle className="flex items-center gap-2 font-serif tracking-tight text-lg text-primary">
             <Plus className="h-5 w-5 text-primary" />
             Nueva ficha
           </DialogTitle>
@@ -81,22 +75,11 @@ export function CreateWordModal({
           </DialogDescription>
         </DialogHeader>
 
-        {successMessage && (
-          <Card className="border border-secondary/30 bg-secondary/5">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-secondary shrink-0" />
-                <p className="text-sm font-medium text-secondary">
-                  {successMessage}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="space-y-4 py-2">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="spanish">
+            <Label htmlFor="spanish" className="text-xs">
               Español <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -113,7 +96,7 @@ export function CreateWordModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="nasaYuwe">
+            <Label htmlFor="nasaYuwe" className="text-xs">
               Nasa Yuwe <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -128,9 +111,10 @@ export function CreateWordModal({
               <p className="text-xs text-destructive">{fieldErrors.nasaYuwe}</p>
             )}
           </div>
+          </div>
 
           <div className="space-y-2">
-            <Label htmlFor="pronunciation">Pronunciación fonética</Label>
+            <Label htmlFor="pronunciation" className="text-xs">Pronunciación fonética</Label>
             <Input
               id="pronunciation"
               placeholder="guía de pronunciación (ej. wah-lah)"
@@ -140,7 +124,7 @@ export function CreateWordModal({
           </div>
 
           <div className="space-y-2">
-            <Label>Categoría gramatical</Label>
+            <Label className="text-xs">Categoría gramatical</Label>
             <Select
               value={form.category}
               onValueChange={(v) => handleChange("category", v)}
@@ -159,7 +143,7 @@ export function CreateWordModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="culturalContext">Descripción contextual</Label>
+            <Label htmlFor="culturalContext" className="text-xs">Descripción contextual</Label>
             <Textarea
               id="culturalContext"
               placeholder="Significado cultural, uso tradicional, contexto de uso, etc."
@@ -180,8 +164,9 @@ export function CreateWordModal({
             </div>
           )}
         </div>
+        </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="shrink-0 border-t border-outline-variant/30 px-6 py-4 flex-col sm:flex-row gap-2">
           <Button
             variant="outline"
             onClick={handleClose}

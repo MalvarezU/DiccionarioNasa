@@ -27,34 +27,35 @@ interface DashboardStatsProps {
 export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWithAudio }: DashboardStatsProps) {
   return (
     <>
-      <Card className="mb-6 border border-outline-variant/20">
+      <Card className="mb-6 rounded-2xl border-0 bg-primary-container text-primary-foreground">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">
+              <p className="text-sm font-medium text-primary-foreground/70">
                 Total de palabras
               </p>
-              <p className="text-5xl font-bold text-primary mt-1 tracking-tight">
+              <p className="text-5xl font-bold tabular-nums text-primary-foreground mt-1 tracking-tight">
                 {formatNumber(stats.totalWords)}
               </p>
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-primary-foreground/70 mt-2">
                 Todas las fichas en el sistema (borrador + publicadas + archivadas)
               </p>
             </div>
-            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 shrink-0">
-              <BookOpen className="h-8 w-8 text-primary" />
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-foreground/10 border border-primary-foreground/20 shrink-0">
+              <BookOpen className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
         </CardContent>
       </Card>
 
+      <h3 className="text-2xs uppercase tracking-[0.08em] text-muted-foreground mb-2">Estado de fichas</h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card className="border border-secondary/20">
+        <Card className="rounded-2xl border border-outline-variant/30">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Publicadas</p>
-                <p className="text-4xl font-bold text-secondary mt-1 tracking-tight">
+                <p className="text-4xl font-bold tabular-nums text-secondary mt-1 tracking-tight">
                   {formatNumber(stats.publishedCount)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">Visibles al público</p>
@@ -79,12 +80,12 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
           </CardContent>
         </Card>
 
-        <Card className="border border-tertiary/20">
+        <Card className="rounded-2xl border border-outline-variant/30">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Borrador</p>
-                <p className="text-4xl font-bold text-tertiary mt-1 tracking-tight">
+                <p className="text-4xl font-bold tabular-nums text-tertiary mt-1 tracking-tight">
                   {formatNumber(stats.draftCount)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">Pendientes de publicación</p>
@@ -109,12 +110,12 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
           </CardContent>
         </Card>
 
-        <Card className="border border-outline-variant/20">
+        <Card className="rounded-2xl border border-outline-variant/30">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Archivadas</p>
-                <p className="text-4xl font-bold text-muted-foreground mt-1 tracking-tight">
+                <p className="text-4xl font-bold tabular-nums text-muted-foreground mt-1 tracking-tight">
                   {formatNumber(stats.archivedCount)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">Retiradas del público</p>
@@ -140,7 +141,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
         </Card>
       </div>
 
-      <Card className="mb-6 border-dashed">
+      <Card className="mb-6 rounded-2xl border-0 bg-muted/40">
         <CardContent className="pt-5 pb-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -152,7 +153,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               <div>
                 <p className="text-sm font-medium text-foreground">Verificación de consistencia</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Publicadas ({formatNumber(stats.publishedCount)}) + Borrador ({formatNumber(stats.draftCount)}) + Archivadas ({formatNumber(stats.archivedCount)}) = <span className="font-semibold text-foreground">{formatNumber(statusSum)}</span>
+                  Publicadas ({formatNumber(stats.publishedCount)}) + Borrador ({formatNumber(stats.draftCount)}) + Archivadas ({formatNumber(stats.archivedCount)}) = <span className="font-semibold tabular-nums text-foreground">{formatNumber(statusSum)}</span>
                 </p>
               </div>
             </div>
@@ -176,8 +177,9 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
         </CardContent>
       </Card>
 
+      <h3 className="text-2xs uppercase tracking-[0.08em] text-muted-foreground mb-2">Cobertura de medios</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="border-tertiary/30 bg-tertiary/5">
+        <Card className="rounded-2xl border border-outline-variant/30 bg-tertiary/5">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription>Sin audio cargado</CardDescription>
@@ -185,7 +187,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-tertiary">{formatNumber(stats.publishedWithoutAudio)}</p>
+            <p className="text-2xl font-bold tabular-nums text-tertiary">{formatNumber(stats.publishedWithoutAudio)}</p>
             <p className="text-xs text-muted-foreground mt-1">Publicadas sin grabación</p>
             {stats.publishedCount > 0 && (
               <div className="mt-2">
@@ -203,7 +205,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
           </CardContent>
         </Card>
 
-        <Card className="border-secondary/30 bg-secondary/5">
+        <Card className="rounded-2xl border border-outline-variant/30 bg-secondary/5">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription>Con audio</CardDescription>
@@ -211,7 +213,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-secondary">{formatNumber(publishedWithAudio)}</p>
+            <p className="text-2xl font-bold tabular-nums text-secondary">{formatNumber(publishedWithAudio)}</p>
             <p className="text-xs text-muted-foreground mt-1">Publicadas con grabación</p>
             {stats.publishedCount > 0 && (
               <div className="mt-2">
@@ -229,7 +231,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl border border-outline-variant/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription>Nuevas (7 días)</CardDescription>
@@ -237,12 +239,12 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatNumber(stats.recentWords)}</p>
+            <p className="text-2xl font-bold tabular-nums text-foreground">{formatNumber(stats.recentWords)}</p>
             <p className="text-xs text-muted-foreground mt-1">Creadas en la última semana</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl border border-outline-variant/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription>Favoritos</CardDescription>
@@ -250,13 +252,13 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatNumber(stats.totalFavorites)}</p>
+            <p className="text-2xl font-bold tabular-nums text-foreground">{formatNumber(stats.totalFavorites)}</p>
             <p className="text-xs text-muted-foreground mt-1">Palabras marcadas como favoritas</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="mb-6">
+      <Card className="mb-6 rounded-2xl border border-outline-variant/30">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Volume2 className="h-4 w-4 text-primary" />
@@ -281,7 +283,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               </>
             )}
           </div>
-          <div className="mt-3 flex items-center justify-center gap-6 text-xs">
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-1.5 text-xs tabular-nums">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-secondary inline-block" />
               <span className="text-muted-foreground">Con audio:</span>

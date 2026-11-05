@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { successToastTitle } from "./word-toast"
 import { type CourseStats } from "./course-types"
 import {
   api,
@@ -17,6 +19,7 @@ import {
  * actualizarse y dos envíos rápidos verían el flag todavía apagado.
  */
 export function useCourseManager() {
+  const { toast } = useToast()
   const [courses, setCourses] = useState<CourseListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -106,6 +109,7 @@ export function useCourseManager() {
       })
       await loadCourses()
       await loadDetail(detail.id)
+      toast({ title: successToastTitle("Curso guardado") })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar")
     }

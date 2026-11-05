@@ -54,8 +54,9 @@ describe("AdminShell [F1]", () => {
     }
     // La activa lleva aria-current="page"
     expect(screen.getByText("Resumen").closest("a")?.getAttribute("aria-current")).toBe("page")
-    expect(screen.getByText("Admin")).toBeDefined()
-    expect(screen.getByText("Salir al diccionario")).toBeDefined()
+    // "Admin" aparece en el badge de rol y en la miga de pan
+    expect(screen.getAllByText("Admin").length).toBeGreaterThan(0)
+    expect(screen.getByText("Volver al home")).toBeDefined()
   })
 
   it("oculta Usuarios al editor y muestra badge Editor", () => {
@@ -81,7 +82,9 @@ describe("AdminShell [F1]", () => {
         <p>hola</p>
       </AdminShell>
     )
-    expect(screen.getByText("Gestión de cursos").closest("a")?.getAttribute("aria-current")).toBe("page")
+    // La miga también muestra "Gestión de cursos": la activa es la del sidebar
+    const enlaces = screen.getAllByText("Gestión de cursos").map((el) => el.closest("a"))
+    expect(enlaces.some((a) => a?.getAttribute("aria-current") === "page")).toBe(true)
     expect(screen.getByText("Resumen").closest("a")?.getAttribute("aria-current")).toBeNull()
   })
 

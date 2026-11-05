@@ -1,9 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { ReactNode } from "react"
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
+}))
+
+const toastMock = vi.fn()
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: vi.fn(() => ({ toast: toastMock })),
 }))
 
 import { CourseManager } from "./course-manager"
@@ -117,6 +123,27 @@ describe("CourseManager [B2.2]", () => {
     await waitFor(() => {
       expect(screen.queryByDisplayValue("Doble")).toBeNull()
     })
+  })
+
+  it("guardar curso muestra toast de éxito con icono", async () => {
+    vi.mocked(fetch).mockImplementation(async (input: unknown) => {
+      const url = String(input)
+      if (url.includes("/api/courses/c1")) {
+        return Response.json({ course: DETAIL })
+      }
+      return Response.json({ courses: COURSES })
+    })
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    await user.click(await screen.findByRole("button", { name: "Guardar curso" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const { title } = toastMock.mock.calls[0][0] as { title: ReactNode }
+    const { container } = render(<>{title}</>)
+    expect(container).toHaveTextContent("Curso guardado")
+    expect(container.querySelector("svg")).not.toBeNull()
   })
 })
 

@@ -72,10 +72,12 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Lista: altura acotada al layout en desktop; solo la lista scrollea,
           el form queda fijo. En móvil, flujo natural sin tope. */}
-      <Card className="lg:col-span-1 flex flex-col lg:max-h-[calc(100dvh-13rem)] lg:overflow-hidden" data-testid="cursos-card">
+      <Card className="lg:col-span-1 flex flex-col rounded-2xl border-outline-variant/30 lg:max-h-[calc(100dvh-13rem)] lg:overflow-hidden" data-testid="cursos-card">
         <CardHeader className="shrink-0">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <GraduationCap className="h-4 w-4 text-primary" />
+          <CardTitle className="flex items-center gap-2.5 text-base text-secondary">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-secondary/20 bg-secondary/10">
+              <GraduationCap className="h-4 w-4 text-secondary" aria-hidden="true" />
+            </span>
             Cursos ({courses.length})
           </CardTitle>
         </CardHeader>
@@ -92,7 +94,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
               <Plus className="h-4 w-4" />
             </Button>
           </form>
-          {error && <p className="text-sm text-destructive shrink-0">{error}</p>}
+          {error && !detail ? <p className="text-sm text-destructive shrink-0">{error}</p> : null}
           {loading ? (
             <div aria-busy="true" aria-label="Cargando cursos">
               <CourseManagerListSkeleton />
@@ -109,15 +111,15 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                   key={c.id}
                   type="button"
                   onClick={() => void loadDetail(c.id)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  className={`w-full text-left p-3 rounded-xl border border-outline-variant/30 transition-colors ${
                     selectedId === c.id
-                      ? "border-primary bg-primary/5"
-                      : "border-outline-variant/20 hover:border-primary/40"
+                      ? "border-secondary bg-secondary/5"
+                      : "border-outline-variant/30 hover:border-secondary/40"
                   }`}
                 >
                   <p className="text-sm font-medium">{c.title}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-2xs">
+                    <Badge variant="outline" className="border-secondary/20 bg-secondary/10 text-secondary text-2xs">
                       {STATUS_LABEL[c.status] ?? c.status}
                     </Badge>
                     <span className="text-2xs text-muted-foreground">
@@ -135,10 +137,12 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
       </Card>
 
       {/* Detalle */}
-      <Card className="lg:col-span-2 h-fit">
+      <Card className="lg:col-span-2 h-fit rounded-2xl border-outline-variant/30">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BookOpen className="h-4 w-4 text-primary" />
+          <CardTitle className="flex items-center gap-2.5 text-base text-secondary">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-secondary/20 bg-secondary/10">
+              <BookOpen className="h-4 w-4 text-secondary" aria-hidden="true" />
+            </span>
             {detail ? detail.title : "Selecciona un curso"}
           </CardTitle>
         </CardHeader>
@@ -202,12 +206,16 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                     />
                   )}
                 </div>
+                {error ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    {error}
+                  </p>
+                ) : null}
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleSaveCourse} className="gap-1.5">
                     <Pencil className="h-3.5 w-3.5" />
                     Guardar curso
-                  </Button>
-                  <Button
+                  </Button>                  <Button
                     size="sm"
                     variant="outline"
                     asChild
@@ -245,7 +253,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
 
               {/* Módulos */}
               <div className="space-y-3">
-                <h4 className="text-sm font-semibold">Módulos</h4>
+                <h4 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Módulos</h4>
                 <form onSubmit={handleAddModule} className="flex gap-2">
                   <Input
                     value={newModuleTitle}
@@ -261,7 +269,7 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                 </form>
 
                 {(detail.modules ?? []).map((mod, modIdx) => (
-                  <div key={mod.id} className="rounded-lg border border-outline-variant/20 p-3 space-y-2">
+                  <div key={mod.id} className="rounded-xl border border-outline-variant/30 p-3 space-y-2">
                     <div className="flex items-center gap-2">
                       <p className="flex-1 text-sm font-medium">{mod.title}</p>
                       <Button
@@ -306,9 +314,9 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
                           key={les.id}
                           data-testid="lesson-row"
                           data-lesson-title={les.title}
-                          className="flex items-center gap-2 text-sm p-2 rounded bg-muted/30"
+                          className="flex items-center gap-2 text-sm p-2 rounded-xl border border-outline-variant/30 bg-muted/30"
                         >
-                          <Badge variant="outline" className="text-2xs shrink-0">
+                          <Badge variant="outline" className="border-secondary/20 bg-secondary/10 text-secondary text-2xs shrink-0">
                             {modIdx + 1}.{les.lessonNumber ?? "?"}
                           </Badge>
                           <span className="flex-1">{les.title}</span>

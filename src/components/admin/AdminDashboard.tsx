@@ -5,13 +5,8 @@ import Link from "next/link"
 import {
   AlertTriangle,
   ArrowRight,
-  AudioLines,
-  BookOpen,
   CheckCircle2,
-  GraduationCap,
-  Images,
   RefreshCw,
-  Users,
 } from "lucide-react"
 import { AdminDashboardSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
@@ -23,11 +18,11 @@ import { DashboardActivity } from "./dashboard-activity"
 import { formatNumber } from "@/lib/admin-utils"
 
 /**
- * Resumen del panel: secciones con accesos, pendientes operativos,
- * métricas y actividad reciente.
+ * Resumen del panel: pendientes operativos, métricas y actividad reciente.
  *
  * La gestión de fichas vive en /admin/palabras y la de usuarios en
- * /admin/usuarios; este componente solo enlaza hacia esas secciones.
+ * /admin/usuarios; la navegación a esas vistas vive en el sidebar
+ * persistente, no aquí.
  */
 export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
   const {
@@ -63,45 +58,6 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
     )
   }
 
-  const secciones = [
-    {
-      titulo: "Palabras",
-      desc: "Fichas del diccionario",
-      href: "/admin/palabras",
-      Icon: BookOpen,
-      conteo: `${formatNumber(stats.totalWords)} fichas`,
-    },
-    {
-      titulo: "Gestión de cursos",
-      desc: "Módulos y lecciones",
-      href: "/admin/cursos",
-      Icon: GraduationCap,
-    },
-    {
-      titulo: "Ilustraciones",
-      desc: "Banco de imágenes",
-      href: "/admin/ilustraciones",
-      Icon: Images,
-    },
-    {
-      titulo: "Audios",
-      desc: "Grabaciones por palabra",
-      href: "/admin/audios",
-      Icon: AudioLines,
-    },
-    ...(isAdmin
-      ? [
-          {
-            titulo: "Usuarios",
-            desc: "Roles y accesos",
-            href: "/admin/usuarios",
-            Icon: Users,
-            conteo: `${formatNumber(stats.totalUsers)} usuarios`,
-          },
-        ]
-      : []),
-  ]
-
   const pendientes: Array<{ texto: string; href: string }> = []
   if (stats.draftCount > 0) {
     pendientes.push({
@@ -118,7 +74,7 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-end gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5">
         <Button
           variant="outline"
           size="sm"
@@ -130,65 +86,42 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
           {isRefreshing ? "Actualizando..." : "Actualizar"}
         </Button>
         {lastRefreshed && (
-          <span className="text-2xs text-muted-foreground">
+          <span className="text-2xs tabular-nums text-muted-foreground">
             Última actualización: {lastRefreshed.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
       </div>
 
-      <nav aria-label="Secciones del panel" className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {secciones.map((s) => (
-          <Link
-            key={s.href}
-            href={s.href}
-            className="group rounded-lg border border-outline-variant/20 bg-card p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shrink-0">
-                <s.Icon className="h-5 w-5 text-primary" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold group-hover:text-primary">{s.titulo}</p>
-                <p className="text-xs text-muted-foreground truncate">{s.desc}</p>
-                {s.conteo && <p className="text-2xs text-muted-foreground mt-0.5">{s.conteo}</p>}
-              </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-            </div>
-          </Link>
-        ))}
-      </nav>
-
-      <Card className="mb-6 border border-outline-variant/20">
+      {pendientes.length > 0 ? (
+      <Card className="mb-6 rounded-2xl border border-outline-variant/30">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            {pendientes.length > 0 ? (
-              <AlertTriangle className="h-4 w-4 text-tertiary" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4 text-secondary" />
-            )}
+            <AlertTriangle className="h-4 w-4 text-tertiary" />
             Pendientes
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          {pendientes.length > 0 ? (
-            <ul className="divide-y divide-outline-variant/20">
-              {pendientes.map((p) => (
-                <li key={p.texto}>
-                  <Link
-                    href={p.href}
-                    className="group flex items-center justify-between gap-2 py-2 text-sm"
-                  >
-                    <span className="group-hover:text-primary">{p.texto}</span>
-                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:translate-x-0.5 group-hover:text-primary transition-transform" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">Sin pendientes. Todo al día.</p>
-          )}
+          <ul className="divide-y divide-outline-variant/20">
+            {pendientes.map((p) => (
+              <li key={p.texto}>
+                <Link
+                  href={p.href}
+                  className="group flex items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <span className="group-hover:text-primary">{p.texto}</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:translate-x-0.5 group-hover:text-primary transition-transform" />
+                </Link>
+              </li>
+            ))}
+          </ul>
         </CardContent>
       </Card>
+      ) : (
+        <p className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
+          <CheckCircle2 className="h-4 w-4 text-secondary shrink-0" />
+          Sin pendientes. Todo al día.
+        </p>
+      )}
 
       <DashboardStats
         stats={stats}

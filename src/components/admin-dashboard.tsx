@@ -3,7 +3,6 @@ export { CreateWordModal } from "./admin/CreateWordModal"
 export { EditWordModal } from "./admin/EditWordModal"
 export { FullAuditLogModal } from "./admin/FullAuditLogModal"
 export { ImportCorpusModal } from "./admin/ImportCorpusModal"
-export { WordListModal } from "./admin/WordListModal"
 export { WordPreviewModal } from "./admin/WordPreviewModal"
 
 export type { AuditLogEntry, AdminStats } from "@/lib/admin-utils"

@@ -59,7 +59,7 @@ describe("AdminDashboard", () => {
   it("renders dashboard stats after loading", async () => {
     mockFetchStats()
     render(<AdminDashboard />)
-    expect(await screen.findByText("Palabras")).toBeDefined()
+    expect(await screen.findByText("Total de palabras")).toBeDefined()
     const totals = screen.getAllByText("100")
     expect(totals.length).toBeGreaterThanOrEqual(1)
   })
@@ -77,27 +77,31 @@ describe("AdminDashboard", () => {
     expect(await screen.findByText(/Coincide con el total/)).toBeDefined()
   })
 
-  it("shows section links with routes", async () => {
+  it("renders no section tiles nav: navigation lives in the sidebar", async () => {
     mockFetchStats()
     render(<AdminDashboard />)
-    expect(await screen.findByText("Palabras")).toBeDefined()
-    const links: Array<[string, string]> = [
-      ["Palabras", "/admin/palabras"],
-      ["Gestión de cursos", "/admin/cursos"],
-      ["Ilustraciones", "/admin/ilustraciones"],
-      ["Audios", "/admin/audios"],
-      ["Usuarios", "/admin/usuarios"],
-    ]
-    for (const [texto, href] of links) {
-      const el = screen.getByText(texto)
-      expect(el.closest("a")?.getAttribute("href")).toBe(href)
-    }
+    // El Resumen ya no duplica los links del sidebar persistente.
+    expect(
+      await screen.findByText("Total de palabras")
+    ).toBeDefined()
+    expect(
+      screen.queryByRole("navigation", { name: "Secciones del panel" })
+    ).toBeNull()
+    expect(screen.queryByText("Usuarios")).toBeNull()
+    // Pendientes y métricas siguen presentes.
+    expect(screen.getByText("Pendientes")).toBeDefined()
+    expect(screen.getByText("Estado de fichas")).toBeDefined()
   })
 
-  it("hides Usuarios link for editors", async () => {
+  it("renders no section tiles nav for editors either", async () => {
     mockFetchStats()
     render(<AdminDashboard isAdmin={false} />)
-    expect(await screen.findByText("Palabras")).toBeDefined()
+    expect(
+      await screen.findByText("Total de palabras")
+    ).toBeDefined()
+    expect(
+      screen.queryByRole("navigation", { name: "Secciones del panel" })
+    ).toBeNull()
     expect(screen.queryByText("Usuarios")).toBeNull()
   })
 

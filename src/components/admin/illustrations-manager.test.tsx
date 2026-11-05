@@ -1,7 +1,13 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
+import type { ReactNode } from "react"
 import { IllustrationsManager } from "./illustrations-manager"
 import { compressToIllustration } from "@/lib/media/compress-image"
+
+const toastMock = vi.fn()
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: vi.fn(() => ({ toast: toastMock })),
+}))
 
 vi.mock("@/lib/media/compress-image", () => ({
   compressToIllustration: vi.fn(async (f: File) => f),
@@ -350,5 +356,10 @@ describe("IllustrationsManager — subida individual en modal", () => {
       expect.stringContaining("/api/admin/words/w1"),
       expect.objectContaining({ method: "PUT" })
     )
+    expect(toastMock).toHaveBeenCalledTimes(1)
+    const { title } = toastMock.mock.calls[0][0] as { title: ReactNode }
+    const { container } = render(<>{title}</>)
+    expect(container).toHaveTextContent("Ilustración guardada")
+    expect(container.querySelector("svg")).not.toBeNull()
   })
 })

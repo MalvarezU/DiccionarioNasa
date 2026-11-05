@@ -49,7 +49,7 @@ export interface WordListContentProps {
   onBulkActionDone: () => void
   /** Editor: sin archivado en lote (CA-30). Default true (admin). */
   canBulkArchive?: boolean
-  /** Visible o montado. El modal pasa su `open`; la página inline usa el default `true`. */
+  /** Visible o montado. La página inline usa el default `true`. */
   open?: boolean
   /** Acción extra en el empty state (la página inline pasa "Nueva ficha"). */
   emptyAction?: ReactNode
@@ -70,7 +70,7 @@ function getStatusBadge(status: string) {
 
 /**
  * Contenido de la gestión de fichas, sin envoltorio.
- * Lo usan el modal (WordListModal) y la página inline (/admin/palabras).
+ * Lo usa la página inline (/admin/palabras).
  */
 export function WordListContent({
   onEditWord,
@@ -82,6 +82,7 @@ export function WordListContent({
   const {
     words,
     isLoading,
+    error,
     page,
     totalPages,
     total,
@@ -101,20 +102,20 @@ export function WordListContent({
     toggleSelectAll,
     handleBulkAction,
     clearSelection,
+    clearFilters,
     dismissBulkResult,
   } = useWordList({ open, onBulkActionDone })
 
+  const hasActiveFilter = searchQuery.trim() !== "" || statusFilter !== "all"
+
   return (
     <div className="space-y-4 py-2">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 text-sm tabular-nums text-muted-foreground">
         <span>{formatNumber(total)} palabra{total !== 1 ? "s" : ""}</span>
         {statusFilter !== "all" && (
-          <>
-            <span>·</span>
-            <Badge variant="outline" className="text-2xs gap-1">
-              {statusFilterLabel}: {formatNumber(total)}
-            </Badge>
-          </>
+          <Badge variant="outline" className="text-2xs gap-1">
+            {statusFilterLabel}: {formatNumber(total)}
+          </Badge>
         )}
       </div>
 
@@ -126,9 +127,10 @@ export function WordListContent({
           <div className="flex gap-2 ml-auto">
             <Button
               size="sm"
+              variant="secondary"
               onClick={() => handleBulkAction("PUBLISHED")}
               disabled={isBulkAction}
-              className="h-8 gap-1.5 text-xs bg-secondary hover:bg-secondary/90 text-white"
+              className="h-8 gap-1.5 text-xs"
             >
               {isBulkAction ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
               Publicar seleccionadas
@@ -157,6 +159,12 @@ export function WordListContent({
         </div>
       )}
 
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
       {bulkResult && (
         <Card className="border-secondary/30 bg-secondary/5">
           <CardContent className="pt-3 pb-3">
@@ -165,7 +173,7 @@ export function WordListContent({
               <p className="text-sm text-secondary">
                 {bulkResult.updated} palabra{bulkResult.updated !== 1 ? "s" : ""} {bulkResult.action}
                 {bulkResult.skipped > 0 && (
-                  <span className="text-muted-foreground"> · {bulkResult.skipped} omitida{bulkResult.skipped !== 1 ? "s" : ""}</span>
+                  <span className="text-muted-foreground">{bulkResult.skipped} omitida{bulkResult.skipped !== 1 ? "s" : ""}</span>
                 )}
               </p>
               <Button
@@ -187,6 +195,7 @@ export function WordListContent({
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar palabra..."
+              aria-label="Buscar ficha"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSearch() }}
@@ -215,10 +224,10 @@ export function WordListContent({
         <WordTableSkeleton rows={5} />
       ) : words.length > 0 ? (
         <>
-          <div className="rounded-md border overflow-hidden [&_[data-slot=table-container]]:overflow-visible">
+          <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-card [&_[data-slot=table-container]]:overflow-visible">
             <Table className="table-fixed w-full">
-              <TableHeader>
-                <TableRow>
+              <TableHeader className="bg-muted/40">
+                <TableRow className="hover:bg-muted/40">
                   <TableHead className="w-[40px] pl-4">
                     <Checkbox
                       checked={allCurrentSelected ? true : someCurrentSelected ? "indeterminate" : false}
@@ -236,7 +245,7 @@ export function WordListContent({
               </TableHeader>
               <TableBody>
                 {words.map((w) => (
-                  <TableRow key={w.id} className={selectedIds.has(w.id) ? "bg-primary/5" : ""}>
+                  <TableRow key={w.id} className={selectedIds.has(w.id) ? "bg-primary/[0.04] hover:bg-primary/[0.07]" : ""}>
                     <TableCell className="pl-4">
                       <Checkbox
                         checked={selectedIds.has(w.id)}
@@ -257,7 +266,7 @@ export function WordListContent({
                         <VolumeX className="h-4 w-4 text-muted-foreground/30" />
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -275,8 +284,8 @@ export function WordListContent({
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs tabular-nums text-muted-foreground">
                 Página {page} de {totalPages} ({formatNumber(total)} total)
               </p>
               <div className="flex items-center gap-2">
@@ -285,7 +294,7 @@ export function WordListContent({
                   size="sm"
                   disabled={page <= 1}
                   onClick={() => handlePageChange(page - 1)}
-                  className="h-7 text-xs"
+                  className="h-8 text-xs"
                 >
                   Anterior
                 </Button>
@@ -294,7 +303,7 @@ export function WordListContent({
                   size="sm"
                   disabled={page >= totalPages}
                   onClick={() => handlePageChange(page + 1)}
-                  className="h-7 text-xs"
+                  className="h-8 text-xs"
                 >
                   Siguiente
                 </Button>
@@ -303,10 +312,25 @@ export function WordListContent({
           )}
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 gap-2">
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 px-4 py-12">
           <BookOpen className="h-8 w-8 text-muted-foreground/30" />
-          <p className="text-xs text-muted-foreground">No se encontraron palabras</p>
-          {emptyAction}
+          {hasActiveFilter ? (
+            <>
+              <p className="text-xs text-muted-foreground">
+                {searchQuery.trim()
+                  ? `Sin resultados para "${searchQuery.trim()}"`
+                  : "Sin resultados con este filtro"}
+              </p>
+              <Button variant="outline" size="sm" onClick={clearFilters} className="h-8 text-xs">
+                Limpiar búsqueda y filtro
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">No hay fichas todavía</p>
+              {emptyAction}
+            </>
+          )}
         </div>
       )}
     </div>

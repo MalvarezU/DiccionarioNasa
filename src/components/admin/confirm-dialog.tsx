@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { Loader2 } from "lucide-react"
 import {
   AlertDialog,
@@ -35,7 +36,7 @@ export function ConfirmDialog({
   onOpenChange: (open: boolean) => void
   onConfirm: () => void | Promise<void>
   titulo: string
-  descripcion?: string
+  descripcion?: ReactNode
   accionLabel?: string
   cancelarLabel?: string
   processing?: boolean
