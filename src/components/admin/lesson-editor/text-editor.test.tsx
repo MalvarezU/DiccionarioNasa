@@ -210,3 +210,84 @@ describe("EditorTextoRico", () => {
     editor.destroy()
   })
 })
+
+// ====================================================================
+// EDGE / ADVERSARIAL BATTERY — editor de texto rico
+// ====================================================================
+describe("EditorTextoRico — edge", () => {
+  it("no emite onChange en la carga inicial (guard de sync)", async () => {
+    const onChange = vi.fn()
+    const html = "<h1>Titulo</h1><p>Parrafo con <strong>negrita</strong></p>"
+    render(<EditorTextoRico value={html} onChange={onChange} />)
+    await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
+    // dar tiempo a que cualquier effect dispare
+    await new Promise((r) => setTimeout(r, 50))
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it("disabled: no renderiza contenido editable", async () => {
+    render(<EditorTextoRico value="<p>x</p>" onChange={vi.fn()} disabled />)
+    await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
+    const editable = document.querySelector(".ProseMirror") as HTMLElement
+    expect(editable.getAttribute("contenteditable")).toBe("false")
+  })
+
+  it("maxChars=0 marca como excedido cualquier texto", async () => {
+    render(<EditorTextoRico value="a" onChange={vi.fn()} maxChars={0} />)
+    await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
+    expect(screen.getByText(/1 \/ 0/)).toBeDefined()
+    const contador = screen.getByText(/1 \/ 0/)
+    expect(contador.className).toContain("text-destructive")
+  })
+
+  it("value vacío no crashea y muestra 0 / max", async () => {
+    render(<EditorTextoRico value="" onChange={vi.fn()} />)
+    await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
+    expect(screen.getByText(/0 \/ 20000/)).toBeDefined()
+  })
+
+  it("carga HTML con tag no permitido sin crashear (Tiptap lo ignora)", async () => {
+    const html = "<p>ok</p><script>alert(1)</script><iframe src='x'></iframe>"
+    render(<EditorTextoRico value={html} onChange={vi.fn()} />)
+    await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
+    await waitFor(() => {
+      const editable = document.querySelector(".ProseMirror") as HTMLElement
+      expect(editable.textContent).toContain("ok")
+    })
+  })
+
+  it("carga HTML con color token (data-color) sin crashear", async () => {
+    const html = '<p><span data-color="red">rojo</span></p>'
+    render(<EditorTextoRico value={html} onChange={vi.fn()} />)
+    await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
+    await waitFor(() => {
+      const editable = document.querySelector(".ProseMirror") as HTMLElement
+      expect(editable.textContent).toContain("rojo")
+    })
+  })
+
+  it("aria-labelledby se propaga", async () => {
+    render(<EditorTextoRico value="" onChange={vi.fn()} ariaLabelledBy="lbl" />)
+    await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
+    const content = document.querySelector('[aria-labelledby="lbl"]')
+    expect(content).not.toBeNull()
+  })
+
+  it("mini con value con headings no crashea", async () => {
+    render(<EditorTextoRico value="<h1>T</h1><p>x</p>" onChange={vi.fn()} mini />)
+    await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
+    await waitFor(() => {
+      const editable = document.querySelector(".ProseMirror") as HTMLElement
+      expect(editable.textContent).toContain("T")
+    })
+  })
+
+  it("contador usa value (no html interno) — consistente con el guardado", async () => {
+    // Si el padre pasa un value más largo que el emitido por Tiptap round-trip,
+    // el contador refleja el value (lo que se va a guardar), no el interno.
+    const largo = "a".repeat(5_000)
+    render(<EditorTextoRico value={largo} onChange={vi.fn()} maxChars={20_000} />)
+    await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
+    expect(screen.getByText(/5000 \/ 20000/)).toBeDefined()
+  })
+})
