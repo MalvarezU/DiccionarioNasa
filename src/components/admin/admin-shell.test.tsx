@@ -56,7 +56,7 @@ describe("AdminShell [F1]", () => {
     expect(screen.getByText("Resumen").closest("a")?.getAttribute("aria-current")).toBe("page")
     // "Admin" aparece en el badge de rol y en la miga de pan
     expect(screen.getAllByText("Admin").length).toBeGreaterThan(0)
-    expect(screen.getByText("Salir al diccionario")).toBeDefined()
+    expect(screen.getByText("Volver al home")).toBeDefined()
   })
 
   it("oculta Usuarios al editor y muestra badge Editor", () => {

@@ -1,16 +1,16 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 import {
+  ArrowLeft,
   AudioLines,
   BookOpen,
   GraduationCap,
   Images,
   LayoutDashboard,
-  LogOut,
-  Shield,
   Users,
 } from "lucide-react"
 import type { ComponentType } from "react"
@@ -92,7 +92,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <SidebarHeader className="px-3 py-4">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary-container">
-              <Shield className="h-4.5 w-4.5 text-primary-foreground" />
+              <Image
+                src="/logoPiiyaakblanco.png"
+                alt="Logo Piiyaak"
+                width={24}
+                height={24}
+                className="size-6 rounded-md object-contain"
+              />
             </div>
             <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
               <span className="font-serif text-[15px] font-semibold tracking-tight text-primary leading-none truncate">Piiyaak</span>
@@ -126,8 +132,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <SidebarFooter className="px-2 py-2">
           <Button asChild variant="outline" size="sm" className="w-full justify-start gap-2 border-outline-variant/60 bg-transparent text-muted-foreground hover:border-outline-variant hover:bg-surface-container-highest hover:text-tertiary">
             <Link href="/">
-              <LogOut className="h-4 w-4 transition-colors" />
-              Salir al diccionario
+              <ArrowLeft className="h-4 w-4 transition-colors" />
+              Volver al home
             </Link>
           </Button>
         </SidebarFooter>
