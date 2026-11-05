@@ -87,8 +87,8 @@ export function LessonEditor({
   onDirtyChange?: (dirty: boolean) => void
   /** En la página del editor la vista previa es un modo in-page, no un dialog. */
   ocultarVistaPrevia?: boolean
-  onGuardarRef?: (fn: () => Promise<void>) => void
-  onUndoRedoRef?: (undo: () => void, redo: () => void) => void
+  onGuardarRef?: (fn: (motivo?: "manual" | "auto") => Promise<void>) => void
+  onUndoRedoRef?: (undo: () => void, redo: () => void, puedeDeshacer: boolean, puedeRehacer: boolean) => void
 }) {
   const editor = useLessonEditor({ title: initialTitle, blocks: initialBlocks })
   const sensors = useSensors(
@@ -118,13 +118,13 @@ export function LessonEditor({
     onGuardarRef?.(guardar)
   }, [guardar, onGuardarRef])
   useEffect(() => {
-    onUndoRedoRef?.(editor.undo, editor.redo)
-  }, [editor.undo, editor.redo, onUndoRedoRef])
+    onUndoRedoRef?.(editor.undo, editor.redo, editor.puedeDeshacer, editor.puedeRehacer)
+  }, [editor.undo, editor.redo, editor.puedeDeshacer, editor.puedeRehacer, onUndoRedoRef])
   const [guardando, setGuardando] = useState(false)
   const [previewAbierta, setPreviewAbierta] = useState(false)
   const { toast } = useToast()
 
-  async function guardar() {
+  async function guardar(motivo: "manual" | "auto" = "manual") {
     if (!editor.valido || !editor.documento) return
     setGuardando(true)
     try {
@@ -149,7 +149,9 @@ export function LessonEditor({
         return
       }
       editor.markSaved()
-      toast({ title: "Lección guardada" })
+      // El auto-guardado ya se confirma con el badge del header;
+      // solo el guardado manual (o un error) merece un toast.
+      if (motivo === "manual") toast({ title: "Lección guardada" })
       onGuardado?.()
     } catch {
       toast({
@@ -317,7 +319,7 @@ export function LessonEditor({
 
       {/* Acciones: sticky-bottom para que Guardar esté siempre a mano */}
       <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-2 border-t border-outline-variant/30 bg-background/95 py-3 backdrop-blur">
-        <Button type="button" onClick={guardar} disabled={!editor.valido || guardando}>
+        <Button type="button" onClick={() => void guardar("manual")} disabled={!editor.valido || guardando}>
           {guardando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           Guardar lección
         </Button>

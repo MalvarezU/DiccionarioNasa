@@ -2,7 +2,6 @@
 
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -35,67 +34,6 @@ export type BlockFormProps<B extends LessonBlock> = {
   block: B
   onChange: (next: LessonBlock) => void
   errores: string[]
-}
-
-/** Editor de opciones compartido: radio para marcar la correcta, quitar, etc. */
-function EditorDeOpciones({
-  options,
-  onChange,
-  prefix,
-}: {
-  options: QuizOption[]
-  onChange: (next: QuizOption[]) => void
-  prefix: string
-}) {
-  const marcarCorrecta = (index: number) =>
-    onChange(options.map((o, i) => ({ ...o, correct: i === index })))
-
-  return (
-    <div className="space-y-1.5">
-      {options.map((op, i) => (
-        <div key={`${prefix}-opt-${i}`} className="flex items-center gap-2">
-          <input
-            type="radio"
-            name={`${prefix}-correcta`}
-            checked={op.correct}
-            onChange={() => marcarCorrecta(i)}
-            aria-label={`Marcar como correcta la opción ${i + 1}`}
-            className="accent-[var(--primary)]"
-          />
-          <Input
-            value={op.text}
-            onChange={(e) =>
-              onChange(options.map((o, j) => (j === i ? { ...o, text: e.target.value } : o)))
-            }
-            placeholder={`Opción ${i + 1}`}
-            aria-label={`Texto de la opción ${i + 1}`}
-            className="h-8"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 shrink-0"
-            onClick={() => onChange(options.filter((_, j) => j !== i))}
-            disabled={options.length <= 2}
-            aria-label={`Quitar opción ${i + 1}`}
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
-        </div>
-      ))}
-      {options.length < 6 ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => onChange([...options, { text: "", correct: false }])}
-        >
-          <Plus className="size-3.5" /> Opción
-        </Button>
-      ) : null}
-    </div>
-  )
 }
 
 export function FormQuiz({ block, onChange, errores }: BlockFormProps<Extract<LessonBlock, { type: "quiz" }>>) {
