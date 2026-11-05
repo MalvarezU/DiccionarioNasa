@@ -174,7 +174,7 @@ function DiccionarioContent() {
             es clara: muro blanco sobreexpuesto). data-hero: el header
             frosted mide este hero para mutar a sólido al salir de él.
             pt-28 despeja el header fijo; en sm+ centra en 72svh. */}
-        <section data-hero className="relative isolate overflow-hidden bg-background pb-12 sm:pb-16 pt-28 sm:pt-36 sm:flex sm:min-h-[72svh] sm:flex-col sm:justify-center">
+        <section data-hero className="relative isolate overflow-hidden bg-background pb-12 sm:pb-16 pt-28 sm:pt-36 sm:flex sm:min-h-[64svh] sm:flex-col sm:justify-center">
           <Image
             src="/banner2.jpg"
             alt=""
@@ -193,43 +193,47 @@ function DiccionarioContent() {
             }}
             aria-hidden="true"
           />
-          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 text-center z-20">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium text-[#F6EEDC] backdrop-blur-md">
-              <BookOpen className="h-3 w-3 text-[#F6EEDC]" aria-hidden="true" />
-              Diccionario bilingüe
-            </span>
-            <h1
-              className="mt-4 text-3xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-[#F6EEDC]"
-              style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.5)" }}
-            >
-              Diccionario Nasa Yuwe
-            </h1>
-            <p
-              className="mt-3 text-lg sm:text-xl font-medium text-white"
-              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.6)" }}
-            >
-              Busca palabras, pronunciaciones y contexto cultural
-            </p>
-
-            <div className="mt-8 sm:mt-10">
-              <SearchBar variant="hero" />
-            </div>
-
-            <div
-              className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm sm:text-base text-white/90"
-              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
-            >
-              <div className="flex items-center gap-2">
-                <Leaf className="h-4 w-4 text-[#F6EEDC]" />
-                <span>Palabras de la comunidad</span>
+          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 z-20">
+            <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-12">
+              {/* Columna izquierda: copy de bienvenida */}
+              <div className="text-center lg:text-left">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium text-[#F6EEDC] backdrop-blur-md">
+                  <BookOpen className="h-3 w-3 text-[#F6EEDC]" aria-hidden="true" />
+                  Diccionario bilingüe
+                </span>
+                <h1
+                  className="mt-4 text-3xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-[#F6EEDC]"
+                  style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.5)" }}
+                >
+                  Diccionario Nasa Yuwe
+                </h1>
+                <p
+                  className="mt-3 text-lg sm:text-xl font-medium text-white"
+                  style={{ textShadow: "0 2px 6px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.6)" }}
+                >
+                  Busca palabras, pronunciaciones y contexto cultural
+                </p>
+                <div
+                  className="mt-6 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm sm:text-base text-white/90 lg:justify-start"
+                  style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Leaf className="h-4 w-4 text-[#F6EEDC]" />
+                    <span>Palabras de la comunidad</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Volume2 className="h-4 w-4 text-[#F6EEDC]" />
+                    <span>Pronunciación guiada</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-[#F6EEDC]" />
+                    <span>Español ↔ Nasa Yuwe</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Volume2 className="h-4 w-4 text-[#F6EEDC]" />
-                <span>Pronunciación guiada</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-[#F6EEDC]" />
-                <span>Español ↔ Nasa Yuwe</span>
+              {/* Columna derecha: panel de busqueda con resultados en flujo */}
+              <div className="mx-auto w-full max-w-xl rounded-2xl border border-white/25 bg-black/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl">
+                <SearchBar variant="hero-panel" />
               </div>
             </div>
           </div>

@@ -219,7 +219,7 @@ interface SearchBarProps {
    * - hero: campo grande SOBRE IMAGEN oscura → texto y borde blancos.
    * - hero-light: campo grande sobre fondo claro (hero del diccionario).
    */
-  variant?: "hero" | "hero-light" | "inline";
+  variant?: "hero" | "hero-light" | "hero-panel" | "inline";
   /** Callback when a word is selected — used by parent components */
   onWordSelect?: (wordId: string) => void;
 }
@@ -244,8 +244,8 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   /** Campo grande (presencia de hero), sea sobre imagen o sobre fondo claro. */
   const esGrande = variant !== "inline";
   /** El texto solo va blanco cuando el fondo real es oscuro (imagen). */
-  const sobreOscuro = variant === "hero";
-  const showDropdown = isOpen && debouncedQuery.length >= 2;
+  const sobreOscuro = variant === "hero" || variant === "hero-panel";
+  const panelMode = variant === "hero-panel";  const showDropdown = isOpen && debouncedQuery.length >= 2;
   const hasNoResults = showDropdown && !isLoading && results.length === 0;
   const [localDBReady, setLocalDBReady] = useState<boolean | null>(null);
 
@@ -482,9 +482,13 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Dropdown with results */}
         {showDropdown && (
           <div
-            className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200 ${
-              esGrande ? "mt-2 rounded-xl" : "mt-1"
-            }`}
+            className={
+              panelMode
+                ? "mt-2 rounded-xl border border-white/20 bg-black/20 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
+                : `absolute top-full left-0 right-0 z-50 rounded-lg border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200 ${
+                    esGrande ? "mt-2 rounded-xl" : "mt-1"
+                  }`
+            }
           >
             {/* Offline banner — context-aware for local DB readiness */}
             {!isOnline && (
@@ -533,7 +537,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               <ul
                 ref={listRef}
                 id="search-results-list"
-                className={esGrande ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
+                className={panelMode ? "max-h-[40svh] overflow-y-auto py-1" : esGrande ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
                 role="listbox"
                 aria-label="Resultados de búsqueda"
               >
