@@ -22,6 +22,9 @@ export function useCourseManager() {
   const { toast } = useToast()
   const [courses, setCourses] = useState<CourseListItem[]>([])
   const [loading, setLoading] = useState(true)
+  /** Refetch en curso con la lista anterior visible (sin re-skeletonizar). */
+  const [refreshing, setRefreshing] = useState(false)
+  const didInitCoursesRef = useRef(false)
   // Errores por zona: cada uno se renderiza debajo de su sección con role="alert".
   const [errorCourse, setErrorCourse] = useState<string | null>(null)
   const [errorModule, setErrorModule] = useState<string | null>(null)
@@ -39,31 +42,33 @@ export function useCourseManager() {
   const [editStatus, setEditStatus] = useState<string>("DRAFT")
   /** Portada: undefined = sin cambios; string/null = setear/quitar. */
   const [editCover, setEditCover] = useState<string | null | undefined>(undefined)
-  /** Snapshot del detalle al cargarlo: base para detectar ediciones sin guardar. */
-  const [snapshot, setSnapshot] = useState<{ title: string; desc: string; status: string } | null>(null)
+  /** Guardando el curso (diálogo de guard + botón Guardar). */
+  const [savingCourse, setSavingCourse] = useState(false)
+  const savingCourseRef = useRef(false)
+  /** Token anti-race: solo la última respuesta de loadDetail pinta. */
+  const loadSeqRef = useRef(0)
   /** Stats de progreso (solo editor+). */
   const [stats, setStats] = useState<CourseStats | null>(null)
   const [newModuleTitle, setNewModuleTitle] = useState("")
   const [savingModule, setSavingModule] = useState(false)
-  const [isSavingCourse, setIsSavingCourse] = useState(false)
   const [savingLesson, setSavingLesson] = useState<Record<string, boolean>>({})
-  const savingCourseRef = useRef(false)
   const savingModuleRef = useRef(false)
   const savingLessonRef = useRef<Set<string>>(new Set())
 
   /** Hay ediciones del curso sin guardar (activa el dirty-guard al cambiar de fila). */
   const isDirty =
     detail !== null &&
-    snapshot !== null &&
-    (editTitle !== snapshot.title ||
-      editDesc !== snapshot.desc ||
-      editStatus !== snapshot.status ||
+    (editTitle !== detail.title ||
+      editDesc !== (detail.description ?? "") ||
+      editStatus !== detail.status ||
       editCover !== undefined)
 
   const [lessonForms, setLessonForms] = useState<Record<string, LessonForm>>({})
 
   const loadCourses = useCallback(async () => {
-    setLoading(true)
+    const isInitial = !didInitCoursesRef.current
+    if (isInitial) setLoading(true)
+    else setRefreshing(true)
     setErrorCourse(null)
     try {
       const data = await api("/api/courses?all=1")
@@ -71,7 +76,9 @@ export function useCourseManager() {
     } catch (e) {
       setErrorCourse(e instanceof Error ? e.message : "Error al cargar")
     } finally {
-      setLoading(false)
+      didInitCoursesRef.current = true
+      if (isInitial) setLoading(false)
+      else setRefreshing(false)
     }
   }, [])
 
@@ -80,25 +87,23 @@ export function useCourseManager() {
   }, [loadCourses])
 
   const loadDetail = useCallback(async (id: string) => {
+    const seq = ++loadSeqRef.current
     setSelectedId(id)
     setErrorCourse(null)
     try {
       const data = await api(`/api/courses/${id}`)
+      if (loadSeqRef.current !== seq) return
       setDetail(data.course)
       setStats((data as { stats?: CourseStats }).stats ?? null)
       setEditTitle(data.course.title)
       setEditDesc(data.course.description ?? "")
       setEditStatus(data.course.status)
       setEditCover(undefined)
-      setSnapshot({
-        title: data.course.title,
-        desc: data.course.description ?? "",
-        status: data.course.status,
-      })
       // Contexto nuevo: los errores de zona anteriores quedan obsoletos.
       setErrorModule(null)
       setErrorLesson({})
     } catch (e) {
+      if (loadSeqRef.current !== seq) return
       setErrorCourse(e instanceof Error ? e.message : "Error al cargar el curso")
     }
   }, [])
@@ -126,7 +131,7 @@ export function useCourseManager() {
   async function handleSaveCourse(): Promise<boolean> {
     if (!detail || savingCourseRef.current) return false
     savingCourseRef.current = true
-    setIsSavingCourse(true)
+    setSavingCourse(true)
     setErrorCourse(null)
     try {
       await api(`/api/courses/${detail.id}`, {
@@ -153,7 +158,7 @@ export function useCourseManager() {
       return false
     } finally {
       savingCourseRef.current = false
-      setIsSavingCourse(false)
+      setSavingCourse(false)
     }
   }
 
@@ -163,7 +168,6 @@ export function useCourseManager() {
       await api(`/api/courses/${detail.id}`, { method: "DELETE" })
       setDetail(null)
       setSelectedId(null)
-      setSnapshot(null)
       await loadCourses()
     } catch (err) {
       setErrorCourse(err instanceof Error ? err.message : "Error al eliminar")
@@ -316,11 +320,14 @@ export function useCourseManager() {
     }
   }
 
+  // Alias para compatibilidad con el patrón CU-1 (error único).
+  const error = errorCourse
 
   return {
     courses,
     loading,
-    error: errorCourse,
+    refreshing,
+    error,
     errorCourse,
     errorModule,
     errorLesson,
@@ -329,7 +336,8 @@ export function useCourseManager() {
     newTitle,
     setNewTitle,
     creating,
-    isSavingCourse,
+    isSavingCourse: savingCourse,
+    savingCourse,
     isDirty,
     editTitle,
     setEditTitle,
