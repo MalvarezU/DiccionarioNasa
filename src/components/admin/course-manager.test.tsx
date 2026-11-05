@@ -619,3 +619,154 @@ describe("CourseManager feedback [CU-2]", () => {
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull())
   })
 })
+
+describe("CourseManager estructura [CU-3]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+    localStorage.clear()
+  })
+
+  function toastTitleText(callIndex = 0) {
+    const { title } = toastMock.mock.calls[callIndex][0] as { title: ReactNode }
+    const { container } = render(<>{title}</>)
+    return container
+  }
+
+  it("click en título abre input: Enter guarda con PATCH y toast con icono", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.click(screen.getByRole("button", { name: "Renombrar módulo M1" }))
+
+    const input = screen.getByLabelText("Nuevo título para el módulo M1")
+    expect(input).toHaveValue("M1")
+    await user.clear(input)
+    await user.type(input, "M1 editado")
+    await user.keyboard("{Enter}")
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/modules/m1",
+        expect.objectContaining({ method: "PATCH" })
+      )
+    })
+    const patch = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([u, init]) => String(u) === "/api/modules/m1" && (init as RequestInit)?.method === "PATCH"
+      )
+    expect(JSON.parse(String((patch![1] as RequestInit).body))).toEqual({ title: "M1 editado" })
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Módulo renombrado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("Esc cancela el renombrado sin llamar PATCH", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.click(screen.getByRole("button", { name: "Renombrar módulo M1" }))
+
+    const input = screen.getByLabelText("Nuevo título para el módulo M1")
+    await user.clear(input)
+    await user.type(input, "Descartado")
+    await user.keyboard("{Escape}")
+
+    expect(screen.queryByLabelText(/Nuevo título para el módulo/)).toBeNull()
+    expect(screen.getByRole("button", { name: "Renombrar módulo M1" })).toBeDefined()
+    const patchCalls = vi
+      .mocked(fetch)
+      .mock.calls.filter(([, init]) => (init as RequestInit)?.method === "PATCH")
+    expect(patchCalls).toHaveLength(0)
+  })
+
+  it("acordeón colapsa/expande con numeración y persiste en localStorage", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByLabelText(/Título de nueva lección/)
+    expect(screen.getByText("01")).toBeDefined()
+
+    await user.click(screen.getByRole("button", { name: "Colapsar módulo M1" }))
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/Título de nueva lección/)).toBeNull()
+    )
+    expect(screen.getByRole("button", { name: "Expandir módulo M1" })).toBeDefined()
+    expect(localStorage.getItem("cm-modulos:c1")).toBe("[]")
+
+    await user.click(screen.getByRole("button", { name: "Expandir módulo M1" }))
+    await screen.findByLabelText(/Título de nueva lección/)
+    expect(localStorage.getItem("cm-modulos:c1")).toBe('["m1"]')
+  })
+
+  it("restaura el acordeón colapsado al remontar", async () => {
+    mockBase()
+    localStorage.setItem("cm-modulos:c1", "[]")
+    const user = userEvent.setup()
+    const { unmount } = render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByRole("button", { name: "Expandir módulo M1" })
+    expect(screen.queryByLabelText(/Título de nueva lección/)).toBeNull()
+    unmount()
+
+    render(<CourseManager canDelete />)
+    await screen.findByRole("button", { name: "Expandir módulo M1" })
+    expect(screen.queryByLabelText(/Título de nueva lección/)).toBeNull()
+  })
+
+  it("chips filtran la lista y espejan ?filtro= junto a ?curso=", async () => {
+    resetNav()
+    nav.curso = "c1"
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+    await screen.findByDisplayValue("Básico")
+
+    await user.click(screen.getByRole("button", { name: "Publicado" }))
+    expect(screen.getByRole("button", { name: /Básico/ })).toBeDefined()
+    expect(screen.queryByRole("button", { name: /Intermedio/ })).toBeNull()
+    expect(nav.replace).toHaveBeenCalledWith("/admin/cursos?curso=c1&filtro=PUBLISHED", {
+      scroll: false,
+    })
+
+    await user.click(screen.getByRole("button", { name: "Archivado" }))
+    expect(screen.queryByRole("button", { name: /Básico/ })).toBeNull()
+    expect(screen.getByText("Sin cursos con este estado.")).toBeDefined()
+
+    await user.click(screen.getByRole("button", { name: "Todos" }))
+    await screen.findByRole("button", { name: /Intermedio/ })
+    expect(nav.replace).toHaveBeenLastCalledWith("/admin/cursos?curso=c1", { scroll: false })
+  })
+
+  it("sin canDelete oculta el botón Eliminar del módulo", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete={false} />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByRole("button", { name: "Renombrar módulo M1" })
+    expect(screen.queryByRole("button", { name: "Eliminar M1" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Subir M1" })).toBeDefined()
+    expect(screen.queryByRole("button", { name: "Eliminar" })).toBeNull()
+  })
+
+  it("con canDelete muestra el botón Eliminar del módulo", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    expect(await screen.findByRole("button", { name: "Eliminar M1" })).toBeDefined()
+  })
+})
