@@ -210,6 +210,22 @@ export function useCourseManager() {
     }
   }
 
+  async function handleRenameModule(moduleId: string, title: string): Promise<boolean> {
+    if (!detail || !title.trim()) return false
+    try {
+      await api(`/api/modules/${moduleId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: title.trim() }),
+      })
+      await loadDetail(detail.id)
+      toast({ title: successToastTitle("Módulo renombrado") })
+      return true
+    } catch (err) {
+      fail("No se pudo renombrar el módulo", err, "Error al renombrar")
+      return false
+    }
+  }
+
   async function moveModule(moduleId: string, dir: -1 | 1) {
     if (!detail) return
     const ids = [...detail.modules].sort((a, b) => a.order - b.order).map((m) => m.id)
@@ -348,6 +364,7 @@ export function useCourseManager() {
     handleDeleteCourse,
     handleAddModule,
     handleDeleteModule,
+    handleRenameModule,
     moveModule,
     handleAddLesson,
     handleDeleteLesson,

@@ -3,7 +3,8 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye, X } from "lucide-react"
+import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye, X, ChevronDown } from "lucide-react"
+import * as Accordion from "@radix-ui/react-accordion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   AlertDialog,
@@ -60,6 +61,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [initialCurso] = useState(() => searchParams.get("curso"))
+  const [initialFiltro] = useState(() => searchParams.get("filtro"))
   const [guard, setGuard] = useState<GuardPendiente | null>(null)
   const [confirmPendiente, setConfirmPendiente] = useState<{
     kind: "course" | "module" | "lesson"
@@ -102,6 +104,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     handleDeleteCourse,
     handleAddModule,
     handleDeleteModule,
+    handleRenameModule,
     moveModule,
     handleAddLesson,
     handleDeleteLesson,
@@ -119,6 +122,122 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     },
     [router, pathname, searchParams]
   )
+
+  /** Filtro de estados de la lista (client-side, espejado en ?filtro=). */
+  const FILTROS = ["todos", "DRAFT", "PUBLISHED", "ARCHIVED"] as const
+  type Filtro = (typeof FILTROS)[number]
+  const filtroValido = (v: string | null): v is Filtro =>
+    v === "todos" || v === "DRAFT" || v === "PUBLISHED" || v === "ARCHIVED"
+  const [filtro, setFiltro] = useState<Filtro>(() =>
+    filtroValido(initialFiltro) ? initialFiltro : "todos"
+  )
+
+  /** Espeja el filtro en ?filtro= (se omite cuando es "todos"). */
+  const syncFiltroUrl = useCallback(
+    (f: Filtro) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (f === "todos") params.delete("filtro")
+      else params.set("filtro", f)
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [router, pathname, searchParams]
+  )
+
+  function changeFiltro(f: Filtro) {
+    setFiltro(f)
+    syncFiltroUrl(f)
+  }
+
+  const cursosFiltrados =
+    filtro === "todos" ? courses : courses.filter((c) => c.status === filtro)
+
+  // Aplica ?filtro= entrante (deep-link/atras): solo cuando trae un valor
+  // válido distinto al actual; nunca resetea el estado local a "todos".
+  const filtroParam = searchParams.get("filtro")
+  useEffect(() => {
+    if (filtroValido(filtroParam) && filtroParam !== filtro) setFiltro(filtroParam)
+  }, [filtroParam])
+
+  /** Renombrado inline de módulo: id en edición + borrador del título. */
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState("")
+  const renameBusyRef = useRef(false)
+
+  function startRename(id: string, title: string) {
+    renameBusyRef.current = false
+    setRenamingId(id)
+    setRenameValue(title)
+  }
+
+  function cancelRename() {
+    if (renameBusyRef.current) return
+    setRenamingId(null)
+    setRenameValue("")
+  }
+
+  async function commitRename(id: string) {
+    if (renameBusyRef.current) return
+    const next = renameValue.trim()
+    if (!next) {
+      cancelRename()
+      return
+    }
+    renameBusyRef.current = true
+    const ok = await handleRenameModule(id, next)
+    renameBusyRef.current = false
+    if (ok) {
+      setRenamingId(null)
+      setRenameValue("")
+    }
+  }
+
+  /** Acordeón de módulos con persistencia local por curso. */
+  const [openMods, setOpenMods] = useState<string[]>([])
+  const openInitRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!detail) return
+    const key = `cm-modulos:${detail.id}`
+    if (openInitRef.current !== detail.id) {
+      openInitRef.current = detail.id
+      let stored: string[] | null = null
+      try {
+        const raw = localStorage.getItem(key)
+        if (raw) {
+          const parsed: unknown = JSON.parse(raw)
+          if (Array.isArray(parsed)) stored = parsed.filter((v): v is string => typeof v === "string")
+        }
+      } catch {
+        stored = null
+      }
+      const ids = new Set(detail.modules.map((m) => m.id))
+      setOpenMods(stored ? stored.filter((id) => ids.has(id)) : detail.modules.map((m) => m.id))
+    } else {
+      // Mismo curso: poda eliminados y abre los recién creados.
+      setOpenMods((prev) => {
+        const ids = new Set(detail.modules.map((m) => m.id))
+        const next = prev.filter((id) => ids.has(id))
+        let changed = next.length !== prev.length
+        for (const m of detail.modules) {
+          if (!next.includes(m.id)) {
+            next.push(m.id)
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+    }
+  }, [detail])
+
+  useEffect(() => {
+    if (!detail || openInitRef.current !== detail.id) return
+    try {
+      localStorage.setItem(`cm-modulos:${detail.id}`, JSON.stringify(openMods))
+    } catch {
+      // localStorage no disponible: el acordeón sigue funcionando en memoria.
+    }
+  }, [openMods, detail])
 
   const continuarGuard = useCallback(
     (g: GuardPendiente) => {
@@ -234,6 +353,27 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               <Plus className="h-4 w-4" />
             </Button>
           </form>
+          <div
+            role="group"
+            aria-label="Filtrar cursos por estado"
+            className="flex flex-wrap gap-1.5 shrink-0"
+          >
+            {FILTROS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={filtro === f}
+                onClick={() => changeFiltro(f)}
+                className={`rounded-full border px-2.5 py-1 text-2xs transition-colors ${
+                  filtro === f
+                    ? "border-secondary bg-secondary/10 text-secondary"
+                    : "border-outline-variant/30 text-muted-foreground hover:border-secondary/40"
+                }`}
+              >
+                {f === "todos" ? "Todos" : STATUS_LABEL[f]}
+              </button>
+            ))}
+          </div>
           {error && !detail ? (
             <div className="flex items-start gap-2 shrink-0">
               <p className="flex-1 text-sm text-destructive">{error}</p>
@@ -260,7 +400,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               role="region"
               aria-label="Lista de cursos"
             >
-              {courses.map((c) => (
+              {cursosFiltrados.map((c) => (
                 <button
                   key={c.id}
                   type="button"
@@ -282,8 +422,10 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                   </div>
                 </button>
               ))}
-              {courses.length === 0 && (
-                <p className="text-sm text-muted-foreground">Sin cursos. Crea el primero.</p>
+              {cursosFiltrados.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {courses.length === 0 ? "Sin cursos. Crea el primero." : "Sin cursos con este estado."}
+                </p>
               )}
             </div>
           )}
@@ -432,10 +574,56 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                   </Button>
                 </form>
 
+                <Accordion.Root
+                  type="multiple"
+                  value={openMods}
+                  onValueChange={setOpenMods}
+                  className="space-y-3"
+                >
                 {(detail.modules ?? []).map((mod, modIdx) => (
-                  <div key={mod.id} className="rounded-xl border border-outline-variant/30 p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <p className="flex-1 text-sm font-medium">{mod.title}</p>
+                  <Accordion.Item key={mod.id} value={mod.id} className="rounded-xl border border-outline-variant/30 p-3 space-y-2">
+                    <Accordion.Header className="flex items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className="w-8 shrink-0 text-center font-serif text-2xl leading-none text-secondary/70 tabular-nums"
+                      >
+                        {String(modIdx + 1).padStart(2, "0")}
+                      </span>
+                      {renamingId === mod.id ? (
+                        <Input
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              void commitRename(mod.id)
+                            } else if (e.key === "Escape") {
+                              e.preventDefault()
+                              cancelRename()
+                            }
+                          }}
+                          onBlur={() => cancelRename()}
+                          aria-label={`Nuevo título para el módulo ${mod.title}`}
+                          autoFocus
+                          className="h-8 flex-1 text-sm"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => startRename(mod.id, mod.title)}
+                          aria-label={`Renombrar módulo ${mod.title}`}
+                          title="Click para renombrar"
+                          className="flex-1 min-w-0 truncate rounded px-1 -mx-1 text-left text-sm font-medium hover:bg-muted/50"
+                        >
+                          {mod.title}
+                        </button>
+                      )}
+                      <Accordion.Trigger
+                        aria-label={`${openMods.includes(mod.id) ? "Colapsar" : "Expandir"} módulo ${mod.title}`}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted [&[data-state=open]>svg]:rotate-180"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5 transition-transform" aria-hidden="true" />
+                      </Accordion.Trigger>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -454,19 +642,21 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                       >
                         <ArrowDown className="h-3.5 w-3.5" />
                       </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        aria-label={`Eliminar ${mod.title}`}
-                        onClick={() => setConfirmPendiente({ kind: "module", id: mod.id, titulo: mod.title })}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                      {canDelete && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          aria-label={`Eliminar ${mod.title}`}
+                          onClick={() => setConfirmPendiente({ kind: "module", id: mod.id, titulo: mod.title })}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </Accordion.Header>
 
                     {/* Lecciones */}
-                    <div className="pl-2 space-y-1.5">
+                    <Accordion.Content className="pl-2 space-y-1.5">
                       {[...mod.lessons]
                         .sort(
                           (a, b) =>
@@ -545,9 +735,10 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                           {savingLesson[mod.id] ? "Añadiendo..." : "Añadir lección"}
                         </Button>
                       </form>
-                    </div>
-                  </div>
+                    </Accordion.Content>
+                  </Accordion.Item>
                 ))}
+                </Accordion.Root>
               </div>
             </div>
           )}
