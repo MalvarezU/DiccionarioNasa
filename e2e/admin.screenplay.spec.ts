@@ -246,7 +246,7 @@ test.describe("admin Piiyaak (Screenplay)", () => {
 
   // Fase 5: portada del curso — se sube, se guarda, se publica y el catálogo
   // la muestra. Creamos módulo+lección para que la ficha sea navegable (una
-  // sin lecciones es "Próximamente" a propósito y la muted no muestra cover).
+  // sin lecciones es "Sin contenido" a propósito y la muted no muestra cover).
   test("curso: la portada se sube y el catálogo la muestra", async ({ page }) => {
     const stamp = Date.now();
     const curso = `E2E Portada ${stamp}`;
