@@ -147,7 +147,7 @@ function BlockView({
       // Bloque incompleto (url "") no renderiza <img>: un src vacío hace que
       // el browser re-descargue la página y levanta error de consola.
       if (!block.url) {
-        return <AvisoFalta texto="Esta imagen todavía no tiene fuente." />
+        return interactive ? null : <AvisoFalta texto="Esta imagen todavía no tiene fuente." />
       }
       return (
         <figure>
@@ -182,13 +182,13 @@ function BlockView({
           </div>
         )
       }
-      return <AvisoFalta texto="El audio aún no tiene fuente." />
+      return interactive ? null : <AvisoFalta texto="El audio aún no tiene fuente." />
     }
 
     case "video":
       // Bloque incompleto (youtubeId vacío) no renderiza iframe roto.
       if (!block.youtubeId) {
-        return <AvisoFalta texto="Este video todavía no tiene fuente." />
+        return interactive ? null : <AvisoFalta texto="Este video todavía no tiene fuente." />
       }
       return <YoutubeEmbed youtubeId={block.youtubeId} title={block.title} />
 
@@ -202,7 +202,7 @@ function BlockView({
 
     case "vocabulary": {
       if (block.wordIds.length === 0) {
-        return <AvisoFalta texto="La lista de vocabulario está vacía." />
+        return interactive ? null : <AvisoFalta texto="La lista de vocabulario está vacía." />
       }
       return (
         <ul className="grid gap-3" data-testid="vocabulary-list">
@@ -272,6 +272,9 @@ function PanelInteractivo({ titulo, detalle }: { titulo: string; detalle: string
   )
 }
 
+/** Aviso editorial de bloque incompleto: solo se muestra en vista previa
+ * admin. En modo estudiante los call sites devuelven null (el validador
+ * server impide guardar media sin fuente en contenido válido). */
 function AvisoFalta({ texto }: { texto: string }) {
   return (
     <p className="rounded-lg border border-dashed border-destructive/40 px-4 py-3 text-sm text-destructive">

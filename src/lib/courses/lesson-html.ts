@@ -13,6 +13,40 @@
 /** Tags permitidos en el bloque de texto. Fuente única (la valida el sanitizer). */
 export const TEXT_BLOCK_ALLOWED_TAGS = ["p", "h1", "h2", "h3", "ul", "li", "strong", "em", "br", "span", "b", "i"] as const
 
+/**
+ * Tokens de color de fuente (F13b). En el HTML guardado viaja el TOKEN en
+ * `data-color` (nunca `style="color:"` ni hex): el color real vive en
+ * `globals.css`, una sola vez para editor, vista previa y curso.
+ */
+export const TEXT_COLOR_TOKENS = [
+  "rojo",
+  "naranja",
+  "amarillo",
+  "verde",
+  "azul",
+  "violeta",
+  "slate",
+  "oliva",
+  "tierra",
+  "ladrillo",
+] as const
+
+export type TextColorToken = (typeof TEXT_COLOR_TOKENS)[number]
+
+/** Muestra del dropdown: hex directos para estándar, tokens de paleta para los de marca. */
+export const TEXT_COLOR_SWATCH: Record<TextColorToken, string> = {
+  rojo: "#dc2626",
+  naranja: "#ea580c",
+  amarillo: "#ca8a04",
+  verde: "#16a34a",
+  azul: "#2563eb",
+  violeta: "#7c3aed",
+  slate: "var(--primary)",
+  oliva: "var(--secondary)",
+  tierra: "var(--tertiary)",
+  ladrillo: "var(--destructive)",
+}
+
 /** Clases Tailwind aplicadas al contenedor del bloque de texto en los 3 lados. */
 export const TEXT_BLOCK_PROSE =
   "leading-relaxed [&_p]:mb-3 [&_h1]:font-serif [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 " +

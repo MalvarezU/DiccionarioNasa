@@ -43,10 +43,12 @@ export default function LessonEditorPage() {
   const [dirty, setDirty] = useState(false)
   const [pendiente, setPendiente] = useState<string | null>(null)
   const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved" | "error">("idle")
-  const guardarRef = useRef<(() => Promise<void>) | null>(null)
+  const guardarRef = useRef<((motivo?: "manual" | "auto") => Promise<void>) | null>(null)
   const dirtyRef = useRef(dirty)
   const editorUndoRef = useRef<(() => void) | null>(null)
   const editorRedoRef = useRef<(() => void) | null>(null)
+  const [puedeDeshacer, setPuedeDeshacer] = useState(false)
+  const [puedeRehacer, setPuedeRehacer] = useState(false)
   useEffect(() => { dirtyRef.current = dirty }, [dirty])
 
   useEffect(() => {
@@ -125,7 +127,7 @@ export default function LessonEditorPage() {
       if (!fn) return
       setAutosaveState("saving")
       try {
-        await fn()
+        await fn("auto")
         setAutosaveState("saved")
         setTimeout(() => setAutosaveState((s) => (s === "saved" ? "idle" : s)), 2000)
       } catch {
@@ -204,9 +206,11 @@ export default function LessonEditorPage() {
             </h1>
             <p className="truncate text-xs text-muted-foreground">
               {leccion.courseTitle} · {leccion.moduleTitle}
-              {autosaveState === "saving" && <span className="ml-2 text-primary">· Guardando…</span>}
-              {autosaveState === "saved" && <span className="ml-2 text-secondary">· Guardado ✓</span>}
-              {autosaveState === "error" && <span className="ml-2 text-destructive">· Error al guardar</span>}
+              <span role="status" aria-live="polite">
+                {autosaveState === "saving" && <span className="ml-2 text-primary">· Guardando…</span>}
+                {autosaveState === "saved" && <span className="ml-2 text-secondary">· Guardado ✓</span>}
+                {autosaveState === "error" && <span className="ml-2 text-destructive">· Error al guardar</span>}
+              </span>
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -239,7 +243,7 @@ export default function LessonEditorPage() {
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              disabled={!dirty}
+              disabled={!puedeDeshacer}
               aria-label="Deshacer último cambio"
               title="Deshacer (Ctrl+Z)"
               onClick={() => editorUndoRef.current?.()}
@@ -251,7 +255,7 @@ export default function LessonEditorPage() {
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              disabled={!dirty}
+              disabled={!puedeRehacer}
               aria-label="Rehacer cambio"
               title="Rehacer (Ctrl+Shift+Z)"
               onClick={() => editorRedoRef.current?.()}
@@ -294,7 +298,7 @@ export default function LessonEditorPage() {
             onDirtyChange={setDirty}
             ocultarVistaPrevia
             onGuardarRef={(fn) => { guardarRef.current = fn }}
-            onUndoRedoRef={(u, r) => { editorUndoRef.current = u; editorRedoRef.current = r }}
+            onUndoRedoRef={(u, r, pd, pr) => { editorUndoRef.current = u; editorRedoRef.current = r; setPuedeDeshacer(pd); setPuedeRehacer(pr) }}
           />
         </div>
         <div hidden={edicion}>

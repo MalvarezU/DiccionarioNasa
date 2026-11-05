@@ -1,6 +1,6 @@
 "use client"
 
-import { GripVertical, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils"
  * Una opción de quiz/escucha, presentada como chip editable.
  *
  * El docente escribe el texto, marca la correcta con un click (se pone verde)
- * y la quita con la X. El drag handle permite reordenar (implementación de
- * drag queda en el padre; acá solo se muestra el affordance).
+ * y la quita con la X. El orden se cambia con las flechas ↑/↓ (con títulos
+ * que avisan en los extremos, como en la gestión de módulos y lecciones).
  */
 export function ChipOpcion({
   texto,
@@ -44,13 +44,6 @@ export function ChipOpcion({
           : "border-outline-variant/30 bg-background"
       )}
     >
-      <span
-        className="cursor-grab text-muted-foreground"
-        aria-hidden="true"
-        title="Arrastrá para reordenar"
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
       <Input
         value={texto}
         onChange={(e) => onChange(e.target.value)}
@@ -80,8 +73,9 @@ export function ChipOpcion({
           onClick={onMoverArriba}
           disabled={disabled || !puedeSubir}
           aria-label="Subir opción"
+          title={!puedeSubir ? "Ya es la primera opción" : "Subir opción"}
         >
-          ↑
+          <ArrowUp className="h-3.5 w-3.5" />
         </Button>
       ) : null}
       {onMoverAbajo ? (
@@ -93,8 +87,9 @@ export function ChipOpcion({
           onClick={onMoverAbajo}
           disabled={disabled || !puedeBajar}
           aria-label="Bajar opción"
+          title={!puedeBajar ? "Ya es la última opción" : "Bajar opción"}
         >
-          ↓
+          <ArrowDown className="h-3.5 w-3.5" />
         </Button>
       ) : null}
       <Button

@@ -50,7 +50,8 @@ describe("AdminShell [F1]", () => {
     )
 
     for (const label of ["Resumen", "Palabras", "Gestión de cursos", "Ilustraciones", "Audios", "Usuarios"]) {
-      expect(screen.getByText(label)).toBeDefined()
+      // La miga de pan repite la sección activa: puede haber 1 o 2 nodos.
+      expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(1)
     }
     // La activa lleva aria-current="page"
     expect(screen.getByText("Resumen").closest("a")?.getAttribute("aria-current")).toBe("page")

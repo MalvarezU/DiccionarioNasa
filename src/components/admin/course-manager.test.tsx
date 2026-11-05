@@ -7,9 +7,9 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-const toastMock = vi.fn()
+const { toastMock } = vi.hoisted(() => ({ toastMock: vi.fn() }))
 vi.mock("@/hooks/use-toast", () => ({
-  useToast: vi.fn(() => ({ toast: toastMock })),
+  useToast: () => ({ toast: toastMock, dismiss: vi.fn(), toasts: [] }),
 }))
 
 import { CourseManager } from "./course-manager"
@@ -219,5 +219,179 @@ describe("CourseManager — lista con scroll propio", () => {
     // El form de alta queda fuera del área scrolleable (siempre visible)
     expect(lista.querySelector('input[aria-label="Título del nuevo curso"]')).toBeNull()
     expect(screen.getByLabelText("Título del nuevo curso")).toBeDefined()
+  })
+})
+
+const DETAIL_C2 = {
+  id: "c2",
+  title: "Intermedio",
+  description: null,
+  status: "DRAFT",
+  sequential: true,
+  modules: [],
+}
+
+function mockRutas(base: { patchOk?: boolean; moduleOk?: boolean } = {}) {
+  vi.mocked(fetch).mockImplementation(async (input: unknown, init?: RequestInit) => {
+    const url = String(input)
+    const method = init?.method ?? "GET"
+    if (url.includes("/api/modules") && method === "POST") {
+      if (base.moduleOk === false) return Response.json({ message: "No se pudo crear" }, { status: 500 })
+      return Response.json({ module: { id: "mX" } })
+    }
+    if (url.includes("/api/courses/c1") && method === "PATCH") {
+      if (base.patchOk === false) return Response.json({ message: "Falló el guardado" }, { status: 500 })
+      return Response.json({ course: DETAIL })
+    }
+    if (url.includes("/api/courses/c1")) return Response.json({ course: DETAIL })
+    if (url.includes("/api/courses/c2")) return Response.json({ course: DETAIL_C2 })
+    return Response.json({ courses: COURSES })
+  })
+}
+
+describe("CourseManager P1.4 — guardar, dirty-guard, errores por zona", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+  })
+
+  it("guardar curso: hace PATCH y muestra toast de éxito", async () => {
+    mockRutas()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    await user.click(await screen.findByRole("button", { name: "Guardar curso" }))
+
+    await waitFor(() => {
+      expect(vi.mocked(fetch).mock.calls.some(
+        ([url, init]) => String(url).includes("/api/courses/c1") && (init as RequestInit)?.method === "PATCH"
+      )).toBe(true)
+    })
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const { title } = toastMock.mock.calls[0][0] as { title: ReactNode }
+    const { container } = render(<>{title}</>)
+    expect(container).toHaveTextContent("Curso guardado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("guardar curso con error: toast destructivo y alerta en la zona", async () => {
+    mockRutas({ patchOk: false })
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    await user.click(await screen.findByRole("button", { name: "Guardar curso" }))
+
+    const alertas = await screen.findAllByRole("alert")
+    expect(alertas.some((a) => a.textContent?.includes("Falló el guardado"))).toBe(true)
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "No se pudo guardar el curso", variant: "destructive" })
+    )
+  })
+
+  it("up/down deshabilitados en los límites con título explicativo", async () => {
+    mockRutas()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    const subir = await screen.findByRole("button", { name: "Subir M1" })
+    expect(subir).toBeDisabled()
+    expect(subir).toHaveAttribute("title", "Ya es el primer módulo")
+    expect(screen.getByRole("button", { name: "Bajar M1" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Subir lección L1" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Bajar lección L1" })).toBeDisabled()
+  })
+
+  it("descripción usa textarea multilínea", async () => {
+    mockRutas()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    expect(screen.getByLabelText("Descripción").tagName).toBe("TEXTAREA")
+  })
+
+  it("dirty-guard: editar y cambiar de fila pide Guardar / Descartar / Cancelar", async () => {
+    mockRutas()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    await user.type(screen.getByLabelText("Título"), "!")
+    await user.click(screen.getByText("Intermedio"))
+
+    const dialogo = await screen.findByRole("alertdialog")
+    expect(dialogo.textContent).toContain("¿Guardar cambios antes de salir?")
+
+    // Cancelar: el diálogo se cierra y se queda en el curso editado
+    await user.click(within(dialogo).getByRole("button", { name: "Cancelar" }))
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).toBeNull()
+    })
+    expect(screen.getByDisplayValue("Básico!")).toBeDefined()
+  })
+
+  it("dirty-guard: Descartar navega sin guardar", async () => {
+    mockRutas()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    await user.type(screen.getByLabelText("Título"), "!")
+    await user.click(screen.getByText("Intermedio"))
+
+    const dialogo = await screen.findByRole("alertdialog")
+    await user.click(within(dialogo).getByRole("button", { name: "Descartar" }))
+
+    expect(await screen.findByDisplayValue("Intermedio")).toBeDefined()
+    expect(vi.mocked(fetch).mock.calls.some(
+      ([, init]) => (init as RequestInit)?.method === "PATCH"
+    )).toBe(false)
+  })
+
+  it("dirty-guard: Guardar cambios guarda y navega", async () => {
+    mockRutas()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    await user.type(screen.getByLabelText("Título"), "!")
+    await user.click(screen.getByText("Intermedio"))
+
+    const dialogo = await screen.findByRole("alertdialog")
+    await user.click(within(dialogo).getByRole("button", { name: "Guardar cambios" }))
+
+    await waitFor(() => {
+      expect(vi.mocked(fetch).mock.calls.some(
+        ([url, init]) => String(url).includes("/api/courses/c1") && (init as RequestInit)?.method === "PATCH"
+      )).toBe(true)
+    })
+    expect(await screen.findByDisplayValue("Intermedio")).toBeDefined()
+  })
+
+  it("sin ediciones no hay dirty-guard: cambia de fila directo", async () => {
+    mockRutas()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    await user.click(screen.getByText("Intermedio"))
+
+    expect(await screen.findByDisplayValue("Intermedio")).toBeDefined()
+    expect(screen.queryByRole("alertdialog")).toBeNull()
+  })
+
+  it("error de módulo se muestra en su zona con role=alert", async () => {
+    mockRutas({ moduleOk: false })
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByText("Básico"))
+    await user.type(screen.getByLabelText("Título del nuevo módulo"), "MX")
+    await user.click(screen.getByRole("button", { name: /^Añadir$/ }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo crear")
   })
 })

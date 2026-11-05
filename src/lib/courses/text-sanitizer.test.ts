@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { sanitizeLessonHtml, sanitizeLessonContent } from "./text-sanitizer"
+import { TEXT_COLOR_TOKENS } from "./lesson-html"
 
 describe("sanitizeLessonHtml", () => {
   // --- happy paths ---
@@ -126,6 +127,43 @@ describe("sanitizeLessonHtml", () => {
     const out = sanitizeLessonHtml(long)
     expect(out.length).toBeGreaterThan(0)
     expect(out).toContain("a")
+  })
+})
+
+describe("sanitizeLessonHtml — colores de fuente (F13b)", () => {
+  it("preserva los 10 tokens de data-color en span", () => {
+    expect(TEXT_COLOR_TOKENS).toHaveLength(10)
+    for (const token of TEXT_COLOR_TOKENS) {
+      expect(sanitizeLessonHtml(`<p><span data-color="${token}">x</span></p>`)).toBe(
+        `<p><span data-color="${token}">x</span></p>`
+      )
+    }
+  })
+
+  it("limpia valor inventado a span sin atributo (el texto sobrevive)", () => {
+    expect(sanitizeLessonHtml('<p><span data-color="fucsia">x</span></p>')).toBe(
+      "<p><span>x</span></p>"
+    )
+  })
+
+  it("descarta style=color aunque el tag sea válido", () => {
+    expect(sanitizeLessonHtml('<p><span style="color:red">x</span></p>')).toBe(
+      "<p><span>x</span></p>"
+    )
+    expect(sanitizeLessonHtml('<p style="color:#dc2626">x</p>')).toBe("<p>x</p>")
+  })
+
+  it("no acepta data-color en otros tags", () => {
+    expect(sanitizeLessonHtml('<p data-color="rojo">x</p>')).toBe("<p>x</p>")
+    expect(sanitizeLessonHtml('<strong data-color="rojo">x</strong>')).toBe(
+      "<strong>x</strong>"
+    )
+  })
+
+  it("data-color válido sobrevive junto a texto y otros marks", () => {
+    expect(
+      sanitizeLessonHtml('<p>a <strong><span data-color="oliva">b</span></strong> c</p>')
+    ).toBe('<p>a <strong><span data-color="oliva">b</span></strong> c</p>')
   })
 })
 

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Check, ChevronDown, Lock } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardTitle } from "@/components/ui/card"
 import { LessonContentView } from "./blocks/lesson-content-view"
 import { parseLessonContent, type LessonContent } from "@/lib/courses/blocks"
 import type { CourseWordData } from "@/lib/courses/word-data"
@@ -84,15 +84,32 @@ export function ModuleStepper({
     ? (module.lessons.find((l) => !completedLessons.includes(l.id))?.id ?? null)
     : null
 
+  // IDs estables para vincular el botón con su panel (aria-controls / aria-labelledby).
+  const buttonId = `modulo-${moduleIndex}-boton`
+  const panelId = `modulo-${moduleIndex}-panel`
+
   return (
     <section aria-label={`Módulo ${moduleIndex}: ${module.title}`}>
-      <CardHeader
-        className={cn(
-          "cursor-pointer hover:bg-muted/40 transition-colors",
-          !isUnlocked && "pointer-events-none"
-        )}
+      {/* Botón nativo en vez de div clicable: Enter, Espacio y foco funcionan sin JS extra.
+          Reemplaza a CardHeader (renderiza un div) conservando su layout visual. */}
+      <button
+        type="button"
+        id={buttonId}
         onClick={() => isUnlocked && setOpen((o) => !o)}
         aria-expanded={isUnlocked && open}
+        aria-controls={panelId}
+        disabled={!isUnlocked}
+        title={
+          !isUnlocked
+            ? `Completá el Módulo ${moduleIndex - 1} para desbloquear este módulo`
+            : undefined
+        }
+        data-slot="card-header"
+        className={cn(
+          "grid w-full auto-rows-min cursor-pointer grid-rows-[auto_auto] items-start gap-1.5 px-6 text-left",
+          "transition-colors hover:bg-muted/40",
+          "disabled:cursor-not-allowed disabled:hover:bg-transparent"
+        )}
       >
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 text-primary font-bold">
@@ -106,6 +123,7 @@ export function ModuleStepper({
           </div>
           {isUnlocked ? (
             <ChevronDown
+              aria-hidden="true"
               className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
             />
           ) : (
@@ -121,7 +139,7 @@ export function ModuleStepper({
           className="h-1 w-full overflow-hidden rounded-full bg-secondary/25"
         >
           <div
-            className="h-full rounded-full bg-secondary transition-all"
+            className="h-full rounded-full bg-secondary transition-[width] motion-reduce:transition-none"
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -131,9 +149,9 @@ export function ModuleStepper({
             Completá el Módulo {moduleIndex - 1} para desbloquear este módulo
           </p>
         )}
-      </CardHeader>
+      </button>
       {isUnlocked && open && (
-        <CardContent className="pt-0">
+        <CardContent id={panelId} role="region" aria-labelledby={buttonId} className="pt-0">
           <ol className="space-y-1">
             {module.lessons.map((lesson, lessonIdx) => {
               const isComplete = completedLessons.includes(lesson.id)

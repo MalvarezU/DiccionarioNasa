@@ -2,14 +2,23 @@
 
 import { useState, useEffect, useRef } from "react"
 import {
+  BookOpen,
   ChevronDown,
   ChevronUp,
   Eye,
+  FileText,
   GripVertical,
+  Headphones,
+  Image as IconoImagen,
+  Layers,
+  ListChecks,
   Loader2,
-  Plus,
+  Music,
   Save,
   Trash2,
+  Type as IconoTexto,
+  Youtube,
+  type LucideIcon,
 } from "lucide-react"
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable"
@@ -45,22 +54,40 @@ import { SortableBlock } from "./sortable-block"
  * en block-forms*, la red vive en los pickers y acá queda solo el ensamblado.
  */
 
-const TIPOS_NUEVOS: Array<{ type: BlockType; label: string }> = [
-  { type: "text", label: "Texto" },
-  { type: "image", label: "Imagen" },
-  { type: "audio", label: "Audio (archivo)" },
-  { type: "video", label: "Video (YouTube)" },
-  { type: "word", label: "Palabra" },
-  { type: "vocabulary", label: "Vocabulario" },
-  { type: "quiz", label: "Quiz" },
-  { type: "listening", label: "Escucha" },
+type GrupoBloque = "contenido" | "actividades"
+
+const TIPOS_NUEVOS: Array<{ type: BlockType; label: string; icon: LucideIcon; grupo: GrupoBloque }> = [
+  { type: "text", label: "Texto", icon: IconoTexto, grupo: "contenido" },
+  { type: "image", label: "Imagen", icon: IconoImagen, grupo: "contenido" },
+  { type: "audio", label: "Audio", icon: Music, grupo: "contenido" },
+  { type: "video", label: "Video", icon: Youtube, grupo: "contenido" },
+  { type: "word", label: "Palabra", icon: BookOpen, grupo: "contenido" },
+  { type: "vocabulary", label: "Vocabulario", icon: Layers, grupo: "contenido" },
+  { type: "quiz", label: "Quiz", icon: ListChecks, grupo: "actividades" },
+  { type: "listening", label: "Escucha", icon: Headphones, grupo: "actividades" },
 ]
+
+// Mismo mapa para la paleta y las filas: el icono de cada tipo sale de acá.
+const META_TIPO_BLOQUE: Record<BlockType, { label: string; icon: LucideIcon }> = Object.fromEntries(
+  TIPOS_NUEVOS.map((t) => [t.type, { label: t.label, icon: t.icon }]),
+) as Record<BlockType, { label: string; icon: LucideIcon }>
+
+const GRUPOS_PALETA: Array<{ id: string; titulo: string; grupo: GrupoBloque }> = [
+  { id: "paleta-grupo-contenido", titulo: "Contenido", grupo: "contenido" },
+  { id: "paleta-grupo-actividades", titulo: "Actividades", grupo: "actividades" },
+]
+
+// Icono de cada plantilla del estado vacío, coherente con el tipo que crea.
+const ICONO_PLANTILLA: Record<string, LucideIcon> = {
+  texto: FileText,
+  quiz: ListChecks,
+}
 
 const ETIQUETA_TIPO: Record<string, string> = {
   text: "Texto",
   image: "Imagen",
-  audio: "Audio (archivo)",
-  video: "Video (YouTube)",
+  audio: "Audio",
+  video: "Video",
   word: "Palabra",
   vocabulary: "Vocabulario",
   quiz: "Quiz",
@@ -87,8 +114,8 @@ export function LessonEditor({
   onDirtyChange?: (dirty: boolean) => void
   /** En la página del editor la vista previa es un modo in-page, no un dialog. */
   ocultarVistaPrevia?: boolean
-  onGuardarRef?: (fn: () => Promise<void>) => void
-  onUndoRedoRef?: (undo: () => void, redo: () => void) => void
+  onGuardarRef?: (fn: (motivo?: "manual" | "auto") => Promise<void>) => void
+  onUndoRedoRef?: (undo: () => void, redo: () => void, puedeDeshacer: boolean, puedeRehacer: boolean) => void
 }) {
   const editor = useLessonEditor({ title: initialTitle, blocks: initialBlocks })
   const sensors = useSensors(
@@ -118,13 +145,13 @@ export function LessonEditor({
     onGuardarRef?.(guardar)
   }, [guardar, onGuardarRef])
   useEffect(() => {
-    onUndoRedoRef?.(editor.undo, editor.redo)
-  }, [editor.undo, editor.redo, onUndoRedoRef])
+    onUndoRedoRef?.(editor.undo, editor.redo, editor.puedeDeshacer, editor.puedeRehacer)
+  }, [editor.undo, editor.redo, editor.puedeDeshacer, editor.puedeRehacer, onUndoRedoRef])
   const [guardando, setGuardando] = useState(false)
   const [previewAbierta, setPreviewAbierta] = useState(false)
   const { toast } = useToast()
 
-  async function guardar() {
+  async function guardar(motivo: "manual" | "auto" = "manual") {
     if (!editor.valido || !editor.documento) return
     setGuardando(true)
     try {
@@ -149,7 +176,9 @@ export function LessonEditor({
         return
       }
       editor.markSaved()
-      toast({ title: "Lección guardada" })
+      // El auto-guardado ya se confirma con el badge del header;
+      // solo el guardado manual (o un error) merece un toast.
+      if (motivo === "manual") toast({ title: "Lección guardada" })
       onGuardado?.()
     } catch {
       toast({
@@ -183,18 +212,26 @@ export function LessonEditor({
               Empezá desde una plantilla o agregá un bloque.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {PLANTILLAS_LECCION.filter((p) => p.id !== "vacia").map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => editor.setBlocks(p.bloques)}
-                  className="flex flex-col items-start gap-1 rounded-md border border-outline-variant/30 bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-                  data-testid={`plantilla-${p.id}`}
-                >
-                  <span className="text-sm font-medium">{p.nombre}</span>
-                  <span className="text-xs text-muted-foreground">{p.descripcion}</span>
-                </button>
-              ))}
+              {PLANTILLAS_LECCION.filter((p) => p.id !== "vacia").map((p) => {
+                const IconoPlantilla = ICONO_PLANTILLA[p.id] ?? FileText
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => editor.setBlocks(p.bloques)}
+                    className="flex items-start gap-2.5 rounded-md border border-outline-variant/30 bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    data-testid={`plantilla-${p.id}`}
+                  >
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <IconoPlantilla className="size-4" aria-hidden="true" />
+                    </span>
+                    <span className="flex flex-col items-start gap-1">
+                      <span className="text-sm font-medium">{p.nombre}</span>
+                      <span className="text-xs text-muted-foreground">{p.descripcion}</span>
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         ) : (
@@ -234,7 +271,16 @@ export function LessonEditor({
                             <GripVertical className="size-4" />
                           </button>
                           <span className="text-xs text-muted-foreground">{i + 1}.</span>
-                          <Badge variant="secondary">{ETIQUETA_TIPO[block.type] ?? block.type}</Badge>
+                          {(() => {
+                            const meta = META_TIPO_BLOQUE[block.type as BlockType]
+                            const IconoTipo = meta?.icon
+                            return (
+                              <Badge variant="secondary" className="gap-1">
+                                {IconoTipo ? <IconoTipo className="size-3" aria-hidden="true" /> : null}
+                                {ETIQUETA_TIPO[block.type] ?? block.type}
+                              </Badge>
+                            )
+                          })()}
                           <div className="ml-auto flex items-center gap-0.5">
                             <Button
                               type="button"
@@ -287,22 +333,39 @@ export function LessonEditor({
       </div>
 
       {/* Agregar bloque */}
-      <div className="flex flex-wrap gap-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-low p-2">
-        <span className="w-full text-xs font-semibold text-muted-foreground">
+      <div className="rounded-lg border border-outline-variant/30 bg-surface-container-low p-2">
+        <span className="mb-2 block text-xs font-semibold text-muted-foreground">
           Agregar bloque
         </span>
-        {TIPOS_NUEVOS.map((t) => (
-          <Button
-            key={t.type}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => editor.addBlock(t.type)}
-            disabled={editor.blocks.length >= 100}
-          >
-            <Plus className="size-3.5" /> {t.label}
-          </Button>
-        ))}
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
+          {GRUPOS_PALETA.map((g) => (
+            <div key={g.grupo} role="group" aria-labelledby={g.id} className="min-w-0 flex-1">
+              <p id={g.id} className="mb-1.5 text-xs font-semibold text-muted-foreground">
+                {g.titulo}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {TIPOS_NUEVOS.filter((t) => t.grupo === g.grupo).map((t) => {
+                  const IconoTipo = t.icon
+                  return (
+                    <Button
+                      key={t.type}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => editor.addBlock(t.type)}
+                      disabled={editor.blocks.length >= 100}
+                    >
+                      <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <IconoTipo className="size-4" aria-hidden="true" />
+                      </span>
+                      {t.label}
+                    </Button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Errores globales */}
@@ -317,7 +380,7 @@ export function LessonEditor({
 
       {/* Acciones: sticky-bottom para que Guardar esté siempre a mano */}
       <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-2 border-t border-outline-variant/30 bg-background/95 py-3 backdrop-blur">
-        <Button type="button" onClick={guardar} disabled={!editor.valido || guardando}>
+        <Button type="button" onClick={() => void guardar("manual")} disabled={!editor.valido || guardando}>
           {guardando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           Guardar lección
         </Button>

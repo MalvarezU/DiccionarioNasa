@@ -1,17 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import type { LessonBlock, QuizOption } from "@/lib/courses/blocks"
 import type { PalabraEncontrada } from "./word-picker"
 import { WordPicker } from "./word-picker"
@@ -20,6 +14,7 @@ import { ErroresBloque } from "./block-forms"
 import { EditorTextoRico } from "./text-editor"
 import { ChipOpcion } from "./chip-opcion"
 import { LIMITS } from "@/lib/courses/blocks"
+import { htmlToPlainText } from "@/lib/html-to-text"
 
 /**
  * Formularios de los bloques INTERACTIVOS: quiz, listening.
@@ -36,72 +31,86 @@ export type BlockFormProps<B extends LessonBlock> = {
   errores: string[]
 }
 
-/** Editor de opciones compartido: radio para marcar la correcta, quitar, etc. */
-function EditorDeOpciones({
-  options,
-  onChange,
-  prefix,
-}: {
-  options: QuizOption[]
-  onChange: (next: QuizOption[]) => void
-  prefix: string
-}) {
-  const marcarCorrecta = (index: number) =>
-    onChange(options.map((o, i) => ({ ...o, correct: i === index })))
+/** Presets del umbral de aprobación (el número exacto admite 0-100). */
+const PRESETS_APROBACION = [50, 70, 80, 100]
+
+/**
+ * Umbral de aprobación: presets + número exacto.
+ * El número manda: si no coincide con ningún preset, ninguno queda activo.
+ * Solo lo usa FormQuiz (ListeningBlock no tiene passScore).
+ */
+function UmbralAprobacion({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  // Borrador local: permite vaciar el campo mientras se escribe sin romper
+  // el último valor válido; se confirma al escribir y se revierte en blur/Enter.
+  const [borrador, setBorrador] = useState<string | null>(null)
+  const texto = borrador ?? String(value)
+
+  const confirmar = (raw: string) => {
+    const n = Number.parseInt(raw, 10)
+    if (Number.isNaN(n)) return
+    onChange(Math.min(100, Math.max(0, n)))
+  }
 
   return (
-    <div className="space-y-1.5">
-      {options.map((op, i) => (
-        <div key={`${prefix}-opt-${i}`} className="flex items-center gap-2">
-          <input
-            type="radio"
-            name={`${prefix}-correcta`}
-            checked={op.correct}
-            onChange={() => marcarCorrecta(i)}
-            aria-label={`Marcar como correcta la opción ${i + 1}`}
-            className="accent-[var(--primary)]"
-          />
-          <Input
-            value={op.text}
-            onChange={(e) =>
-              onChange(options.map((o, j) => (j === i ? { ...o, text: e.target.value } : o)))
-            }
-            placeholder={`Opción ${i + 1}`}
-            aria-label={`Texto de la opción ${i + 1}`}
-            className="h-8"
-          />
+    <div className="flex items-center gap-3">
+      <Label className="shrink-0">Aprobado con</Label>
+      <div className="flex items-center gap-1.5" role="group" aria-label="Valores sugeridos de aprobación">
+        {PRESETS_APROBACION.map((p) => (
           <Button
+            key={p}
             type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 shrink-0"
-            onClick={() => onChange(options.filter((_, j) => j !== i))}
-            disabled={options.length <= 2}
-            aria-label={`Quitar opción ${i + 1}`}
+            size="sm"
+            variant={value === p ? "secondary" : "outline"}
+            aria-pressed={value === p}
+            aria-label={`Aprobar con ${p} por ciento`}
+            onClick={() => {
+              setBorrador(null)
+              onChange(p)
+            }}
           >
-            <Trash2 className="size-3.5" />
+            {p}%
           </Button>
-        </div>
-      ))}
-      {options.length < 6 ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => onChange([...options, { text: "", correct: false }])}
-        >
-          <Plus className="size-3.5" /> Opción
-        </Button>
-      ) : null}
+        ))}
+      </div>
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          inputMode="numeric"
+          aria-label="Porcentaje de aprobación exacto"
+          className="w-20 tabular-nums"
+          value={texto}
+          onChange={(e) => {
+            setBorrador(e.target.value)
+            confirmar(e.target.value)
+          }}
+          onBlur={() => {
+            // Vacío o inválido: se descarta el borrador y vuelve el último válido.
+            setBorrador(null)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+          }}
+        />
+        <span aria-hidden="true" className="text-sm text-muted-foreground">
+          %
+        </span>
+      </div>
     </div>
   )
 }
 
 export function FormQuiz({ block, onChange, errores }: BlockFormProps<Extract<LessonBlock, { type: "quiz" }>>) {
-  const cambiarPregunta = (i: number, prompt: string) =>
+  // El prompt se guarda en TEXTO PLANO: el estudiante lo renderiza como texto
+  // y el HTML del editor se vería literal (`<p>¿...?</p>`). Ver html-to-text.ts.
+  const cambiarPregunta = (i: number, md: string) =>
     onChange({
       ...block,
-      questions: block.questions.map((q, j) => (j === i ? { ...q, prompt } : q)),
+      questions: block.questions.map((q, j) =>
+        j === i ? { ...q, prompt: htmlToPlainText(md) } : q
+      ),
     })
 
   const cambiarOpciones = (i: number, options: QuizOption[]) =>
@@ -129,20 +138,7 @@ export function FormQuiz({ block, onChange, errores }: BlockFormProps<Extract<Le
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Label className="shrink-0">Aprobado con</Label>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={5}
-          value={block.passScore}
-          onChange={(e) => onChange({ ...block, passScore: Number(e.target.value) })}
-          className="flex-1"
-          aria-label="Porcentaje de aprobación"
-        />
-        <span className="w-12 text-right text-sm font-medium tabular-nums">{block.passScore}%</span>
-      </div>
+      <UmbralAprobacion value={block.passScore} onChange={(passScore) => onChange({ ...block, passScore })} />
 
       <ol className="space-y-4">
         {block.questions.map((q, i) => {
@@ -304,7 +300,8 @@ export function FormListening({
         <Label>Pregunta</Label>
         <EditorTextoRico
           value={block.question}
-          onChange={(md) => onChange({ ...block, question: md })}
+          // Texto plano por el mismo motivo del prompt del quiz.
+          onChange={(md) => onChange({ ...block, question: htmlToPlainText(md) })}
           mini
           maxChars={LIMITS.maxPrompt}
           ariaLabel={`Pregunta del bloque ${block.id}`}

@@ -35,7 +35,7 @@ export function FormText({ block, onChange, errores }: BlockFormProps<Extract<Le
     <div className="space-y-2">
       <Label id={`label-texto-${block.id}`}>Texto de la lección</Label>
       <p className="text-xs text-muted-foreground">
-        Escribe como en Word: usa los botones para títulos, negrita, cursiva y listas. Se guarda como texto plano (sin HTML).
+        Escribe como en Word: usa los botones para títulos, negrita, cursiva y listas. El texto se guarda con formato básico (títulos, negrita, listas) y el estudiante lo ve tal como lo escribís.
       </p>
       <EditorTextoRico
         value={block.html}

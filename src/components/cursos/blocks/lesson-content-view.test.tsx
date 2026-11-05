@@ -151,6 +151,7 @@ describe("bloques de audio y video", () => {
           { id: "b1", type: "audio", media: { source: "youtube", youtubeId: "dQw4w9WgXcQ" } },
         ])}
         words={new Map()}
+        interactive={false}
       />
     )
     expect(screen.queryByTitle("Audio de la lección")).toBeNull()
@@ -175,9 +176,23 @@ describe("bloques de audio y video", () => {
       <LessonContentView
         content={contenido([{ id: "b1", type: "image", url: "", alt: "algo" }])}
         words={new Map()}
+        interactive={false}
       />
     )
     expect(screen.getByText(/no tiene fuente/i)).toBeDefined()
+    expect(document.querySelector("img")).toBeNull()
+  })
+
+  it("imagen sin url en modo estudiante no muestra el aviso editorial", () => {
+    // El aviso de falta es mensaje editorial del admin: el estudiante no
+    // debe verlo (el validador server impide este estado en válido).
+    render(
+      <LessonContentView
+        content={contenido([{ id: "b1", type: "image", url: "", alt: "algo" }])}
+        words={new Map()}
+      />
+    )
+    expect(screen.queryByText(/no tiene fuente/i)).toBeNull()
     expect(document.querySelector("img")).toBeNull()
   })
 
@@ -186,6 +201,7 @@ describe("bloques de audio y video", () => {
       <LessonContentView
         content={contenido([{ id: "b1", type: "video", youtubeId: "", title: "Clase" }])}
         words={new Map()}
+        interactive={false}
       />
     )
     expect(screen.getByText(/no tiene fuente/i)).toBeDefined()
@@ -197,6 +213,7 @@ describe("bloques de audio y video", () => {
       <LessonContentView
         content={contenido([{ id: "b1", type: "audio", media: { source: "upload" } }])}
         words={new Map()}
+        interactive={false}
       />
     )
     expect(screen.getByText(/aún no tiene fuente/i)).toBeDefined()

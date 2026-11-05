@@ -105,7 +105,7 @@ export function GameTile({
           <div className="flex justify-end">
             <Badge variant="outline" className="shrink-0 text-2xs">
               <Lock className="h-3 w-3 mr-1" />
-              Próximamente
+              Sin contenido
             </Badge>
           </div>
         )}
@@ -119,13 +119,18 @@ export function GameTile({
           {description}
         </p>
         {locked ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Este juego aún no está disponible.
+          </p>
+        ) : null}
+        {locked ? (
           <Button
             disabled
             variant="outline"
             className="mt-4 gap-1.5 cursor-not-allowed"
           >
             <Lock className="h-4 w-4" />
-            Próximamente
+            No disponible
           </Button>
         ) : (
           <Button

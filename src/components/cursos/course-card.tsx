@@ -2,7 +2,6 @@ import Link from "next/link"
 import { GraduationCap, ArrowRight, Lock } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 
 export interface CourseSummary {
@@ -24,14 +23,14 @@ interface CourseCardProps {
 export function CourseCard({ course, navEnabled }: CourseCardProps) {
   return (
     <Card
-      className={`transition-all ${
+      className={`relative transition-[transform,box-shadow] motion-reduce:transform-none ${
         navEnabled
           ? "group cursor-pointer hover:shadow-md hover:border-primary/40"
           : "opacity-70"
       }`}
     >
       {navEnabled ? (
-        <Link href={`/cursos/${course.id}`}>
+        <>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -50,7 +49,13 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
                 )}
                 <div>
                   <CardTitle className="text-lg font-serif">
-                    {course.title}
+                    {/* Único interactivo real: stretched-link, toda la Card es clicable */}
+                    <Link
+                      href={`/cursos/${course.id}`}
+                      className="after:absolute after:inset-0 focus-visible:underline focus-visible:underline-offset-4"
+                    >
+                      {course.title}
+                    </Link>
                   </CardTitle>
                   <span className="text-2xs text-muted-foreground">
                     {course.modules} módulos · {course.lessons} lecciones
@@ -72,16 +77,17 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
               </div>
             )}
             <div className="flex items-center justify-end">
-              <Button
-                variant="ghost"
-                className="gap-1.5 px-0 text-primary hover:text-primary/80 hover:bg-transparent"
+              {/* Decorativo: el estilo del ghost-button sin ser botón */}
+              <span
+                aria-hidden="true"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-[gap] motion-reduce:transition-none group-hover:gap-2.5"
               >
                 {course.progressPct !== null && course.progressPct > 0 ? "Continuar" : "Comenzar"}
                 <ArrowRight className="h-4 w-4" />
-              </Button>
+              </span>
             </div>
           </CardContent>
-        </Link>
+        </>
       ) : (
         <>
           <CardHeader className="pb-3">
@@ -95,7 +101,7 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
                     {course.title}
                   </CardTitle>
                   <Badge variant="outline" className="mt-1 text-2xs">
-                    Próximamente
+                    Sin contenido
                   </Badge>
                 </div>
               </div>
@@ -104,6 +110,9 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
           <CardContent>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {course.description}
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Este curso aún no tiene lecciones.
             </p>
           </CardContent>
         </>

@@ -1,6 +1,6 @@
 import { vi, describe, it, expect } from "vitest"
 import { useState } from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import type { LessonBlock } from "@/lib/courses/blocks"
@@ -52,23 +52,50 @@ const listeningBlock: Extract<LessonBlock, { type: "listening" }> = {
 }
 
 describe("FormQuiz", () => {
-  it("renderiza el slider con passScore actual", () => {
+  it("renderiza presets e input numérico con passScore actual", () => {
     const onChange = vi.fn()
     render(<FormQuiz block={quizBlock} onChange={onChange} errores={[]} />)
-    const slider = screen.getByLabelText("Porcentaje de aprobación") as HTMLInputElement
-    expect(slider.value).toBe("70")
-    expect(screen.getByText("70%")).toBeDefined()
+    const input = screen.getByLabelText("Porcentaje de aprobación exacto") as HTMLInputElement
+    expect(input.type).toBe("number")
+    expect(input.value).toBe("70")
+    expect(screen.getByRole("button", { name: "Aprobar con 70 por ciento" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
+    expect(screen.getByRole("button", { name: "Aprobar con 80 por ciento" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    )
   })
 
-  it("el slider actualiza passScore", async () => {
-    const { fireEvent } = await import("@testing-library/react")
+  it("click en pill 80 actualiza passScore a 80", async () => {
     const onChange = vi.fn()
+    const user = userEvent.setup()
     render(<FormQuiz block={quizBlock} onChange={onChange} errores={[]} />)
-    const slider = screen.getByLabelText("Porcentaje de aprobación")
-    fireEvent.change(slider, { target: { value: "85" } })
+    await user.click(screen.getByRole("button", { name: "Aprobar con 80 por ciento" }))
     expect(onChange).toHaveBeenCalled()
     const ultimo = onChange.mock.calls[onChange.mock.calls.length - 1]![0] as any
-    expect(ultimo.passScore).toBe(85)
+    expect(ultimo.passScore).toBe(80)
+  })
+
+  it("escribir 73 en el input actualiza passScore a 73", async () => {
+    const onChange = vi.fn()
+    render(<FormQuiz block={quizBlock} onChange={onChange} errores={[]} />)
+    const input = screen.getByLabelText("Porcentaje de aprobación exacto")
+    fireEvent.change(input, { target: { value: "73" } })
+    expect(onChange).toHaveBeenCalled()
+    const ultimo = onChange.mock.calls[onChange.mock.calls.length - 1]![0] as any
+    expect(ultimo.passScore).toBe(73)
+  })
+
+  it("ningún preset activo cuando el valor no coincide con ninguno", () => {
+    const onChange = vi.fn()
+    render(<FormQuiz block={{ ...quizBlock, passScore: 73 }} onChange={onChange} errores={[]} />)
+    for (const p of [50, 70, 80, 100]) {
+      expect(
+        screen.getByRole("button", { name: `Aprobar con ${p} por ciento` })
+      ).toHaveAttribute("aria-pressed", "false")
+    }
   })
 
   it("la pregunta es editable via EditorTextoRico", async () => {
@@ -82,6 +109,16 @@ describe("FormQuiz", () => {
     await user.clear(input)
     await user.type(input, "Nueva pregunta")
     expect(input.value).toBe("Nueva pregunta")
+  })
+
+  it("el prompt con HTML del editor se guarda como texto plano", () => {
+    // El editor emite el contenido completo en un onChange (no tecla por tecla).
+    const onChange = vi.fn()
+    render(<FormQuiz block={quizBlock} onChange={onChange} errores={[]} />)
+    const input = screen.getByLabelText("Pregunta 1") as HTMLTextAreaElement
+    fireEvent.change(input, { target: { value: "<p>hola</p><p>mundo</p>" } })
+    const ultimo = onChange.mock.calls[onChange.mock.calls.length - 1]![0] as any
+    expect(ultimo.questions[0].prompt).toBe("hola mundo")
   })
 
   it("chips de opciones renderizan con la correcta marcada", () => {
@@ -205,6 +242,15 @@ describe("FormListening", () => {
     await user.clear(input)
     await user.type(input, "Nueva")
     expect(input.value).toBe("Nueva")
+  })
+
+  it("la pregunta con HTML del editor se guarda como texto plano", () => {
+    const onChange = vi.fn()
+    render(<FormListening block={listeningBlock} onChange={onChange} errores={[]} />)
+    const input = screen.getByLabelText(/Pregunta del bloque/) as HTMLTextAreaElement
+    fireEvent.change(input, { target: { value: "<p>¿Qué</p><p>escuchaste?</p>" } })
+    const ultimo = onChange.mock.calls[onChange.mock.calls.length - 1]![0] as any
+    expect(ultimo.question).toBe("¿Qué escuchaste?")
   })
 
   it("agregar opción añade una vacía", async () => {

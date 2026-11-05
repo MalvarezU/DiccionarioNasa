@@ -75,8 +75,15 @@ console.error = (...args: unknown[]) => {
 
 // Aislar estado entre tests: limpiar localStorage en memoria antes de cada test
 // (evita fugas de favoritos/historial entre archivos de test).
+// También sessionStorage: CourseManager persiste ahí el curso seleccionado
+// (P2.4) y sin limpieza un test restauraría la selección de otro.
 import { beforeEach } from "vitest"
 
 beforeEach(() => {
   store.clear()
+  try {
+    sessionStorage.clear()
+  } catch {
+    // jsdom siempre lo expone; por si el entorno cambia.
+  }
 })
