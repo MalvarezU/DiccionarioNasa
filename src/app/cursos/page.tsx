@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { GraduationCap } from "lucide-react"
 import { NavBar } from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumbs } from "@/components/breadcrumbs"
+import { Button } from "@/components/ui/button"
 import { CourseCard, type CourseSummary } from "@/components/cursos/course-card"
 import { CourseListSkeleton } from "@/components/skeletons"
 
@@ -40,16 +42,25 @@ export default function CursosPage() {
           </h1>
         </div>
         <p className="text-muted-foreground max-w-2xl mb-8">
-          Sigue una ruta estructurada para aprender Nasa Yuwe paso a paso. Cada curso
-          está organizado en módulos y lecciones que puedes completar a tu ritmo.
+          Seguí una ruta estructurada para aprender Nasa Yuwe paso a paso. Cada curso
+          está organizado en módulos y lecciones que podés completar a tu ritmo.
         </p>
 
         {courses === null ? (
           <CourseListSkeleton />
         ) : courses.length === 0 ? (
-          <p className="text-muted-foreground">
-            Aún no hay cursos publicados. Vuelve pronto.
-          </p>
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-outline-variant/20 bg-muted/30 px-6 py-12 text-center">
+            <h2 className="font-serif text-xl font-bold text-primary">
+              Aún no hay cursos publicados.
+            </h2>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Estamos preparando la ruta de aprendizaje. Mientras tanto, podés
+              seguir explorando palabras en el diccionario.
+            </p>
+            <Button asChild variant="outline">
+              <Link href="/diccionario">Ir al diccionario</Link>
+            </Button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => (

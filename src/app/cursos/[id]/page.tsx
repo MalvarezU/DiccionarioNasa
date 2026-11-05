@@ -283,7 +283,7 @@ export default function CursoDetailPage({
               <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/10 border border-secondary/20 mt-2">
                 <CheckCircle2 className="h-5 w-5 text-secondary" />
                 <p className="text-sm text-secondary font-medium">
-                  ¡Felicitaciones! Has completado el curso
+                  ¡Felicitaciones! Completaste el curso
                 </p>
               </div>
             )}
@@ -311,7 +311,7 @@ export default function CursoDetailPage({
         <div className="mt-8 flex flex-col items-center gap-3 p-6 rounded-xl bg-muted/30 border border-outline-variant/20">
           <BookOpen className="h-8 w-8 text-primary/60" />
           <p className="text-sm text-muted-foreground text-center max-w-md">
-            ¿Listo para poner a prueba lo que aprendiste? Visita los juegos
+            ¿Listo para poner a prueba lo que aprendiste? Visitá los juegos
             didácticos para practicar.
           </p>
           <Button asChild variant="outline" className="gap-2">
@@ -322,7 +322,7 @@ export default function CursoDetailPage({
         {!isAuthed && (
           <p className="mt-4 text-center text-xs text-muted-foreground">
             <Badge variant="outline" className="text-2xs">
-              Inicia sesión para sincronizar tu avance entre dispositivos
+              Iniciá sesión para sincronizar tu avance entre dispositivos
             </Badge>
           </p>
         )}

@@ -101,7 +101,7 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
                     {course.title}
                   </CardTitle>
                   <Badge variant="outline" className="mt-1 text-2xs">
-                    Próximamente
+                    Sin contenido
                   </Badge>
                 </div>
               </div>
@@ -110,6 +110,9 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
           <CardContent>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {course.description}
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Este curso aún no tiene lecciones.
             </p>
           </CardContent>
         </>
