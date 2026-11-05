@@ -156,6 +156,9 @@ export function extraerYoutubeId(input: string): string {
  * relativo, que redirigiría a otro origen).
  */
 export function isSafeMediaUrl(value: string): boolean {
+  // El backslash se normaliza a "/" en varios navegadores, lo que permite
+  // eludir el control de host (https://good.com\@evil.com → evil.com).
+  if (value.includes("\\")) return false
   if (value.startsWith("//")) return false
   if (value.startsWith("/")) return !/\s/.test(value)
   return value.startsWith("https://") && !/\s/.test(value)

@@ -89,8 +89,13 @@ export function useLessonEditor(
 
   const setBlock = useCallback(
     (id: string, block: LessonBlock) => {
-      setBlocks((prev) => prev.map((b) => (b.id === id ? block : b)))
-      marcarCambio()
+      let cambio = false
+      setBlocks((prev) => {
+        if (!prev.some((b) => b.id === id)) return prev
+        cambio = true
+        return prev.map((b) => (b.id === id ? block : b))
+      })
+      if (cambio) marcarCambio()
     },
     [marcarCambio]
   )

@@ -217,13 +217,11 @@ describe("useLessonEditor — edge/adversarial", () => {
     expect(result.current.dirty).toBe(true)
   })
 
-  it("setBlock con id inexistente no cambia nada pero marca dirty (comportamiento actual)", () => {
+  it("setBlock con id inexistente no cambia nada ni marca dirty", () => {
     const { result } = renderHook(() => useLessonEditor({ blocks: [texto()] }))
     act(() => result.current.setBlock("nope", texto()))
-    // el bloque original queda
     expect(result.current.blocks).toHaveLength(1)
-    // marca dirty (comportamiento actual documentado)
-    expect(result.current.dirty).toBe(true)
+    expect(result.current.dirty).toBe(false)
   })
 
   it("undo tras markSaved marca dirty (el doc difiere del guardado)", () => {

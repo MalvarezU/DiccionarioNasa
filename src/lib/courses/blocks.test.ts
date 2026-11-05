@@ -465,11 +465,7 @@ describe("isSafeMediaUrl — edge", () => {
     expect(isSafeMediaUrl("")).toBe(false)
   })
   it("rechaza backslash trick (https://a\\@b)", () => {
-    // el backslash no es espacio pero el navegador lo normaliza a /
-    // documentamos el comportamiento actual: NO lo bloquea → candidato a endurecer
-    const r = isSafeMediaUrl("https://good.com\\@evil.com/x")
-    // registramos el resultado actual para no romper tests silenciosamente
-    expect(typeof r).toBe("boolean")
+    expect(isSafeMediaUrl("https://good.com\\@evil.com/x")).toBe(false)
   })
 })
 

@@ -15,15 +15,19 @@ Editor de texto rico (Tiptap v3) para el bloque `text` de una lección, su valid
 | 1 | `moveBlock`/`reorder` en no-op (extremo o id inexistente) igual marcaban `dirty=true` → autosave guardaba sin cambio real | Media | `use-lesson-editor.ts` | `marcarCambio()` ahora solo se llama si hubo cambio real |
 | 2 | Handler global de Ctrl+Z no excluía `contenteditable` (Tiptap) → el undo a nivel documento secuestraba el undo del editor y desincronizaba historiales | Alta | `page.tsx` | condición ampliada con `target.isContentEditable` |
 | 3 | `sanitizeLessonContent` crasheaba con `content.blocks === null` (TypeError no iterable) | Baja (defensivo) | `text-sanitizer.ts` | guard temprano si `blocks` no es array |
+| 4 | `isSafeMediaUrl` no bloqueaba el backslash trick (`https://good.com\@evil.com`) → el navegador normaliza `\` a `/` y cambia el host | Alta (seguridad) | `blocks.ts` | rechaza cualquier URL que contenga `\` |
+| 5 | `maxChars` default del editor (20.000) inconsistente con `LIMITS.maxHtml` (40.000) | Baja | `text-editor.tsx` | default unificado a 40.000 |
+| 6 | `setBlock` con id inexistente marcaba dirty sin cambio | Baja | `use-lesson-editor.ts` | `marcarCambio()` solo si hubo cambio real |
+| 7 | Sin aviso al docente al alcanzar 100 bloques (botón ya estaba deshabilitado) | Baja (UX) | `lesson-editor.tsx` | mensaje `role="status"` al alcanzar el límite |
 
 ## Riesgos documentados (comportamiento esperado / decisión de producto)
 
 - **R1 — Undo tras guardar marca `dirty=true`**: al deshacer un estado ya guardado, el documento difiere del guardado, así que `dirty` se vuelve true y el autosave re-publica. Es el comportamiento deseado (persistir el deshacer), pero implica que "Deshacer" siempre dispara un PUT. Test: `use-lesson-editor.test.ts` ("undo tras markSaved marca dirty").
-- **R2 — `addBlock` sin tope en la UI**: el hook permite >100 bloques; `documento` queda `null` y el autosave se cuelga en silencio (botón Guardar deshabilitado, pero sin mensaje claro al docente). El validador rechaza correctamente server-side. Recomendación: deshabilitar "Agregar bloque" al alcanzar `LIMITS.maxBlocks` y mostrar aviso. Test: "addBlock más allá de maxBlocks deja documento inválido".
+- **R2 — (resuelto)**: el botón "Agregar bloque" ya estaba deshabilitado a los 100 bloques; se agregó aviso visible (`role="status`"). Test: "addBlock más allá de maxBlocks deja documento inválido".
 - **R3 — Last-write-wins en edición concurrente**: `PUT /api/lessons/[id]` no tiene locking optimista (sin `updatedAt`/versión). Dos docentes editando la misma lección → la segunda sobrescribe sin aviso. Decisión de producto pendiente (agregar `updatedAt` + 409 o bloqueo). No testeable como PASS sin decisión.
-- **R4 — Límite del contador (20.000) vs validador (40.000)**: el prop `maxChars` default del editor es 20.000 mientras `LIMITS.maxHtml` es 40.000. Los callers pasan `LIMITS.maxHtml` explícito, así que el default es código muerto, pero la inconsistencia es trampa. Recomendación: unificar en 40.000 o documentar por qué difieren.
-- **R5 — Backslash trick en `isSafeMediaUrl`**: `https://good.com\@evil.com/x` no se bloquea (el navegador normaliza `\` a `/`), por lo que el host real sería `evil.com`. Para bloques de texto no aplica (atributos se eliminan), pero sí para image/video/listening. Recomendación: endurecer rechazando `\` en URLs. Documentado en `isSafeMediaUrl — edge`.
-- **R6 — `setBlock`/`setBlocks` con id inexistente marca dirty**: comportamiento actual documentado en test; podría endurecerse para no marcar dirty si no hubo cambio.
+- **R4 — (resuelto)**: `maxChars` default unificado a 40.000.
+- **R5 — (resuelto)**: backslash trick bloqueado en `isSafeMediaUrl`.
+- **R6 — (resuelto)**: `setBlock` con id inexistente ya no marca dirty.
 
 ## Cobertura de la batería nueva
 
@@ -42,6 +46,6 @@ vitest run <6 archivos> → 234 tests, 0 fallos
 
 ## Recomendación de siguiente paso
 
-1. Revisar R2, R3, R4, R5, R6 con el equipo antes de mergear a `main`.
-2. Si se aprueban los fixes de R3 (locking optimista) y R5 (backslash), abrir ramas de fix separadas y cherry-pick.
-3. Opcional: E2E Playwright siguiendo `e2e/screenplay` para el flujo autosave + render XSS en vista estudiante.
+1. R3 (locking optimista) sigue pendiente de decisión de producto — requiere migración de DB (`updatedAt`/versión + 409).
+2. Opcional: E2E Playwright siguiendo `e2e/screenplay` para el flujo autosave + render XSS en vista estudiante.
+3. Mergear la rama a `main` cuando se apruebe R3 (o aceptar last-write-wins).

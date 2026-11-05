@@ -12,7 +12,7 @@ describe("EditorTextoRico", () => {
     await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
     expect(screen.getByRole("button", { name: "Negrita" })).toBeDefined()
     expect(screen.getByRole("button", { name: "Lista" })).toBeDefined()
-    expect(screen.getByText(/0 \/ 20000/)).toBeDefined()
+    expect(screen.getByText(/0 \/ 40000/)).toBeDefined()
   })
 
   it("carga el markdown inicial", async () => {
@@ -243,7 +243,7 @@ describe("EditorTextoRico — edge", () => {
   it("value vacío no crashea y muestra 0 / max", async () => {
     render(<EditorTextoRico value="" onChange={vi.fn()} />)
     await waitFor(() => expect(screen.getByRole("toolbar")).toBeDefined())
-    expect(screen.getByText(/0 \/ 20000/)).toBeDefined()
+    expect(screen.getByText(/0 \/ 40000/)).toBeDefined()
   })
 
   it("carga HTML con tag no permitido sin crashear (Tiptap lo ignora)", async () => {
