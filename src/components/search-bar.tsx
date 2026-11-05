@@ -486,7 +486,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
             original absolute dropdown shown only on demand. */}
         {panelMode ? (
           showDropdown && (
-            <div className="absolute top-full left-0 right-0 z-50 mt-2 h-[48svh] lg:h-[420px] rounded-xl border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200">
+            <div className="absolute top-full left-0 right-0 z-50 mt-2 h-[48svh] lg:h-[min(420px,36svh)] rounded-xl border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200">
               <div
                 className={
                   panelMode

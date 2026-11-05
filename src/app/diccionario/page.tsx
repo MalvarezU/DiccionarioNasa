@@ -182,8 +182,9 @@ function DiccionarioContent() {
             tratamiento que el hero home; stops reforzados porque la foto
             es clara: muro blanco sobreexpuesto). data-hero: el header
             frosted mide este hero para mutar a sólido al salir de él.
-            min-h-svh + flex-col con el wrapper anclado arriba (items-start
-            en lg): el panel queda junto al navbar sin saltos al escribir
+            min-h-svh + flex-col con el wrapper centrado en sm+
+            (sm:my-auto) y anclado arriba en móvil: el panel queda
+            centrado en desktop sin saltos al escribir
             (marco de resultados fijo, cero CLS). En móvil el panel va
             primero en el DOM junto al navbar. */}
         <section data-hero className="relative isolate overflow-hidden bg-background pb-10 sm:pb-14 pt-16 sm:pt-20 min-h-svh flex flex-col">
@@ -205,7 +206,7 @@ function DiccionarioContent() {
             }}
             aria-hidden="true"
           />
-          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 z-20">
+          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 z-20 sm:my-auto">
             <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-start lg:gap-12">
               {/* Panel de búsqueda PRIMERO en el DOM: en móvil aparece junto
                   al navbar; en lg se reordena a la derecha (order). */}
