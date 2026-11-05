@@ -83,7 +83,7 @@ export function AudiosManager() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-48 flex-1">
-          <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="audios-search">
+          <label className="mb-1 block text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground" htmlFor="audios-search">
             Buscar
           </label>
           <div className="relative">
@@ -101,7 +101,7 @@ export function AudiosManager() {
           </div>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="audios-filter">
+          <label className="mb-1 block text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground" htmlFor="audios-filter">
             Audio
           </label>
           <select
@@ -119,7 +119,7 @@ export function AudiosManager() {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="audios-cat">
+          <label className="mb-1 block text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground" htmlFor="audios-cat">
             Categoría
           </label>
           <Input
@@ -149,22 +149,22 @@ export function AudiosManager() {
           <SearchResultsSkeleton count={5} />
         </div>
       ) : (
-      <ul className="divide-y divide-border rounded-lg border bg-card">
+      <ul className="divide-y divide-outline-variant/20 rounded-2xl border border-outline-variant/30 bg-card">
         {words.map((w) => (
           <li key={w.id} className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/30 focus-within:bg-muted/30">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-outline-variant/30 bg-muted">
-              <Mic className="h-4 w-4 text-muted-foreground" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-outline-variant/30 bg-primary/10">
+              <Mic className="h-4 w-4 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">
                 {w.spanish} <span className="font-normal text-muted-foreground">/ {w.nasaYuwe}</span>
               </p>
               <div className="mt-1 flex items-center gap-1.5">
-                {w.category ? <Badge variant="secondary">{w.category}</Badge> : null}
+                {w.category ? <Badge variant="secondary" className="text-2xs">{w.category}</Badge> : null}
                 {w.audioUrl ? (
-                  <Badge variant="outline">con audio</Badge>
+                  <Badge variant="outline" className="bg-primary/10 text-primary text-2xs">con audio</Badge>
                 ) : (
-                  <Badge variant="destructive">sin audio</Badge>
+                  <Badge variant="destructive" className="text-2xs">sin audio</Badge>
                 )}
               </div>
               {w.audioUrl ? (
@@ -243,6 +243,7 @@ export function AudiosManager() {
         onRun={() => void runBulk()}
         onRowDecision={setRowDecision}
         texts={audioBulkTexts}
+        tone="primary"
       />
       <ConfirmDialog
         open={confirmQuitar !== null}

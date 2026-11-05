@@ -83,7 +83,7 @@ export function IllustrationsManager() {
       {/* Filtros */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-48 flex-1">
-          <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="ilus-search">
+          <label className="mb-1 block text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground" htmlFor="ilus-search">
             Buscar
           </label>
           <div className="relative">
@@ -101,7 +101,7 @@ export function IllustrationsManager() {
           </div>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="ilus-filter">
+          <label className="mb-1 block text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground" htmlFor="ilus-filter">
             Ilustración
           </label>
           <select
@@ -119,7 +119,7 @@ export function IllustrationsManager() {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="ilus-cat">
+          <label className="mb-1 block text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground" htmlFor="ilus-cat">
             Categoría
           </label>
           <Input
@@ -150,13 +150,13 @@ export function IllustrationsManager() {
           <SearchResultsSkeleton count={5} />
         </div>
       ) : (
-      <ul className="divide-y divide-border rounded-lg border bg-card">
+      <ul className="divide-y divide-outline-variant/20 rounded-2xl border border-outline-variant/30 bg-card">
         {words.map((w) => (
           <li key={w.id} className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/30 focus-within:bg-muted/30">
             {w.illustrationUrl ? (
               <IllustrationLightbox url={w.illustrationUrl} alt={`${w.spanish}`} thumbSize={64} />
             ) : (
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-outline-variant/30 bg-muted text-xs text-muted-foreground">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-outline-variant/30 bg-tertiary/10 text-xs text-tertiary">
                 sin imagen
               </div>
             )}
@@ -165,11 +165,11 @@ export function IllustrationsManager() {
                 {w.spanish} <span className="font-normal text-muted-foreground">/ {w.nasaYuwe}</span>
               </p>
               <div className="mt-1 flex gap-1.5">
-                {w.category ? <Badge variant="secondary">{w.category}</Badge> : null}
+                {w.category ? <Badge variant="secondary" className="text-2xs">{w.category}</Badge> : null}
                 {w.illustrationUrl ? (
-                  <Badge variant="outline">con ilustración</Badge>
+                  <Badge variant="outline" className="bg-tertiary/10 text-tertiary text-2xs">con ilustración</Badge>
                 ) : (
-                  <Badge variant="destructive">sin ilustración</Badge>
+                  <Badge variant="destructive" className="text-2xs">sin ilustración</Badge>
                 )}
               </div>
             </div>
@@ -250,6 +250,7 @@ export function IllustrationsManager() {
         onRun={() => void runBulk()}
         onRowDecision={setRowDecision}
         texts={illustrationBulkTexts}
+        tone="tertiary"
       />
           <ConfirmDialog
         open={confirmQuitar !== null}

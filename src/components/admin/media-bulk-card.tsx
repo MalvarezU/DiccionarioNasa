@@ -33,12 +33,19 @@ export interface MediaBulkCardProps {
   onRun: () => void
   onRowDecision: (index: number, decision: BulkRowDecision) => void
   texts: MediaBulkCardTexts
+  /**
+   * Section identity tone, derived from the manager's config.field
+   * (audioUrl → "primary", illustrationUrl → "tertiary"). Optional to
+   * keep existing callers working; defaults to "primary".
+   */
+  tone?: "primary" | "tertiary"
 }
 
 /**
  * Tarjeta de subida en lote compartida por los paneles de audios e
  * ilustraciones: mismos tokens de estado (secondary/destructive/primary/
- * tertiary), solo cambian los textos que recibe por props.
+ * tertiary), solo cambian los textos que recibe por props y el tono de
+ * identidad del header (`tone`, derivado del config.field de cada panel).
  */
 export function MediaBulkCard({
   bulk,
@@ -50,12 +57,14 @@ export function MediaBulkCard({
   onRun,
   onRowDecision,
   texts,
+  tone = "primary",
 }: MediaBulkCardProps) {
+  const toneChip = tone === "tertiary" ? "bg-tertiary/10 text-tertiary" : "bg-primary/10 text-primary"
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
       {/* Header */}
       <div className="flex items-start gap-3 border-b bg-muted/30 px-5 py-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${toneChip}`}>
           <UploadCloud className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
