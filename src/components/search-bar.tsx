@@ -430,7 +430,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
             onKeyDown={handleKeyDown}
             className={`pl-10 w-full transition-colors ${
               sobreOscuro
-                ? "h-14 text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-white placeholder:text-white/70 border-white/30 hover:border-white/60 focus-visible:border-white focus-visible:ring-white/30"
+                ? "h-14 text-base sm:text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-white placeholder:text-white/70 border-white/30 hover:border-white/60 focus-visible:border-white focus-visible:ring-white/30"
                 : esGrande
                   ? "h-14 text-lg rounded-xl pr-10 bg-surface-container-low border shadow-md focus-visible:border-secondary/60 focus-visible:ring-secondary/25 text-foreground placeholder:text-muted-foreground focus-visible:shadow-lg"
                   : "h-10 pr-9 bg-surface-container-low border-border focus-visible:border-secondary/60 focus-visible:ring-secondary/25 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:shadow-md"
@@ -538,7 +538,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               <ul
                 ref={listRef}
                 id="search-results-list"
-                className={panelMode ? "max-h-[40svh] overflow-y-auto py-1" : esGrande ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
+                className={panelMode ? "max-h-[50svh] lg:max-h-[40svh] overflow-y-auto py-1" : esGrande ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
                 role="listbox"
                 aria-label="Resultados de búsqueda"
               >

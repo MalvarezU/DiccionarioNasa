@@ -176,15 +176,16 @@ function DiccionarioContent() {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
-      <InstallBanner destino="/#instalar" />
 
       <main id="contenido" className="flex-1">
         {/* Hero del diccionario — foto banner2 con overlay pizarra (mismo
             tratamiento que el hero home; stops reforzados porque la foto
             es clara: muro blanco sobreexpuesto). data-hero: el header
             frosted mide este hero para mutar a sólido al salir de él.
-            pt-28 despeja el header fijo; en sm+ centra en 72svh. */}
-        <section data-hero className="relative isolate overflow-hidden bg-background pb-12 sm:pb-16 pt-28 sm:pt-36 sm:flex sm:min-h-[64svh] sm:flex-col sm:justify-center">
+            min-h-svh + flex-col + my-auto en el wrapper: el panel queda
+            centrado en el primer viewport en desktop; en móvil el panel
+            va primero en el DOM junto al navbar. */}
+        <section data-hero className="relative isolate overflow-hidden bg-background pb-10 sm:pb-14 pt-20 sm:pt-24 min-h-svh flex flex-col">
           <Image
             src="/banner2.jpg"
             alt=""
@@ -203,16 +204,21 @@ function DiccionarioContent() {
             }}
             aria-hidden="true"
           />
-          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 z-20">
+          <div className="relative mx-auto my-auto w-full max-w-7xl px-4 sm:px-6 z-20">
             <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-12">
-              {/* Columna izquierda: copy de bienvenida */}
-              <div className="text-center lg:text-left">
+              {/* Panel de búsqueda PRIMERO en el DOM: en móvil aparece junto
+                  al navbar; en lg se reordena a la derecha (order). */}
+              <div className="order-1 mx-auto w-full max-w-xl rounded-2xl border border-white/25 bg-black/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
+                <SearchBar variant="hero-panel" onWordSelect={handleWordSelect} />
+              </div>
+              {/* Copy de bienvenida: segundo en el DOM, a la izquierda en lg */}
+              <div className="order-2 text-center lg:text-left lg:order-1">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium text-[#F6EEDC] backdrop-blur-md">
                   <BookOpen className="h-3 w-3 text-[#F6EEDC]" aria-hidden="true" />
                   Diccionario bilingüe
                 </span>
                 <h1
-                  className="mt-4 text-3xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-[#F6EEDC]"
+                  className="mt-4 text-2xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-[#F6EEDC]"
                   style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.5)" }}
                 >
                   Diccionario Nasa Yuwe
@@ -241,13 +247,11 @@ function DiccionarioContent() {
                   </div>
                 </div>
               </div>
-              {/* Columna derecha: panel de busqueda con resultados en flujo */}
-              <div className="mx-auto w-full max-w-xl rounded-2xl border border-white/25 bg-black/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl">
-                <SearchBar variant="hero-panel" onWordSelect={handleWordSelect} />
-              </div>
             </div>
           </div>
         </section>
+
+        <InstallBanner destino="/#instalar" />
 
         {/* Word of the Day */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
