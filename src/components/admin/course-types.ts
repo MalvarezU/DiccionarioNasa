@@ -3,6 +3,12 @@ export interface Lesson {
   title: string
   order: number
   lessonNumber: number | null
+  /**
+   * Documento { version, blocks[] } tal como lo trae GET detail.
+   * Opcional porque los fixtures viejos no siempre lo incluyen:
+   * ausente se trata como lección sin contenido.
+   */
+  content?: { version: number; blocks: unknown[] } | null
 }
 
 export interface Module {
@@ -61,4 +67,13 @@ export const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Borrador",
   PUBLISHED: "Publicado",
   ARCHIVED: "Archivado",
+}
+
+/**
+ * Una lección está "sin contenido" cuando su documento no trae bloques.
+ * Solo lee el content ya presente en GET detail: sin fetch extra.
+ */
+export function lessonSinContenido(lesson: Pick<Lesson, "content">): boolean {
+  const blocks = (lesson.content as { blocks?: unknown } | null | undefined)?.blocks
+  return !Array.isArray(blocks) || blocks.length === 0
 }

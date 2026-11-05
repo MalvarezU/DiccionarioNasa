@@ -29,7 +29,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { MediaPicker } from "@/components/media/media-picker"
 import { CourseManagerListSkeleton } from "@/components/skeletons"
-import { STATUS_LABEL } from "./course-types"
+import { STATUS_LABEL, lessonSinContenido } from "./course-types"
 import { useCourseManager } from "./use-course-manager"
 import { ConfirmDialog } from "./confirm-dialog"
 
@@ -37,6 +37,13 @@ import { ConfirmDialog } from "./confirm-dialog"
 type GuardPendiente =
   | { kind: "curso"; id: string }
   | { kind: "leccion"; url: string }
+
+/** Chip tonal por estado del curso activo (sistema editorial). */
+const ESTADO_CHIP: Record<string, string> = {
+  DRAFT: "border-outline-variant/40 text-muted-foreground",
+  PUBLISHED: "border-transparent bg-secondary-container text-secondary",
+  ARCHIVED: "border-transparent bg-tertiary-fixed text-tertiary",
+}
 
 /**
  * Suspense requerido por useSearchParams (bailout CSR en prerender).
@@ -290,6 +297,49 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     continuarGuard(g)
   }
 
+  /** Resumen del curso activo: conteos desde el árbol + lecciones vacías
+      (content ya presente en GET detail, sin fetch extra). */
+  const modulosActivos = detail?.modules ?? []
+  const leccionesActivas = modulosActivos.flatMap((m) => m.lessons)
+  const sinContenido = leccionesActivas.filter(lessonSinContenido).length
+
+  /** Inputs de alta de lección por módulo (re-foco post-alta en cadena). */
+  const lessonInputRefs = useRef(new Map<string, HTMLInputElement>())
+  const listaRef = useRef<HTMLDivElement>(null)
+
+  function despuesDePintar(fn: () => void) {
+    if (typeof requestAnimationFrame !== "undefined") requestAnimationFrame(fn)
+    else fn()
+  }
+
+  /** Altas con feel editorial: scroll a la fila nueva + re-foco del input. */
+  async function onCreateCourse(e: React.FormEvent) {
+    const id = await handleCreate(e)
+    if (!id || !listaRef.current) return
+    const lista = listaRef.current
+    despuesDePintar(() => {
+      lista.querySelector(`[data-course-id="${id}"]`)?.scrollIntoView({ block: "nearest" })
+    })
+  }
+
+  async function onAddModule(e: React.FormEvent) {
+    const id = await handleAddModule(e)
+    if (!id) return
+    despuesDePintar(() => {
+      document.querySelector(`[data-module-id="${id}"]`)?.scrollIntoView({ block: "nearest" })
+    })
+  }
+
+  async function onAddLesson(e: React.FormEvent, moduleId: string) {
+    const id = await handleAddLesson(e, moduleId)
+    if (!id) return
+    despuesDePintar(() => {
+      // Scroll instantáneo (behavior auto): respeta reduced-motion por defecto.
+      document.querySelector(`[data-lesson-id="${id}"]`)?.scrollIntoView({ block: "nearest" })
+      lessonInputRefs.current.get(moduleId)?.focus()
+    })
+  }
+
   // Selección inicial: ?curso= si apunta a un curso real, si no el primero.
   const initDoneRef = useRef(false)
   useEffect(() => {
@@ -341,7 +391,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-          <form onSubmit={handleCreate} className="flex gap-2 shrink-0">
+          <form onSubmit={onCreateCourse} className="flex gap-2 shrink-0">
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
@@ -399,11 +449,13 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               data-testid="cursos-lista"
               role="region"
               aria-label="Lista de cursos"
+              ref={listaRef}
             >
               {cursosFiltrados.map((c) => (
                 <button
                   key={c.id}
                   type="button"
+                  data-course-id={c.id}
                   onClick={() => requestSelect(c.id)}
                   className={`w-full text-left p-3 rounded-xl border border-outline-variant/30 transition-colors ${
                     selectedId === c.id
@@ -435,12 +487,37 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
       {/* Detalle */}
       <Card className="lg:col-span-2 h-fit rounded-2xl border-outline-variant/30">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2.5 text-base text-secondary">
+          <CardTitle className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-secondary/20 bg-secondary/10">
               <BookOpen className="h-4 w-4 text-secondary" aria-hidden="true" />
             </span>
-            {detail ? detail.title : "Selecciona un curso"}
+            <span className="block min-w-0 truncate font-serif text-xl tracking-tight text-primary md:text-2xl">
+              {detail ? detail.title : "Selecciona un curso"}
+            </span>
           </CardTitle>
+          {detail ? (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1" data-testid="curso-resumen">
+              <Badge variant="outline" className={`text-2xs ${ESTADO_CHIP[detail.status] ?? ""}`}>
+                {STATUS_LABEL[detail.status] ?? detail.status}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="border-outline-variant/30 text-2xs font-normal tabular-nums text-muted-foreground"
+              >
+                {modulosActivos.length} módulo{modulosActivos.length === 1 ? "" : "s"}
+                {" · "}
+                {leccionesActivas.length} lección{leccionesActivas.length === 1 ? "" : "es"}
+              </Badge>
+              {sinContenido > 0 ? (
+                <Badge
+                  variant="outline"
+                  className="border-destructive/25 bg-destructive/5 text-2xs text-destructive"
+                >
+                  {sinContenido} sin contenido
+                </Badge>
+              ) : null}
+            </div>
+          ) : null}
         </CardHeader>
         <CardContent>
           {!detail ? (
@@ -449,110 +526,114 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
             </p>
           ) : (
             <div className="space-y-4">
-              <div className="grid gap-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="course-title">Título</Label>
-                  <Input
-                    id="course-title"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="course-desc">Descripción</Label>
-                  <Input
-                    id="course-desc"
-                    value={editDesc}
-                    onChange={(e) => setEditDesc(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Estado</Label>
-                  <Select value={editStatus} onValueChange={setEditStatus}>
-                    <SelectTrigger className="w-[200px]" aria-label="Estado del curso">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DRAFT">Borrador</SelectItem>
-                      <SelectItem value="PUBLISHED">Publicado</SelectItem>
-                      <SelectItem value="ARCHIVED">Archivado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {/* Portada del catálogo (fase 5): sube a Postgres, se muestra en /cursos */}
-                <div className="grid gap-2">
-                  <Label>Portada</Label>
-                  {editCover ? (
-                    <div className="flex items-center gap-3">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={editCover} alt="Portada del curso" className="h-14 w-24 rounded-md object-cover border border-outline-variant/30" />
+              {/* Encabezado documento: el form del curso sobre superficie
+                  background, un paso más claro que la card (low). */}
+              <div className="rounded-xl border border-outline-variant/30 bg-background p-4">
+                <div className="grid gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="course-title">Título</Label>
+                    <Input
+                      id="course-title"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="course-desc">Descripción</Label>
+                    <Input
+                      id="course-desc"
+                      value={editDesc}
+                      onChange={(e) => setEditDesc(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Estado</Label>
+                    <Select value={editStatus} onValueChange={setEditStatus}>
+                      <SelectTrigger className="w-[200px]" aria-label="Estado del curso">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DRAFT">Borrador</SelectItem>
+                        <SelectItem value="PUBLISHED">Publicado</SelectItem>
+                        <SelectItem value="ARCHIVED">Archivado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Portada del catálogo (fase 5): sube a Postgres, se muestra en /cursos */}
+                  <div className="grid gap-2">
+                    <Label>Portada</Label>
+                    {editCover ? (
+                      <div className="flex items-center gap-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={editCover} alt="Portada del curso" className="h-14 w-24 rounded-md object-cover border border-outline-variant/30" />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditCover(null)}
+                        >
+                          Quitar portada
+                        </Button>
+                      </div>
+                    ) : (
+                      <MediaPicker
+                        etiqueta="Imagen de portada del curso"
+                        onSubida={(url) => setEditCover(url)}
+                      />
+                    )}
+                  </div>
+                  {error ? (
+                    <div role="alert" className="flex items-start gap-2">
+                      <p className="flex-1 text-sm text-destructive">{error}</p>
                       <Button
                         type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditCover(null)}
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 shrink-0"
+                        aria-label="Descartar error"
+                        onClick={clearError}
                       >
-                        Quitar portada
+                        <X className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                  ) : (
-                    <MediaPicker
-                      etiqueta="Imagen de portada del curso"
-                      onSubida={(url) => setEditCover(url)}
-                    />
-                  )}
-                </div>
-                {error ? (
-                  <div role="alert" className="flex items-start gap-2">
-                    <p className="flex-1 text-sm text-destructive">{error}</p>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6 shrink-0"
-                      aria-label="Descartar error"
-                      onClick={clearError}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ) : null}
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSaveCourse} className="gap-1.5">
-                    <Pencil className="h-3.5 w-3.5" />
-                    Guardar curso
-                  </Button>                  <Button
-                    size="sm"
-                    variant="outline"
-                    asChild
-                    title="La vista previa abre el curso como lo vería el estudiante (los borradores son visibles para editores)."
-                  >
-                    <a href={`/cursos/${detail.id}`} target="_blank" rel="noopener noreferrer">
-                      <Eye className="h-3.5 w-3.5" />
-                      Ver como estudiante
-                    </a>
-                  </Button>
-                  {canDelete && (
-                    <Button
+                  ) : null}
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleSaveCourse} className="gap-1.5">
+                      <Pencil className="h-3.5 w-3.5" />
+                      Guardar curso
+                    </Button>                  <Button
                       size="sm"
-                      variant="destructive"
-                      onClick={() => setConfirmPendiente({ kind: "course", titulo: detail?.title ?? "" })}
-                      className="gap-1.5"
+                      variant="outline"
+                      asChild
+                      title="La vista previa abre el curso como lo vería el estudiante (los borradores son visibles para editores)."
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Eliminar
+                      <a href={`/cursos/${detail.id}`} target="_blank" rel="noopener noreferrer">
+                        <Eye className="h-3.5 w-3.5" />
+                        Ver como estudiante
+                      </a>
                     </Button>
-                  )}
+                    {canDelete && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setConfirmPendiente({ kind: "course", titulo: detail?.title ?? "" })}
+                        className="gap-1.5"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Eliminar
+                      </Button>
+                    )}
+                  </div>
+                  {stats ? (
+                    <p className="text-2xs text-muted-foreground mt-2" data-testid="curso-stats">
+                      {stats.alumnos} alumno{stats.alumnos === 1 ? "" : "s"}
+                      {stats.promedioPct !== null && ` · avance promedio ${stats.promedioPct}%`}
+                      {" · "}
+                      {stats.completadas} lección{stats.completadas === 1 ? "" : "es"} completada
+                      {stats.completadas === 1 ? "" : "s"} en total
+                    </p>
+                  ) : null}
                 </div>
-                {stats ? (
-                  <p className="text-2xs text-muted-foreground mt-2" data-testid="curso-stats">
-                    {stats.alumnos} alumno{stats.alumnos === 1 ? "" : "s"}
-                    {stats.promedioPct !== null && ` · avance promedio ${stats.promedioPct}%`}
-                    {" · "}
-                    {stats.completadas} lección{stats.completadas === 1 ? "" : "es"} completada
-                    {stats.completadas === 1 ? "" : "s"} en total
-                  </p>
-                ) : null}
               </div>
 
               <Separator />
@@ -560,7 +641,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               {/* Módulos */}
               <div className="space-y-3">
                 <h4 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Módulos</h4>
-                <form onSubmit={handleAddModule} className="flex gap-2">
+                <form onSubmit={onAddModule} className="flex gap-2">
                   <Input
                     value={newModuleTitle}
                     onChange={(e) => setNewModuleTitle(e.target.value)}
@@ -581,7 +662,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                   className="space-y-3"
                 >
                 {(detail.modules ?? []).map((mod, modIdx) => (
-                  <Accordion.Item key={mod.id} value={mod.id} className="rounded-xl border border-outline-variant/30 p-3 space-y-2">
+                  <Accordion.Item key={mod.id} value={mod.id} data-module-id={mod.id} className="group rounded-xl border border-outline-variant/30 p-3 space-y-2">
                     <Accordion.Header className="flex items-center gap-2">
                       <span
                         aria-hidden="true"
@@ -620,14 +701,17 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                       )}
                       <Accordion.Trigger
                         aria-label={`${openMods.includes(mod.id) ? "Colapsar" : "Expandir"} módulo ${mod.title}`}
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted [&[data-state=open]>svg]:rotate-180"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted [&[data-state=open]>svg]:rotate-180"
                       >
                         <ChevronDown className="h-3.5 w-3.5 transition-transform" aria-hidden="true" />
                       </Accordion.Trigger>
+                      {/* Acciones en reveal en lg (menos ruido); siempre
+                          visibles en táctil. focus-within las revela con teclado. */}
+                      <span className="flex items-center gap-1 lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7"
+                        className="h-8 w-8"
                         aria-label={`Subir ${mod.title}`}
                         onClick={() => void moveModule(mod.id, -1)}
                       >
@@ -636,7 +720,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7"
+                        className="h-8 w-8"
                         aria-label={`Bajar ${mod.title}`}
                         onClick={() => void moveModule(mod.id, 1)}
                       >
@@ -646,13 +730,14 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
                           aria-label={`Eliminar ${mod.title}`}
                           onClick={() => setConfirmPendiente({ kind: "module", id: mod.id, titulo: mod.title })}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
+                      </span>
                     </Accordion.Header>
 
                     {/* Lecciones */}
@@ -667,54 +752,57 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                         <div
                           key={les.id}
                           data-testid="lesson-row"
+                          data-lesson-id={les.id}
                           data-lesson-title={les.title}
-                          className="flex items-center gap-2 text-sm p-2 rounded-xl border border-outline-variant/30 bg-muted/30"
+                          className="group flex items-center gap-2 text-sm p-2 rounded-xl border border-outline-variant/30 bg-muted/30"
                         >
-                          <Badge variant="outline" className="border-secondary/20 bg-secondary/10 text-secondary text-2xs shrink-0">
+                          <Badge variant="outline" className="border-secondary/20 bg-secondary/10 text-secondary text-2xs tabular-nums shrink-0">
                             {modIdx + 1}.{les.lessonNumber ?? "?"}
                           </Badge>
                           <span className="flex-1">{les.title}</span>
+                          <span className="flex items-center gap-1 lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6"
+                            className="h-8 w-8"
                             aria-label={`Contenido de lección ${les.title}`}
                             onClick={() => requestLesson(`/admin/cursos/${detail.id}/lecciones/${les.id}`)}
                           >
-                            <Pencil className="h-3 w-3" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6"
+                            className="h-8 w-8"
                             aria-label={`Subir lección ${les.title}`}
                             onClick={() => void moveLesson(mod.id, les.id, -1)}
                           >
-                            <ArrowUp className="h-3 w-3" />
+                            <ArrowUp className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6"
+                            className="h-8 w-8"
                             aria-label={`Bajar lección ${les.title}`}
                             onClick={() => void moveLesson(mod.id, les.id, 1)}
                           >
-                            <ArrowDown className="h-3 w-3" />
+                            <ArrowDown className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
                             aria-label={`Eliminar lección ${les.title}`}
                             onClick={() => setConfirmPendiente({ kind: "lesson", id: les.id, titulo: les.title })}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
+                          </span>
                         </div>
                       ))}
 
                       <form
-                        onSubmit={(e) => void handleAddLesson(e, mod.id)}
+                        onSubmit={(e) => void onAddLesson(e, mod.id)}
                         className="flex flex-wrap gap-2 pt-1"
                       >
                         <Input
@@ -724,6 +812,10 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                           aria-label={`Título de nueva lección en ${mod.title}`}
                           className="flex-1 min-w-[140px] h-8 text-xs"
                           disabled={!!savingLesson[mod.id]}
+                          ref={(el) => {
+                            if (el) lessonInputRefs.current.set(mod.id, el)
+                            else lessonInputRefs.current.delete(mod.id)
+                          }}
                         />
                         <Button
                           type="submit"

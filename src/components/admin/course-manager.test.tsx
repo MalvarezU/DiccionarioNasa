@@ -771,3 +771,68 @@ describe("CourseManager estructura [CU-3]", () => {
     expect(await screen.findByRole("button", { name: "Eliminar M1" })).toBeDefined()
   })
 })
+
+describe("CourseManager editorial [CU-4]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+    localStorage.clear()
+  })
+
+  it("encabezado muestra título serif, estado tonal y conteos con sin-contenido", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+
+    const resumen = await screen.findByTestId("curso-resumen")
+    expect(resumen).toHaveTextContent("Publicado")
+    expect(resumen).toHaveTextContent("1 módulo · 1 lección")
+    // L1 del fixture no trae content: cuenta como sin contenido
+    expect(resumen).toHaveTextContent("1 sin contenido")
+
+    const serif = [...document.querySelectorAll(".font-serif.tracking-tight")]
+    expect(serif.map((t) => t.textContent)).toContain("Básico")
+  })
+
+  it("tras crear lección re-enfoca el input del módulo", async () => {
+    mockBase()
+    const base = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? "GET"
+      if (method === "POST" && url.includes("/lessons"))
+        return Promise.resolve(Response.json({ lesson: { id: "l2" } }))
+      return base(input as string, init)
+    })
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    const input = await screen.findByLabelText(/Título de nueva lección/)
+    await user.type(input, "L2")
+    await user.click(screen.getByRole("button", { name: "Añadir lección" }))
+
+    await waitFor(() => expect(input).toHaveValue(""))
+    await waitFor(() => expect(document.activeElement).toBe(input))
+  })
+
+  it("acciones de fila en reveal lg con targets h-8", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+
+    const subirLeccion = await screen.findByRole("button", { name: "Subir lección L1" })
+    expect(subirLeccion.className).toMatch(/h-8 w-8/)
+    expect(subirLeccion.parentElement!.className).toMatch(/lg:opacity-0/)
+    expect(subirLeccion.parentElement!.className).toMatch(/lg:group-focus-within:opacity-100/)
+
+    const subirModulo = await screen.findByRole("button", { name: "Subir M1" })
+    expect(subirModulo.className).toMatch(/h-8 w-8/)
+    expect(subirModulo.parentElement!.className).toMatch(/lg:opacity-0/)
+  })
+})
