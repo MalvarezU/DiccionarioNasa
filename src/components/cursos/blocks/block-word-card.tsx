@@ -30,11 +30,11 @@ export function BlockWordCard({
     <div className="rounded-lg border border-outline-variant/30 bg-surface-container-low p-4">
       <div className="flex flex-wrap items-baseline gap-2">
         <span className="font-serif text-lg font-bold text-primary">{word.nasaYuwe}</span>
-        <span className="text-sm text-muted-foreground">⇄ {word.spanish}</span>
+        <span className="text-sm text-muted-foreground"><span aria-hidden="true">⇄</span> {word.spanish}</span>
         {word.category ? <Badge variant="secondary">{word.category}</Badge> : null}
       </div>
       {word.pronunciation ? (
-        <p className="mt-1 text-sm text-muted-foreground">↗ [ {word.pronunciation} ]</p>
+        <p className="mt-1 text-sm text-muted-foreground"><span aria-hidden="true">↗</span> [ {word.pronunciation} ]</p>
       ) : null}
       {word.audioUrl ? (
         <div className="mt-2 flex items-center gap-2">

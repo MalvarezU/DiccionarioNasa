@@ -139,7 +139,7 @@ export function ModuleStepper({
           className="h-1 w-full overflow-hidden rounded-full bg-secondary/25"
         >
           <div
-            className="h-full rounded-full bg-secondary transition-all"
+            className="h-full rounded-full bg-secondary transition-[width] motion-reduce:transition-none"
             style={{ width: `${pct}%` }}
           />
         </div>

@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useRef } from "react"
-import { useEditor, useEditorState, EditorContent } from "@tiptap/react"
+import { useEditor, useEditorState, EditorContent, type Editor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import { TEXT_BLOCK_PROSE } from "@/lib/courses/lesson-html"
 import { htmlToPlainText } from "@/lib/html-to-text"
@@ -167,18 +167,18 @@ export function EditorTextoRico({
  * colapsado, stored marks) y los botones quedaban "pegados" un keystroke
  * detrás — el bug reportado.
  */
-export function EditorToolbar({ editor, mini = false }: { editor: any; mini?: boolean }) {
+export function EditorToolbar({ editor, mini = false }: { editor: Editor | null; mini?: boolean }) {
   const state = useEditorState({
     editor,
-    selector: ({ editor }: { editor: any }) => ({
-      isBold: editor.isActive("bold"),
-      isItalic: editor.isActive("italic"),
-      isH1: editor.isActive("heading", { level: 1 }),
-      isH2: editor.isActive("heading", { level: 2 }),
-      isH3: editor.isActive("heading", { level: 3 }),
-      isList: editor.isActive("bulletList"),
-      canUndo: editor.can().undo(),
-      canRedo: editor.can().redo(),
+    selector: ({ editor: e }) => ({
+      isBold: e?.isActive("bold") ?? false,
+      isItalic: e?.isActive("italic") ?? false,
+      isH1: e?.isActive("heading", { level: 1 }) ?? false,
+      isH2: e?.isActive("heading", { level: 2 }) ?? false,
+      isH3: e?.isActive("heading", { level: 3 }) ?? false,
+      isList: e?.isActive("bulletList") ?? false,
+      canUndo: e?.can().undo() ?? false,
+      canRedo: e?.can().redo() ?? false,
     }),
   })
 
@@ -196,25 +196,25 @@ export function EditorToolbar({ editor, mini = false }: { editor: any; mini?: bo
             label="Título 1"
             icon={<Heading1 className="h-4 w-4" />}
             activo={state.isH1}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
           />
           <ToolbarBoton
             label="Título 2"
             icon={<Heading2 className="h-4 w-4" />}
             activo={state.isH2}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
           />
           <ToolbarBoton
             label="Título 3"
             icon={<Heading3 className="h-4 w-4" />}
             activo={state.isH3}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+            onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
           />
           <ToolbarBoton
             label="Lista"
             icon={<List className="h-4 w-4" />}
             activo={state.isList}
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
           />
           <ToolbarSeparador />
         </>
@@ -223,25 +223,25 @@ export function EditorToolbar({ editor, mini = false }: { editor: any; mini?: bo
         label="Negrita"
         icon={<Bold className="h-4 w-4" />}
         activo={state.isBold}
-        onClick={() => editor.chain().focus().toggleBold().run()}
+        onClick={() => editor?.chain().focus().toggleBold().run()}
       />
       <ToolbarBoton
         label="Cursiva"
         icon={<Italic className="h-4 w-4" />}
         activo={state.isItalic}
-        onClick={() => editor.chain().focus().toggleItalic().run()}
+        onClick={() => editor?.chain().focus().toggleItalic().run()}
       />
       <ToolbarSeparador />
       <ToolbarBoton
         label="Deshacer"
         icon={<Undo2 className="h-4 w-4" />}
-        onClick={() => editor.chain().focus().undo().run()}
+        onClick={() => editor?.chain().focus().undo().run()}
         deshabilitado={!state.canUndo}
       />
       <ToolbarBoton
         label="Rehacer"
         icon={<Redo2 className="h-4 w-4" />}
-        onClick={() => editor.chain().focus().redo().run()}
+        onClick={() => editor?.chain().focus().redo().run()}
         deshabilitado={!state.canRedo}
       />
     </div>
