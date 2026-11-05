@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { LessonBlock, QuizOption } from "@/lib/courses/blocks"
@@ -27,6 +29,77 @@ export type BlockFormProps<B extends LessonBlock> = {
   block: B
   onChange: (next: LessonBlock) => void
   errores: string[]
+}
+
+/** Presets del umbral de aprobación (el número exacto admite 0-100). */
+const PRESETS_APROBACION = [50, 70, 80, 100]
+
+/**
+ * Umbral de aprobación: presets + número exacto.
+ * El número manda: si no coincide con ningún preset, ninguno queda activo.
+ * Solo lo usa FormQuiz (ListeningBlock no tiene passScore).
+ */
+function UmbralAprobacion({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  // Borrador local: permite vaciar el campo mientras se escribe sin romper
+  // el último valor válido; se confirma al escribir y se revierte en blur/Enter.
+  const [borrador, setBorrador] = useState<string | null>(null)
+  const texto = borrador ?? String(value)
+
+  const confirmar = (raw: string) => {
+    const n = Number.parseInt(raw, 10)
+    if (Number.isNaN(n)) return
+    onChange(Math.min(100, Math.max(0, n)))
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <Label className="shrink-0">Aprobado con</Label>
+      <div className="flex items-center gap-1.5" role="group" aria-label="Valores sugeridos de aprobación">
+        {PRESETS_APROBACION.map((p) => (
+          <Button
+            key={p}
+            type="button"
+            size="sm"
+            variant={value === p ? "secondary" : "outline"}
+            aria-pressed={value === p}
+            aria-label={`Aprobar con ${p} por ciento`}
+            onClick={() => {
+              setBorrador(null)
+              onChange(p)
+            }}
+          >
+            {p}%
+          </Button>
+        ))}
+      </div>
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          inputMode="numeric"
+          aria-label="Porcentaje de aprobación exacto"
+          className="w-20 tabular-nums"
+          value={texto}
+          onChange={(e) => {
+            setBorrador(e.target.value)
+            confirmar(e.target.value)
+          }}
+          onBlur={() => {
+            // Vacío o inválido: se descarta el borrador y vuelve el último válido.
+            setBorrador(null)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+          }}
+        />
+        <span aria-hidden="true" className="text-sm text-muted-foreground">
+          %
+        </span>
+      </div>
+    </div>
+  )
 }
 
 export function FormQuiz({ block, onChange, errores }: BlockFormProps<Extract<LessonBlock, { type: "quiz" }>>) {
@@ -65,20 +138,7 @@ export function FormQuiz({ block, onChange, errores }: BlockFormProps<Extract<Le
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Label className="shrink-0">Aprobado con</Label>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={5}
-          value={block.passScore}
-          onChange={(e) => onChange({ ...block, passScore: Number(e.target.value) })}
-          className="flex-1"
-          aria-label="Porcentaje de aprobación"
-        />
-        <span className="w-12 text-right text-sm font-medium tabular-nums">{block.passScore}%</span>
-      </div>
+      <UmbralAprobacion value={block.passScore} onChange={(passScore) => onChange({ ...block, passScore })} />
 
       <ol className="space-y-4">
         {block.questions.map((q, i) => {
