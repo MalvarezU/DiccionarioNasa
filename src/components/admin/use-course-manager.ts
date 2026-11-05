@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { successToastTitle } from "./word-toast"
-import { type CourseStats } from "./course-types"
+import { successToastTitle, wordStatusToastTitle } from "./word-toast"
+import { STATUS_LABEL, type CourseStats } from "./course-types"
 import {
   api,
   EMPTY_LESSON_FORM,
@@ -65,6 +65,45 @@ export function useCourseManager() {
 
   const [lessonForms, setLessonForms] = useState<Record<string, LessonForm>>({})
 
+  const clearErrorCourse = useCallback(() => setErrorCourse(null), [])
+  const clearErrorModule = useCallback(() => setErrorModule(null), [])
+  const clearErrorLessonAll = useCallback(() => setErrorLesson({}), [])
+  const clearError = useCallback(() => {
+    setErrorCourse(null)
+    setErrorModule(null)
+    setErrorLesson({})
+  }, [])
+
+  /**
+   * Error localizado por operación: persiste en el inline de la zona
+   * correspondiente como fallback y además levanta un toast destructive
+   * (con dismiss propio del toaster). Cada operación genera su propio toast.
+   */
+  const failCourse = useCallback(
+    (title: string, err: unknown, fallback: string) => {
+      const message = err instanceof Error ? err.message : fallback
+      setErrorCourse(message)
+      toast({ title, description: message, variant: "destructive" })
+    },
+    [toast]
+  )
+  const failModule = useCallback(
+    (title: string, err: unknown, fallback: string) => {
+      const message = err instanceof Error ? err.message : fallback
+      setErrorModule(message)
+      toast({ title, description: message, variant: "destructive" })
+    },
+    [toast]
+  )
+  const failLesson = useCallback(
+    (moduleId: string, title: string, err: unknown, fallback: string) => {
+      const message = err instanceof Error ? err.message : fallback
+      setErrorLesson((prev) => ({ ...prev, [moduleId]: message }))
+      toast({ title, description: message, variant: "destructive" })
+    },
+    [toast]
+  )
+
   const loadCourses = useCallback(async () => {
     const isInitial = !didInitCoursesRef.current
     if (isInitial) setLoading(true)
@@ -74,13 +113,13 @@ export function useCourseManager() {
       const data = await api("/api/courses?all=1")
       setCourses(data.courses)
     } catch (e) {
-      setErrorCourse(e instanceof Error ? e.message : "Error al cargar")
+      failCourse("No se pudieron cargar los cursos", e, "Error al cargar")
     } finally {
       didInitCoursesRef.current = true
       if (isInitial) setLoading(false)
       else setRefreshing(false)
     }
-  }, [])
+  }, [failCourse])
 
   useEffect(() => {
     void loadCourses()
@@ -104,9 +143,9 @@ export function useCourseManager() {
       setErrorLesson({})
     } catch (e) {
       if (loadSeqRef.current !== seq) return
-      setErrorCourse(e instanceof Error ? e.message : "Error al cargar el curso")
+      failCourse("No se pudo cargar el curso", e, "Error al cargar el curso")
     }
-  }, [])
+  }, [failCourse])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -121,7 +160,7 @@ export function useCourseManager() {
       await loadCourses()
       await loadDetail(data.course.id)
     } catch (err) {
-      setErrorCourse(err instanceof Error ? err.message : "Error al crear")
+      failCourse("No se pudo crear el curso", err, "Error al crear")
     } finally {
       setCreating(false)
     }
@@ -133,6 +172,13 @@ export function useCourseManager() {
     savingCourseRef.current = true
     setSavingCourse(true)
     setErrorCourse(null)
+    // Foto previa al refetch: si solo cambió el estado, el toast es de
+    // transición (icono por estado); si cambió contenido, guardado normal.
+    const soloEstado =
+      editTitle.trim() === detail.title &&
+      editDesc.trim() === (detail.description ?? "") &&
+      editCover === undefined &&
+      editStatus !== detail.status
     try {
       await api(`/api/courses/${detail.id}`, {
         method: "PATCH",
@@ -145,16 +191,15 @@ export function useCourseManager() {
       })
       await loadCourses()
       await loadDetail(detail.id)
-      toast({ title: successToastTitle("Curso guardado") })
+      if (soloEstado) {
+        const etiqueta = STATUS_LABEL[editStatus] ?? editStatus
+        toast({ title: wordStatusToastTitle(editStatus, `Estado cambiado a "${etiqueta}"`) })
+      } else {
+        toast({ title: successToastTitle("Curso guardado") })
+      }
       return true
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Error al guardar"
-      setErrorCourse(message)
-      toast({
-        title: "No se pudo guardar el curso",
-        description: message,
-        variant: "destructive",
-      })
+      failCourse("No se pudo guardar el curso", err, "Error al guardar")
       return false
     } finally {
       savingCourseRef.current = false
@@ -169,8 +214,9 @@ export function useCourseManager() {
       setDetail(null)
       setSelectedId(null)
       await loadCourses()
+      toast({ title: successToastTitle("Curso eliminado") })
     } catch (err) {
-      setErrorCourse(err instanceof Error ? err.message : "Error al eliminar")
+      failCourse("No se pudo eliminar el curso", err, "Error al eliminar")
     }
   }
 
@@ -187,8 +233,9 @@ export function useCourseManager() {
       })
       setNewModuleTitle("")
       await loadDetail(detail.id)
+      toast({ title: successToastTitle("Módulo añadido") })
     } catch (err) {
-      setErrorModule(err instanceof Error ? err.message : "Error al crear módulo")
+      failModule("No se pudo añadir el módulo", err, "Error al crear módulo")
     } finally {
       savingModuleRef.current = false
       setSavingModule(false)
@@ -200,8 +247,9 @@ export function useCourseManager() {
     try {
       await api(`/api/modules/${moduleId}`, { method: "DELETE" })
       await loadDetail(detail.id)
+      toast({ title: successToastTitle("Módulo eliminado") })
     } catch (err) {
-      setErrorModule(err instanceof Error ? err.message : "Solo admin puede borrar módulos")
+      failModule("No se pudo eliminar el módulo", err, "Solo admin puede borrar módulos")
     }
   }
 
@@ -218,8 +266,9 @@ export function useCourseManager() {
         body: JSON.stringify({ modules: ids }),
       })
       await loadDetail(detail.id)
+      toast({ title: successToastTitle("Orden actualizado") })
     } catch (err) {
-      setErrorModule(err instanceof Error ? err.message : "Error al reordenar")
+      failModule("No se pudo reordenar", err, "Error al reordenar")
     }
   }
 
@@ -262,11 +311,9 @@ export function useCourseManager() {
         [moduleId]: { ...EMPTY_LESSON_FORM },
       }))
       await loadDetail(detail.id)
+      toast({ title: successToastTitle("Lección añadida") })
     } catch (err) {
-      setErrorLesson((prev) => ({
-        ...prev,
-        [moduleId]: err instanceof Error ? err.message : "Error al crear lección",
-      }))
+      failLesson(moduleId, "No se pudo añadir la lección", err, "Error al crear lección")
     } finally {
       savingLessonRef.current.delete(moduleId)
       setSavingLesson((prev) => ({ ...prev, [moduleId]: false }))
@@ -286,12 +333,17 @@ export function useCourseManager() {
     try {
       await api(`/api/lessons/${lessonId}`, { method: "DELETE" })
       await loadDetail(detail.id)
+      toast({ title: successToastTitle("Lección eliminada") })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al eliminar"
       const modId = moduleOfLesson(lessonId)
       // Sin módulo localizable, el mensaje va a la zona de módulos para no perderse.
-      if (modId) setErrorLesson((prev) => ({ ...prev, [modId]: message }))
-      else setErrorModule(message)
+      if (modId) {
+        setErrorLesson((prev) => ({ ...prev, [modId]: message }))
+      } else {
+        setErrorModule(message)
+      }
+      toast({ title: "No se pudo eliminar la lección", description: message, variant: "destructive" })
     }
   }
 
@@ -310,12 +362,12 @@ export function useCourseManager() {
         body: JSON.stringify({ lessons: { [moduleId]: ids } }),
       })
       await loadDetail(detail.id)
+      toast({ title: successToastTitle("Orden actualizado") })
       return true
     } catch (err) {
-      setErrorLesson((prev) => ({
-        ...prev,
-        [moduleId]: err instanceof Error ? err.message : "Error al reordenar",
-      }))
+      const message = err instanceof Error ? err.message : "Error al reordenar"
+      setErrorLesson((prev) => ({ ...prev, [moduleId]: message }))
+      toast({ title: "No se pudo reordenar", description: message, variant: "destructive" })
       return false
     }
   }
@@ -331,6 +383,10 @@ export function useCourseManager() {
     errorCourse,
     errorModule,
     errorLesson,
+    clearError,
+    clearErrorCourse,
+    clearErrorModule,
+    clearErrorLesson: clearErrorLessonAll,
     selectedId,
     detail,
     newTitle,

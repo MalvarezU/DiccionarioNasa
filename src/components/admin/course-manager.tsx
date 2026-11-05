@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import { Plus, Trash2, Pencil, Save, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye } from "lucide-react"
+import { Plus, Trash2, Pencil, Save, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -76,6 +76,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     errorCourse,
     errorModule,
     errorLesson,
+    clearError,
     selectedId,
     detail,
     newTitle,
@@ -237,7 +238,21 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               <Plus className="h-4 w-4" />
             </Button>
           </form>
-          {errorCourse && <p role="alert" className="text-sm text-destructive shrink-0">{errorCourse}</p>}
+          {errorCourse && (
+            <div className="flex items-start gap-2 shrink-0" role="alert">
+              <p className="flex-1 text-sm text-destructive">{errorCourse}</p>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 shrink-0"
+                aria-label="Descartar error"
+                onClick={clearError}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
           {loading ? (
             <div aria-busy="true" aria-label="Cargando cursos">
               <CourseManagerListSkeleton />
@@ -386,7 +401,21 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                     {stats.completadas === 1 ? "" : "s"} en total
                   </p>
                 ) : null}
-                {errorCourse && <p role="alert" className="text-sm text-destructive">{errorCourse}</p>}
+                {errorCourse && (
+                  <div role="alert" className="flex items-start gap-2">
+                    <p className="flex-1 text-sm text-destructive">{errorCourse}</p>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 shrink-0"
+                      aria-label="Descartar error"
+                      onClick={clearError}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <Separator />
@@ -407,7 +436,21 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                     {savingModule ? "Añadiendo..." : "Añadir"}
                   </Button>
                 </form>
-                {errorModule && <p role="alert" className="text-sm text-destructive">{errorModule}</p>}
+                {errorModule && (
+                  <div role="alert" className="flex items-start gap-2">
+                    <p className="flex-1 text-sm text-destructive">{errorModule}</p>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 shrink-0"
+                      aria-label="Descartar error"
+                      onClick={clearError}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
 
                 {(detail.modules ?? []).map((mod, modIdx, modArr) => (
                   <div key={mod.id} className="rounded-xl border border-outline-variant/30 p-3 space-y-2">
@@ -530,7 +573,21 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                           {savingLesson[mod.id] ? "Añadiendo..." : "Añadir lección"}
                         </Button>
                       </form>
-                      {errorLesson[mod.id] && <p role="alert" className="text-sm text-destructive">{errorLesson[mod.id]}</p>}
+                      {errorLesson[mod.id] && (
+                        <div role="alert" className="flex items-start gap-2">
+                          <p className="flex-1 text-sm text-destructive">{errorLesson[mod.id]}</p>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 shrink-0"
+                            aria-label="Descartar error"
+                            onClick={clearError}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
