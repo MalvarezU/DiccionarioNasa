@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye } from "lucide-react"
+import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   AlertDialog,
@@ -73,6 +73,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     loading,
     refreshing,
     error,
+    clearError,
     selectedId,
     detail,
     isDirty,
@@ -233,7 +234,21 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               <Plus className="h-4 w-4" />
             </Button>
           </form>
-          {error && !detail ? <p className="text-sm text-destructive shrink-0">{error}</p> : null}
+          {error && !detail ? (
+            <div className="flex items-start gap-2 shrink-0">
+              <p className="flex-1 text-sm text-destructive">{error}</p>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 shrink-0"
+                aria-label="Descartar error"
+                onClick={clearError}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : null}
           {loading ? (
             <div aria-busy="true" aria-label="Cargando cursos">
               <CourseManagerListSkeleton />
@@ -346,9 +361,19 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                   )}
                 </div>
                 {error ? (
-                  <p role="alert" className="text-sm text-destructive">
-                    {error}
-                  </p>
+                  <div role="alert" className="flex items-start gap-2">
+                    <p className="flex-1 text-sm text-destructive">{error}</p>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 shrink-0"
+                      aria-label="Descartar error"
+                      onClick={clearError}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 ) : null}
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleSaveCourse} className="gap-1.5">

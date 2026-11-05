@@ -18,6 +18,20 @@ vi.mock("@/hooks/use-toast", () => ({
 
 import { CourseManager } from "./course-manager"
 
+// jsdom no implementa pointer capture: Radix Select lo exige al abrir el
+// menú (solo entorno de test, sin efecto en producción).
+if (typeof Element !== "undefined") {
+  const proto = Element.prototype as unknown as Record<string, unknown>
+  if (typeof proto.hasPointerCapture !== "function") {
+    proto.hasPointerCapture = () => false
+    proto.setPointerCapture = () => {}
+    proto.releasePointerCapture = () => {}
+  }
+  if (typeof proto.scrollIntoView !== "function") {
+    proto.scrollIntoView = () => {}
+  }
+}
+
 const COURSES = [
   { id: "c1", title: "Básico", description: "d", status: "PUBLISHED", modules: 2, lessons: 4 },
   { id: "c2", title: "Intermedio", description: null, status: "DRAFT", modules: 0, lessons: 0 },
@@ -423,5 +437,184 @@ describe("CourseManager anti-race y loading [CU-1]", () => {
     await waitFor(() =>
       expect(screen.queryByRole("status", { name: "Actualizando cursos" })).toBeNull()
     )
+  })
+})
+
+describe("CourseManager feedback [CU-2]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+  })
+
+  function toastTitleText(callIndex = 0) {
+    const { title } = toastMock.mock.calls[callIndex][0] as { title: ReactNode }
+    const { container } = render(<>{title}</>)
+    return container
+  }
+
+  it("alta de módulo muestra toast con icono", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.type(screen.getByLabelText("Título del nuevo módulo"), "M2")
+    await user.click(screen.getByRole("button", { name: /^Añadir$/ }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Módulo añadido")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("alta de lección muestra toast con icono", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.type(screen.getByLabelText(/Título de nueva lección/), "L2")
+    await user.click(screen.getByRole("button", { name: "Añadir lección" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Lección añadida")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("baja de módulo muestra toast con icono", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.click(await screen.findByRole("button", { name: "Eliminar M1" }))
+
+    const dialogo = await screen.findByRole("alertdialog")
+    await user.click(within(dialogo).getByRole("button", { name: "Eliminar" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Módulo eliminado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("baja de curso muestra toast con icono", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.click(await screen.findByRole("button", { name: "Eliminar" }))
+
+    const dialogo = await screen.findByRole("alertdialog")
+    await user.click(within(dialogo).getByRole("button", { name: "Eliminar" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Curso eliminado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("reorden de módulos muestra toast con icono", async () => {
+    const base = vi.fn(async (input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? "GET"
+      if (method !== "GET") return Response.json({ ok: true, success: true })
+      if (url.startsWith("/api/courses?")) return Response.json({ courses: COURSES })
+      if (url === "/api/courses/c1")
+        return Response.json({
+          course: {
+            ...DETAIL_C1,
+            modules: [
+              { id: "m1", title: "M1", order: 0, lessons: [] },
+              { id: "m2", title: "M2", order: 1, lessons: [] },
+            ],
+          },
+        })
+      return Response.json({})
+    })
+    global.fetch = base as unknown as typeof fetch
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await screen.findByText("M2")
+    await user.click(screen.getByRole("button", { name: "Bajar M1" }))
+
+    await waitFor(() =>
+      expect(base).toHaveBeenCalledWith(
+        "/api/courses/c1/reorder",
+        expect.objectContaining({ method: "POST" })
+      )
+    )
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Orden actualizado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("solo cambio de estado usa toast de transición", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+    await screen.findByDisplayValue("Básico")
+
+    await user.click(screen.getByRole("combobox", { name: "Estado del curso" }))
+    await user.click(await screen.findByRole("option", { name: "Archivado" }))
+    await user.click(screen.getByRole("button", { name: "Guardar curso" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent('Estado cambiado a "Archivado"')
+    expect(container).not.toHaveTextContent("Curso guardado")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("contenido + estado usa el toast de guardado normal", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+    await screen.findByDisplayValue("Básico")
+
+    await user.clear(screen.getByLabelText("Título"))
+    await user.type(screen.getByLabelText("Título"), "Básico editado")
+    await user.click(screen.getByRole("combobox", { name: "Estado del curso" }))
+    await user.click(await screen.findByRole("option", { name: "Archivado" }))
+    await user.click(screen.getByRole("button", { name: "Guardar curso" }))
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
+    const container = toastTitleText()
+    expect(container).toHaveTextContent("Curso guardado")
+  })
+
+  it("error de operación: toast destructive y el inline se descarta", async () => {
+    mockBase()
+    const base = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation((input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? "GET"
+      if (method === "POST" && url === "/api/modules")
+        return Promise.resolve(Response.json({ message: "No se pudo" }, { status: 500 }))
+      return base(input as string, init)
+    })
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await user.click(await screen.findByRole("button", { name: /Básico/ }))
+    await user.type(screen.getByLabelText("Título del nuevo módulo"), "M-rota")
+    await user.click(screen.getByRole("button", { name: /^Añadir$/ }))
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive" })
+      )
+    )
+    const alerta = await screen.findByRole("alert")
+    expect(alerta).toHaveTextContent("No se pudo")
+
+    await user.click(screen.getByRole("button", { name: "Descartar error" }))
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull())
   })
 })
