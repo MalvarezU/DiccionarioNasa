@@ -5,13 +5,8 @@ import Link from "next/link"
 import {
   AlertTriangle,
   ArrowRight,
-  AudioLines,
-  BookOpen,
   CheckCircle2,
-  GraduationCap,
-  Images,
   RefreshCw,
-  Users,
 } from "lucide-react"
 import { AdminDashboardSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
@@ -23,11 +18,11 @@ import { DashboardActivity } from "./dashboard-activity"
 import { formatNumber } from "@/lib/admin-utils"
 
 /**
- * Resumen del panel: secciones con accesos, pendientes operativos,
- * métricas y actividad reciente.
+ * Resumen del panel: pendientes operativos, métricas y actividad reciente.
  *
  * La gestión de fichas vive en /admin/palabras y la de usuarios en
- * /admin/usuarios; este componente solo enlaza hacia esas secciones.
+ * /admin/usuarios; la navegación a esas vistas vive en el sidebar
+ * persistente, no aquí.
  */
 export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
   const {
@@ -63,90 +58,6 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
     )
   }
 
-  const sectionTones = {
-    primary: {
-      link: "hover:border-primary/40 hover:bg-primary/5",
-      tile: "bg-primary/10 border-primary/20",
-      icon: "text-primary",
-      title: "group-hover:text-primary",
-      arrow: "group-hover:text-primary",
-    },
-    secondary: {
-      link: "hover:border-secondary/40 hover:bg-secondary/5",
-      tile: "bg-secondary/10 border-secondary/20",
-      icon: "text-secondary",
-      title: "group-hover:text-secondary",
-      arrow: "group-hover:text-secondary",
-    },
-    tertiary: {
-      link: "hover:border-tertiary/40 hover:bg-tertiary/5",
-      tile: "bg-tertiary/10 border-tertiary/20",
-      icon: "text-tertiary",
-      title: "group-hover:text-tertiary",
-      arrow: "group-hover:text-tertiary",
-    },
-    outline: {
-      link: "hover:border-outline-variant/60 hover:bg-muted/60",
-      tile: "bg-muted/40 border-outline-variant/30",
-      icon: "text-muted-foreground",
-      title: "group-hover:text-foreground",
-      arrow: "group-hover:text-muted-foreground",
-    },
-  } as const
-
-  type SectionTone = keyof typeof sectionTones
-
-  const secciones: Array<{
-    titulo: string
-    desc: string
-    href: string
-    Icon: typeof BookOpen
-    conteo?: string
-    tone: SectionTone
-  }> = [
-    {
-      titulo: "Palabras",
-      desc: "Fichas del diccionario",
-      href: "/admin/palabras",
-      Icon: BookOpen,
-      conteo: `${formatNumber(stats.totalWords)} fichas`,
-      tone: "primary",
-    },
-    {
-      titulo: "Gestión de cursos",
-      desc: "Módulos y lecciones",
-      href: "/admin/cursos",
-      Icon: GraduationCap,
-      tone: "secondary",
-    },
-    {
-      titulo: "Ilustraciones",
-      desc: "Banco de imágenes",
-      href: "/admin/ilustraciones",
-      Icon: Images,
-      tone: "tertiary",
-    },
-    {
-      titulo: "Audios",
-      desc: "Grabaciones por palabra",
-      href: "/admin/audios",
-      Icon: AudioLines,
-      tone: "primary",
-    },
-    ...(isAdmin
-      ? [
-          {
-            titulo: "Usuarios",
-            desc: "Roles y accesos",
-            href: "/admin/usuarios",
-            Icon: Users,
-            conteo: `${formatNumber(stats.totalUsers)} usuarios`,
-            tone: "outline" as const,
-          },
-        ]
-      : []),
-  ]
-
   const pendientes: Array<{ texto: string; href: string }> = []
   if (stats.draftCount > 0) {
     pendientes.push({
@@ -180,31 +91,6 @@ export function AdminDashboard({ isAdmin = true }: { isAdmin?: boolean }) {
           </span>
         )}
       </div>
-
-      <nav aria-label="Secciones del panel" className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {secciones.map((s) => {
-          const tone = sectionTones[s.tone]
-          return (
-          <Link
-            key={s.href}
-            href={s.href}
-            className={`group rounded-lg border border-outline-variant/20 bg-card p-4 transition-colors ${tone.link}`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl border shrink-0 ${tone.tile}`}>
-                <s.Icon className={`h-5 w-5 ${tone.icon}`} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className={`text-sm font-semibold ${tone.title}`}>{s.titulo}</p>
-                <p className="text-xs text-muted-foreground truncate">{s.desc}</p>
-                {s.conteo && <p className="text-2xs tabular-nums text-muted-foreground mt-0.5">{s.conteo}</p>}
-              </div>
-              <ArrowRight className={`h-4 w-4 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 ${tone.arrow}`} />
-            </div>
-          </Link>
-          )
-        })}
-      </nav>
 
       {pendientes.length > 0 ? (
       <Card className="mb-6 rounded-2xl border border-outline-variant/30">
