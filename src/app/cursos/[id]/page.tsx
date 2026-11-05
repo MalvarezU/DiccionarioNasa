@@ -314,11 +314,9 @@ export default function CursoDetailPage({
             ¿Listo para poner a prueba lo que aprendiste? Visita los juegos
             didácticos para practicar.
           </p>
-          <Link href="/juegos">
-            <Button variant="outline" className="gap-2">
-              Ir a los juegos
-            </Button>
-          </Link>
+          <Button asChild variant="outline" className="gap-2">
+            <Link href="/juegos">Ir a los juegos</Link>
+          </Button>
         </div>
 
         {!isAuthed && (
