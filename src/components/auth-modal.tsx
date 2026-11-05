@@ -26,6 +26,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -34,6 +35,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     setPassword("");
     setConfirmPassword("");
     setName("");
+    setAcceptedTerms(false);
     setIsLoading(false);
   };
 
@@ -92,12 +94,27 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       return;
     }
 
+    if (!acceptedTerms) {
+      toast({
+        title: "Aceptación requerida",
+        description: "Debes aceptar los Términos y Condiciones y la Política de Privacidad",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name: name || undefined }),
+        body: JSON.stringify({
+          email,
+          password,
+          name: name || undefined,
+          acceptedTerms: true,
+          acceptedPrivacy: true,
+        }),
       });
 
       const data = await response.json();
@@ -229,6 +246,29 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                 <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
               )}
             </div>
+          )}
+
+          {mode === "register" && (
+            <label className="flex items-start gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0"
+                disabled={isLoading}
+              />
+              <span>
+                Acepto los{" "}
+                <a href="/terminos" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                  Términos y Condiciones
+                </a>{" "}
+                y la{" "}
+                <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                  Política de Privacidad
+                </a>
+                .
+              </span>
+            </label>
           )}
 
           <div className="flex flex-col gap-2">

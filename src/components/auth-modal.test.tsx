@@ -142,12 +142,13 @@ describe("AuthModal", () => {
       await user.type(screen.getByPlaceholderText(emailPlaceholder), "test@test.com")
       await user.type(screen.getByPlaceholderText(regPasswordPlaceholder), "password123")
       await user.type(screen.getByPlaceholderText(confirmPlaceholder), "password123")
+      await user.click(screen.getByRole("checkbox"))
       await user.click(screen.getByRole("button", { name: /crear cuenta/i }))
 
       expect(fetch).toHaveBeenCalledWith("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "test@test.com", password: "password123", name: "Test User" }),
+        body: JSON.stringify({ email: "test@test.com", password: "password123", name: "Test User", acceptedTerms: true, acceptedPrivacy: true }),
       })
 
       expect(signIn).toHaveBeenCalledWith("credentials", {
@@ -174,6 +175,7 @@ describe("AuthModal", () => {
       await user.type(screen.getByPlaceholderText(emailPlaceholder), "test@test.com")
       await user.type(screen.getByPlaceholderText(regPasswordPlaceholder), "password123")
       await user.type(screen.getByPlaceholderText(confirmPlaceholder), "password123")
+      await user.click(screen.getByRole("checkbox"))
       await user.click(screen.getByRole("button", { name: /crear cuenta/i }))
 
       expect(signIn).not.toHaveBeenCalled()
@@ -211,6 +213,7 @@ describe("AuthModal", () => {
       await user.type(screen.getByPlaceholderText(emailPlaceholder), "existing@test.com")
       await user.type(screen.getByPlaceholderText(regPasswordPlaceholder), "password123")
       await user.type(screen.getByPlaceholderText(confirmPlaceholder), "password123")
+      await user.click(screen.getByRole("checkbox"))
       await user.click(screen.getByRole("button", { name: /crear cuenta/i }))
 
       expect(toast).toHaveBeenCalledWith(

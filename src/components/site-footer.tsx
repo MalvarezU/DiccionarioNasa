@@ -77,6 +77,14 @@ export function SiteFooter() {
 
         {/* Bottom bar */}
         <div className="mt-8 pt-6 border-t border-[#F6EEDC]/15">
+          <nav className="mb-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-2xs text-[#F6EEDC]/70">
+            <Link href="/terminos" className="hover:text-[#F6EEDC] transition-colors">
+              Términos y Condiciones
+            </Link>
+            <Link href="/privacidad" className="hover:text-[#F6EEDC] transition-colors">
+              Política de Privacidad
+            </Link>
+          </nav>
           <p
             className="text-center text-2xs text-[#F6EEDC]/60"
             suppressHydrationWarning
