@@ -19,39 +19,62 @@ vi.mock("next/navigation", () => ({
   }),
 }))
 
-const COURSE = {
-  id: "c1",
+const MANIFEST = {
+  courseId: "c1",
   title: "Básico",
   description: "d",
-  status: "PUBLISHED",
   sequential: true,
   modules: [
     {
       id: "m1",
       title: "M1",
+      order: 0,
       lessons: [
-        {
-          id: "l1",
-          title: "L1",
-          lessonNumber: 1,
-          content: { version: 2, blocks: [{ id: "b1", type: "text", html: "Hola" }] },
-        },
-        {
-          id: "l2",
-          title: "L2",
-          lessonNumber: 2,
-          content: { version: 2, blocks: [{ id: "b2", type: "text", html: "Mundo" }] },
-        },
+        { id: "l1", title: "L1", lessonNumber: 1, interactiveCount: 0 },
+        { id: "l2", title: "L2", lessonNumber: 2, interactiveCount: 0 },
       ],
     },
     {
       id: "m2",
       title: "M2",
-      lessons: [
-        { id: "l3", title: "L3", lessonNumber: 1, content: { version: 2, blocks: [{ id: "b3", type: "text", html: "Tres" }] } },
-      ],
+      order: 1,
+      lessons: [{ id: "l3", title: "L3", lessonNumber: 1, interactiveCount: 0 }],
     },
   ],
+}
+
+const LESSON_CONTENT: Record<string, { html: string; moduleId: string }> = {
+  l1: { html: "Hola", moduleId: "m1" },
+  l2: { html: "Mundo", moduleId: "m1" },
+  l3: { html: "Tres", moduleId: "m2" },
+}
+
+const FLAT = ["l1", "l2", "l3"]
+
+function lessonPayload(id: string) {
+  const idx = FLAT.indexOf(id)
+  const meta = LESSON_CONTENT[id]!
+  const title = MANIFEST.modules.flatMap((m) => m.lessons).find((l) => l.id === id)!
+  return {
+    lesson: {
+      id,
+      title: title.title,
+      lessonNumber: title.lessonNumber,
+      content: { version: 2, blocks: [{ id: `b-${id}`, type: "text", html: meta.html }] },
+      moduleId: meta.moduleId,
+    },
+    words: [],
+    nav: {
+      prevId: idx > 0 ? FLAT[idx - 1] : null,
+      prevTitle: idx > 0 ? `L${idx}` : null,
+      prevNumber: idx > 0 ? idx : null,
+      nextId: idx < FLAT.length - 1 ? FLAT[idx + 1] : null,
+      nextTitle: idx < FLAT.length - 1 ? `L${idx + 2}` : null,
+      nextNumber: idx < FLAT.length - 1 ? idx + 2 : null,
+      moduleTitle: meta.moduleId === "m1" ? "M1" : "M2",
+      moduleIndex: meta.moduleId === "m1" ? 1 : 2,
+    },
+  }
 }
 
 describe("/cursos/[id] player", () => {
@@ -62,7 +85,14 @@ describe("/cursos/[id] player", () => {
   })
 
   function mockCourse() {
-    vi.mocked(fetch).mockResolvedValue(Response.json({ course: COURSE }) as never)
+    // F3: el player pide el manifest ligero + cada lección on-demand.
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes("/manifest")) return Response.json(MANIFEST) as never
+      const m = u.match(/\/lessons\/([^/?]+)/)
+      if (m) return Response.json(lessonPayload(m[1])) as never
+      return Response.json({ completedIds: [], lastVisitedLessonId: null, pct: 0 }) as never
+    })
   }
 
   it("bloquea el módulo 2 hasta completar el 1 (secuencial)", async () => {
@@ -100,10 +130,8 @@ describe("/cursos/[id] player", () => {
       status: "authenticated",
       update: vi.fn(),
     })
-    // Primera llamada: el curso; siguientes: progreso (visita, lote, completado)
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(Response.json({ course: COURSE }) as never)
-      .mockResolvedValue(Response.json({ progress: { id: "p1" } }) as never)
+    // Manifest + lección activa + progreso (visita, completado): por URL.
+    mockCourse()
     const user = userEvent.setup()
     render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
 

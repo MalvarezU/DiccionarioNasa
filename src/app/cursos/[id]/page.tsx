@@ -16,13 +16,12 @@ import { CourseOutline } from "@/components/cursos/player/course-outline"
 import { LessonCanvas } from "@/components/cursos/player/lesson-canvas"
 import { PlayerShell } from "@/components/cursos/player/player-shell"
 import { useLessonNavigation } from "@/components/cursos/player/use-lesson-navigation"
-import type { PlayerCourse } from "@/components/cursos/player/types"
 import {
-  fetchWordsByIds,
-  wordIdsUsedByContent,
-  type CourseWordData,
-} from "@/lib/courses/word-data"
-import { parseLessonContent } from "@/lib/courses/blocks"
+  useLessonLoader,
+  type LoadedLesson,
+} from "@/components/cursos/player/use-lesson-loader"
+import type { PlayerCourse } from "@/components/cursos/player/types"
+import type { CourseWordData } from "@/lib/courses/word-data"
 
 interface CourseDetail extends PlayerCourse {
   status: string
@@ -46,6 +45,28 @@ function loadAnon(courseId: string): string[] {
   } catch {
     return []
   }
+}
+
+interface ManifestLesson {
+  id: string
+  lessonNumber: number | null
+  title: string
+  interactiveCount: number
+}
+
+interface ManifestModule {
+  id: string
+  title: string
+  order: number
+  lessons: ManifestLesson[]
+}
+
+interface ManifestResponse {
+  courseId: string
+  title: string
+  description: string | null
+  sequential: boolean
+  modules: ManifestModule[]
 }
 
 export default function CursoDetailPage({
@@ -73,14 +94,19 @@ export default function CursoDetailPage({
   const [reloadKey, setReloadKey] = useState(0)
   const [completedLessons, setCompletedLessons] = useState<string[]>([])
   const [lastVisited, setLastVisited] = useState<string | null>(null)
-  /** Datos de las palabras referenciadas por los bloques de todas las lecciones. */
-  const [words, setWords] = useState<Map<string, CourseWordData>>(() => new Map())
 
-  // Curso + lote de palabras (una sola pasada sobre todas las lecciones).
+  // Lección activa on-demand (contenido + palabras del endpoint de lección).
+  // El loader es dueño de la cache; acá solo queda el registro de lo que
+  // la red trajo o falló para este id. Derivación durante el render:
+  // cache > red > error > cargando (sin setState sincrónico en efectos).
+  const [records, setRecords] = useState<Record<string, { data?: LoadedLesson; error?: boolean }>>({})
+  const { load, prefetch, getCached } = useLessonLoader(id ?? "")
+
+  // Manifest ligero: outline + navegación sin el contenido de las lecciones.
   useEffect(() => {
     if (!id) return
     let alive = true
-    fetch(`/api/courses/${id}`)
+    fetch(`/api/courses/${id}/manifest`)
       .then((res) => {
         if (res.status === 404) {
           if (alive) setNotFoundFlag(true)
@@ -90,29 +116,29 @@ export default function CursoDetailPage({
           if (alive) setLoadError(true)
           return null
         }
-        return res.json()
+        return res.json() as Promise<ManifestResponse>
       })
       .then((data) => {
-        if (!alive || !data?.course) return
-        setCourse(data.course as CourseDetail)
-
-        // Los bloques de las lecciones referencian palabras por id
-        // (vocabulary / game): las traigo en un solo lote. El documento se
-        // valida antes de leerlo: corrupto en la base => sin lote.
-        const ids: string[] = []
-        for (const mod of data.course.modules ?? []) {
-          for (const les of mod.lessons ?? []) {
-            const parse = parseLessonContent((les as { content?: unknown }).content)
-            if (parse.ok) ids.push(...wordIdsUsedByContent(parse.content.blocks))
-          }
-        }
-        fetchWordsByIds(ids)
-          .then((m) => {
-            if (alive) setWords(m)
-          })
-          .catch(() => {
-            // Sin palabras: los bloques muestran su fallback, la lección sigue
-          })
+        if (!alive || !data) return
+        setCourse({
+          id: data.courseId,
+          title: data.title,
+          description: data.description,
+          sequential: data.sequential,
+          status: "PUBLISHED",
+          // Las lecciones del manifest no traen contenido: el canvas usa la
+          // lección del loader. Acá van solo id/título/número para el índice.
+          modules: data.modules.map((m) => ({
+            id: m.id,
+            title: m.title,
+            lessons: m.lessons.map((l) => ({
+              id: l.id,
+              title: l.title,
+              lessonNumber: l.lessonNumber,
+              content: null,
+            })),
+          })),
+        })
       })
       .catch(() => {
         if (alive) setLoadError(true)
@@ -212,6 +238,64 @@ export default function CursoDetailPage({
     handleSelectLesson(lastVisited)
   }, [lastVisited, handleSelectLesson])
 
+  // Carga on-demand de la lección activa: cache primero (sin flash), red si
+  // falta. Solo sets asíncronos en el then; el fallo se reintenta borrando
+  // el registro de error (el loader ya limpió el vuelo fallido).
+  const activeLessonId = nav.activeLessonId
+  const cachedActive = activeLessonId ? getCached(activeLessonId) : undefined
+  const recordActive = activeLessonId ? records[activeLessonId] : undefined
+  const lessonData = cachedActive ?? recordActive?.data ?? null
+  const lessonError = !lessonData && recordActive?.error === true
+  const lessonLoading = !!activeLessonId && !lessonData && !lessonError
+
+  useEffect(() => {
+    if (!activeLessonId || getCached(activeLessonId) || records[activeLessonId]) return
+    let alive = true
+    load(activeLessonId).then(
+      (loaded) => {
+        if (!alive) return
+        setRecords((prev) => ({ ...prev, [activeLessonId]: { data: loaded } }))
+      },
+      () => {
+        if (!alive) return
+        setRecords((prev) => ({ ...prev, [activeLessonId]: { error: true } }))
+      }
+    )
+    return () => {
+      alive = false
+    }
+  }, [activeLessonId, getCached, load, records])
+
+  const handleLessonRetry = useCallback(() => {
+    if (!activeLessonId) return
+    setRecords((prev) => {
+      if (!prev[activeLessonId]) return prev
+      const next = { ...prev }
+      delete next[activeLessonId]
+      return next
+    })
+  }, [activeLessonId])
+
+  // Prefetch de la próxima lección 800ms después de activar una.
+  // setTimeout fijo en vez de requestIdleCallback: rIC no existe en Safari y
+  // puede no disparar nunca con el main thread ocupado; el timeout es
+  // determinista, testeable en jsdom y se limpia al cambiar de lección.
+  useEffect(() => {
+    if (!activeLessonId || !nav.next) return
+    const nextId = nav.next.id
+    const t = setTimeout(() => prefetch(nextId), 800)
+    return () => clearTimeout(t)
+  }, [activeLessonId, nav.next, prefetch])
+
+  // Prefetch en hover/focus, solo de la próxima lección (bundle-preload:
+  // calienta la navegación más probable sin quemar datos del resto).
+  const handleHoverLesson = useCallback(
+    (lessonId: string) => {
+      if (nav.next && lessonId === nav.next.id) prefetch(lessonId)
+    },
+    [prefetch, nav.next]
+  )
+
   if (notFoundFlag) notFound()
 
   const totalLessons = course
@@ -222,21 +306,28 @@ export default function CursoDetailPage({
 
   // Búsqueda lineal O(lecciones): derivación barata, sin memo (el compiler
   // es dueño de la memoización acá).
-  const activeLessonId = nav.activeLessonId
   let active: {
     module: PlayerCourse["modules"][number]
     moduleIndex: number
-    lesson: PlayerCourse["modules"][number]["lessons"][number]
   } | null = null
   if (course && activeLessonId) {
     for (let mi = 0; mi < course.modules.length; mi++) {
-      const lesson = course.modules[mi].lessons.find((l) => l.id === activeLessonId)
-      if (lesson) {
-        active = { module: course.modules[mi], moduleIndex: mi + 1, lesson }
+      if (course.modules[mi].lessons.some((l) => l.id === activeLessonId)) {
+        active = { module: course.modules[mi], moduleIndex: mi + 1 }
         break
       }
     }
   }
+
+  // La lección del loader trae el contenido real; el manifest solo sabe
+  // id/título/número. Fallback al título del manifest si el loader aún no
+  // resolvió (el canvas muestra skeleton en ese caso, nunca contenido vacío).
+  const canvasLesson = lessonData?.lesson ?? null
+  const words = useMemo(() => {
+    const map = new Map<string, CourseWordData>()
+    for (const w of lessonData?.words ?? []) map.set(w.id, w)
+    return map
+  }, [lessonData])
 
   const header = course ? (
     <div className="mb-8 space-y-3">
@@ -372,25 +463,51 @@ export default function CursoDetailPage({
                 completedIds={completedSet}
                 lastVisitedLessonId={lastVisited}
                 onSelect={handleSelectLesson}
+                onHoverLesson={handleHoverLesson}
               />
             }
             canvas={
-              active ? (
-                <LessonCanvas
-                  lesson={active.lesson}
-                  moduleTitle={active.module.title}
-                  moduleIndex={active.moduleIndex}
-                  words={words}
-                  prev={nav.prev}
-                  next={nav.next}
-                  completed={completedSet.has(active.lesson.id)}
-                  locked={!nav.canAccess(active.lesson.id)}
-                  requiredLesson={nav.requiredLessonFor(active.lesson.id)}
-                  anonymous={!isAuthed}
-                  onComplete={handleLessonComplete}
-                  onNavigate={handleSelectLesson}
-                  onGoRequired={handleSelectLesson}
-                />
+              active && activeLessonId ? (
+                lessonError || (!lessonLoading && !canvasLesson) ? (
+                  <div className="mx-auto max-w-md space-y-3 rounded-xl border border-outline-variant/30 bg-card p-6 text-center">
+                    <p className="font-medium">No se pudo cargar la lección.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Revisá tu conexión e intentá de nuevo.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={handleLessonRetry}
+                      className="gap-2"
+                    >
+                      Reintentar
+                    </Button>
+                  </div>
+                ) : lessonLoading || !canvasLesson ? (
+                  <div
+                    aria-label="Cargando lección"
+                    className="min-h-[max(420px,60dvh)] animate-pulse space-y-4"
+                  >
+                    <div className="h-4 w-40 rounded bg-muted" />
+                    <div className="h-8 w-3/4 rounded bg-muted" />
+                    <div className="h-32 rounded-xl bg-muted" />
+                  </div>
+                ) : (
+                  <LessonCanvas
+                    lesson={canvasLesson}
+                    moduleTitle={active.module.title}
+                    moduleIndex={active.moduleIndex}
+                    words={words}
+                    prev={nav.prev}
+                    next={nav.next}
+                    completed={completedSet.has(canvasLesson.id)}
+                    locked={!nav.canAccess(canvasLesson.id)}
+                    requiredLesson={nav.requiredLessonFor(canvasLesson.id)}
+                    anonymous={!isAuthed}
+                    onComplete={handleLessonComplete}
+                    onNavigate={handleSelectLesson}
+                    onGoRequired={handleSelectLesson}
+                  />
+                )
               ) : (
                 <div aria-hidden="true" className="min-h-[max(420px,60dvh)]" />
               )

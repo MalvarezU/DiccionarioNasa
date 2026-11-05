@@ -12,6 +12,11 @@ export interface CourseOutlineProps {
   completedIds: Set<string>
   lastVisitedLessonId: string | null
   onSelect: (lessonId: string) => void
+  /**
+   * El player lo usa para prefetch on-demand (hover/focus calienta la
+   * cache de la lección). Opcional: el outline funciona igual sin él.
+   */
+  onHoverLesson?: (lessonId: string) => void
 }
 
 type LessonState = "done" | "current" | "locked" | "todo"
@@ -27,6 +32,7 @@ export function CourseOutline({
   completedIds,
   lastVisitedLessonId,
   onSelect,
+  onHoverLesson,
 }: CourseOutlineProps) {
   const totalLessons = course.modules.reduce((n, m) => n + m.lessons.length, 0)
   const doneTotal = course.modules.reduce(
@@ -147,7 +153,11 @@ export function CourseOutline({
                         }}
                         type="button"
                         tabIndex={roveId === lesson.id ? 0 : -1}
-                        onFocus={() => setFocusId(lesson.id)}
+                        onFocus={() => {
+                          setFocusId(lesson.id)
+                          onHoverLesson?.(lesson.id)
+                        }}
+                        onMouseEnter={() => onHoverLesson?.(lesson.id)}
                         onClick={() => onSelect(lesson.id)}
                         aria-current={isCurrent ? "true" : undefined}
                         aria-disabled={locked ? "true" : undefined}
