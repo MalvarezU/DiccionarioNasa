@@ -121,6 +121,7 @@ export function useLessonEditor(
 
   const moveBlock = useCallback(
     (id: string, dir: -1 | 1) => {
+      let cambio = false
       setBlocks((prev) => {
         const i = prev.findIndex((b) => b.id === id)
         const destino = i + dir
@@ -128,9 +129,10 @@ export function useLessonEditor(
         const next = [...prev]
         const [bloque] = next.splice(i, 1)
         next.splice(destino, 0, bloque!)
+        cambio = true
         return next
       })
-      marcarCambio()
+      if (cambio) marcarCambio()
     },
     [marcarCambio]
   )
@@ -138,6 +140,7 @@ export function useLessonEditor(
   const reorder = useCallback(
     (activeId: string, overId: string) => {
       if (activeId === overId) return
+      let cambio = false
       setBlocks((prev) => {
         const from = prev.findIndex((b) => b.id === activeId)
         const to = prev.findIndex((b) => b.id === overId)
@@ -145,9 +148,10 @@ export function useLessonEditor(
         const next = [...prev]
         const [moved] = next.splice(from, 1)
         next.splice(to, 0, moved!)
+        cambio = true
         return next
       })
-      marcarCambio()
+      if (cambio) marcarCambio()
     },
     [marcarCambio]
   )
