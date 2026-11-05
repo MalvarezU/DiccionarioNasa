@@ -464,8 +464,8 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           </div>
         )}
 
-        {/* Online indicator */}
-        {isOnline && esGrande && (
+        {/* Online indicator — not rendered inside the hero panel frame */}
+        {isOnline && esGrande && !panelMode && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <Cloud
               className={`h-3.5 w-3.5 ${sobreOscuro ? "text-emerald-300" : "text-emerald-600"}`}
@@ -480,117 +480,151 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           </div>
         )}
 
-        {/* Dropdown with results */}
-        {showDropdown && (
+        {/* Results — panelMode owns a permanent fixed-height ivory frame
+            (idle hint and results swap inside it, so typing never moves the
+            layout: zero CLS). Other variants keep the original absolute
+            dropdown shown only on demand. */}
+        {(panelMode || showDropdown) && (
           <div
             className={
               panelMode
-                ? "mt-2 rounded-xl border border-white/20 bg-black/20 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
+                ? "mt-2 h-[48svh] lg:h-[420px] rounded-xl border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden"
                 : `absolute top-full left-0 right-0 z-50 rounded-lg border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200 ${
                     esGrande ? "mt-2 rounded-xl" : "mt-1"
                   }`
             }
           >
-            {/* Offline banner — context-aware for local DB readiness */}
-            {!isOnline && (
-              <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
-                <CloudOff className="h-3 w-3" />
-                {localDBReady
-                  ? "Sin conexión — mostrando resultados locales"
-                  : "Sin conexión — descarga el diccionario para buscar sin internet"}
-              </div>
-            )}
-
-            {/* HU1.1.7 — No results with suggest button */}
-            {hasNoResults ? (
-              <div className="px-4 py-6 text-center">
-                <p className="text-sm text-muted-foreground mb-1">
-                  No encontramos
+            {panelMode && !showDropdown ? (
+              <div className="flex h-full items-center justify-center px-6">
+                <p className="flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
+                  <Search className="h-5 w-5" aria-hidden="true" />
+                  Escribí al menos 2 letras para ver resultados
                 </p>
-                <p className="text-base font-semibold text-foreground mb-3">
-                  «{debouncedQuery}»
-                </p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  en el diccionario.
-                </p>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="gap-1.5 bg-primary hover:bg-[#22303D] transition-colors"
-                  disabled={!isOnline}
-                  onClick={() => {
-                    setSuggestOpen(true);
-                    setIsOpen(false);
-                  }}
-                >
-                  <Lightbulb className="h-4 w-4" />
-                  Sugerir esta palabra
-                </Button>
-                {!isOnline && (
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 justify-center">
-                    <WifiOff className="h-3 w-3" />
-                    Se necesita conexión para sugerir palabras
-                  </p>
-                )}
               </div>
             ) : (
-              <>
-              <ul
-                ref={listRef}
-                id="search-results-list"
-                className={panelMode ? "max-h-[50svh] lg:max-h-[40svh] overflow-y-auto py-1" : esGrande ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
-                role="listbox"
-                aria-label="Resultados de búsqueda"
+              <div
+                className={
+                  panelMode
+                    ? "flex h-full flex-col animate-in fade-in duration-200"
+                    : undefined
+                }
               >
-                {groups.map((group) => (
-                  <Fragment key={group.key}>
-                    <li
-                      role="presentation"
-                      className="flex items-center justify-between px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                    >
-                      <span>{group.label}</span>
-                      <span>{group.items.length}</span>
-                    </li>
-                    {group.items.map((result, i) => (
-                      <SearchResultRow
-                        key={result.id}
-                        result={result}
-                        index={group.start + i}
-                        highlighted={group.start + i === highlightedIndex}
-                        esGrande={esGrande}
-                        onSelect={handleSelect}
-                        onHighlight={handleHighlight}
-                        onPlayState={handlePlayState}
-                      />
-                    ))}
-                  </Fragment>
-                ))}
-              </ul>
-              {results.length > 0 && (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-outline-variant/20 px-3 py-2 text-xs text-muted-foreground">
-                  <span className="hidden items-center gap-1 sm:flex">
-                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↑</kbd>
-                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↓</kbd>
-                    <span>navegar</span>
-                    <span aria-hidden="true">·</span>
-                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↵</kbd>
-                    <span>abrir</span>
-                    <span aria-hidden="true">·</span>
-                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">esc</kbd>
-                    <span>cerrar</span>
-                  </span>
-                  <span className="ml-auto">
-                    {results.length} {results.length === 1 ? "resultado" : "resultados"}
-                  </span>
-                  <a
-                    href="/diccionario?tab=explore"
-                    className="font-medium text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+                {/* Offline banner — context-aware for local DB readiness */}
+                {!isOnline && (
+                  <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
+                    <CloudOff className="h-3 w-3" />
+                    {localDBReady
+                      ? "Sin conexión — mostrando resultados locales"
+                      : "Sin conexión — descarga el diccionario para buscar sin internet"}
+                  </div>
+                )}
+
+                {/* HU1.1.7 — No results with suggest button */}
+                {hasNoResults ? (
+                  <div
+                    className={
+                      panelMode
+                        ? "flex flex-1 flex-col items-center justify-center px-4 py-6 text-center"
+                        : "px-4 py-6 text-center"
+                    }
                   >
-                    Ver todas en Explorar A-Z →
-                  </a>
-                </div>
-              )}
-              </>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      No encontramos
+                    </p>
+                    <p className="text-base font-semibold text-foreground mb-3">
+                      «{debouncedQuery}»
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      en el diccionario.
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="gap-1.5 bg-primary hover:bg-[#22303D] transition-colors"
+                      disabled={!isOnline}
+                      onClick={() => {
+                        setSuggestOpen(true);
+                        setIsOpen(false);
+                      }}
+                    >
+                      <Lightbulb className="h-4 w-4" />
+                      Sugerir esta palabra
+                    </Button>
+                    {!isOnline && (
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 justify-center">
+                        <WifiOff className="h-3 w-3" />
+                        Se necesita conexión para sugerir palabras
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <ul
+                      ref={listRef}
+                      id="search-results-list"
+                      className={
+                        panelMode
+                          ? "max-h-full min-h-0 flex-1 overflow-y-auto py-1"
+                          : esGrande
+                            ? "max-h-[420px] overflow-y-auto py-1"
+                            : "max-h-80 overflow-y-auto py-1"
+                      }
+                      role="listbox"
+                      aria-label="Resultados de búsqueda"
+                    >
+                      {groups.map((group) => (
+                        <Fragment key={group.key}>
+                          <li
+                            role="presentation"
+                            className="flex items-center justify-between px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                          >
+                            <span>{group.label}</span>
+                            <span>{group.items.length}</span>
+                          </li>
+                          {group.items.map((result, i) => (
+                            <SearchResultRow
+                              key={result.id}
+                              result={result}
+                              index={group.start + i}
+                              highlighted={group.start + i === highlightedIndex}
+                              esGrande={esGrande}
+                              onSelect={handleSelect}
+                              onHighlight={handleHighlight}
+                              onPlayState={handlePlayState}
+                            />
+                          ))}
+                        </Fragment>
+                      ))}
+                    </ul>
+                    {results.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-outline-variant/20 px-3 py-2 text-xs text-muted-foreground">
+                        {!panelMode && (
+                          <span className="hidden items-center gap-1 sm:flex">
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↑</kbd>
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↓</kbd>
+                            <span>navegar</span>
+                            <span aria-hidden="true">·</span>
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↵</kbd>
+                            <span>abrir</span>
+                            <span aria-hidden="true">·</span>
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">esc</kbd>
+                            <span>cerrar</span>
+                          </span>
+                        )}
+                        <span className={panelMode ? undefined : "ml-auto"}>
+                          {results.length} {results.length === 1 ? "resultado" : "resultados"}
+                        </span>
+                        <a
+                          href="/diccionario?tab=explore"
+                          className={`font-medium text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
+                        >
+                          Ver todas en Explorar A-Z →
+                        </a>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
         )}

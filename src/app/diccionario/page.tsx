@@ -182,10 +182,11 @@ function DiccionarioContent() {
             tratamiento que el hero home; stops reforzados porque la foto
             es clara: muro blanco sobreexpuesto). data-hero: el header
             frosted mide este hero para mutar a sólido al salir de él.
-            min-h-svh + flex-col + my-auto en el wrapper: el panel queda
-            centrado en el primer viewport en desktop; en móvil el panel
-            va primero en el DOM junto al navbar. */}
-        <section data-hero className="relative isolate overflow-hidden bg-background pb-10 sm:pb-14 pt-20 sm:pt-24 min-h-svh flex flex-col">
+            min-h-svh + flex-col con el wrapper anclado arriba (items-start
+            en lg): el panel queda junto al navbar sin saltos al escribir
+            (marco de resultados fijo, cero CLS). En móvil el panel va
+            primero en el DOM junto al navbar. */}
+        <section data-hero className="relative isolate overflow-hidden bg-background pb-10 sm:pb-14 pt-16 sm:pt-20 min-h-svh flex flex-col">
           <Image
             src="/banner2.jpg"
             alt=""
@@ -204,8 +205,8 @@ function DiccionarioContent() {
             }}
             aria-hidden="true"
           />
-          <div className="relative mx-auto my-auto w-full max-w-7xl px-4 sm:px-6 z-20">
-            <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-12">
+          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 z-20">
+            <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-start lg:gap-12">
               {/* Panel de búsqueda PRIMERO en el DOM: en móvil aparece junto
                   al navbar; en lg se reordena a la derecha (order). */}
               <div className="order-1 mx-auto w-full max-w-xl rounded-2xl border border-white/25 bg-black/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
