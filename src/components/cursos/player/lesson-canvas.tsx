@@ -93,7 +93,7 @@ export function LessonCanvas({
             ref={titleRef}
             id={`leccion-titulo-${lesson.id}`}
             tabIndex={-1}
-            className="min-w-0 flex-1 text-balance font-serif text-2xl font-bold text-primary focus:outline-none sm:text-3xl"
+            className="min-w-0 flex-1 text-balance font-serif text-2xl font-bold text-primary line-clamp-2 focus:outline-none sm:text-3xl"
           >
             {lesson.title}
           </h2>
@@ -131,7 +131,7 @@ export function LessonCanvas({
                 <Button
                   type="button"
                   onClick={() => onGoRequired(requiredLesson.id)}
-                  className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="min-h-[44px] gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   Ir a la lección requerida
                   {requiredLesson.number !== null && (
@@ -166,7 +166,7 @@ export function LessonCanvas({
               type="button"
               onClick={() => onNavigate(prev.id)}
               disabled={prev.locked}
-              className="min-w-0 flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="min-h-[44px] min-w-0 flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="min-w-0 truncate text-left">
@@ -187,7 +187,7 @@ export function LessonCanvas({
               onClick={() => onNavigate(next.id)}
               disabled={next.locked}
               className={cn(
-                "min-w-0 flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                "min-h-[44px] min-w-0 flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               )}
             >
               <span className="min-w-0 truncate text-right">

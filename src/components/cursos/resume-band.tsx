@@ -56,7 +56,7 @@ export function ResumeBand({ course, nextLesson, progressPct }: ResumeBandProps)
         </div>
         <Link
           href={href}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           {nextLesson ? "Continuar" : "Repasar"}
           <ArrowRight className="h-4 w-4" aria-hidden="true" />

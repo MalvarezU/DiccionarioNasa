@@ -57,7 +57,7 @@ export function PlayerShell({ loading, error, empty, header, outline, canvas }: 
               type="button"
               variant="outline"
               onClick={() => setSheetOpen(true)}
-              className="gap-2"
+              className="min-h-[44px] gap-2"
             >
               <ListOrdered className="h-4 w-4" aria-hidden="true" />
               Índice del curso

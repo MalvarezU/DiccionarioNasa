@@ -103,7 +103,7 @@ export function CourseOutline({
           return (
             <li key={module.id}>
               <h3 className="flex items-baseline justify-between gap-2">
-                <span className="min-w-0 truncate text-sm font-semibold">
+                <span className="min-w-0 truncate text-sm font-semibold" title={module.title}>
                   <span className="tabular-nums text-primary-foreground/70">
                     {moduleIndex} ·{" "}
                   </span>
