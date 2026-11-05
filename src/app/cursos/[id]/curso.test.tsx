@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import CursoDetailPage from "./page"
 
@@ -54,10 +54,11 @@ const COURSE = {
   ],
 }
 
-describe("/cursos/[id] [B2.2]", () => {
+describe("/cursos/[id] player", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
+    window.history.replaceState(null, "", "/cursos/c1")
   })
 
   function mockCourse() {
@@ -68,8 +69,29 @@ describe("/cursos/[id] [B2.2]", () => {
     mockCourse()
     render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
     expect(await screen.findByRole("heading", { name: "Básico" })).toBeDefined()
-    expect(screen.getByText("Bloqueado")).toBeDefined()
-    expect(screen.getByText("0/3 lecciones")).toBeDefined()
+    // El outline marca L3 como bloqueada sin deshabilitarla
+    const outline = screen.getByRole("navigation", { name: /Contenido de/ })
+    expect(outline.textContent).toContain("Completá el Módulo 1")
+    const l3 = outline.querySelector('[data-lesson-state="locked"]')
+    expect(l3).not.toBeNull()
+    expect(l3).not.toBeDisabled()
+    expect(l3).toHaveAttribute("aria-disabled", "true")
+    // El canvas abre en la primera desbloqueada
+    expect(await screen.findByRole("heading", { level: 2, name: "L1" })).toBeDefined()
+    // El conteo vive en el header del curso y en el resumen del outline
+    expect(screen.getAllByText("0/3 lecciones")).toHaveLength(2)
+  })
+
+  it("deep-link ?leccion= a lección bloqueada muestra el banner con CTA", async () => {
+    mockCourse()
+    window.history.replaceState(null, "", "/cursos/c1?leccion=l3")
+    render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+    expect(await screen.findByRole("heading", { level: 2, name: "L3" })).toBeDefined()
+    const banner = await screen.findByRole("status")
+    expect(banner.textContent).toContain("Completá el Módulo 1")
+    expect(
+      screen.getByRole("button", { name: /Ir a la lección requerida/ })
+    ).toBeDefined()
   })
 
   it("completar lección reporta progreso y desbloquea", async () => {
@@ -78,23 +100,32 @@ describe("/cursos/[id] [B2.2]", () => {
       status: "authenticated",
       update: vi.fn(),
     })
-    // Primera llamada: el curso; siguientes: progreso
+    // Primera llamada: el curso; siguientes: progreso (visita, lote, completado)
     vi.mocked(fetch)
       .mockResolvedValueOnce(Response.json({ course: COURSE }) as never)
       .mockResolvedValue(Response.json({ progress: { id: "p1" } }) as never)
     const user = userEvent.setup()
     render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
 
-    await user.click(await screen.findByText("L1"))
-    await user.click(await screen.findByText("Marcar como completada"))
+    // L1 ya es la activa: el child sin interactivos ofrece completar a mano
+    await user.click(await screen.findByRole("button", { name: /Marcar como completada/ }))
 
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/progress",
-      expect.objectContaining({
-        method: "POST",
-        body: expect.stringContaining('"lessonId":"l1"'),
-      })
-    )
-    expect(await screen.findByText("1/3 lecciones")).toBeDefined()
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/progress",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"lessonId":"l1"'),
+        })
+      )
+    })
+    expect(await screen.findAllByText("1/3 lecciones")).toHaveLength(2)
+  })
+
+  it("fetch roto muestra error visible, jamás skeletons infinitos", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("caído"))
+    render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+    expect(await screen.findByRole("alert")).toBeDefined()
+    expect(screen.queryByLabelText("Cargando curso")).toBeNull()
   })
 })

@@ -12,7 +12,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { CoursePlayerSkeleton } from "@/components/skeletons"
-import { ModuleAccordion, type RealModule } from "@/components/cursos/module-accordion"
+import { CourseOutline } from "@/components/cursos/player/course-outline"
+import { LessonCanvas } from "@/components/cursos/player/lesson-canvas"
+import { PlayerShell } from "@/components/cursos/player/player-shell"
+import { useLessonNavigation } from "@/components/cursos/player/use-lesson-navigation"
+import type { PlayerCourse } from "@/components/cursos/player/types"
 import {
   fetchWordsByIds,
   wordIdsUsedByContent,
@@ -20,16 +24,19 @@ import {
 } from "@/lib/courses/word-data"
 import { parseLessonContent } from "@/lib/courses/blocks"
 
-interface CourseDetail {
-  id: string
-  title: string
-  description: string | null
+interface CourseDetail extends PlayerCourse {
   status: string
-  sequential: boolean
-  modules: RealModule[]
 }
 
 const ANON_KEY = "piiyaak:course:anon:v1"
+
+const EMPTY_COURSE: PlayerCourse = {
+  id: "",
+  title: "",
+  description: null,
+  sequential: false,
+  modules: [],
+}
 
 function loadAnon(courseId: string): string[] {
   try {
@@ -62,14 +69,14 @@ export default function CursoDetailPage({
 
   const [course, setCourse] = useState<CourseDetail | null>(null)
   const [notFoundFlag, setNotFoundFlag] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [completedLessons, setCompletedLessons] = useState<string[]>([])
   const [lastVisited, setLastVisited] = useState<string | null>(null)
-  /** Lección objetivo del CTA "Continuar donde quedé" (abre su módulo). */
-  const [continueLessonId, setContinueLessonId] = useState<string | null>(null)
   /** Datos de las palabras referenciadas por los bloques de todas las lecciones. */
   const [words, setWords] = useState<Map<string, CourseWordData>>(() => new Map())
 
-  // Curso + progreso (backend si hay sesión, local si no)
+  // Curso + lote de palabras (una sola pasada sobre todas las lecciones).
   useEffect(() => {
     if (!id) return
     let alive = true
@@ -79,7 +86,11 @@ export default function CursoDetailPage({
           if (alive) setNotFoundFlag(true)
           return null
         }
-        return res.ok ? res.json() : null
+        if (!res.ok) {
+          if (alive) setLoadError(true)
+          return null
+        }
+        return res.json()
       })
       .then((data) => {
         if (!alive || !data?.course) return
@@ -95,17 +106,21 @@ export default function CursoDetailPage({
             if (parse.ok) ids.push(...wordIdsUsedByContent(parse.content.blocks))
           }
         }
-        fetchWordsByIds(ids).then((m) => {
-          if (alive) setWords(m)
-        })
+        fetchWordsByIds(ids)
+          .then((m) => {
+            if (alive) setWords(m)
+          })
+          .catch(() => {
+            // Sin palabras: los bloques muestran su fallback, la lección sigue
+          })
       })
       .catch(() => {
-        if (alive) setNotFoundFlag(true)
+        if (alive) setLoadError(true)
       })
     return () => {
       alive = false
     }
-  }, [id])
+  }, [id, reloadKey])
 
   useEffect(() => {
     if (!course) return
@@ -160,11 +175,6 @@ export default function CursoDetailPage({
     [course, isAuthed]
   )
 
-  const allLessonIds = useMemo(
-    () => (course ? course.modules.flatMap((m) => m.lessons.map((l) => l.id)) : []),
-    [course]
-  )
-
   const handleLessonOpen = useCallback(
     async (lessonId: string) => {
       setLastVisited(lessonId)
@@ -182,149 +192,234 @@ export default function CursoDetailPage({
     [isAuthed]
   )
 
+  const completedSet = useMemo(() => new Set(completedLessons), [completedLessons])
+  const nav = useLessonNavigation({
+    course: course ?? EMPTY_COURSE,
+    completedIds: completedSet,
+    lastVisited,
+  })
+
+  const handleSelectLesson = useCallback(
+    (lessonId: string) => {
+      nav.selectLesson(lessonId)
+      void handleLessonOpen(lessonId)
+    },
+    [nav, handleLessonOpen]
+  )
+
   const handleContinue = useCallback(() => {
     if (!lastVisited) return
-    void handleLessonOpen(lastVisited)
-    setContinueLessonId(lastVisited)
-    requestAnimationFrame(() => {
-      const el = document.getElementById(`lesson-${lastVisited}`)
-      if (!el) return
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" })
-      el.focus({ preventScroll: true })
-    })
-  }, [lastVisited, handleLessonOpen])
+    handleSelectLesson(lastVisited)
+  }, [lastVisited, handleSelectLesson])
 
   if (notFoundFlag) notFound()
-  if (!id || !course) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <NavBar />
-        <main id="contenido" className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8" aria-busy="true" aria-label="Cargando curso">
-          <CoursePlayerSkeleton />
-        </main>
-        <SiteFooter />
+
+  const totalLessons = course
+    ? course.modules.reduce((n, m) => n + m.lessons.length, 0)
+    : 0
+  const progress =
+    totalLessons > 0 ? Math.round((completedLessons.length / totalLessons) * 100) : 0
+
+  // Búsqueda lineal O(lecciones): derivación barata, sin memo (el compiler
+  // es dueño de la memoización acá).
+  const activeLessonId = nav.activeLessonId
+  let active: {
+    module: PlayerCourse["modules"][number]
+    moduleIndex: number
+    lesson: PlayerCourse["modules"][number]["lessons"][number]
+  } | null = null
+  if (course && activeLessonId) {
+    for (let mi = 0; mi < course.modules.length; mi++) {
+      const lesson = course.modules[mi].lessons.find((l) => l.id === activeLessonId)
+      if (lesson) {
+        active = { module: course.modules[mi], moduleIndex: mi + 1, lesson }
+        break
+      }
+    }
+  }
+
+  const header = course ? (
+    <div className="mb-8 space-y-3">
+      <Breadcrumbs
+        items={[
+          { label: "Inicio", href: "/" },
+          { label: "Cursos", href: "/cursos" },
+          { label: course.title },
+        ]}
+      />
+      {/* Back link */}
+      <Link
+        href="/cursos"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Volver a cursos
+      </Link>
+
+      {/* Header del curso */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+            <GraduationCap className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="font-serif text-2xl font-bold text-primary sm:text-3xl">
+              {course.title}
+            </h1>
+            <span className="text-xs text-muted-foreground">
+              {course.modules.length} módulos · {totalLessons} lecciones
+              {!isAuthed && " · progreso solo en este navegador"}
+            </span>
+          </div>
+        </div>
+        {course.description && (
+          <p className="leading-relaxed text-muted-foreground">{course.description}</p>
+        )}
+
+        {/* Progreso */}
+        <div className="space-y-2">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <span className="text-sm text-muted-foreground">Tu progreso</span>
+              <p className="font-serif text-4xl font-bold tabular-nums text-primary">
+                {progress}%
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <span className="text-sm font-medium tabular-nums text-foreground">
+                {completedLessons.length}/{totalLessons} lecciones
+              </span>
+              {lastVisited && (
+                <Button onClick={handleContinue} className="gap-2">
+                  Continuar donde quedé
+                </Button>
+              )}
+            </div>
+          </div>
+          <Progress value={progress} className="h-2" aria-label={`Avance: ${progress}%`} />
+          {progress === 100 && totalLessons > 0 && (
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-secondary/20 bg-secondary/10 p-3">
+              <CheckCircle2 className="h-5 w-5 text-secondary" />
+              <p className="text-sm font-medium text-secondary">
+                ¡Felicitaciones! Completaste el curso
+              </p>
+            </div>
+          )}
+        </div>
       </div>
-    )
-  }
-
-  const totalLessons = allLessonIds.length
-  const progress = totalLessons > 0 ? Math.round((completedLessons.length / totalLessons) * 100) : 0
-
-  function isModuleUnlocked(moduleIdx: number): boolean {
-    if (!course!.sequential || moduleIdx === 0) return true
-    const prevModule = course!.modules[moduleIdx - 1]
-    if (!prevModule) return false
-    return prevModule.lessons.every((l) => completedLessons.includes(l.id))
-  }
+    </div>
+  ) : null
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       <NavBar />
-      <main id="contenido" className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8">
-        <Breadcrumbs
-          items={[
-            { label: "Inicio", href: "/" },
-            { label: "Cursos", href: "/cursos" },
-            { label: course.title },
-          ]}
-        />
-        {/* Back link */}
-        <Link
-          href="/cursos"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver a cursos
-        </Link>
-
-        {/* Header del curso */}
-        <div className="space-y-3 mb-8">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary">
-              <GraduationCap className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-serif font-bold text-primary">
-                {course.title}
-              </h1>
-              <span className="text-xs text-muted-foreground">
-                {course.modules.length} módulos · {totalLessons} lecciones
-                {!isAuthed && " · progreso solo en este navegador"}
-              </span>
-            </div>
-          </div>
-          {course.description && (
-            <p className="text-muted-foreground leading-relaxed">{course.description}</p>
-          )}
-
-          {/* Progreso */}
-          <div className="space-y-2">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <span className="text-sm text-muted-foreground">Tu progreso</span>
-                <p className="font-serif text-4xl font-bold text-primary tabular-nums">
-                  {progress}%
+      <main id="contenido" className="flex-1">
+        {!id || (!course && !loadError) ? (
+          <PlayerShell
+            loading={<CoursePlayerSkeleton />}
+            outline={null}
+            canvas={null}
+          />
+        ) : loadError || !course ? (
+          <PlayerShell
+            error={
+              <div className="mx-auto max-w-md space-y-3 rounded-xl border border-outline-variant/30 bg-card p-6 text-center">
+                <p className="font-medium">No se pudo cargar el curso.</p>
+                <p className="text-sm text-muted-foreground">
+                  Revisá tu conexión e intentá de nuevo.
                 </p>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setLoadError(false)
+                    setReloadKey((k) => k + 1)
+                  }}
+                  className="gap-2"
+                >
+                  Reintentar
+                </Button>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <span className="text-sm font-medium text-foreground tabular-nums">
-                  {completedLessons.length}/{totalLessons} lecciones
-                </span>
-                {lastVisited && (
-                  <Button onClick={handleContinue} className="gap-2">
-                    Continuar donde quedé
-                  </Button>
-                )}
-              </div>
-            </div>
-            <Progress value={progress} className="h-2" aria-label={`Avance: ${progress}%`} />
-            {progress === 100 && totalLessons > 0 && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/10 border border-secondary/20 mt-2">
-                <CheckCircle2 className="h-5 w-5 text-secondary" />
-                <p className="text-sm text-secondary font-medium">
-                  ¡Felicitaciones! Completaste el curso
+            }
+            outline={null}
+            canvas={null}
+          />
+        ) : totalLessons === 0 ? (
+          <PlayerShell
+            header={header}
+            empty={
+              <div className="mx-auto max-w-md space-y-3 rounded-xl border border-outline-variant/30 bg-card p-6 text-center">
+                <p className="font-serif text-xl font-bold text-primary">
+                  Este curso se está preparando
                 </p>
+                <p className="text-sm text-muted-foreground">
+                  Todavía no tiene lecciones publicadas. Volvé pronto.
+                </p>
+                <Button asChild variant="outline" className="gap-2">
+                  <Link href="/cursos">Ver otros cursos</Link>
+                </Button>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Módulos */}
-        <div className="space-y-4">
-          {course.modules.map((module, idx) => (
-            <ModuleAccordion
-              key={module.id}
-              module={module}
-              moduleIndex={idx + 1}
-              isUnlocked={isModuleUnlocked(idx)}
-              completedLessons={completedLessons}
-              onLessonComplete={handleLessonComplete}
-              onLessonOpen={handleLessonOpen}
-              words={words}
-              openLessonId={continueLessonId}
-            />
-          ))}
-        </div>
+            }
+            outline={null}
+            canvas={null}
+          />
+        ) : (
+          <PlayerShell
+            header={header}
+            outline={
+              <CourseOutline
+                course={course}
+                activeLessonId={nav.activeLessonId}
+                completedIds={completedSet}
+                lastVisitedLessonId={lastVisited}
+                onSelect={handleSelectLesson}
+              />
+            }
+            canvas={
+              active ? (
+                <LessonCanvas
+                  lesson={active.lesson}
+                  moduleTitle={active.module.title}
+                  moduleIndex={active.moduleIndex}
+                  words={words}
+                  prev={nav.prev}
+                  next={nav.next}
+                  completed={completedSet.has(active.lesson.id)}
+                  locked={!nav.canAccess(active.lesson.id)}
+                  requiredLesson={nav.requiredLessonFor(active.lesson.id)}
+                  anonymous={!isAuthed}
+                  onComplete={handleLessonComplete}
+                  onNavigate={handleSelectLesson}
+                  onGoRequired={handleSelectLesson}
+                />
+              ) : (
+                <div aria-hidden="true" className="min-h-[max(420px,60dvh)]" />
+              )
+            }
+          />
+        )}
 
         {/* CTA al final */}
-        <div className="mt-8 flex flex-col items-center gap-3 p-6 rounded-xl bg-muted/30 border border-outline-variant/20">
-          <BookOpen className="h-8 w-8 text-primary/60" />
-          <p className="text-sm text-muted-foreground text-center max-w-md">
-            ¿Listo para poner a prueba lo que aprendiste? Visitá los juegos
-            didácticos para practicar.
-          </p>
-          <Button asChild variant="outline" className="gap-2">
-            <Link href="/juegos">Ir a los juegos</Link>
-          </Button>
-        </div>
+        {course && totalLessons > 0 && (
+          <div className="mx-auto w-full max-w-[1400px] px-6 pb-8 lg:px-10">
+            <div className="mt-8 flex flex-col items-center gap-3 rounded-xl border border-outline-variant/20 bg-muted/30 p-6">
+              <BookOpen className="h-8 w-8 text-primary/60" />
+              <p className="max-w-md text-center text-sm text-muted-foreground">
+                ¿Listo para poner a prueba lo que aprendiste? Visitá los juegos
+                didácticos para practicar.
+              </p>
+              <Button asChild variant="outline" className="gap-2">
+                <Link href="/juegos">Ir a los juegos</Link>
+              </Button>
+            </div>
 
-        {!isAuthed && (
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            <Badge variant="outline" className="text-2xs">
-              Iniciá sesión para sincronizar tu avance entre dispositivos
-            </Badge>
-          </p>
+            {!isAuthed && (
+              <p className="mt-4 text-center text-xs text-muted-foreground">
+                <Badge variant="outline" className="text-2xs">
+                  Iniciá sesión para sincronizar tu avance entre dispositivos
+                </Badge>
+              </p>
+            )}
+          </div>
         )}
       </main>
       <SiteFooter />

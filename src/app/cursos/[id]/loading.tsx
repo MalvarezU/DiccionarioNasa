@@ -1,8 +1,10 @@
 import { CoursePlayerSkeleton } from "@/components/skeletons"
 
 export default function Loading() {
+  // El skeleton ya trae su propio container master-detail (max-w-[1400px]):
+  // el route loading solo aporta el landmark.
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+    <main className="flex-1" aria-busy="true" aria-label="Cargando curso">
       <CoursePlayerSkeleton />
     </main>
   )
