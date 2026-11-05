@@ -185,6 +185,41 @@
   }
 }
 
+/* F13b — colores de fuente del bloque de texto (mark TextoColoreado).
+   El HTML guardado trae el TOKEN en `data-color` (nunca style inline ni
+   hex); el color real vive acá, una sola vez para editor, vista previa y
+   curso. Fuente de tokens: TEXT_COLOR_TOKENS en lesson-html.ts. */
+[data-color="rojo"] {
+  color: #dc2626;
+}
+[data-color="naranja"] {
+  color: #ea580c;
+}
+[data-color="amarillo"] {
+  color: #ca8a04;
+}
+[data-color="verde"] {
+  color: #16a34a;
+}
+[data-color="azul"] {
+  color: #2563eb;
+}
+[data-color="violeta"] {
+  color: #7c3aed;
+}
+[data-color="slate"] {
+  color: var(--primary);
+}
+[data-color="oliva"] {
+  color: var(--secondary);
+}
+[data-color="tierra"] {
+  color: var(--tertiary);
+}
+[data-color="ladrillo"] {
+  color: var(--destructive);
+}
+
 /* Focus ring: 3px olive with 2px ivory offset for light surfaces.
    On dark surfaces use an ivory ring instead (see WU follow-ups). */
 @utility focus-oliva {

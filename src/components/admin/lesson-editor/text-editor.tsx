@@ -12,12 +12,13 @@
  * client-only (Next SSR apagado con `immediatelyRender: false`).
  */
 
-import { useEffect, useRef } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useEditor, useEditorState, EditorContent, type Editor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
-import { TEXT_BLOCK_PROSE } from "@/lib/courses/lesson-html"
+import { TEXT_BLOCK_PROSE, TEXT_COLOR_SWATCH, TEXT_COLOR_TOKENS, type TextColorToken } from "@/lib/courses/lesson-html"
 import { htmlToPlainText } from "@/lib/html-to-text"
-import { Bold, Heading1, Heading2, Heading3, Italic, List, Redo2, Undo2 } from "lucide-react"
+import { TextoColoreado } from "./texto-coloreado"
+import { Bold, Heading1, Heading2, Heading3, Italic, List, Palette, Redo2, Undo2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -68,6 +69,10 @@ export function EditorTextoRico({
         heading: mini ? false : { levels: [1, 2, 3] },
         bulletList: mini ? false : undefined,
       }),
+      // Color de fuente por TOKEN en data-color (nunca style inline).
+      // Va en full y en mini: así el mini no destruye colores ya guardados
+      // si alguna vez recibe HTML con marca. El selector solo sale en full.
+      TextoColoreado,
 
     ],
     content: "",
@@ -179,6 +184,10 @@ export function EditorToolbar({ editor, mini = false }: { editor: Editor | null;
       isList: e?.isActive("bulletList") ?? false,
       canUndo: e?.can().undo() ?? false,
       canRedo: e?.can().redo() ?? false,
+      // Token de color activo (null si el cursor/selección no tiene marca).
+      colorActual:
+        ((e?.getAttributes("textoColoreado")?.["data-color"] as TextColorToken | undefined) ??
+          null) as TextColorToken | null,
     }),
   })
 
@@ -216,6 +225,7 @@ export function EditorToolbar({ editor, mini = false }: { editor: Editor | null;
             activo={state.isList}
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
           />
+          <SelectorColor editor={editor} colorActual={state.colorActual} />
           <ToolbarSeparador />
         </>
       ) : null}
@@ -245,6 +255,183 @@ export function EditorToolbar({ editor, mini = false }: { editor: Editor | null;
         deshabilitado={!state.canRedo}
       />
     </div>
+  )
+}
+
+/** Nombres en español neutro para el selector de color. */
+const NOMBRES_COLOR: Record<TextColorToken, string> = {
+  rojo: "Rojo",
+  naranja: "Naranja",
+  amarillo: "Amarillo",
+  verde: "Verde",
+  azul: "Azul",
+  violeta: "Violeta",
+  slate: "Slate",
+  oliva: "Oliva",
+  tierra: "Tierra",
+  ladrillo: "Ladrillo",
+}
+
+const COLORES_ESTANDAR = TEXT_COLOR_TOKENS.slice(0, 6)
+const COLORES_PALETA = TEXT_COLOR_TOKENS.slice(6)
+
+/**
+ * Selector de color de fuente inline (solo full: el mini es para prompts de
+ * texto plano). Botón trigger con icono Palette + barra del color activo que
+ * despliega la fila horizontal de swatches circulares: primero los 6
+ * estándar, separador visual, después los 4 de paleta, y al final el botón
+ * para quitar el color. El wrap lleva el exceso a dos líneas en móvil.
+ *
+ * Comportamiento tipo dropdown de Word/Docs: elegir un color (o quitarlo)
+ * lo aplica Y cierra la paleta. También se cierra con segundo click en el
+ * trigger, con Escape (devuelve el foco al trigger) y al perder el foco el
+ * contenedor (click fuera que mueva el foco). El estado vive aquí, no se
+ * eleva al editor.
+ *
+ * El trigger NO usa preventDefault en mousedown (a diferencia de los
+ * swatches): así recibe el foco al hacer click y funcionan Escape + onBlur.
+ * La selección del editor se conserva en el estado de Tiptap y los swatches
+ * la restauran con `chain().focus()` al aplicar, igual que antes.
+ *
+ * Aplica el TOKEN vía el mark TextoColoreado; el color real del documento lo
+ * pinta globals.css. El `style` con el color en cada swatch es SOLO
+ * presentación del control (el círculo del botón), nunca contenido guardado:
+ * al documento solo viaja el token en `data-color`.
+ */
+function SelectorColor({
+  editor,
+  colorActual,
+}: {
+  editor: Editor | null
+  colorActual: TextColorToken | null
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
+  if (!editor) return null
+
+  const elegir = (token: TextColorToken) => {
+    editor.chain().focus().setColor(token).run()
+    setAbierto(false)
+  }
+  const quitar = () => {
+    editor.chain().focus().unsetColor().run()
+    setAbierto(false)
+  }
+  const cerrarConFoco = () => {
+    setAbierto(false)
+    triggerRef.current?.focus()
+  }
+
+  return (
+    <div
+      className="flex items-center"
+      // Cierre barato sin listener global: si el foco sale del contenedor
+      // (click en el lienzo, Tab fuera), la paleta se repliega.
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setAbierto(false)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation()
+          cerrarConFoco()
+        }
+      }}
+    >
+      <Button
+        ref={triggerRef}
+        type="button"
+        variant={abierto ? "secondary" : "ghost"}
+        size="icon"
+        className="h-8 w-8"
+        onClick={() => setAbierto((v) => !v)}
+        aria-pressed={abierto}
+        aria-expanded={abierto}
+        aria-controls={abierto ? panelId : undefined}
+        aria-label="Color de texto"
+        title="Color de texto"
+      >
+        {/* Barra estilo Word bajo el icono: muestra el color activo. */}
+        <span className="flex flex-col items-center" aria-hidden="true">
+          <Palette className="h-4 w-4" />
+          <span
+            className="mt-px h-1 w-4 rounded-full border border-border/60"
+            style={{ backgroundColor: colorActual ? TEXT_COLOR_SWATCH[colorActual] : "transparent" }}
+          />
+        </span>
+      </Button>
+      {abierto ? (
+        <div id={panelId} className="flex flex-wrap items-center gap-1">
+          <div role="group" aria-label="Colores estándar" className="flex flex-wrap items-center gap-1">
+            {COLORES_ESTANDAR.map((token) => (
+              <SwatchColor
+                key={token}
+                token={token}
+                activo={colorActual === token}
+                onElegir={() => elegir(token)}
+              />
+            ))}
+          </div>
+          <div aria-hidden="true" className="h-5 w-px shrink-0 bg-border" />
+          <div role="group" aria-label="Colores de la paleta" className="flex flex-wrap items-center gap-1">
+            {COLORES_PALETA.map((token) => (
+              <SwatchColor
+                key={token}
+                token={token}
+                activo={colorActual === token}
+                onElegir={() => elegir(token)}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            aria-label="Quitar color"
+            title="Quitar color"
+            // preventDefault en mousedown: igual que ToolbarBoton, el click NO
+            // debe robar el foco del editor ni destruir la selección.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={quitar}
+            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-border/60 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+          >
+            <X className="size-3.5" aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * Swatch circular del selector. El botón ES el círculo: se pinta con el
+ * color real (hex directo para estándar, `var(--token)` para paleta, desde
+ * TEXT_COLOR_SWATCH). Ese style inline es presentación del control, no del
+ * documento. El activo se marca con anillo.
+ */
+function SwatchColor({
+  token,
+  activo,
+  onElegir,
+}: {
+  token: TextColorToken
+  activo: boolean
+  onElegir: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Color ${NOMBRES_COLOR[token]}`}
+      title={NOMBRES_COLOR[token]}
+      aria-pressed={activo}
+      // preventDefault en mousedown: igual que ToolbarBoton, el click NO
+      // debe robar el foco del editor ni destruir la selección.
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onElegir}
+      style={{ backgroundColor: TEXT_COLOR_SWATCH[token] }}
+      className={cn(
+        "size-6 shrink-0 rounded-full border border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+        activo && "ring-2 ring-ring ring-offset-1"
+      )}
+    />
   )
 }
 
