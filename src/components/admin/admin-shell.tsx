@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react"
 import {
   AudioLines,
   BookOpen,
+  ChevronRight,
   GraduationCap,
   Images,
   LayoutDashboard,
@@ -70,6 +71,16 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
+interface Miga {
+  etiqueta: string
+  href?: string
+}
+
+/** Id de ruta recortado para la miga (el título real lo tiene la página; no se hace fetch). */
+function segmentoCorto(segmento: string): string {
+  return segmento.length > 8 ? `${segmento.slice(0, 8)}…` : segmento
+}
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { data: session, status } = useSession()
@@ -84,6 +95,38 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     ...g,
     items: g.items.filter((i) => !i.adminOnly || isAdmin),
   })).filter((g) => g.items.length > 0)
+
+  // P2.5: migas según la ruta actual. En cursos: Panel > Cursos >
+  // id corto del curso > id corto de la lección (sin fetch: el título real
+  // vive en la página, el segmento crudo es el fallback). Fuera de cursos:
+  // Panel > sección activa del sidebar. La última miga nunca lleva href.
+  const migas: Miga[] = (() => {
+    if (!pathname) return [{ etiqueta: "Panel" }]
+    const segmentos = pathname.split("/").filter(Boolean)
+    if (segmentos[1] === "cursos") {
+      const lista: Miga[] = [
+        { etiqueta: "Panel", href: "/admin" },
+        { etiqueta: "Cursos", href: "/admin/cursos" },
+      ]
+      const courseId = segmentos[2]
+      const lessonId = segmentos[3] === "lecciones" ? segmentos[4] : undefined
+      if (courseId) {
+        // Al curso se vuelve vía /admin/cursos (la selección persiste por P2.4).
+        lista.push({ etiqueta: segmentoCorto(courseId), href: lessonId ? "/admin/cursos" : undefined })
+        if (lessonId) lista.push({ etiqueta: segmentoCorto(lessonId) })
+      }
+      return lista
+    }
+    const lista: Miga[] = [{ etiqueta: "Panel", href: "/admin" }]
+    const activa = visibleGroups.flatMap((g) => g.items).find((item) => isActive(item.href))
+    if (activa) {
+      lista.push({ etiqueta: activa.title })
+    } else {
+      const ultimo = segmentos[segmentos.length - 1]
+      lista.push({ etiqueta: ultimo ? segmentoCorto(ultimo) : "Panel" })
+    }
+    return lista
+  })()
 
   return (
     <SidebarProvider>
@@ -137,9 +180,32 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
           <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-            <p className="truncate text-sm font-medium text-muted-foreground">
-              Panel de administración
-            </p>
+            <nav aria-label="Migas de pan" className="min-w-0 flex-1 overflow-hidden">
+              <ol className="flex min-w-0 items-center gap-1 text-sm">
+                {migas.map((miga, idx) => {
+                  const ultima = idx === migas.length - 1
+                  return (
+                    <li key={`${miga.etiqueta}-${idx}`} className="flex min-w-0 items-center gap-1">
+                      {idx > 0 ? (
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      ) : null}
+                      {ultima || !miga.href ? (
+                        <span aria-current="page" className="truncate font-medium text-foreground">
+                          {miga.etiqueta}
+                        </span>
+                      ) : (
+                        <Link
+                          href={miga.href}
+                          className="shrink-0 text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                          {miga.etiqueta}
+                        </Link>
+                      )}
+                    </li>
+                  )
+                })}
+              </ol>
+            </nav>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               {status === "loading" ? (
                 <span className="flex items-center gap-2" aria-busy="true" aria-label="Cargando sesión">

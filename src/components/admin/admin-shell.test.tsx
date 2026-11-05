@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 
 vi.mock("next-auth/react", () => ({
   useSession: vi.fn(),
@@ -50,10 +50,19 @@ describe("AdminShell [F1]", () => {
     )
 
     for (const label of ["Resumen", "Palabras", "Gestión de cursos", "Ilustraciones", "Audios", "Usuarios"]) {
-      expect(screen.getByText(label)).toBeDefined()
+      // La miga de pan repite la sección activa: puede haber 1 o 2 nodos.
+      expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(1)
     }
-    // La activa lleva aria-current="page"
-    expect(screen.getByText("Resumen").closest("a")?.getAttribute("aria-current")).toBe("page")
+    // La activa del sidebar lleva aria-current="page" en su enlace...
+    const enlacesResumen = screen
+      .getAllByText("Resumen")
+      .map((el) => el.closest("a"))
+      .filter((a): a is HTMLAnchorElement => a !== null)
+    expect(enlacesResumen).toHaveLength(1)
+    expect(enlacesResumen[0]?.getAttribute("aria-current")).toBe("page")
+    // ...y la miga actual también (Panel > Resumen).
+    const migas = screen.getByRole("navigation", { name: "Migas de pan" })
+    expect(within(migas).getByText("Resumen").getAttribute("aria-current")).toBe("page")
     expect(screen.getByText("Admin")).toBeDefined()
     expect(screen.getByText("Salir al diccionario")).toBeDefined()
   })

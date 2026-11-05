@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { Plus, Trash2, Pencil, Save, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye } from "lucide-react"
@@ -33,6 +33,16 @@ import { STATUS_LABEL } from "./course-types"
 import { useCourseManager } from "./use-course-manager"
 import { ConfirmDialog } from "./confirm-dialog"
 
+/**
+ * P2.4 — clave de sessionStorage con el curso seleccionado.
+ * Se eligió sessionStorage (no URL) porque el botón "Volver a Gestión de
+ * cursos" del editor navega a `/admin/cursos` plano: propagar `?curso=...`
+ * exigiría tocar además la página de lección y sus enlaces prev/siguiente.
+ * sessionStorage sobrevive al ida y vuelta en la misma pestaña sin cambiar
+ * el routing, y no se comparte entre pestañas.
+ */
+const CURSO_SELECCIONADO_KEY = "admin-cursos:seleccionado"
+
 export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
   const router = useRouter()
   const [confirmPendiente, setConfirmPendiente] = useState<{
@@ -43,6 +53,8 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
   const [procesando, setProcesando] = useState(false)
   // Dirty-guard: id del curso al que se quiso navegar con ediciones sin guardar.
   const [navegacionPendiente, setNavegacionPendiente] = useState<string | null>(null)
+  // P2.4: la restauración corre una sola vez por montaje (al cargar la lista).
+  const [seleccionRestaurada, setSeleccionRestaurada] = useState(false)
 
   const {
     courses,
@@ -110,6 +122,43 @@ export function CourseManager({ canDelete = false }: { canDelete?: boolean }) {
     setNavegacionPendiente(null)
     if (destino) void loadDetail(destino)
   }
+
+  // P2.4: persiste la selección para restaurarla al volver del editor de
+  // lección (misma pestaña). Solo escribe: la lectura vive en el efecto
+  // siguiente y el dirty-guard y stats quedan intactos.
+  useEffect(() => {
+    if (!selectedId) return
+    try {
+      sessionStorage.setItem(CURSO_SELECCIONADO_KEY, selectedId)
+    } catch {
+      // Almacenamiento no disponible: se sigue sin persistencia.
+    }
+  }, [selectedId])
+
+  // P2.4: al montar, si hay un curso guardado y sigue en la lista, carga su
+  // detalle directo. Corre una sola vez para no pelear con la navegación
+  // manual ni con el dirty-guard.
+  useEffect(() => {
+    if (seleccionRestaurada || loading || selectedId || courses.length === 0) return
+    setSeleccionRestaurada(true)
+    let guardado: string | null = null
+    try {
+      guardado = sessionStorage.getItem(CURSO_SELECCIONADO_KEY)
+    } catch {
+      guardado = null
+    }
+    if (!guardado) return
+    if (courses.some((c) => c.id === guardado)) {
+      void loadDetail(guardado)
+    } else {
+      // El curso ya no existe (se eliminó): limpia el resto obsoleto.
+      try {
+        sessionStorage.removeItem(CURSO_SELECCIONADO_KEY)
+      } catch {
+        // Sin almacenamiento: nada que limpiar.
+      }
+    }
+  }, [seleccionRestaurada, loading, selectedId, courses, loadDetail])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
