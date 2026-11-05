@@ -58,8 +58,8 @@ describe("SearchBar", () => {
   })
 
   it("shows dropdown with results after typing 2+ chars", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: mockResults })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: mockResults }))
     )
     const user = userEvent.setup()
     render(<SearchBar />)
@@ -95,8 +95,8 @@ describe("SearchBar", () => {
   })
 
   it("shows suggest button when no results", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: [] })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: [] }))
     )
     const user = userEvent.setup()
     render(<SearchBar />)
@@ -129,8 +129,8 @@ describe("SearchBar", () => {
   })
 
   it("navigates with arrow keys and selects with enter", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: mockResults })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: mockResults }))
     )
     const user = userEvent.setup()
     render(<SearchBar />)
@@ -146,8 +146,8 @@ describe("SearchBar", () => {
   })
 
   it("closes dropdown on escape", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: mockResults })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: mockResults }))
     )
     const user = userEvent.setup()
     render(<SearchBar />)
@@ -161,8 +161,8 @@ describe("SearchBar", () => {
   })
 
   it("opens suggest modal when suggest button is clicked", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: [] })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: [] }))
     )
     const user = userEvent.setup()
     render(<SearchBar />)
@@ -182,8 +182,8 @@ describe("SearchBar", () => {
 
   it("calls onWordSelect when result is clicked", async () => {
     const onWordSelect = vi.fn()
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: mockResults })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: mockResults }))
     )
     const user = userEvent.setup()
     render(<SearchBar onWordSelect={onWordSelect} />)

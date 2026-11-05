@@ -13,6 +13,7 @@ import { SuggestWordModal } from "@/components/suggest-word-modal";
 import { WordDetailCard } from "@/components/word-detail-card";
 import { searchLocalWords, isLocalDBReady } from "@/lib/local-db";
 
+const SINGLE_CHAR_DEBOUNCE_MS = 1000;
 interface SearchResult {
   id: string;
   spanish: string;
@@ -236,6 +237,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   const isOnline = useOnlineStatus();
   const { toast } = useToast();
   const debouncedQuery = useDebounce(query, 300);
+  const debouncedLetter = useDebounce(query, SINGLE_CHAR_DEBOUNCE_MS);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { containerRef: listRef, handlePlayState, stopAll } =
@@ -245,7 +247,14 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   const esGrande = variant !== "inline";
   /** El texto solo va blanco cuando el fondo real es oscuro (imagen). */
   const sobreOscuro = variant === "hero" || variant === "hero-panel";
-  const panelMode = variant === "hero-panel";  const showDropdown = isOpen && debouncedQuery.length >= 2;
+  const panelMode = variant === "hero-panel";
+  const effectiveTerm =
+    debouncedQuery.length >= 2
+      ? debouncedQuery
+      : debouncedQuery.length === 1
+      ? debouncedLetter
+      : "";
+  const showDropdown = isOpen && effectiveTerm.length >= 1;
   const hasNoResults = showDropdown && !isLoading && results.length === 0;
   const [localDBReady, setLocalDBReady] = useState<boolean | null>(null);
 
@@ -272,56 +281,71 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
     checkReady();
   }, [isOnline]);
 
-  // Fetch search results — uses local IndexedDB when offline, API when online
-  useEffect(() => {
-    if (debouncedQuery.length < 2) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
-
-    const fetchResults = async () => {
+  const performSearch = useCallback(
+    async (term: string, signal?: AbortSignal) => {
       setIsLoading(true);
       try {
-        // HU1.3.2: When offline, search from local IndexedDB
         if (!isOnline) {
           const localReady = await isLocalDBReady();
+          if (signal?.aborted) return;
           setLocalDBReady(localReady);
           if (localReady) {
-            const localResults = await searchLocalWords(debouncedQuery, 50);
+            const localResults = await searchLocalWords(term, 50);
+            if (signal?.aborted) return;
             setResults(localResults);
           } else {
             setResults([]);
           }
         } else {
-          // Online: use the API as before
           const response = await fetch(
-            `/api/dictionary/search?q=${encodeURIComponent(debouncedQuery)}`
+            `/api/dictionary/search?q=${encodeURIComponent(term)}`,
+            { signal }
           );
+          if (signal?.aborted) return;
           if (response.ok) {
             const data = await response.json();
-            setResults(data.results ?? []);
-          } else {
+            if (signal?.aborted) return;
+            setResults(data.results ?? []);          } else {
             setResults([]);
           }
         }
-      } catch {
-        // Fallback: try local search if API fails
+      } catch (err) {
+        if (
+          signal?.aborted ||
+          (err instanceof DOMException && err.name === "AbortError")
+        ) {
+          return;
+        }
         try {
-          const localResults = await searchLocalWords(debouncedQuery, 50);
+          const localResults = await searchLocalWords(term, 50);
+          if (signal?.aborted) return;
           setResults(localResults);
         } catch {
           setResults([]);
         }
       } finally {
-        setIsLoading(false);
-        setIsOpen(true);
-        setHighlightedIndex(-1);
+        if (!signal?.aborted) {
+          setIsLoading(false);
+          setIsOpen(true);
+          setHighlightedIndex(-1);
+        }
       }
-    };
+    },
+    [isOnline]
+  );
 
-    fetchResults();
-  }, [debouncedQuery, isOnline]);
+  // Fetch search results — uses local IndexedDB when offline, API when online
+  useEffect(() => {
+    if (effectiveTerm.length < 1) {
+      setResults([]);
+      setIsOpen(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    performSearch(effectiveTerm, controller.signal);
+    return () => controller.abort();
+  }, [effectiveTerm, performSearch]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -364,6 +388,20 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        if (query.trim().length === 1 && flatResults.length === 0) {
+          e.preventDefault();
+          performSearch(query.trim());
+          return;
+        }
+        if (!isOpen || flatResults.length === 0) return;
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < flatResults.length) {
+          handleSelect(flatResults[highlightedIndex]);
+        }
+        return;
+      }
+
       if (!isOpen || flatResults.length === 0) return;
 
       switch (e.key) {
@@ -379,12 +417,6 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
             prev > 0 ? prev - 1 : flatResults.length - 1
           );
           break;
-        case "Enter":
-          e.preventDefault();
-          if (highlightedIndex >= 0 && highlightedIndex < flatResults.length) {
-            handleSelect(flatResults[highlightedIndex]);
-          }
-          break;
         case "Escape":
           stopAll();
           setIsOpen(false);
@@ -392,7 +424,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           break;
       }
     },
-    [isOpen, flatResults, highlightedIndex, handleSelect, stopAll]
+    [isOpen, flatResults, highlightedIndex, handleSelect, stopAll, query, performSearch]
   );
 
   const handleHighlight = useCallback((index: number) => {
