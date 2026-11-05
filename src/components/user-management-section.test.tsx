@@ -103,22 +103,48 @@ describe("UserManagementSection", () => {
     })
   })
 
-  it("cycles user role user->editor on toggle [B1.5]", async () => {
+  it("changes user role to editor from the row dropdown [B1.5]", async () => {
     vi.mocked(fetch).mockResolvedValue(
       Response.json({ users: mockUsers })
     )
     renderSection()
     const user = userEvent.setup()
-    expect(await screen.findByRole("button", { name: /a editor/i })).toBeDefined()
-    const toEditorBtn = screen.getByRole("button", { name: /a editor/i })
+    const trigger = await screen.findByRole("button", { name: "Cambiar rol de user@test.com" })
+    await user.click(trigger)
+    const editorItem = await screen.findByRole("menuitem", { name: "Editor" })
     vi.mocked(fetch).mockResolvedValue(Response.json({ message: "ok" }))
-    await user.click(toEditorBtn)
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/admin/users/user-2"),
-      expect.objectContaining({
-        method: "PATCH",
-        body: expect.stringContaining('"editor"'),
-      })
+    await user.click(editorItem)
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/admin/users/user-2"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: expect.stringContaining('"editor"'),
+        })
+      )
+    })
+  })
+
+  it("changes user role directly to admin in a single menu opening (regression)", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ users: mockUsers })
+    )
+    renderSection()
+    const user = userEvent.setup()
+    const trigger = await screen.findByRole("button", { name: "Cambiar rol de user@test.com" })
+    await user.click(trigger)
+    const adminItem = await screen.findByRole("menuitem", { name: "Administrador" })
+    vi.mocked(fetch).mockResolvedValue(Response.json({ message: "ok" }))
+    await user.click(adminItem)
+    await waitFor(() => {
+      const patchCalls = vi.mocked(fetch).mock.calls.filter(
+        ([, opts]) => (opts as RequestInit | undefined)?.method === "PATCH"
+      )
+      expect(patchCalls).toHaveLength(1)
+      expect(String((patchCalls[0][1] as RequestInit).body)).toContain('"admin"')
+    })
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Rol actualizado" })
     )
   })
 
@@ -180,6 +206,7 @@ describe("UserManagementSection", () => {
     )
     renderSection()
     expect(await screen.findByText("Tú")).toBeDefined()
-    expect(screen.queryByRole("button", { name: /hacer admin/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /cambiar rol de/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /eliminar usuario/i })).toBeNull()
   })
 })

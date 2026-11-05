@@ -12,6 +12,8 @@ import {
   Trash2,
   Heart,
   Clock,
+  Check,
+  ChevronDown,
 } from "lucide-react"
 import {
   Card,
@@ -33,6 +35,13 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ConfirmDialog } from "@/components/admin/confirm-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ROLES, type Role } from "@/lib/roles"
 import { useToast } from "@/hooks/use-toast"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 
@@ -48,6 +57,18 @@ interface UserRow {
   }
 }
 
+const ROLE_LABELS: Record<Role, string> = {
+  user: "Usuario",
+  editor: "Editor",
+  admin: "Administrador",
+}
+
+function RoleIcon({ role, className }: { role: string; className?: string }) {
+  if (role === "admin") return <ShieldCheck className={className} />
+  if (role === "editor") return <Pencil className={className} />
+  return <Shield className={className} />
+}
+
 export function UserManagementSection() {
   const { data: session } = useSession()
   const currentUserId = (session?.user as { id?: string })?.id
@@ -57,7 +78,7 @@ export function UserManagementSection() {
   const [totalUsers, setTotalUsers] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   // El input tipea al instante; el GET espera 300ms sin cambios.
@@ -95,18 +116,9 @@ export function UserManagementSection() {
     fetchUsers()
   }, [fetchUsers])
 
-  const ROLE_LABELS: Record<string, string> = {
-    user: "usuario",
-    editor: "editor",
-    admin: "administrador",
-  }
-
-  const nextRole = (role: string) =>
-    role === "admin" ? "user" : role === "editor" ? "admin" : "editor"
-
-  const handleToggleRole = async (user: UserRow) => {
-    const newRole = nextRole(user.role)
-    setUpdatingId(user.id)
+  const handleRoleChange = async (user: UserRow, newRole: Role) => {
+    if (newRole === user.role) return
+    setPendingUserId(user.id)
     try {
       const res = await fetch(`/api/admin/users/${user.id}`, {
         method: "PATCH",
@@ -120,7 +132,7 @@ export function UserManagementSection() {
         )
         toast({
           title: "Rol actualizado",
-          description: `${user.email} ahora es ${ROLE_LABELS[newRole] ?? newRole}`,
+          description: `${user.email} ahora es ${ROLE_LABELS[newRole].toLowerCase()}`,
         })
       } else {
         const data = await res.json()
@@ -137,7 +149,7 @@ export function UserManagementSection() {
         variant: "destructive",
       })
     } finally {
-      setUpdatingId(null)
+      setPendingUserId(null)
     }
   }
 
@@ -285,28 +297,44 @@ export function UserManagementSection() {
                         <div className="flex items-center justify-end gap-1">
                           {user.id !== currentUserId && (
                             <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-1 text-xs"
-                                disabled={updatingId === user.id}
-                                onClick={() => handleToggleRole(user)}
-                              >
-                                {updatingId === user.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : user.role === "admin" ? (
-                                  <Shield className="h-3 w-3" />
-                                ) : (
-                                  <ShieldCheck className="h-3 w-3" />
-                                )}
-                                {user.role === "admin" ? "A usuario" : user.role === "editor" ? "A admin" : "A editor"}
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="min-h-8 gap-1 text-xs"
+                                    disabled={pendingUserId === user.id}
+                                    aria-label={"Cambiar rol de " + (user.name || user.email)}
+                                  >
+                                    {pendingUserId === user.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <RoleIcon role={user.role} className="h-3 w-3" />
+                                    )}
+                                    {ROLE_LABELS[user.role as Role] ?? user.role}
+                                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {ROLES.map((role) => (
+                                    <DropdownMenuItem
+                                      key={role}
+                                      disabled={role === user.role}
+                                      onSelect={() => void handleRoleChange(user, role)}
+                                    >
+                                      <RoleIcon role={role} className="h-3 w-3" />
+                                      {ROLE_LABELS[role]}
+                                      {role === user.role && <Check className="ml-auto h-3 w-3" />}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                                 onClick={() => setDeleteTarget(user)}
-                                disabled={updatingId === user.id}
+                                disabled={pendingUserId === user.id}
                                 aria-label="Eliminar usuario"
                               >
                                 <Trash2 className="h-4 w-4" />
