@@ -143,8 +143,10 @@ export default function LessonEditorPage() {
       const mod = e.metaKey || e.ctrlKey
       if (!mod) return
       const target = e.target as HTMLElement | null
-      // No interferir con inputs de texto nativos del navegador (Tiptap maneja el suyo)
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return
+      // No interferir con inputs de texto nativos ni con el editor Tiptap
+      // (contenteditable): Tiptap maneja su propio historial y el undo a
+      // nivel de documento lo secuestraría, desincronizando ambos.
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return
       if (e.key === "z" && !e.shiftKey) {
         e.preventDefault()
         editorUndoRef.current?.()

@@ -88,3 +88,31 @@ describe("LessonEditorPage [F2]", () => {
     expect(await screen.findByText("Lección no encontrada")).toBeDefined()
   })
 })
+
+// ====================================================================
+// EDGE / ADVERSARIAL — autosave y estados
+// ====================================================================
+describe("LessonEditorPage — autosave edge", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    mockFetchLeccion()
+  })
+
+  it("muestra error de carga de red", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("net"))
+    render(<LessonEditorPage />)
+    expect(await screen.findByText("Error de red. Intentá de nuevo.")).toBeDefined()
+  })
+
+  it("autosave no dispara con lección sin bloques (blocks vacío)", async () => {
+    render(<LessonEditorPage />)
+    await screen.findByDisplayValue("Lección 1")
+    // cambiar título ensucia, pero blocks sigue vacío → efecto tiene guard `!blocks.length`
+    const titulo = screen.getByDisplayValue("Lección 1")
+    fireEvent.change(titulo, { target: { value: "Editado" } })
+    await new Promise((r) => setTimeout(r, 2300))
+    const putCalls = (vi.mocked(fetch).mock.calls as any[]).filter((c) => String(c[0]).includes("/api/lessons/") && (c[1]?.method === "PUT"))
+    expect(putCalls).toHaveLength(0)
+  })
+})
