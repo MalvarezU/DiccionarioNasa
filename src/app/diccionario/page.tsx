@@ -23,6 +23,7 @@ import { recordLocalHistory } from "@/lib/demo-storage";
 
 import { WordCardSkeleton } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 interface FeaturedWord {
   id: string;
@@ -44,6 +45,9 @@ function DiccionarioContent() {
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("featured");
+  const [featuredError, setFeaturedError] = useState(false);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [featuredRetry, setFeaturedRetry] = useState(0);
 
   // Favorites/History panel
   const [panelOpen, setPanelOpen] = useState(false);
@@ -73,19 +77,25 @@ function DiccionarioContent() {
 
   // Fetch featured words
   useEffect(() => {
+    const controller = new AbortController();
     const fetchFeatured = async () => {
+      setFeaturedLoading(true);
+      setFeaturedError(false);
       try {
-        const res = await fetch("/api/dictionary/featured");
-        if (res.ok) {
-          const data = await res.json();
-          setFeaturedWords(data.words ?? []);
-        }
-      } catch {
-        // Silently fail
+        const res = await fetch("/api/dictionary/featured", { signal: controller.signal });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        setFeaturedWords(data.words ?? []);
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") return;
+        setFeaturedError(true);
+      } finally {
+        if (!controller.signal.aborted) setFeaturedLoading(false);
       }
     };
     fetchFeatured();
-  }, []);
+    return () => controller.abort();
+  }, [featuredRetry]);
 
   const handleWordClick = (wordId: string) => {
     // Stop featured audio before opening the detail modal
@@ -106,7 +116,7 @@ function DiccionarioContent() {
   useEffect(() => {
     if (!selectedWordId || !detailOpen || !isAuthenticated) return;
 
-    const userId = (session?.user as any)?.id || 'demo-user';
+    const userId = (session?.user as { id?: string } | undefined)?.id || 'demo-user';
 
     const recordHistory = async () => {
       try {
@@ -233,7 +243,7 @@ function DiccionarioContent() {
               </div>
               {/* Columna derecha: panel de busqueda con resultados en flujo */}
               <div className="mx-auto w-full max-w-xl rounded-2xl border border-white/25 bg-black/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl">
-                <SearchBar variant="hero-panel" />
+                <SearchBar variant="hero-panel" onWordSelect={handleWordSelect} />
               </div>
             </div>
           </div>
@@ -270,7 +280,20 @@ function DiccionarioContent() {
                 </p>
               </div>
 
-              {featuredWords.length > 0 ? (
+              {featuredLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <WordCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : featuredError ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground mb-3">No pudimos cargar las palabras destacadas.</p>
+                  <Button variant="outline" size="sm" onClick={() => setFeaturedRetry((r) => r + 1)}>
+                    Reintentar
+                  </Button>
+                </div>
+              ) : featuredWords.length > 0 ? (
                 <div
                   ref={featuredGridRef}
                   className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
@@ -286,10 +309,8 @@ function DiccionarioContent() {
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {Array.from({ length: 6 }, (_, i) => (
-                    <WordCardSkeleton key={i} />
-                  ))}
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  No hay palabras destacadas por ahora.
                 </div>
               )}
             </TabsContent>

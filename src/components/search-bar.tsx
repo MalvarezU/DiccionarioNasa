@@ -352,11 +352,12 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
       stopAll();
       setQuery("");
       setIsOpen(false);
-      // Open the word detail card
-      setSelectedWordId(result.id);
-      setDetailOpen(true);
-      // Also notify parent if callback provided
-      onWordSelect?.(result.id);
+      if (onWordSelect) {
+        onWordSelect(result.id);
+      } else {
+        setSelectedWordId(result.id);
+        setDetailOpen(true);
+      }
     },
     [onWordSelect, stopAll]
   );
@@ -596,12 +597,14 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
       </div>
 
       {/* Word detail card (Sheet) */}
-      <WordDetailCard
-        key={selectedWordId ?? "none"}
-        wordId={selectedWordId}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-      />
+      {!onWordSelect && (
+        <WordDetailCard
+          key={selectedWordId ?? "none"}
+          wordId={selectedWordId}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+        />
+      )}
 
       {/* Suggest word modal */}
       <SuggestWordModal
