@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
-import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock, Gamepad2, GraduationCap } from "lucide-react"
+import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock, Gamepad2, GraduationCap, UserRound } from "lucide-react"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import { usePwaMode } from "@/hooks/use-pwa-mode"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { WelcomeGate } from "@/components/welcome-gate"
 import { SkipLink } from "@/components/skip-link"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AuthModal } from "@/components/auth-modal"
@@ -305,6 +306,12 @@ export function NavBar() {
                     <Clock className="mr-2 h-4 w-4 text-primary" />
                     Mi historial
                   </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/perfil">
+                      <UserRound className="mr-2 h-4 w-4 text-primary" />
+                      Mi perfil
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {/* Admin link — visible para admin y editor */}
                   {canUsePanel && (
@@ -374,6 +381,7 @@ export function NavBar() {
       {/* Modals */}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
+      <WelcomeGate />
     </>
   )
 }

@@ -15,259 +15,170 @@ import { useToast } from "@/hooks/use-toast"
 import { AuthModal } from "./auth-modal"
 
 const onOpenChange = vi.fn()
-const emailPlaceholder = "tu@email.com"
-const passwordPlaceholder = "Tu contraseña"
-const regPasswordPlaceholder = "Mínimo 8 caracteres"
-const confirmPlaceholder = "Repite tu contraseña"
 
-describe("AuthModal", () => {
+describe("AuthModal (Google-first)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
     vi.mocked(useToast).mockReturnValue({ toast: vi.fn(), dismiss: vi.fn(), toasts: [] })
   })
 
-  describe("login mode (default)", () => {
-    it("renders login form when open", () => {
-      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
-      expect(screen.getByRole("heading", { name: /iniciar sesión/i })).toBeDefined()
-      expect(screen.getByPlaceholderText(emailPlaceholder)).toBeDefined()
-      expect(screen.getByPlaceholderText(passwordPlaceholder)).toBeDefined()
-    })
+  it("renders Google as the primary action and no register mode", () => {
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+    expect(screen.getByRole("heading", { name: /iniciar sesión/i })).toBeDefined()
+    expect(screen.getByRole("button", { name: /continuar con google/i })).toBeDefined()
+    // Sin registro por correo: no hay modo "Crear cuenta" ni "Regístrate"
+    expect(screen.queryByRole("button", { name: /crear cuenta/i })).toBeNull()
+    expect(screen.queryByText("Regístrate")).toBeNull()
+    // Sin formulario de credenciales visible por defecto
+    expect(screen.queryByPlaceholderText("tu@email.com")).toBeNull()
+  })
 
-    it("renders nothing when closed", () => {
-      const { container } = render(<AuthModal open={false} onOpenChange={onOpenChange} />)
-      expect(container.innerHTML).toBe("")
-    })
+  it("renders nothing when closed", () => {
+    const { container } = render(<AuthModal open={false} onOpenChange={onOpenChange} />)
+    expect(container.innerHTML).toBe("")
+  })
 
-    it("calls signIn with credentials on submit", async () => {
-      vi.mocked(signIn).mockResolvedValue({ error: null, ok: true, status: 200, url: "" })
-      const user = userEvent.setup()
+  it("never calls the removed /api/auth/register endpoint", async () => {
+    const user = userEvent.setup()
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
 
-      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
-      await user.type(screen.getByPlaceholderText(emailPlaceholder), "test@test.com")
-      await user.type(screen.getByPlaceholderText(passwordPlaceholder), "password123")
-      await user.click(screen.getByRole("button", { name: /iniciar sesión/i }))
+    await user.click(screen.getByRole("button", { name: /continuar con google/i }))
+    await user.click(screen.getByRole("button", { name: /correo y contraseña/i }))
+    await user.type(screen.getByPlaceholderText("tu@email.com"), "test@test.com")
+    await user.type(screen.getByPlaceholderText("Tu contraseña"), "password123")
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: /iniciar sesión con correo/i }))
 
-      expect(signIn).toHaveBeenCalledWith("credentials", {
-        email: "test@test.com",
-        password: "password123",
-        redirect: false,
-      })
-    })
+    expect(global.fetch).not.toHaveBeenCalled()
+    expect(vi.mocked(fetch).mock.calls.join(" ")).not.toContain("/api/auth/register")
+  })
 
-    it("shows error toast on failed login", async () => {
-      const { toast } = vi.mocked(useToast)()
-      vi.mocked(signIn).mockResolvedValue({ error: "Invalid credentials", ok: false, status: 401, url: "" })
-      const user = userEvent.setup()
+  it("requires terms before Google sign-in", async () => {
+    const { toast } = vi.mocked(useToast)()
+    const user = userEvent.setup()
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
 
-      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
-      await user.type(screen.getByPlaceholderText(emailPlaceholder), "bad@test.com")
-      await user.type(screen.getByPlaceholderText(passwordPlaceholder), "wrong")
-      await user.click(screen.getByRole("button", { name: /iniciar sesión/i }))
+    await user.click(screen.getByRole("button", { name: /continuar con google/i }))
 
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Error al iniciar sesión" })
-      )
-    })
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Aceptación requerida" })
+    )
+    expect(signIn).not.toHaveBeenCalled()
+  })
 
-    it("shows welcome toast and closes on successful login", async () => {
-      const { toast } = vi.mocked(useToast)()
-      vi.mocked(signIn).mockResolvedValue({ error: null, ok: true, status: 200, url: "" })
-      const user = userEvent.setup()
+  it("calls Google sign-in after accepting terms", async () => {
+    const user = userEvent.setup()
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
 
-      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
-      await user.type(screen.getByPlaceholderText(emailPlaceholder), "test@test.com")
-      await user.type(screen.getByPlaceholderText(passwordPlaceholder), "password123")
-      await user.click(screen.getByRole("button", { name: /iniciar sesión/i }))
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: /continuar con google/i }))
 
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "¡Bienvenido/a!" })
-      )
-      expect(onOpenChange).toHaveBeenCalledWith(false)
-    })
+    expect(signIn).toHaveBeenCalledWith("google", { callbackUrl: "/" })
+  })
 
-    it("can switch to register mode", async () => {
-      const user = userEvent.setup()
-      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+  it("reveals credentials only after expanding the secondary toggle", async () => {
+    const user = userEvent.setup()
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
 
-      await user.click(screen.getByText("Regístrate"))
-      expect(screen.getByRole("heading", { name: /crear cuenta/i })).toBeDefined()
-      expect(screen.getByPlaceholderText("Tu nombre")).toBeDefined()
-      expect(screen.getByPlaceholderText(regPasswordPlaceholder)).toBeDefined()
+    const toggle = screen.getByRole("button", { name: /correo y contraseña/i })
+    expect(toggle).toHaveProperty("tagName", "BUTTON")
+    expect(toggle.getAttribute("aria-expanded")).toBe("false")
+
+    await user.click(toggle)
+
+    expect(toggle.getAttribute("aria-expanded")).toBe("true")
+    expect(screen.getByPlaceholderText("tu@email.com")).toBeDefined()
+    expect(screen.getByPlaceholderText("Tu contraseña")).toBeDefined()
+    expect(screen.getByRole("button", { name: /iniciar sesión con correo/i })).toBeDefined()
+  })
+
+  it("requires terms before credentials login", async () => {
+    const { toast } = vi.mocked(useToast)()
+    const user = userEvent.setup()
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+
+    await user.click(screen.getByRole("button", { name: /correo y contraseña/i }))
+    await user.type(screen.getByPlaceholderText("tu@email.com"), "test@test.com")
+    await user.type(screen.getByPlaceholderText("Tu contraseña"), "password123")
+    await user.click(screen.getByRole("button", { name: /iniciar sesión con correo/i }))
+
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Aceptación requerida" })
+    )
+    expect(signIn).not.toHaveBeenCalled()
+  })
+
+  it("calls signIn with credentials on submit after accepting terms", async () => {
+    vi.mocked(signIn).mockResolvedValue({ error: null, ok: true, status: 200, url: "" })
+    const user = userEvent.setup()
+
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+    await user.click(screen.getByRole("button", { name: /correo y contraseña/i }))
+    await user.type(screen.getByPlaceholderText("tu@email.com"), "test@test.com")
+    await user.type(screen.getByPlaceholderText("Tu contraseña"), "password123")
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: /iniciar sesión con correo/i }))
+
+    expect(signIn).toHaveBeenCalledWith("credentials", {
+      email: "test@test.com",
+      password: "password123",
+      redirect: false,
     })
   })
 
-  describe("register mode", () => {
-    async function renderRegister() {
-      const user = userEvent.setup()
-      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
-      await user.click(screen.getByText("Regístrate"))
-      return user
-    }
+  it("shows error toast on failed login", async () => {
+    const { toast } = vi.mocked(useToast)()
+    vi.mocked(signIn).mockResolvedValue({ error: "Invalid credentials", ok: false, status: 401, url: "" })
+    const user = userEvent.setup()
 
-    it("renders register form with name, email, password and confirm", async () => {
-      await renderRegister()
-      expect(screen.getByRole("heading", { name: /crear cuenta/i })).toBeDefined()
-      expect(screen.getByPlaceholderText("Tu nombre")).toBeDefined()
-      expect(screen.getByPlaceholderText(emailPlaceholder)).toBeDefined()
-      expect(screen.getByPlaceholderText(regPasswordPlaceholder)).toBeDefined()
-      expect(screen.getByPlaceholderText(confirmPlaceholder)).toBeDefined()
-    })
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+    await user.click(screen.getByRole("button", { name: /correo y contraseña/i }))
+    await user.type(screen.getByPlaceholderText("tu@email.com"), "bad@test.com")
+    await user.type(screen.getByPlaceholderText("Tu contraseña"), "wrong")
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: /iniciar sesión con correo/i }))
 
-    it("shows password mismatch error", async () => {
-      const { toast } = vi.mocked(useToast)()
-      const user = await renderRegister()
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Error al iniciar sesión" })
+    )
+  })
 
-      await user.type(screen.getByPlaceholderText(emailPlaceholder), "test@test.com")
-      await user.type(screen.getByPlaceholderText(regPasswordPlaceholder), "password123")
-      await user.type(screen.getByPlaceholderText(confirmPlaceholder), "different")
-      await user.click(screen.getByRole("button", { name: /crear cuenta/i }))
+  it("shows welcome toast and closes on successful login", async () => {
+    const { toast } = vi.mocked(useToast)()
+    vi.mocked(signIn).mockResolvedValue({ error: null, ok: true, status: 200, url: "" })
+    const user = userEvent.setup()
 
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Contraseñas no coinciden" })
-      )
-    })
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+    await user.click(screen.getByRole("button", { name: /correo y contraseña/i }))
+    await user.type(screen.getByPlaceholderText("tu@email.com"), "test@test.com")
+    await user.type(screen.getByPlaceholderText("Tu contraseña"), "password123")
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: /iniciar sesión con correo/i }))
 
-    it("calls fetch and auto-login after successful register", async () => {
-      const { toast } = vi.mocked(useToast)()
-      vi.mocked(fetch).mockResolvedValueOnce(
-        Response.json({ ok: true })
-      )
-      vi.mocked(signIn).mockResolvedValue({ error: null, ok: true, status: 200, url: "" })
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "¡Bienvenido/a!" })
+    )
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
 
-      const user = await renderRegister()
+  it("opens the legal modal in place instead of navigating [terminos]", async () => {
+    const user = userEvent.setup()
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
 
-      await user.type(screen.getByPlaceholderText("Tu nombre"), "Test User")
-      await user.type(screen.getByPlaceholderText(emailPlaceholder), "test@test.com")
-      await user.type(screen.getByPlaceholderText(regPasswordPlaceholder), "password123")
-      await user.type(screen.getByPlaceholderText(confirmPlaceholder), "password123")
-      await user.click(screen.getByRole("checkbox"))
-      await user.click(screen.getByRole("button", { name: /crear cuenta/i }))
+    expect(document.querySelector('a[target="_blank"]')).toBeNull()
 
-      expect(fetch).toHaveBeenCalledWith("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "test@test.com", password: "password123", name: "Test User", acceptedTerms: true, acceptedPrivacy: true }),
-      })
+    await user.click(screen.getByRole("button", { name: /términos y condiciones/i }))
+    expect(screen.getByRole("heading", { name: /términos y privacidad/i })).toBeDefined()
+  })
 
-      expect(signIn).toHaveBeenCalledWith("credentials", {
-        email: "test@test.com",
-        password: "password123",
-        redirect: false,
-      })
+  it("accepting in the legal modal checks the terms box [terminos]", async () => {
+    const user = userEvent.setup()
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
 
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "¡Cuenta creada!" })
-      )
-      expect(onOpenChange).toHaveBeenCalledWith(false)
-    })
+    await user.click(screen.getByRole("button", { name: /política de privacidad/i }))
+    await user.click(screen.getByRole("button", { name: /aceptar términos y privacidad/i }))
 
-    it("pide verificar el correo y no auto-entra cuando se requiere [B1.2]", async () => {
-      const { toast } = vi.mocked(useToast)()
-      vi.mocked(fetch).mockResolvedValueOnce(
-        Response.json({ success: true, requiresVerification: true })
-      )
-
-      const user = await renderRegister()
-
-      await user.type(screen.getByPlaceholderText("Tu nombre"), "Test User")
-      await user.type(screen.getByPlaceholderText(emailPlaceholder), "test@test.com")
-      await user.type(screen.getByPlaceholderText(regPasswordPlaceholder), "password123")
-      await user.type(screen.getByPlaceholderText(confirmPlaceholder), "password123")
-      await user.click(screen.getByRole("checkbox"))
-      await user.click(screen.getByRole("button", { name: /crear cuenta/i }))
-
-      expect(signIn).not.toHaveBeenCalled()
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ description: expect.stringContaining("Revisa tu correo") })
-      )
-    })
-
-    it("offers Google sign-in without auto credentials login [B1.3]", async () => {      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
-      const user = userEvent.setup()
-      await user.click(screen.getByRole("button", { name: /continuar con google/i }))
-      expect(signIn).toHaveBeenCalledWith("google", { callbackUrl: "/" })
-    })
-
-    it("apila los botones a ancho completo (sin fila lateral) [layout]", async () => {
-      render(<AuthModal open={true} onOpenChange={onOpenChange} />)
-      const submit = screen.getByRole("button", { name: /iniciar sesión/i })
-      const google = screen.getByRole("button", { name: /continuar con google/i })
-      // Mismo contenedor en columna: el submit nunca queda a la izquierda
-      expect(submit.parentElement).toBe(google.parentElement)
-      expect(submit.parentElement?.className).toMatch(/flex-col/)
-      expect(submit.parentElement?.className).not.toMatch(/flex-row/)
-      expect(submit.className).toMatch(/w-full/)
-      expect(google.className).toMatch(/w-full/)
-    })
-
-    it("shows error toast when register fails", async () => {
-      const { toast } = vi.mocked(useToast)()
-      vi.mocked(fetch).mockResolvedValueOnce(
-        Response.json({ message: "Email ya registrado" }, { status: 409 })
-      )
-
-      const user = await renderRegister()
-
-      await user.type(screen.getByPlaceholderText(emailPlaceholder), "existing@test.com")
-      await user.type(screen.getByPlaceholderText(regPasswordPlaceholder), "password123")
-      await user.type(screen.getByPlaceholderText(confirmPlaceholder), "password123")
-      await user.click(screen.getByRole("checkbox"))
-      await user.click(screen.getByRole("button", { name: /crear cuenta/i }))
-
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Error al registrarse" })
-      )
-    })
-
-    it("shows inline error message when passwords do not match", async () => {
-      const user = await renderRegister()
-
-      const passwordInput = screen.getByPlaceholderText(regPasswordPlaceholder)
-      const confirmInput = screen.getByPlaceholderText(confirmPlaceholder)
-
-      await user.type(passwordInput, "password123")
-      await user.type(confirmInput, "different")
-
-      expect(screen.getByText("Las contraseñas no coinciden")).toBeDefined()
-    })
-
-    it("opens the legal modal in place instead of navigating [terminos]", async () => {
-      const user = await renderRegister()
-
-      // No external navigation links remain in register mode
-      expect(document.querySelector('a[target="_blank"]')).toBeNull()
-
-      await user.click(screen.getByRole("button", { name: /términos y condiciones/i }))
-      expect(screen.getByRole("heading", { name: /términos y privacidad/i })).toBeDefined()
-    })
-
-    it("accepting in the legal modal checks the terms box [terminos]", async () => {
-      const user = await renderRegister()
-
-      await user.click(screen.getByRole("button", { name: /política de privacidad/i }))
-      await user.click(screen.getByRole("button", { name: /aceptar términos y privacidad/i }))
-
-      expect(screen.getByRole("checkbox")).toHaveProperty("checked", true)
-    })
-
-    it("blocks submit without acceptance even after opening the modal [terminos]", async () => {
-      const { toast } = vi.mocked(useToast)()
-      const user = await renderRegister()
-
-      await user.type(screen.getByPlaceholderText(emailPlaceholder), "test@test.com")
-      await user.type(screen.getByPlaceholderText(regPasswordPlaceholder), "password123")
-      await user.type(screen.getByPlaceholderText(confirmPlaceholder), "password123")
-      // Open and close the legal modal without accepting
-      await user.click(screen.getByRole("button", { name: /términos y condiciones/i }))
-      await user.click(screen.getByRole("button", { name: /^cerrar$/i }))
-      await user.click(screen.getByRole("button", { name: /crear cuenta/i }))
-
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Aceptación requerida" })
-      )
-      expect(fetch).not.toHaveBeenCalled()
-    })
+    expect(screen.getByRole("checkbox")).toHaveProperty("checked", true)
   })
 })

@@ -17,6 +17,7 @@ model User {
   password  String?  // Hashed password (bcrypt)
   role      String   @default("user") // "user" | "editor" | "admin"
   emailVerified DateTime? // B1.2: verificación obligatoria (backfill en migración)
+  onboardedAt   DateTime? // Fase Google-first: onboarding post-registro (null = pendiente)
   verifyToken   String?   @unique
   verifyExpires DateTime?
   createdAt DateTime @default(now())
