@@ -507,24 +507,39 @@ function CoursePlayerSkeleton() {
           </div>
         </div>
       </div>
-      {/* Canvas: breadcrumb + título + bloques, min-h fijo anti-CLS */}
-      <div aria-hidden="true" className="min-h-[max(420px,60dvh)] space-y-4">
-        <Skeleton className="h-4 w-44" />
-        <Skeleton className="h-9 w-3/4 max-w-md" />
-        <div className="flex gap-2">
-          <Skeleton className="h-5 w-24 rounded-md" />
+      {/* Canvas: espejo del árbol real de LessonCanvas (label de módulo +
+          título h2 a 2 líneas con número + badges + bloques en flex gap-5 +
+          footer nav, mismo spacing mt-1/mt-2/mt-6/mt-8): el swap al dato
+          real no mueve la altura (CLS ≈ 0, §F-D1). */}
+      <div aria-hidden="true" className="min-h-[max(420px,60dvh)] min-w-0">
+        <Skeleton className="h-4 w-40 border-transparent" />
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <Skeleton className="h-6 w-14 border-transparent" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-8 w-3/4 border-transparent" />
+            <Skeleton className="h-8 w-1/2 border-transparent" />
+          </div>
         </div>
-        <div className="space-y-3 pt-2">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-11/12" />
-          <Skeleton className="h-48 w-full rounded-xl" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-2/3" />
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Skeleton className="h-5 w-24 rounded-full border-transparent" />
+          <Skeleton className="h-5 w-36 rounded-full border-transparent" />
         </div>
-        <div className="flex gap-3 pt-2">
-          <Skeleton className="h-10 flex-1 rounded-md" />
-          <Skeleton className="h-10 flex-1 rounded-md" />
+        <div className="mt-6 flex flex-col gap-5">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full border-transparent" />
+            <Skeleton className="h-4 w-full border-transparent" />
+            <Skeleton className="h-4 w-11/12 border-transparent" />
+            <Skeleton className="h-4 w-2/3 border-transparent" />
+          </div>
+          <Skeleton className="h-48 w-full rounded-xl border-transparent" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full border-transparent" />
+            <Skeleton className="h-4 w-2/3 border-transparent" />
+          </div>
+        </div>
+        <div className="mt-8 flex items-stretch gap-3">
+          <Skeleton className="h-11 flex-1 border-transparent" />
+          <Skeleton className="h-11 flex-1 border-transparent" />
         </div>
       </div>
     </div>
