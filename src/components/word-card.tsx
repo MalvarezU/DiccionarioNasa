@@ -18,7 +18,7 @@ interface WordCardProps {
 }
 
 const CARD_FOCUS =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]"
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
 const CARD_HOVER = "hover:shadow-md hover:border-secondary/40"
 
 /**

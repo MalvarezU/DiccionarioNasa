@@ -282,19 +282,19 @@ export function MemoryGame({ words: providedWords, initialPairs = 6 }: MemoryGam
     return (
       <Card className="max-w-2xl mx-auto">
         <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
-          <CheckCircle2 className="h-16 w-16 text-[#5E6B45]" />
+          <CheckCircle2 className="h-16 w-16 text-secondary" />
           <h3 className="text-2xl font-serif text-foreground">
             ¡Felicitaciones!
           </h3>
           <p className="text-muted-foreground">
             Encontraste todas las parejas en{" "}
-            <strong className="text-[#4C5738]">{moves}</strong> movimientos y{" "}
-            <strong className="text-[#4C5738]">{formatTime(seconds)}</strong>
+            <strong className="text-montana">{moves}</strong> movimientos y{" "}
+            <strong className="text-montana">{formatTime(seconds)}</strong>
           </p>
           <Button
             onClick={restart}
             variant="outline"
-            className="gap-2 mt-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]"
+            className="gap-2 mt-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
           >
             <RefreshCw className="h-4 w-4" />
             Jugar de nuevo
@@ -327,7 +327,7 @@ export function MemoryGame({ words: providedWords, initialPairs = 6 }: MemoryGam
             size="sm"
             onClick={() => changeDifficulty(d.pairs)}
             aria-pressed={numPairs === d.pairs}
-            className="min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]"
+            className="min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
           >
             {d.label} ({d.pairs})
           </Button>
@@ -344,7 +344,7 @@ export function MemoryGame({ words: providedWords, initialPairs = 6 }: MemoryGam
             {formatTime(seconds)}
           </Badge>
         </div>
-        <Badge variant="outline" className="gap-1.5 text-sm border-[#7A5F33]/30 bg-[#F0E3C6] text-[#7A5F33]">
+        <Badge variant="outline" className="gap-1.5 text-sm border-tertiary/30 bg-tertiary-container text-tertiary">
           Parejas: {matched}/{pairsDealt}
         </Badge>
       </div>
@@ -363,10 +363,10 @@ export function MemoryGame({ words: providedWords, initialPairs = 6 }: MemoryGam
                   ? `${card.text} (${card.type === "spanish" ? "Español" : "Nasa Yuwe"})`
                   : `Carta tapada ${index + 1}`
               }
-              className={`relative aspect-[3/4] min-h-11 rounded-xl border-2 transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45] ${
+              className={`relative aspect-[3/4] min-h-11 rounded-xl border-2 transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${
                 isFlipped
                   ? card.matched
-                    ? "border-[#5E6B45] bg-[#E3E6D2] anim-match-pop"
+                    ? "border-secondary bg-secondary-container anim-match-pop"
                     : "border-primary bg-primary/5"
                   : "border-muted-foreground/20 bg-muted/40 hover:border-primary/50 hover:bg-muted/60 cursor-pointer"
               }`}

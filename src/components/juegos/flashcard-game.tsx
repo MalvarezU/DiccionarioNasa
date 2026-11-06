@@ -232,15 +232,15 @@ export function FlashcardGame({
     return (
       <Card className="max-w-2xl mx-auto">
         <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
-          <CheckCircle2 className="h-16 w-16 text-[#5E6B45]" />
+          <CheckCircle2 className="h-16 w-16 text-secondary" />
           <h3 className="text-2xl font-serif text-foreground">¡Completado!</h3>
           <p className="text-muted-foreground">
-            Acertaste <strong className="text-[#4C5738]">{correctCount}</strong> de{" "}
+            Acertaste <strong className="text-montana">{correctCount}</strong> de{" "}
             <strong>{total}</strong> palabras
           </p>
           <Badge
             variant="secondary"
-            className="gap-1.5 text-sm bg-[#E3E6D2] text-[#4C5738] border border-[#5E6B45]/30"
+            className="gap-1.5 text-sm bg-secondary-container text-montana border border-secondary/30"
           >
             {correctCount >= total * 0.8
               ? "¡Excelente!"
@@ -248,7 +248,7 @@ export function FlashcardGame({
                 ? "Buen trabajo"
                 : "Sigue practicando"}
           </Badge>
-          <Button onClick={handleRestart} variant="outline" className="gap-2 mt-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]">
+          <Button onClick={handleRestart} variant="outline" className="gap-2 mt-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
             <RefreshCw className="h-4 w-4" />
             Jugar de nuevo
           </Button>
@@ -264,7 +264,7 @@ export function FlashcardGame({
           variant={direction === "es-nasa" ? "default" : "outline"}
           size="sm"
           onClick={() => handleDirectionChange("es-nasa")}
-          className="gap-1.5 min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]"
+          className="gap-1.5 min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
         >
           <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
           Español → Nasa Yuwe
@@ -273,7 +273,7 @@ export function FlashcardGame({
           variant={direction === "nasa-es" ? "default" : "outline"}
           size="sm"
           onClick={() => handleDirectionChange("nasa-es")}
-          className="gap-1.5 min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]"
+          className="gap-1.5 min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
         >
           <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
           Nasa Yuwe → Español
@@ -281,12 +281,12 @@ export function FlashcardGame({
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-[#4C5738]">
+          <span className="text-montana">
             Pregunta {currentIndex + 1} de {total}
           </span>
           <div className="flex items-center gap-3">
             {streak >= 2 && (
-              <Badge variant="secondary" className="gap-1 bg-[#E3E6D2] text-[#4C5738]">
+              <Badge variant="secondary" className="gap-1 bg-secondary-container text-montana">
                 <Flame className="h-3.5 w-3.5" aria-hidden="true" />
                 Racha: {streak}
               </Badge>
@@ -299,7 +299,7 @@ export function FlashcardGame({
         </div>
         <Progress
           value={((currentIndex + 1) / total) * 100}
-          className="h-2 bg-[#E0CFAE] [&_[data-slot=progress-indicator]]:bg-[#5E6B45]"
+          className="h-2 bg-surface-container-high [&_[data-slot=progress-indicator]]:bg-secondary"
           aria-label={`Progreso: pregunta ${currentIndex + 1} de ${total}`}
         />
       </div>
@@ -327,22 +327,22 @@ export function FlashcardGame({
               disabled={showResult}
               onClick={() => handleAnswer(idx)}
               data-testid="flash-option"
-              className={`h-auto min-h-11 py-5 text-lg font-medium transition-all focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45] ${
+              className={`h-auto min-h-11 py-5 text-lg font-medium transition-all focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${
                 showResult
                   ? isCorrect
-                    ? "border-[#5E6B45] bg-[#E3E6D2] text-[#4C5738] anim-flash-correct"
+                    ? "border-secondary bg-secondary-container text-montana anim-flash-correct"
                     : isSelected && !isCorrect
-                      ? "border-[#A44A3A] bg-[#F1DCD2] text-[#A44A3A] anim-flash-wrong"
+                      ? "border-destructive bg-destructive/10 text-destructive anim-flash-wrong"
                       : "opacity-50"
                   : "hover:border-primary hover:bg-primary/5"
               }`}
             >
               <span className="flex items-center gap-2">
                 {showResult && isCorrect && (
-                  <CheckCircle2 className="h-5 w-5 text-[#4C5738]" />
+                  <CheckCircle2 className="h-5 w-5 text-montana" />
                 )}
                 {showResult && isSelected && !isCorrect && (
-                  <XCircle className="h-5 w-5 text-[#A44A3A]" />
+                  <XCircle className="h-5 w-5 text-destructive" />
                 )}
                 {option}
               </span>
@@ -353,7 +353,7 @@ export function FlashcardGame({
 
       {selectedAnswer !== null && (
         <div className="flex justify-center">
-          <Button onClick={handleNext} className="gap-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]">
+          <Button onClick={handleNext} className="gap-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
             {currentIndex + 1 >= total ? "Ver resultados" : "Siguiente"}
           </Button>
         </div>
