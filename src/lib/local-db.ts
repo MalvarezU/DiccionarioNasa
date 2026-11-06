@@ -308,6 +308,12 @@ export async function searchLocalWords(
 
   const normalizedQuery = query.toLowerCase().trim()
 
+  if (!normalizedQuery) {
+    return []
+  }
+
+  const isSingleChar = normalizedQuery.length === 1
+
   return await withDB(async (db) => {
     const tx = db.transaction(WORDS_STORE, "readonly")
     const store = tx.objectStore(WORDS_STORE)
@@ -320,8 +326,14 @@ export async function searchLocalWords(
         const cursor = (event.target as IDBRequest).result as IDBCursorWithValue | null
         if (cursor) {
           const word = cursor.value as DictionaryWord
-          const matchesSpanish = word.spanish.toLowerCase().includes(normalizedQuery)
-          const matchesNasaYuwe = word.nasaYuwe.toLowerCase().includes(normalizedQuery)
+          const spanishLower = word.spanish.toLowerCase()
+          const nasaLower = word.nasaYuwe.toLowerCase()
+          const matchesSpanish = isSingleChar
+            ? spanishLower.startsWith(normalizedQuery)
+            : spanishLower.includes(normalizedQuery)
+          const matchesNasaYuwe = isSingleChar
+            ? nasaLower.startsWith(normalizedQuery)
+            : nasaLower.includes(normalizedQuery)
 
           if (matchesSpanish || matchesNasaYuwe) {
             results.push(word)

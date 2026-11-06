@@ -23,6 +23,7 @@ import { recordLocalHistory } from "@/lib/demo-storage";
 
 import { WordCardSkeleton } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 interface FeaturedWord {
   id: string;
@@ -44,6 +45,9 @@ function DiccionarioContent() {
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("featured");
+  const [featuredError, setFeaturedError] = useState(false);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [featuredRetry, setFeaturedRetry] = useState(0);
 
   // Favorites/History panel
   const [panelOpen, setPanelOpen] = useState(false);
@@ -73,19 +77,25 @@ function DiccionarioContent() {
 
   // Fetch featured words
   useEffect(() => {
+    const controller = new AbortController();
     const fetchFeatured = async () => {
+      setFeaturedLoading(true);
+      setFeaturedError(false);
       try {
-        const res = await fetch("/api/dictionary/featured");
-        if (res.ok) {
-          const data = await res.json();
-          setFeaturedWords(data.words ?? []);
-        }
-      } catch {
-        // Silently fail
+        const res = await fetch("/api/dictionary/featured", { signal: controller.signal });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        setFeaturedWords(data.words ?? []);
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") return;
+        setFeaturedError(true);
+      } finally {
+        if (!controller.signal.aborted) setFeaturedLoading(false);
       }
     };
     fetchFeatured();
-  }, []);
+    return () => controller.abort();
+  }, [featuredRetry]);
 
   const handleWordClick = (wordId: string) => {
     // Stop featured audio before opening the detail modal
@@ -106,7 +116,7 @@ function DiccionarioContent() {
   useEffect(() => {
     if (!selectedWordId || !detailOpen || !isAuthenticated) return;
 
-    const userId = (session?.user as any)?.id || 'demo-user';
+    const userId = (session?.user as { id?: string } | undefined)?.id || 'demo-user';
 
     const recordHistory = async () => {
       try {
@@ -166,15 +176,18 @@ function DiccionarioContent() {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
-      <InstallBanner destino="/#instalar" />
 
       <main id="contenido" className="flex-1">
         {/* Hero del diccionario — foto banner2 con overlay pizarra (mismo
             tratamiento que el hero home; stops reforzados porque la foto
             es clara: muro blanco sobreexpuesto). data-hero: el header
             frosted mide este hero para mutar a sólido al salir de él.
-            pt-28 despeja el header fijo; en sm+ centra en 72svh. */}
-        <section data-hero className="relative isolate overflow-hidden bg-background pb-12 sm:pb-16 pt-28 sm:pt-36 sm:flex sm:min-h-[72svh] sm:flex-col sm:justify-center">
+            min-h-svh + flex-col con el wrapper centrado en sm+
+            (sm:my-auto) y anclado arriba en móvil: el panel queda
+            centrado en desktop sin saltos al escribir
+            (marco de resultados fijo, cero CLS). En móvil el panel va
+            primero en el DOM junto al navbar. */}
+        <section data-hero className="relative isolate overflow-hidden bg-background pb-10 sm:pb-14 pt-16 sm:pt-20 min-h-svh flex flex-col">
           <Image
             src="/banner2.jpg"
             alt=""
@@ -193,47 +206,54 @@ function DiccionarioContent() {
             }}
             aria-hidden="true"
           />
-          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 text-center z-20">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium text-[#F6EEDC] backdrop-blur-md">
-              <BookOpen className="h-3 w-3 text-[#F6EEDC]" aria-hidden="true" />
-              Diccionario bilingüe
-            </span>
-            <h1
-              className="mt-4 text-3xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-[#F6EEDC]"
-              style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.5)" }}
-            >
-              Diccionario Nasa Yuwe
-            </h1>
-            <p
-              className="mt-3 text-lg sm:text-xl font-medium text-white"
-              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.6)" }}
-            >
-              Busca palabras, pronunciaciones y contexto cultural
-            </p>
-
-            <div className="mt-8 sm:mt-10">
-              <SearchBar variant="hero" />
-            </div>
-
-            <div
-              className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm sm:text-base text-white/90"
-              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
-            >
-              <div className="flex items-center gap-2">
-                <Leaf className="h-4 w-4 text-[#F6EEDC]" />
-                <span>Palabras de la comunidad</span>
+          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 z-20 sm:my-auto">
+            <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-start lg:gap-12">
+              {/* Panel de búsqueda PRIMERO en el DOM: en móvil aparece junto
+                  al navbar; en lg se reordena a la derecha (order). */}
+              <div className="order-1 mx-auto w-full max-w-xl rounded-2xl border border-white/25 bg-black/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
+                <SearchBar variant="hero-panel" onWordSelect={handleWordSelect} />
               </div>
-              <div className="flex items-center gap-2">
-                <Volume2 className="h-4 w-4 text-[#F6EEDC]" />
-                <span>Pronunciación guiada</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-[#F6EEDC]" />
-                <span>Español ↔ Nasa Yuwe</span>
+              {/* Copy de bienvenida: segundo en el DOM, a la izquierda en lg */}
+              <div className="order-2 text-center lg:text-left lg:order-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium text-[#F6EEDC] backdrop-blur-md">
+                  <BookOpen className="h-3 w-3 text-[#F6EEDC]" aria-hidden="true" />
+                  Diccionario bilingüe
+                </span>
+                <h1
+                  className="mt-4 text-2xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-[#F6EEDC]"
+                  style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.5)" }}
+                >
+                  Diccionario Nasa Yuwe
+                </h1>
+                <p
+                  className="mt-3 text-lg sm:text-xl font-medium text-white"
+                  style={{ textShadow: "0 2px 6px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.6)" }}
+                >
+                  Busca palabras, pronunciaciones y contexto cultural
+                </p>
+                <div
+                  className="mt-6 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm sm:text-base text-white/90 lg:justify-start"
+                  style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Leaf className="h-4 w-4 text-[#F6EEDC]" />
+                    <span>Palabras de la comunidad</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Volume2 className="h-4 w-4 text-[#F6EEDC]" />
+                    <span>Pronunciación guiada</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-[#F6EEDC]" />
+                    <span>Español ↔ Nasa Yuwe</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </section>
+
+        <InstallBanner destino="/#instalar" />
 
         {/* Word of the Day */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
@@ -266,7 +286,20 @@ function DiccionarioContent() {
                 </p>
               </div>
 
-              {featuredWords.length > 0 ? (
+              {featuredLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <WordCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : featuredError ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground mb-3">No pudimos cargar las palabras destacadas.</p>
+                  <Button variant="outline" size="sm" onClick={() => setFeaturedRetry((r) => r + 1)}>
+                    Reintentar
+                  </Button>
+                </div>
+              ) : featuredWords.length > 0 ? (
                 <div
                   ref={featuredGridRef}
                   className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
@@ -282,10 +315,8 @@ function DiccionarioContent() {
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {Array.from({ length: 6 }, (_, i) => (
-                    <WordCardSkeleton key={i} />
-                  ))}
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  No hay palabras destacadas por ahora.
                 </div>
               )}
             </TabsContent>

@@ -78,3 +78,12 @@ export const STATUS_LABEL: Record<string, string> = {
   PUBLISHED: "Publicado",
   ARCHIVED: "Archivado",
 }
+
+/**
+ * Una lección está "sin contenido" cuando su documento no trae bloques.
+ * Solo lee el content ya presente en GET detail: sin fetch extra.
+ */
+export function lessonSinContenido(lesson: Pick<Lesson, "content">): boolean {
+  const blocks = (lesson.content as { blocks?: unknown } | null | undefined)?.blocks
+  return !Array.isArray(blocks) || blocks.length === 0
+}
