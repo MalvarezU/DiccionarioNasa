@@ -28,9 +28,12 @@ interface AuthModalProps {
 /**
  * Acceso Google-first (Fase 2 + corrección UX registro):
  * - Modo "register": crear cuenta solo con Google (una cuenta nueva se crea
- *   al instante, sin formulario ni correo de verificación).
+ *   al instante, sin formulario ni correo de verificación). Exige aceptar
+ *   Términos y Privacidad aquí, en el punto de creación de la cuenta.
  * - Modo "login": entrar con Google o, colapsado por defecto, con correo +
  *   contraseña (solo para quienes ya crearon una contraseña desde su perfil).
+ *   Iniciar sesión nunca exige términos: la aceptación ya ocurrió al crear
+ *   la cuenta (register) y el welcome-modal post-Google la refuerza.
  * Sin registro por correo: ningún camino llama a /api/auth/register.
  */
 export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthModalProps) {
@@ -84,7 +87,8 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
   };
 
   const handleGoogle = () => {
-    if (!requireTerms()) return;
+    // Los términos solo se exigen al crear cuenta. Iniciar sesión entra directo.
+    if (mode === "register" && !requireTerms()) return;
     signIn("google", { callbackUrl: "/" });
   };
 
@@ -94,7 +98,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
       return;
     }
 
-    if (!requireTerms()) return;
+    // handleLogin solo existe en modo login: nunca exige términos.
 
     setIsLoading(true);
     try {
@@ -167,6 +171,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
             </p>
           )}
 
+          {isRegister && (
           <label className="flex items-start gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
@@ -195,6 +200,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
               .
             </span>
           </label>
+          )}
 
           {!isRegister && (
             <div className="border-t pt-2">
