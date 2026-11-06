@@ -4,7 +4,7 @@ import { vi } from "vitest"
  * Mocks complementarios reutilizados en varias rutas:
  *  - `next-auth` (`getServerSession`, providers, authOptions)
  *  - `bcryptjs`
- *  - `next-auth/react` (SessionProvider) y Supabase server, cuando aplica.
+ *  - `next-auth/react` (SessionProvider), cuando aplica.
  */
 
 export const mockNextAuth = vi.hoisted(() => ({

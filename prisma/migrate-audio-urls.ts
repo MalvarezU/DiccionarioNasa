@@ -1,4 +1,7 @@
 /**
+ * LEGACY (era Supabase, deprecado): script de migración puntual ya ejecutado.
+ * No correr contra instalaciones nuevas (el storage vigente es R2).
+ *
  * Migración de audioUrl: signed URLs (expiran en 1h) → URLs públicas permanentes.
  *
  * Contexto: upload-audio guardaba `createSignedUrl(..., 3600)` en BD. Esas URLs

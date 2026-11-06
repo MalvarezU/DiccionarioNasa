@@ -74,7 +74,7 @@ model Course {
   id          String        @id @default(cuid())
   title       String
   description String? @db.Text
-  /// Imagen de portada del catálogo (URL pública de Supabase Storage).
+  /// Imagen de portada del catálogo (URL pública de R2, `images/...`).
   coverImage  String?
   status      ContentStatus @default(DRAFT)
   sequential  Boolean       @default(true)
@@ -152,8 +152,8 @@ model DictionaryWord {
   audioUrl        String?  // URL to native speaker audio
   /// URL pública de la ilustración de la palabra (/api/media/[id]).
   /// Igual que audioUrl, es un string y no una relación: el binario vive en
-  /// MediaAsset (Postgres) y se sirve por el mismo origen, así el service
-  /// worker del PWA lo puede cachear sin conexión.
+  /// R2 (metadatos en MediaAsset, MariaDB) y se sirve por el mismo origen,
+  /// así el service worker del PWA lo puede cachear sin conexión.
   illustrationUrl String?
   culturalContext String?  @db.Text // Cultural context of use
   category        String?  // Grammatical category (noun, verb, adj, etc.)
