@@ -32,8 +32,8 @@ export const metadata: Metadata = {
     "indigenous language",
   ],
   icons: {
-    icon: "/logoPiiyaakblanco.png",
-    apple: "/logoPiiyaakblanco.png",
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
   },
   manifest: "/manifest.webmanifest",
   openGraph: {

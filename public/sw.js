@@ -9,7 +9,7 @@
 //   (status 0, ok === false). Si solo se guarda `res.ok`, el caché nunca se
 //   llena: se acepta también `res.type === "opaque"`, con tope para acotar.
 
-const SHELL_CACHE = "piiyaak-shell-v3"
+const SHELL_CACHE = "piiyaak-shell-v4"
 const AUDIO_CACHE = "piiyaak-audio-v1"
 const AUDIO_MAX_ENTRIES = 50
 const IMAGE_CACHE = "piiyaak-image-v1"
