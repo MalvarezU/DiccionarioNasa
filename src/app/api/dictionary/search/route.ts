@@ -36,10 +36,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const query = searchParams.get('q')?.trim() ?? ''
 
-  // Require at least 2 characters to search
-  if (query.length < 2) {
+  const MAX_QUERY_LENGTH = 100
+
+  // Require at least 1 character to search
+  if (query.length < 1) {
     return NextResponse.json(
-      { results: [], total: 0, message: 'Query must be at least 2 characters' },
+      { results: [], total: 0, message: 'Query must be at least 1 character' },
+      { status: 400 }
+    )
+  }
+
+  if (query.length > MAX_QUERY_LENGTH) {
+    return NextResponse.json(
+      { results: [], total: 0, message: 'Query must be at most 100 characters' },
       { status: 400 }
     )
   }
@@ -57,25 +66,47 @@ export async function GET(request: NextRequest) {
     // Fetch more candidates than needed so we can rank and trim
     // MySQL/MariaDB: la collation utf8mb4_unicode_ci ya es case- y accent-insensitive,
     // así que reemplaza al `unaccent` de Postgres. `nasaYuwe` va entre backticks.
-    const searchPromise = db.$queryRaw<
-      Array<{
-        id: string
-        spanish: string
-        nasaYuwe: string
-        pronunciation: string | null
-        category: string | null
-        audioUrl: string | null
-      }>
-    >`
-      SELECT id, spanish, \`nasaYuwe\`, pronunciation, category, audioUrl
-      FROM DictionaryWord
-      WHERE status = 'PUBLISHED'
-        AND (
-          spanish LIKE CONCAT('%', ${query}, '%')
-          OR \`nasaYuwe\` LIKE CONCAT('%', ${query}, '%')
-        )
-      LIMIT 50
-    `
+    const isSingleChar = query.length === 1
+
+    const searchPromise = isSingleChar
+      ? db.$queryRaw<
+          Array<{
+            id: string
+            spanish: string
+            nasaYuwe: string
+            pronunciation: string | null
+            category: string | null
+            audioUrl: string | null
+          }>
+        >`
+          SELECT id, spanish, \`nasaYuwe\`, pronunciation, category, audioUrl
+          FROM DictionaryWord
+          WHERE status = 'PUBLISHED'
+            AND (
+              spanish LIKE CONCAT(${query}, '%')
+              OR \`nasaYuwe\` LIKE CONCAT(${query}, '%')
+            )
+          LIMIT 50
+        `
+      : db.$queryRaw<
+          Array<{
+            id: string
+            spanish: string
+            nasaYuwe: string
+            pronunciation: string | null
+            category: string | null
+            audioUrl: string | null
+          }>
+        >`
+          SELECT id, spanish, \`nasaYuwe\`, pronunciation, category, audioUrl
+          FROM DictionaryWord
+          WHERE status = 'PUBLISHED'
+            AND (
+              spanish LIKE CONCAT('%', ${query}, '%')
+              OR \`nasaYuwe\` LIKE CONCAT('%', ${query}, '%')
+            )
+          LIMIT 50
+        `
 
     const rawResults = await Promise.race([searchPromise, timeoutPromise])
 

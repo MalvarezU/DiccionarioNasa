@@ -2,34 +2,41 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { notFound } from "next/navigation"
-import { GraduationCap, ArrowLeft, BookOpen, CheckCircle2 } from "lucide-react"
+import { GraduationCap, ArrowLeft, BookOpen } from "lucide-react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { NavBar } from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumbs } from "@/components/breadcrumbs"
+import { AuthModal } from "@/components/auth-modal"
+import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import { CoursePlayerSkeleton } from "@/components/skeletons"
-import { ModuleAccordion, type RealModule } from "@/components/cursos/module-accordion"
+import { CourseOutline } from "@/components/cursos/player/course-outline"
+import { LessonCanvas } from "@/components/cursos/player/lesson-canvas"
+import { PlayerShell } from "@/components/cursos/player/player-shell"
+import { useLessonNavigation } from "@/components/cursos/player/use-lesson-navigation"
 import {
-  fetchWordsByIds,
-  wordIdsUsedByContent,
-  type CourseWordData,
-} from "@/lib/courses/word-data"
-import { parseLessonContent } from "@/lib/courses/blocks"
+  useLessonLoader,
+  type LoadedLesson,
+} from "@/components/cursos/player/use-lesson-loader"
+import type { PlayerCourse } from "@/components/cursos/player/types"
+import type { CourseWordData } from "@/lib/courses/word-data"
 
-interface CourseDetail {
-  id: string
-  title: string
-  description: string | null
+interface CourseDetail extends PlayerCourse {
   status: string
-  sequential: boolean
-  modules: RealModule[]
 }
 
 const ANON_KEY = "piiyaak:course:anon:v1"
+
+const EMPTY_COURSE: PlayerCourse = {
+  id: "",
+  title: "",
+  description: null,
+  sequential: false,
+  modules: [],
+}
 
 function loadAnon(courseId: string): string[] {
   try {
@@ -39,6 +46,28 @@ function loadAnon(courseId: string): string[] {
   } catch {
     return []
   }
+}
+
+interface ManifestLesson {
+  id: string
+  lessonNumber: number | null
+  title: string
+  interactiveCount: number
+}
+
+interface ManifestModule {
+  id: string
+  title: string
+  order: number
+  lessons: ManifestLesson[]
+}
+
+interface ManifestResponse {
+  courseId: string
+  title: string
+  description: string | null
+  sequential: boolean
+  modules: ManifestModule[]
 }
 
 export default function CursoDetailPage({
@@ -58,54 +87,70 @@ export default function CursoDetailPage({
     }
   }, [params])
   const { data: session } = useSession()
+  const { toast } = useToast()
   const isAuthed = !!session?.user
 
   const [course, setCourse] = useState<CourseDetail | null>(null)
   const [notFoundFlag, setNotFoundFlag] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [completedLessons, setCompletedLessons] = useState<string[]>([])
   const [lastVisited, setLastVisited] = useState<string | null>(null)
-  /** Lección objetivo del CTA "Continuar donde quedé" (abre su módulo). */
-  const [continueLessonId, setContinueLessonId] = useState<string | null>(null)
-  /** Datos de las palabras referenciadas por los bloques de todas las lecciones. */
-  const [words, setWords] = useState<Map<string, CourseWordData>>(() => new Map())
+  // Única fuente del AuthModal (H4): el canvas y el outline solo piden sesión.
+  const [authOpen, setAuthOpen] = useState(false)
 
-  // Curso + progreso (backend si hay sesión, local si no)
+  // Lección activa on-demand (contenido + palabras del endpoint de lección).
+  // El loader es dueño de la cache; acá solo queda el registro de lo que
+  // la red trajo o falló para este id. Derivación durante el render:
+  // cache > red > error > cargando (sin setState sincrónico en efectos).
+  const [records, setRecords] = useState<Record<string, { data?: LoadedLesson; error?: boolean }>>({})
+  const { load, prefetch, getCached } = useLessonLoader(id ?? "")
+
+  // Manifest ligero: outline + navegación sin el contenido de las lecciones.
   useEffect(() => {
     if (!id) return
     let alive = true
-    fetch(`/api/courses/${id}`)
+    fetch(`/api/courses/${id}/manifest`)
       .then((res) => {
         if (res.status === 404) {
           if (alive) setNotFoundFlag(true)
           return null
         }
-        return res.ok ? res.json() : null
+        if (!res.ok) {
+          if (alive) setLoadError(true)
+          return null
+        }
+        return res.json() as Promise<ManifestResponse>
       })
       .then((data) => {
-        if (!alive || !data?.course) return
-        setCourse(data.course as CourseDetail)
-
-        // Los bloques de las lecciones referencian palabras por id
-        // (vocabulary / game): las traigo en un solo lote. El documento se
-        // valida antes de leerlo: corrupto en la base => sin lote.
-        const ids: string[] = []
-        for (const mod of data.course.modules ?? []) {
-          for (const les of mod.lessons ?? []) {
-            const parse = parseLessonContent((les as { content?: unknown }).content)
-            if (parse.ok) ids.push(...wordIdsUsedByContent(parse.content.blocks))
-          }
-        }
-        fetchWordsByIds(ids).then((m) => {
-          if (alive) setWords(m)
+        if (!alive || !data) return
+        setCourse({
+          id: data.courseId,
+          title: data.title,
+          description: data.description,
+          sequential: data.sequential,
+          status: "PUBLISHED",
+          // Las lecciones del manifest no traen contenido: el canvas usa la
+          // lección del loader. Acá van solo id/título/número para el índice.
+          modules: data.modules.map((m) => ({
+            id: m.id,
+            title: m.title,
+            lessons: m.lessons.map((l) => ({
+              id: l.id,
+              title: l.title,
+              lessonNumber: l.lessonNumber,
+              content: null,
+            })),
+          })),
         })
       })
       .catch(() => {
-        if (alive) setNotFoundFlag(true)
+        if (alive) setLoadError(true)
       })
     return () => {
       alive = false
     }
-  }, [id])
+  }, [id, reloadKey])
 
   useEffect(() => {
     if (!course) return
@@ -132,38 +177,43 @@ export default function CursoDetailPage({
 
   const handleLessonComplete = useCallback(
     async (lessonId: string, score?: number | null) => {
+      // H3: anónimo no escribe progreso — ni memoria ni localStorage ni
+      // backend — y tampoco avanza cerrojos (el gate H1 impediría llegar
+      // acá; el early-return lo garantiza por construcción).
+      if (!isAuthed) return
       setCompletedLessons((prev) => (prev.includes(lessonId) ? prev : [...prev, lessonId]))
       if (!course) return
-      if (isAuthed) {
-        try {
-          await fetch("/api/progress", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              lessonId,
-              completed: true,
-              ...(typeof score === "number" ? { score } : {}),
-            }),
-          })
-        } catch {
-          // el estado local ya quedó; reintentará al reabrir
-        }
-      } else {
-        try {
-          const next = [...loadAnon(course.id), lessonId]
-          localStorage.setItem(`${ANON_KEY}:${course.id}`, JSON.stringify([...new Set(next)]))
-        } catch {
-          // sin almacenamiento: solo sesión en memoria
-        }
+      try {
+        await fetch("/api/progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lessonId,
+            completed: true,
+            ...(typeof score === "number" ? { score } : {}),
+          }),
+        })
+      } catch {
+        // el estado local ya quedó; reintentará al reabrir
       }
     },
     [course, isAuthed]
   )
 
-  const allLessonIds = useMemo(
-    () => (course ? course.modules.flatMap((m) => m.lessons.map((l) => l.id)) : []),
-    [course]
-  )
+  // Pedir sesión: abre el modal (login por defecto) + aviso. Único punto
+  // donde canvas y outline delegan el gate (H1/H2).
+  const requireAuth = useCallback(() => {
+    setAuthOpen(true)
+    toast({ title: "Iniciá sesión para interactuar con los cursos" })
+  }, [toast])
+
+  // Auto-cierre: si la sesión aparece (login dentro del modal), caerlo sin
+  // que el usuario tenga que descartar un pop-up que ya resolvió. Es un
+  // pacto con un evento externo (la sesión), no derivación de estado.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- cierre por aparición de sesión (evento, no derivación)
+    if (isAuthed && authOpen) setAuthOpen(false)
+  }, [isAuthed, authOpen])
 
   const handleLessonOpen = useCallback(
     async (lessonId: string) => {
@@ -182,151 +232,325 @@ export default function CursoDetailPage({
     [isAuthed]
   )
 
-  const handleContinue = useCallback(() => {
-    if (!lastVisited) return
-    void handleLessonOpen(lastVisited)
-    setContinueLessonId(lastVisited)
-    requestAnimationFrame(() => {
-      const el = document.getElementById(`lesson-${lastVisited}`)
-      if (!el) return
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" })
-      el.focus({ preventScroll: true })
+  const completedSet = useMemo(() => new Set(completedLessons), [completedLessons])
+  const nav = useLessonNavigation({
+    course: course ?? EMPTY_COURSE,
+    completedIds: completedSet,
+    lastVisited,
+  })
+
+  const handleSelectLesson = useCallback(
+    (lessonId: string) => {
+      nav.selectLesson(lessonId)
+      void handleLessonOpen(lessonId)
+    },
+    [nav, handleLessonOpen]
+  )
+
+  // "Continuar donde quedé" vive en el outline (usa onSelect directo).
+
+  // Carga on-demand de la lección activa: cache primero (sin flash), red si
+  // falta. Solo sets asíncronos en el then; el fallo se reintenta borrando
+  // el registro de error (el loader ya limpió el vuelo fallido).
+  const activeLessonId = nav.activeLessonId
+  const cachedActive = activeLessonId ? getCached(activeLessonId) : undefined
+  const recordActive = activeLessonId ? records[activeLessonId] : undefined
+  const lessonData = cachedActive ?? recordActive?.data ?? null
+  const lessonError = !lessonData && recordActive?.error === true
+  const lessonLoading = !!activeLessonId && !lessonData && !lessonError
+
+  useEffect(() => {
+    if (!activeLessonId || getCached(activeLessonId) || records[activeLessonId]) return
+    let alive = true
+    load(activeLessonId).then(
+      (loaded) => {
+        if (!alive) return
+        setRecords((prev) => ({ ...prev, [activeLessonId]: { data: loaded } }))
+      },
+      () => {
+        if (!alive) return
+        setRecords((prev) => ({ ...prev, [activeLessonId]: { error: true } }))
+      }
+    )
+    return () => {
+      alive = false
+    }
+  }, [activeLessonId, getCached, load, records])
+
+  const handleLessonRetry = useCallback(() => {
+    if (!activeLessonId) return
+    setRecords((prev) => {
+      if (!prev[activeLessonId]) return prev
+      const next = { ...prev }
+      delete next[activeLessonId]
+      return next
     })
-  }, [lastVisited, handleLessonOpen])
+  }, [activeLessonId])
+
+  // Prefetch de la próxima lección 800ms después de activar una.
+  // setTimeout fijo en vez de requestIdleCallback: rIC no existe en Safari y
+  // puede no disparar nunca con el main thread ocupado; el timeout es
+  // determinista, testeable en jsdom y se limpia al cambiar de lección.
+  useEffect(() => {
+    if (!activeLessonId || !nav.next) return
+    const nextId = nav.next.id
+    const t = setTimeout(() => prefetch(nextId), 800)
+    return () => clearTimeout(t)
+  }, [activeLessonId, nav.next, prefetch])
+
+  // Prefetch en hover/focus, solo de la próxima lección (bundle-preload:
+  // calienta la navegación más probable sin quemar datos del resto).
+  const handleHoverLesson = useCallback(
+    (lessonId: string) => {
+      if (nav.next && lessonId === nav.next.id) prefetch(lessonId)
+    },
+    [prefetch, nav.next]
+  )
 
   if (notFoundFlag) notFound()
-  if (!id || !course) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <NavBar />
-        <main id="contenido" className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8" aria-busy="true" aria-label="Cargando curso">
-          <CoursePlayerSkeleton />
-        </main>
-        <SiteFooter />
+
+  const totalLessons = course
+    ? course.modules.reduce((n, m) => n + m.lessons.length, 0)
+    : 0
+
+  // Búsqueda lineal O(lecciones): derivación barata, sin memo (el compiler
+  // es dueño de la memoización acá).
+  let active: {
+    module: PlayerCourse["modules"][number]
+    moduleIndex: number
+  } | null = null
+  if (course && activeLessonId) {
+    for (let mi = 0; mi < course.modules.length; mi++) {
+      if (course.modules[mi].lessons.some((l) => l.id === activeLessonId)) {
+        active = { module: course.modules[mi], moduleIndex: mi + 1 }
+        break
+      }
+    }
+  }
+
+  // La lección del loader trae el contenido real; el manifest solo sabe
+  // id/título/número. Fallback al título del manifest si el loader aún no
+  // resolvió (el canvas muestra skeleton en ese caso, nunca contenido vacío).
+  const canvasLesson = lessonData?.lesson ?? null
+  const words = useMemo(() => {
+    const map = new Map<string, CourseWordData>()
+    for (const w of lessonData?.words ?? []) map.set(w.id, w)
+    return map
+  }, [lessonData])
+
+  const header = course ? (
+    <div className="mb-8 space-y-3">
+      <Breadcrumbs
+        items={[
+          { label: "Inicio", href: "/" },
+          { label: "Cursos", href: "/cursos" },
+          { label: course.title },
+        ]}
+      />
+      {/* Back link */}
+      <Link
+        href="/cursos"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Volver a cursos
+      </Link>
+
+      {/* Header del curso */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+            <GraduationCap className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="font-serif text-2xl font-bold text-primary sm:text-3xl">
+              {course.title}
+            </h1>
+            <span className="text-xs text-muted-foreground">
+              {course.modules.length} módulos · {totalLessons} lecciones
+              {!isAuthed && " · iniciá sesión para guardar tu avance"}
+            </span>
+          </div>
+        </div>
+        {course.description && (
+          <p className="leading-relaxed text-muted-foreground">{course.description}</p>
+        )}
       </div>
-    )
-  }
-
-  const totalLessons = allLessonIds.length
-  const progress = totalLessons > 0 ? Math.round((completedLessons.length / totalLessons) * 100) : 0
-
-  function isModuleUnlocked(moduleIdx: number): boolean {
-    if (!course!.sequential || moduleIdx === 0) return true
-    const prevModule = course!.modules[moduleIdx - 1]
-    if (!prevModule) return false
-    return prevModule.lessons.every((l) => completedLessons.includes(l.id))
-  }
+    </div>
+  ) : null
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       <NavBar />
-      <main id="contenido" className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8">
-        <Breadcrumbs
-          items={[
-            { label: "Inicio", href: "/" },
-            { label: "Cursos", href: "/cursos" },
-            { label: course.title },
-          ]}
-        />
-        {/* Back link */}
-        <Link
-          href="/cursos"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver a cursos
-        </Link>
-
-        {/* Header del curso */}
-        <div className="space-y-3 mb-8">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary">
-              <GraduationCap className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-serif font-bold text-primary">
-                {course.title}
-              </h1>
-              <span className="text-xs text-muted-foreground">
-                {course.modules.length} módulos · {totalLessons} lecciones
-                {!isAuthed && " · progreso solo en este navegador"}
-              </span>
-            </div>
-          </div>
-          {course.description && (
-            <p className="text-muted-foreground leading-relaxed">{course.description}</p>
-          )}
-
-          {/* Progreso */}
-          <div className="space-y-2">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <span className="text-sm text-muted-foreground">Tu progreso</span>
-                <p className="font-serif text-4xl font-bold text-primary tabular-nums">
-                  {progress}%
+      <main id="contenido" className="flex-1">
+        {!id || (!course && !loadError) ? (
+          <PlayerShell
+            loading={<CoursePlayerSkeleton />}
+            outline={null}
+            canvas={null}
+          />
+        ) : loadError || !course ? (
+          <PlayerShell
+            error={
+              <div className="mx-auto max-w-md space-y-3 rounded-xl border border-outline-variant/30 bg-card p-6 text-center">
+                <p className="font-medium">No se pudo cargar el curso.</p>
+                <p className="text-sm text-muted-foreground">
+                  Revisá tu conexión e intentá de nuevo.
                 </p>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setLoadError(false)
+                    setReloadKey((k) => k + 1)
+                  }}
+                  className="gap-2"
+                >
+                  Reintentar
+                </Button>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <span className="text-sm font-medium text-foreground tabular-nums">
-                  {completedLessons.length}/{totalLessons} lecciones
-                </span>
-                {lastVisited && (
-                  <Button onClick={handleContinue} className="gap-2">
-                    Continuar donde quedé
-                  </Button>
-                )}
-              </div>
-            </div>
-            <Progress value={progress} className="h-2" aria-label={`Avance: ${progress}%`} />
-            {progress === 100 && totalLessons > 0 && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/10 border border-secondary/20 mt-2">
-                <CheckCircle2 className="h-5 w-5 text-secondary" />
-                <p className="text-sm text-secondary font-medium">
-                  ¡Felicitaciones! Completaste el curso
+            }
+            outline={null}
+            canvas={null}
+          />
+        ) : totalLessons === 0 ? (
+          <PlayerShell
+            header={header}
+            empty={
+              <div className="mx-auto max-w-md space-y-3 rounded-xl border border-outline-variant/30 bg-card p-6 text-center">
+                <p className="font-serif text-xl font-bold text-primary">
+                  Este curso se está preparando
                 </p>
+                <p className="text-sm text-muted-foreground">
+                  Todavía no tiene lecciones publicadas. Volvé pronto.
+                </p>
+                <Button asChild variant="outline" className="gap-2">
+                  <Link href="/cursos">Ver otros cursos</Link>
+                </Button>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Módulos */}
-        <div className="space-y-4">
-          {course.modules.map((module, idx) => (
-            <ModuleAccordion
-              key={module.id}
-              module={module}
-              moduleIndex={idx + 1}
-              isUnlocked={isModuleUnlocked(idx)}
-              completedLessons={completedLessons}
-              onLessonComplete={handleLessonComplete}
-              onLessonOpen={handleLessonOpen}
-              words={words}
-              openLessonId={continueLessonId}
-            />
-          ))}
-        </div>
+            }
+            outline={null}
+            canvas={null}
+          />
+        ) : (
+          <PlayerShell
+            header={header}
+            outline={
+              <CourseOutline
+                course={course}
+                activeLessonId={nav.activeLessonId}
+                completedIds={completedSet}
+                lastVisitedLessonId={lastVisited}
+                onSelect={handleSelectLesson}
+                onHoverLesson={handleHoverLesson}
+                isAuthed={isAuthed}
+                onRequireAuth={requireAuth}
+              />
+            }
+            canvas={
+              active && activeLessonId ? (
+                lessonError || (!lessonLoading && !canvasLesson) ? (
+                  <div className="mx-auto max-w-md space-y-3 rounded-xl border border-outline-variant/30 bg-card p-6 text-center">
+                    <p className="font-medium">No se pudo cargar la lección.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Revisá tu conexión e intentá de nuevo.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={handleLessonRetry}
+                      className="gap-2"
+                    >
+                      Reintentar
+                    </Button>
+                  </div>
+                ) : lessonLoading || !canvasLesson ? (
+                  <div
+                    aria-label="Cargando lección"
+                    className="anim-player-reveal min-h-[max(420px,60dvh)] min-w-0"
+                  >
+                    <div className="animate-pulse">
+                      <div className="h-4 w-40 rounded bg-muted" />
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <div className="h-6 w-14 rounded bg-muted" />
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="h-8 w-3/4 rounded bg-muted" />
+                          <div className="h-8 w-1/2 rounded bg-muted" />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <div className="h-5 w-24 rounded-full bg-muted" />
+                      </div>
+                      <div className="mt-6 flex flex-col gap-5">
+                        <div className="space-y-2">
+                          <div className="h-4 w-full rounded bg-muted" />
+                          <div className="h-4 w-full rounded bg-muted" />
+                          <div className="h-4 w-2/3 rounded bg-muted" />
+                        </div>
+                        <div className="h-48 w-full rounded-xl bg-muted" />
+                      </div>
+                      <div className="mt-8 flex items-stretch gap-3">
+                        <div className="h-11 flex-1 rounded-md bg-muted" />
+                        <div className="h-11 flex-1 rounded-md bg-muted" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <LessonCanvas
+                    lesson={canvasLesson}
+                    moduleTitle={active.module.title}
+                    moduleIndex={active.moduleIndex}
+                    words={words}
+                    prev={nav.prev}
+                    next={nav.next}
+                    completed={completedSet.has(canvasLesson.id)}
+                    // Unión de cerrojos (H2): secuencial OR gate de sesión
+                    // (anónimo en módulo 2+). El canvas elige el banner según
+                    // la causa (sessionLocked).
+                    locked={
+                      !nav.canAccess(canvasLesson.id) ||
+                      (!isAuthed && active.moduleIndex >= 2)
+                    }
+                    requiredLesson={nav.requiredLessonFor(canvasLesson.id)}
+                    anonymous={!isAuthed}
+                    onRequireAuth={requireAuth}
+                    onComplete={handleLessonComplete}
+                    onNavigate={handleSelectLesson}
+                    onGoRequired={handleSelectLesson}
+                  />
+                )
+              ) : (
+                <div aria-hidden="true" className="min-h-[max(420px,60dvh)]" />
+              )
+            }
+          />
+        )}
 
         {/* CTA al final */}
-        <div className="mt-8 flex flex-col items-center gap-3 p-6 rounded-xl bg-muted/30 border border-outline-variant/20">
-          <BookOpen className="h-8 w-8 text-primary/60" />
-          <p className="text-sm text-muted-foreground text-center max-w-md">
-            ¿Listo para poner a prueba lo que aprendiste? Visitá los juegos
-            didácticos para practicar.
-          </p>
-          <Button asChild variant="outline" className="gap-2">
-            <Link href="/juegos">Ir a los juegos</Link>
-          </Button>
-        </div>
+        {course && totalLessons > 0 && (
+          <div className="mx-auto w-full max-w-[1400px] px-6 pb-8 lg:px-10">
+            <div className="mt-8 flex flex-col items-center gap-3 rounded-xl border border-outline-variant/20 bg-muted/30 p-6">
+              <BookOpen className="h-8 w-8 text-primary/60" />
+              <p className="max-w-md text-center text-sm text-muted-foreground">
+                ¿Listo para poner a prueba lo que aprendiste? Visitá los juegos
+                didácticos para practicar.
+              </p>
+              <Button asChild variant="outline" className="gap-2">
+                <Link href="/juegos">Ir a los juegos</Link>
+              </Button>
+            </div>
 
-        {!isAuthed && (
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            <Badge variant="outline" className="text-2xs">
-              Iniciá sesión para sincronizar tu avance entre dispositivos
-            </Badge>
-          </p>
+            {!isAuthed && (
+              <p className="mt-4 text-center text-xs text-muted-foreground">
+                <Badge variant="outline" className="text-2xs">
+                  Iniciá sesión para sincronizar tu avance entre dispositivos
+                </Badge>
+              </p>
+            )}
+          </div>
         )}
       </main>
+      {/* Gate de sesión (H1/H2): único AuthModal del player. La sesión que
+          aparece por el login lo cierra en el effect de arriba. */}
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
       <SiteFooter />
     </div>
   )

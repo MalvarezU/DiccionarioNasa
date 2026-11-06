@@ -292,6 +292,88 @@
   }
 }
 
+/* F4 — motion del player master-detail (/cursos/[id]). CSS-only, 0 deps.
+   Reveal del canvas al cambiar de lección + stagger de bloques (máx 5,
+   +60ms) + pop del check del outline. Todo vive tras un
+   `@media (prefers-reduced-motion: no-preference)` explícito: la variante
+   motion-safe de Tailwind no genera nada para estas clases custom, así que
+   no se usa. Con preferencia reducida rige el bloque global de abajo
+   ("nada": duraciones a 0.01ms), alternativa que el plan §H acepta frente
+   al crossfade de 120ms. Easing único en los tres momentos:
+   cubic-bezier(0.22, 1, 0.36, 1) —curva ease-out—; el fill del Progress de
+   Radix ya anima por translateX sin keyframes propios. */
+.lesson-canvas [data-testid="lesson-content"] > :not(figure):not(.aspect-video) {
+  max-width: 68ch;
+}
+
+.lesson-canvas [data-testid="lesson-content"] > figure,
+.lesson-canvas [data-testid="lesson-content"] > .aspect-video {
+  width: 100%;
+}
+
+/* Hit area mínima del botón "Marcar como completada": vive dentro del child
+   (LessonContentView, intacto por contrato F0.3), así que el canvas la
+   garantiza por CSS sin tocar el componente. */
+.lesson-canvas [data-testid="lesson-content"] > button {
+  min-height: 44px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes player-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes check-pop {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.12);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .anim-player-reveal {
+    animation: player-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .anim-check-pop {
+    animation: check-pop 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Stagger: solo los 5 primeros hijos; del 6.º en adelante entran con el
+     reveal del pane, sin delay (costo acotado, §H). `backwards` aplica el
+     estado `from` durante el delay: sin fill, los bloques 2–5 se verían un
+     frame antes de animar (flash).
+     Nota sobre nth-child y bloques vacíos: BlockView devuelve `null` y React
+     no crea ningún nodo DOM por un hijo null, así que los delays se asignan
+     a los bloques visibles en orden. Y aunque un tipo de bloque futuro altere
+     la cuenta de hijos, el reveal del pane domina y el stagger es mejora
+     progresiva: nunca rompe la lectura. */
+  .lesson-canvas [data-testid="lesson-content"] > *:nth-child(-n + 5) {
+    animation: player-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  .lesson-canvas [data-testid="lesson-content"] > *:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .lesson-canvas [data-testid="lesson-content"] > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .lesson-canvas [data-testid="lesson-content"] > *:nth-child(4) {
+    animation-delay: 180ms;
+  }
+  .lesson-canvas [data-testid="lesson-content"] > *:nth-child(5) {
+    animation-delay: 240ms;
+  }
+}
+
 /* Respect user motion preferences (WCAG 2.3.3) */
 @media (prefers-reduced-motion: reduce) {
   *,

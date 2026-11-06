@@ -36,6 +36,7 @@ export function sanitizeLessonHtml(raw: string): string {
 }
 
 export function sanitizeLessonContent(content: { version: number; blocks: Array<{ type: string; [k: string]: unknown }> }) {
+  if (!content || !Array.isArray(content.blocks)) return content
   for (const b of content.blocks) {
     if (b.type === "text" && typeof b.html === "string") {
       b.html = sanitizeLessonHtml(b.html)

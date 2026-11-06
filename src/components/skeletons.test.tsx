@@ -4,12 +4,12 @@ import {
   AdminDashboardSkeleton,
   CourseCardSkeleton,
   CourseGridSkeleton,
+  CoursePlayerSkeleton,
   ExploreListSkeleton,
   FavoritesGridSkeleton,
   FeaturedWordCardSkeleton,
   FeaturedWordsGridSkeleton,
-  HistorySkeleton,
-  HomeSkeleton,
+  HistorySkeleton,  HomeSkeleton,
   SearchResultsSkeleton,
   UsersTableSkeleton,
   WordDetailSkeleton,
@@ -90,6 +90,24 @@ describe("skeletons", () => {
     const barras = container.querySelectorAll('[data-slot="skeleton"]')
     // titulo + pronunciación + botón de audio + 4 atributos + descripción
     expect(barras.length).toBeGreaterThanOrEqual(9)
+  })
+
+  it("el skeleton del player replica header + grid (sin pop del encabezado)", () => {
+    // El header del curso (breadcrumbs + back-link + tile + título + meta +
+    // descripción) llegaba de golpe tras el skeleton del grid. El skeleton
+    // ahora pinta primero la zona del header con la misma composición
+    // (mb-8/space-y-3/mb-4) para que el swap sea fade, no aparición.
+    const { container } = render(<CoursePlayerSkeleton />)
+    const root = container.querySelector('[data-testid="skeleton-course-player"]')
+    expect(root).toBeTruthy()
+    // header + grid
+    expect(root!.children).toHaveLength(2)
+    const header = root!.children[0]
+    // breadcrumbs (5 segmentos) + back-link + bloque título + descripción
+    expect(header.children.length).toBeGreaterThanOrEqual(3)
+    // grid sidebar + canvas
+    const grid = root!.children[1]
+    expect(grid.children).toHaveLength(2)
   })
 
   it("no renderiza texto de estado legible", () => {

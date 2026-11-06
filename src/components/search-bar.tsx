@@ -13,6 +13,7 @@ import { SuggestWordModal } from "@/components/suggest-word-modal";
 import { WordDetailCard } from "@/components/word-detail-card";
 import { searchLocalWords, isLocalDBReady } from "@/lib/local-db";
 
+const SINGLE_CHAR_DEBOUNCE_MS = 1000;
 interface SearchResult {
   id: string;
   spanish: string;
@@ -219,7 +220,7 @@ interface SearchBarProps {
    * - hero: campo grande SOBRE IMAGEN oscura → texto y borde blancos.
    * - hero-light: campo grande sobre fondo claro (hero del diccionario).
    */
-  variant?: "hero" | "hero-light" | "inline";
+  variant?: "hero" | "hero-light" | "hero-panel" | "inline";
   /** Callback when a word is selected — used by parent components */
   onWordSelect?: (wordId: string) => void;
 }
@@ -236,6 +237,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   const isOnline = useOnlineStatus();
   const { toast } = useToast();
   const debouncedQuery = useDebounce(query, 300);
+  const debouncedLetter = useDebounce(query, SINGLE_CHAR_DEBOUNCE_MS);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { containerRef: listRef, handlePlayState, stopAll } =
@@ -244,8 +246,15 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   /** Campo grande (presencia de hero), sea sobre imagen o sobre fondo claro. */
   const esGrande = variant !== "inline";
   /** El texto solo va blanco cuando el fondo real es oscuro (imagen). */
-  const sobreOscuro = variant === "hero";
-  const showDropdown = isOpen && debouncedQuery.length >= 2;
+  const sobreOscuro = variant === "hero" || variant === "hero-panel";
+  const panelMode = variant === "hero-panel";
+  const effectiveTerm =
+    debouncedQuery.length >= 2
+      ? debouncedQuery
+      : debouncedQuery.length === 1
+      ? debouncedLetter
+      : "";
+  const showDropdown = isOpen && effectiveTerm.length >= 1;
   const hasNoResults = showDropdown && !isLoading && results.length === 0;
   const [localDBReady, setLocalDBReady] = useState<boolean | null>(null);
 
@@ -272,56 +281,71 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
     checkReady();
   }, [isOnline]);
 
-  // Fetch search results — uses local IndexedDB when offline, API when online
-  useEffect(() => {
-    if (debouncedQuery.length < 2) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
-
-    const fetchResults = async () => {
+  const performSearch = useCallback(
+    async (term: string, signal?: AbortSignal) => {
       setIsLoading(true);
       try {
-        // HU1.3.2: When offline, search from local IndexedDB
         if (!isOnline) {
           const localReady = await isLocalDBReady();
+          if (signal?.aborted) return;
           setLocalDBReady(localReady);
           if (localReady) {
-            const localResults = await searchLocalWords(debouncedQuery, 50);
+            const localResults = await searchLocalWords(term, 50);
+            if (signal?.aborted) return;
             setResults(localResults);
           } else {
             setResults([]);
           }
         } else {
-          // Online: use the API as before
           const response = await fetch(
-            `/api/dictionary/search?q=${encodeURIComponent(debouncedQuery)}`
+            `/api/dictionary/search?q=${encodeURIComponent(term)}`,
+            { signal }
           );
+          if (signal?.aborted) return;
           if (response.ok) {
             const data = await response.json();
-            setResults(data.results ?? []);
-          } else {
+            if (signal?.aborted) return;
+            setResults(data.results ?? []);          } else {
             setResults([]);
           }
         }
-      } catch {
-        // Fallback: try local search if API fails
+      } catch (err) {
+        if (
+          signal?.aborted ||
+          (err instanceof DOMException && err.name === "AbortError")
+        ) {
+          return;
+        }
         try {
-          const localResults = await searchLocalWords(debouncedQuery, 50);
+          const localResults = await searchLocalWords(term, 50);
+          if (signal?.aborted) return;
           setResults(localResults);
         } catch {
           setResults([]);
         }
       } finally {
-        setIsLoading(false);
-        setIsOpen(true);
-        setHighlightedIndex(-1);
+        if (!signal?.aborted) {
+          setIsLoading(false);
+          setIsOpen(true);
+          setHighlightedIndex(-1);
+        }
       }
-    };
+    },
+    [isOnline]
+  );
 
-    fetchResults();
-  }, [debouncedQuery, isOnline]);
+  // Fetch search results — uses local IndexedDB when offline, API when online
+  useEffect(() => {
+    if (effectiveTerm.length < 1) {
+      setResults([]);
+      setIsOpen(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    performSearch(effectiveTerm, controller.signal);
+    return () => controller.abort();
+  }, [effectiveTerm, performSearch]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -352,17 +376,32 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
       stopAll();
       setQuery("");
       setIsOpen(false);
-      // Open the word detail card
-      setSelectedWordId(result.id);
-      setDetailOpen(true);
-      // Also notify parent if callback provided
-      onWordSelect?.(result.id);
+      if (onWordSelect) {
+        onWordSelect(result.id);
+      } else {
+        setSelectedWordId(result.id);
+        setDetailOpen(true);
+      }
     },
     [onWordSelect, stopAll]
   );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        if (query.trim().length === 1 && flatResults.length === 0) {
+          e.preventDefault();
+          performSearch(query.trim());
+          return;
+        }
+        if (!isOpen || flatResults.length === 0) return;
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < flatResults.length) {
+          handleSelect(flatResults[highlightedIndex]);
+        }
+        return;
+      }
+
       if (!isOpen || flatResults.length === 0) return;
 
       switch (e.key) {
@@ -378,12 +417,6 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
             prev > 0 ? prev - 1 : flatResults.length - 1
           );
           break;
-        case "Enter":
-          e.preventDefault();
-          if (highlightedIndex >= 0 && highlightedIndex < flatResults.length) {
-            handleSelect(flatResults[highlightedIndex]);
-          }
-          break;
         case "Escape":
           stopAll();
           setIsOpen(false);
@@ -391,7 +424,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           break;
       }
     },
-    [isOpen, flatResults, highlightedIndex, handleSelect, stopAll]
+    [isOpen, flatResults, highlightedIndex, handleSelect, stopAll, query, performSearch]
   );
 
   const handleHighlight = useCallback((index: number) => {
@@ -429,7 +462,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
             onKeyDown={handleKeyDown}
             className={`pl-10 w-full transition-colors ${
               sobreOscuro
-                ? "h-14 text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-white placeholder:text-white/70 border-white/30 hover:border-white/60 focus-visible:border-white focus-visible:ring-white/30"
+                ? "h-14 text-base sm:text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-white placeholder:text-white/70 border-white/30 hover:border-white/60 focus-visible:border-white focus-visible:ring-white/30"
                 : esGrande
                   ? "h-14 text-lg rounded-xl pr-10 bg-surface-container-low border shadow-md focus-visible:border-secondary/60 focus-visible:ring-secondary/25 text-foreground placeholder:text-muted-foreground focus-visible:shadow-lg"
                   : "h-10 pr-9 bg-surface-container-low border-border focus-visible:border-secondary/60 focus-visible:ring-secondary/25 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:shadow-md"
@@ -463,8 +496,8 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           </div>
         )}
 
-        {/* Online indicator */}
-        {isOnline && esGrande && (
+        {/* Online indicator — not rendered inside the hero panel frame */}
+        {isOnline && esGrande && !panelMode && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <Cloud
               className={`h-3.5 w-3.5 ${sobreOscuro ? "text-emerald-300" : "text-emerald-600"}`}
@@ -479,125 +512,282 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           </div>
         )}
 
-        {/* Dropdown with results */}
-        {showDropdown && (
-          <div
-            className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200 ${
-              esGrande ? "mt-2 rounded-xl" : "mt-1"
-            }`}
-          >
-            {/* Offline banner — context-aware for local DB readiness */}
-            {!isOnline && (
-              <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
-                <CloudOff className="h-3 w-3" />
-                {localDBReady
-                  ? "Sin conexión — mostrando resultados locales"
-                  : "Sin conexión — descarga el diccionario para buscar sin internet"}
-              </div>
-            )}
-
-            {/* HU1.1.7 — No results with suggest button */}
-            {hasNoResults ? (
-              <div className="px-4 py-6 text-center">
-                <p className="text-sm text-muted-foreground mb-1">
-                  No encontramos
-                </p>
-                <p className="text-base font-semibold text-foreground mb-3">
-                  «{debouncedQuery}»
-                </p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  en el diccionario.
-                </p>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="gap-1.5 bg-primary hover:bg-[#22303D] transition-colors"
-                  disabled={!isOnline}
-                  onClick={() => {
-                    setSuggestOpen(true);
-                    setIsOpen(false);
-                  }}
-                >
-                  <Lightbulb className="h-4 w-4" />
-                  Sugerir esta palabra
-                </Button>
+        {/* Results — panelMode renders ONLY while searching: an absolute
+            ivory card anchored to the search box (zero CLS by construction —
+            nothing under the input when idle). Other variants keep the
+            original absolute dropdown shown only on demand. */}
+        {panelMode ? (
+          showDropdown && (
+            <div className="absolute top-full left-0 right-0 z-50 mt-2 h-[48svh] lg:h-[min(420px,36svh)] rounded-xl border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200">
+              <div
+                className={
+                  panelMode
+                    ? "flex h-full flex-col animate-in fade-in duration-200"
+                    : undefined
+                }
+              >
+                {/* Offline banner — context-aware for local DB readiness */}
                 {!isOnline && (
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 justify-center">
-                    <WifiOff className="h-3 w-3" />
-                    Se necesita conexión para sugerir palabras
-                  </p>
+                  <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
+                    <CloudOff className="h-3 w-3" />
+                    {localDBReady
+                      ? "Sin conexión — mostrando resultados locales"
+                      : "Sin conexión — descarga el diccionario para buscar sin internet"}
+                  </div>
+                )}
+
+                {/* HU1.1.7 — No results with suggest button */}
+                {hasNoResults ? (
+                  <div
+                    className={
+                      panelMode
+                        ? "flex flex-1 flex-col items-center justify-center px-4 py-6 text-center"
+                        : "px-4 py-6 text-center"
+                    }
+                  >
+                    <p className="text-sm text-muted-foreground mb-1">
+                      No encontramos
+                    </p>
+                    <p className="text-base font-semibold text-foreground mb-3">
+                      «{debouncedQuery}»
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      en el diccionario.
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="gap-1.5 bg-primary hover:bg-[#22303D] transition-colors"
+                      disabled={!isOnline}
+                      onClick={() => {
+                        setSuggestOpen(true);
+                        setIsOpen(false);
+                      }}
+                    >
+                      <Lightbulb className="h-4 w-4" />
+                      Sugerir esta palabra
+                    </Button>
+                    {!isOnline && (
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 justify-center">
+                        <WifiOff className="h-3 w-3" />
+                        Se necesita conexión para sugerir palabras
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <ul
+                      ref={listRef}
+                      id="search-results-list"
+                      className={
+                        panelMode
+                          ? "max-h-full min-h-0 flex-1 overflow-y-auto py-1"
+                          : esGrande
+                            ? "max-h-[420px] overflow-y-auto py-1"
+                            : "max-h-80 overflow-y-auto py-1"
+                      }
+                      role="listbox"
+                      aria-label="Resultados de búsqueda"
+                    >
+                      {groups.map((group) => (
+                        <Fragment key={group.key}>
+                          <li
+                            role="presentation"
+                            className="flex items-center justify-between px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                          >
+                            <span>{group.label}</span>
+                            <span>{group.items.length}</span>
+                          </li>
+                          {group.items.map((result, i) => (
+                            <SearchResultRow
+                              key={result.id}
+                              result={result}
+                              index={group.start + i}
+                              highlighted={group.start + i === highlightedIndex}
+                              esGrande={esGrande}
+                              onSelect={handleSelect}
+                              onHighlight={handleHighlight}
+                              onPlayState={handlePlayState}
+                            />
+                          ))}
+                        </Fragment>
+                      ))}
+                    </ul>
+                    {results.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-outline-variant/20 px-3 py-2 text-xs text-muted-foreground">
+                        {!panelMode && (
+                          <span className="hidden items-center gap-1 sm:flex">
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↑</kbd>
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↓</kbd>
+                            <span>navegar</span>
+                            <span aria-hidden="true">·</span>
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↵</kbd>
+                            <span>abrir</span>
+                            <span aria-hidden="true">·</span>
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">esc</kbd>
+                            <span>cerrar</span>
+                          </span>
+                        )}
+                        <span className={panelMode ? undefined : "ml-auto"}>
+                          {results.length} {results.length === 1 ? "resultado" : "resultados"}
+                        </span>
+                        <a
+                          href="/diccionario?tab=explore"
+                          className={`font-medium text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
+                        >
+                          Ver todas en Explorar A-Z →
+                        </a>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
-            ) : (
-              <>
-              <ul
-                ref={listRef}
-                id="search-results-list"
-                className={esGrande ? "max-h-[420px] overflow-y-auto py-1" : "max-h-80 overflow-y-auto py-1"}
-                role="listbox"
-                aria-label="Resultados de búsqueda"
+            </div>
+          )
+        ) : (
+          showDropdown && (
+            <div
+              className={`absolute top-full left-0 right-0 z-50 rounded-lg border border-outline-variant/20 bg-surface-container-low/95 backdrop-blur-2xl shadow-lg overflow-hidden animate-in fade-in duration-200 ${
+                esGrande ? "mt-2 rounded-xl" : "mt-1"
+              }`}
+            >
+              <div
+                className={
+                  panelMode
+                    ? "flex h-full flex-col animate-in fade-in duration-200"
+                    : undefined
+                }
               >
-                {groups.map((group) => (
-                  <Fragment key={group.key}>
-                    <li
-                      role="presentation"
-                      className="flex items-center justify-between px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                    >
-                      <span>{group.label}</span>
-                      <span>{group.items.length}</span>
-                    </li>
-                    {group.items.map((result, i) => (
-                      <SearchResultRow
-                        key={result.id}
-                        result={result}
-                        index={group.start + i}
-                        highlighted={group.start + i === highlightedIndex}
-                        esGrande={esGrande}
-                        onSelect={handleSelect}
-                        onHighlight={handleHighlight}
-                        onPlayState={handlePlayState}
-                      />
-                    ))}
-                  </Fragment>
-                ))}
-              </ul>
-              {results.length > 0 && (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-outline-variant/20 px-3 py-2 text-xs text-muted-foreground">
-                  <span className="hidden items-center gap-1 sm:flex">
-                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↑</kbd>
-                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↓</kbd>
-                    <span>navegar</span>
-                    <span aria-hidden="true">·</span>
-                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↵</kbd>
-                    <span>abrir</span>
-                    <span aria-hidden="true">·</span>
-                    <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">esc</kbd>
-                    <span>cerrar</span>
-                  </span>
-                  <span className="ml-auto">
-                    {results.length} {results.length === 1 ? "resultado" : "resultados"}
-                  </span>
-                  <a
-                    href="/diccionario?tab=explore"
-                    className="font-medium text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+                {/* Offline banner — context-aware for local DB readiness */}
+                {!isOnline && (
+                  <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
+                    <CloudOff className="h-3 w-3" />
+                    {localDBReady
+                      ? "Sin conexión — mostrando resultados locales"
+                      : "Sin conexión — descarga el diccionario para buscar sin internet"}
+                  </div>
+                )}
+
+                {/* HU1.1.7 — No results with suggest button */}
+                {hasNoResults ? (
+                  <div
+                    className={
+                      panelMode
+                        ? "flex flex-1 flex-col items-center justify-center px-4 py-6 text-center"
+                        : "px-4 py-6 text-center"
+                    }
                   >
-                    Ver todas en Explorar A-Z →
-                  </a>
-                </div>
-              )}
-              </>
-            )}
-          </div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      No encontramos
+                    </p>
+                    <p className="text-base font-semibold text-foreground mb-3">
+                      «{debouncedQuery}»
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      en el diccionario.
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="gap-1.5 bg-primary hover:bg-[#22303D] transition-colors"
+                      disabled={!isOnline}
+                      onClick={() => {
+                        setSuggestOpen(true);
+                        setIsOpen(false);
+                      }}
+                    >
+                      <Lightbulb className="h-4 w-4" />
+                      Sugerir esta palabra
+                    </Button>
+                    {!isOnline && (
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 justify-center">
+                        <WifiOff className="h-3 w-3" />
+                        Se necesita conexión para sugerir palabras
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <ul
+                      ref={listRef}
+                      id="search-results-list"
+                      className={
+                        panelMode
+                          ? "max-h-full min-h-0 flex-1 overflow-y-auto py-1"
+                          : esGrande
+                            ? "max-h-[420px] overflow-y-auto py-1"
+                            : "max-h-80 overflow-y-auto py-1"
+                      }
+                      role="listbox"
+                      aria-label="Resultados de búsqueda"
+                    >
+                      {groups.map((group) => (
+                        <Fragment key={group.key}>
+                          <li
+                            role="presentation"
+                            className="flex items-center justify-between px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                          >
+                            <span>{group.label}</span>
+                            <span>{group.items.length}</span>
+                          </li>
+                          {group.items.map((result, i) => (
+                            <SearchResultRow
+                              key={result.id}
+                              result={result}
+                              index={group.start + i}
+                              highlighted={group.start + i === highlightedIndex}
+                              esGrande={esGrande}
+                              onSelect={handleSelect}
+                              onHighlight={handleHighlight}
+                              onPlayState={handlePlayState}
+                            />
+                          ))}
+                        </Fragment>
+                      ))}
+                    </ul>
+                    {results.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-outline-variant/20 px-3 py-2 text-xs text-muted-foreground">
+                        {!panelMode && (
+                          <span className="hidden items-center gap-1 sm:flex">
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↑</kbd>
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↓</kbd>
+                            <span>navegar</span>
+                            <span aria-hidden="true">·</span>
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">↵</kbd>
+                            <span>abrir</span>
+                            <span aria-hidden="true">·</span>
+                            <kbd className="rounded border border-outline-variant/30 bg-surface-container-high px-1 py-px font-mono text-[12px] leading-4 text-foreground">esc</kbd>
+                            <span>cerrar</span>
+                          </span>
+                        )}
+                        <span className={panelMode ? undefined : "ml-auto"}>
+                          {results.length} {results.length === 1 ? "resultado" : "resultados"}
+                        </span>
+                        <a
+                          href="/diccionario?tab=explore"
+                          className={`font-medium text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
+                        >
+                          Ver todas en Explorar A-Z →
+                        </a>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )
         )}
       </div>
 
       {/* Word detail card (Sheet) */}
-      <WordDetailCard
-        key={selectedWordId ?? "none"}
-        wordId={selectedWordId}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-      />
+      {!onWordSelect && (
+        <WordDetailCard
+          key={selectedWordId ?? "none"}
+          wordId={selectedWordId}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+        />
+      )}
 
       {/* Suggest word modal */}
       <SuggestWordModal

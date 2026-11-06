@@ -34,38 +34,33 @@ function ButtonSkeleton({ className }: { className?: string }) {
 /* ---------------------------------------------------------------- cursos -- */
 
 /**
- * Réplica de `CourseCard`: miniatura 48px, título serif, línea de módulos,
- * descripción de dos renglones, barra de avance y acción.
+ * Réplica de `CourseCard` (F-E1): cover a la izquierda en columna rem fija
+ * (16/9 arriba en móvil), chip sobre el cover + aside con título,
+ * descripción, meta, avance y acción.
  */
 function CourseCardSkeleton() {
   return (
     <div
       data-slot="skeleton-course-card"
       data-testid="skeleton-course-card"
-      className="rounded-xl border border-outline-variant/20 bg-card"
+      className="flex flex-col overflow-hidden rounded-xl border border-outline-variant/20 bg-card md:min-h-[13rem]"
     >
-      <div className="flex flex-col gap-3 p-4 pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-3 w-28" />
-            </div>
-          </div>
+      <div className="flex-1 grid grid-cols-1 sm:grid-cols-[11rem_1fr] md:grid-cols-[15rem_1fr] lg:grid-cols-[16.5rem_1fr]">
+        <div className="relative aspect-[16/9] sm:aspect-auto sm:h-full">
+          <Skeleton className="h-full rounded-none" />
+          {/* Chip de estado sobre la portada (espejo de CourseCard) */}
+          <Skeleton className="absolute left-2 top-2 h-5 w-16 rounded-full" />
         </div>
-      </div>
-      <div className="px-4 pb-4">
-        <div className="mb-4 space-y-2">
+        <div className="flex flex-col gap-2 p-4 sm:p-5 md:py-6">
+          <Skeleton className="h-6 w-3/4" />
           <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-4/5" />
-        </div>
-        <div className="mb-4 space-y-2">
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-3 w-28" />
+          <div className="flex-1" />
           <Skeleton className="h-2 w-full rounded-full" />
-          <Skeleton className="h-3 w-24" />
-        </div>
-        <div className="flex items-center justify-end">
-          <Skeleton className="h-4 w-20" />
+          <div className="flex items-center justify-end">
+            <Skeleton className="h-4 w-20" />
+          </div>
         </div>
       </div>
     </div>
@@ -93,6 +88,74 @@ function CourseListSkeleton() {
     <div data-slot="skeleton-course-list" className="space-y-6">
       <SectionHeadingSkeleton />
       <CourseGridSkeleton />
+    </div>
+  )
+}
+
+/* ------------------------------------------ listado editorial (F2 bandas) -- */
+
+/**
+ * Réplica de las bandas del listado editorial: hero (título serif clamp +
+ * summary + CTA), tira de continuación, featured (portada 2/3 + aside) y 3
+ * placeholders de card en el mismo grid del catálogo. Alturas fijas a propósito: el swap al dato real no mueve
+ * layout (CLS ≈ 0, ver §F del plan de rediseño).
+ */
+function CourseListBandsSkeleton() {
+  return (
+    <div
+      data-slot="skeleton-course-list-bands"
+      data-testid="skeleton-course-list-bands"
+      className="space-y-8"
+      aria-hidden="true"
+    >
+      {/* Hero: 2 cols en xl */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Skeleton className="h-[3.5rem] w-56" />
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-full max-w-xl" />
+          <Skeleton className="h-4 w-2/3 max-w-xl" />
+          <Skeleton className="h-10 w-48 rounded-md" />
+        </div>
+      </div>
+      {/* Resume band: eyebrow + título protagonista (F-E4) */}
+      <div className="rounded-xl border border-outline-variant/30 px-5 py-4 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-72 max-w-full" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-1.5 w-56 max-w-full rounded-full" />
+          </div>
+          <Skeleton className="h-10 w-32 shrink-0 rounded-md" />
+        </div>
+      </div>
+      {/* Featured: portada 2/3 + aside */}
+      <div className="grid gap-0 overflow-hidden rounded-xl border border-outline-variant/30 md:grid-cols-3">
+        <Skeleton className="min-h-52 rounded-none md:col-span-2 md:min-h-64" />
+        <div className="space-y-3 p-5 sm:p-6">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </div>
+      {/* F-E2: barra de búsqueda entre featured y grid. Misma silueta que el
+          Input real (h-10 rounded-full sobre surface-container-low) para que
+          el swap no mueva layout. */}
+      <Skeleton
+        data-slot="skeleton-search-bar"
+        className="h-10 rounded-full border-outline-variant bg-surface-container-low md:max-w-md"
+      />
+      {/* Catálogo: 3 placeholders de card con el mismo grid que el listado
+        real (1 col en móvil, 2 desde md), para que el swap no mueva layout. */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {Array.from({ length: 3 }, (_, i) => (
+          <CourseCardSkeleton key={i} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -377,7 +440,7 @@ function GameBoardSkeleton() {
 
 /* ------------------------------------------------------------ jugador curso */
 
-/** Módulo del acordeón: encabezado y filas de lecciones. */
+/** Módulo del acordeón del admin: encabezado y filas de lecciones. */
 function ModuleSkeleton({ lessons = 3 }: { lessons?: number }) {
   return (
     <div
@@ -407,15 +470,116 @@ function ModuleSkeleton({ lessons = 3 }: { lessons?: number }) {
   )
 }
 
-/** Pantalla completa del reproductor de curso. */
-function CoursePlayerSkeleton({ modules = 3 }: { modules?: number }) {
+/**
+ * Réplica del player master-detail: sidebar dark de alto viewport + canvas
+ * con min-h fijo. Mismo grid que el shell real
+ * (`lg:288px / xl:320px + gap-10`): el swap al dato real no mueve layout
+ * (CLS ≈ 0, ver §F del plan de rediseño).
+ */
+function CoursePlayerSkeleton() {
   return (
-    <div data-slot="skeleton-course-player" className="space-y-6">
-      <SectionHeadingSkeleton />
-      <Skeleton className="h-32 w-full rounded-xl" />
-      {Array.from({ length: modules }, (_, i) => (
-        <ModuleSkeleton key={i} lessons={i === 0 ? 3 : 2} />
-      ))}
+    <div
+      data-slot="skeleton-course-player"
+      data-testid="skeleton-course-player"
+      className="mx-auto w-full max-w-[1400px] px-6 py-8 lg:px-10"
+    >
+      {/* Header: espejo del header real del curso (breadcrumbs + back-link +
+          tile + h1 + meta + descripción, mismo spacing mb-8/space-y-3/mb-4):
+          el header también entra con fade, sin pop. */}
+      <div aria-hidden="true" className="mb-8 space-y-3">
+        <div className="mb-4 flex items-center gap-1.5">
+          <Skeleton className="h-4 w-12 border-transparent" />
+          <Skeleton className="h-4 w-4 border-transparent" />
+          <Skeleton className="h-4 w-14 border-transparent" />
+          <Skeleton className="h-4 w-4 border-transparent" />
+          <Skeleton className="h-4 w-32 border-transparent" />
+        </div>
+        <Skeleton className="h-4 w-28 border-transparent" />
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-12 w-12 rounded-xl border-transparent" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-8 w-56 border-transparent sm:w-72" />
+              <Skeleton className="h-3 w-40 border-transparent" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full max-w-2xl border-transparent" />
+            <Skeleton className="h-4 w-2/3 max-w-xl border-transparent" />
+          </div>
+        </div>
+      </div>
+      <div className="grid w-full gap-10 lg:grid-cols-[288px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
+      {/* Sidebar: bloque dark de alto viewport como el outline real */}
+      <div
+        aria-hidden="true"
+        className="hidden h-[calc(100dvh-3.5rem)] w-full space-y-3 rounded-xl bg-primary/90 p-5 lg:block"
+      >
+        <div className="space-y-2">
+          <div className="h-3 w-24 rounded bg-white/10" />
+          <div className="h-6 w-40 rounded bg-white/10" />
+          <div className="h-1 w-full rounded-full bg-white/10" />
+        </div>
+        <div className="space-y-2 rounded-xl border border-white/10 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="h-5 w-32 rounded bg-white/10" />
+            <div className="h-4 w-10 rounded-full bg-white/10" />
+          </div>
+          <div className="h-1 w-full rounded-full bg-white/10" />
+          <div className="space-y-1.5 pt-1">
+            <div className="h-9 w-full rounded-lg bg-white/10" />
+            <div className="h-9 w-full rounded-lg bg-white/10" />
+            <div className="h-9 w-4/5 rounded-lg bg-white/10" />
+          </div>
+        </div>
+        <div className="space-y-2 rounded-xl border border-white/10 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="h-5 w-28 rounded bg-white/10" />
+            <div className="h-4 w-10 rounded-full bg-white/10" />
+          </div>
+          <div className="h-1 w-full rounded-full bg-white/10" />
+          <div className="space-y-1.5 pt-1">
+            <div className="h-9 w-full rounded-lg bg-white/10" />
+            <div className="h-9 w-3/5 rounded-lg bg-white/10" />
+          </div>
+        </div>
+      </div>
+      {/* Canvas: espejo del árbol real de LessonCanvas (label de módulo +
+          título h2 a 2 líneas con número + badges + bloques en flex gap-5 +
+          footer nav, mismo spacing mt-1/mt-2/mt-6/mt-8): el swap al dato
+          real no mueve la altura (CLS ≈ 0, §F-D1). */}
+      <div aria-hidden="true" className="min-h-[max(420px,60dvh)] min-w-0">
+        <Skeleton className="h-4 w-40 border-transparent" />
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <Skeleton className="h-6 w-14 border-transparent" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-8 w-3/4 border-transparent" />
+            <Skeleton className="h-8 w-1/2 border-transparent" />
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Skeleton className="h-5 w-24 rounded-full border-transparent" />
+          <Skeleton className="h-5 w-36 rounded-full border-transparent" />
+        </div>
+        <div className="mt-6 flex flex-col gap-5">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full border-transparent" />
+            <Skeleton className="h-4 w-full border-transparent" />
+            <Skeleton className="h-4 w-11/12 border-transparent" />
+            <Skeleton className="h-4 w-2/3 border-transparent" />
+          </div>
+          <Skeleton className="h-48 w-full rounded-xl border-transparent" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full border-transparent" />
+            <Skeleton className="h-4 w-2/3 border-transparent" />
+          </div>
+        </div>
+        <div className="mt-8 flex items-stretch gap-3">
+          <Skeleton className="h-11 flex-1 border-transparent" />
+          <Skeleton className="h-11 flex-1 border-transparent" />
+        </div>
+      </div>
+      </div>
     </div>
   )
 }
@@ -661,6 +825,7 @@ export {
   ButtonSkeleton,
   CourseCardSkeleton,
   CourseGridSkeleton,
+  CourseListBandsSkeleton,
   CourseListSkeleton,
   CoursePlayerSkeleton,
   ExploreListSkeleton,

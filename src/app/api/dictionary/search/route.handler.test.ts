@@ -28,14 +28,6 @@ describe("GET /api/dictionary/search", () => {
   })
 
   describe("validation", () => {
-    it("returns 400 for query shorter than 2 chars", async () => {
-      const response = await GET(req("a"))
-      expect(response.status).toBe(400)
-
-      const body = await response.json()
-      expect(body.results).toEqual([])
-    })
-
     it("returns 400 for empty query", async () => {
       const response = await GET(req(""))
       expect(response.status).toBe(400)
@@ -44,6 +36,24 @@ describe("GET /api/dictionary/search", () => {
     it("returns 400 for whitespace-only query", async () => {
       const response = await GET(req("   "))
       expect(response.status).toBe(400)
+    })
+
+    it("returns 400 for query longer than 100 chars", async () => {
+      const response = await GET(req("a".repeat(101)))
+      expect(response.status).toBe(400)
+
+      const body = await response.json()
+      expect(body.results).toEqual([])
+    })
+
+    it("accepts a single-character query", async () => {
+      vi.mocked(db.$queryRaw).mockResolvedValue(mockRawResults)
+
+      const response = await GET(req("a"))
+      expect(response.status).toBe(200)
+
+      const body = await response.json()
+      expect(body.results).toHaveLength(3)
     })
   })
 

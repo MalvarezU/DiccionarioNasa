@@ -173,10 +173,18 @@ export function NavBar() {
                     key={item.href}
                     href={item.href}
                     aria-current={isActive(item.href) ? "page" : undefined}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                      isHeroTop
+                        ? "focus-visible:outline-[#F6EEDC]"
+                        : "focus-visible:outline-primary"
+                    } ${
                       isActive(item.href)
-                        ? "text-primary bg-primary/10"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        ? isHeroTop
+                          ? "text-[#F6EEDC] bg-white/15"
+                          : "text-primary bg-primary/10"
+                        : isHeroTop
+                          ? "text-[#F6EEDC]/85 hover:text-[#F6EEDC] hover:bg-white/10"
+                          : "text-foreground/80 bg-white/40 hover:text-primary hover:bg-surface-container-high"
                     }`}
                   >
                     <item.icon className="h-4 w-4" />
@@ -192,10 +200,18 @@ export function NavBar() {
                     href={item.href}
                     aria-label={item.label}
                     aria-current={isActive(item.href) ? "page" : undefined}
-                    className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[56px] px-2 rounded-md transition-colors ${
+                    className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[56px] px-2 rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                      isHeroTop
+                        ? "focus-visible:outline-[#F6EEDC]"
+                        : "focus-visible:outline-primary"
+                    } ${
                       isActive(item.href)
-                        ? "text-primary bg-primary/10"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        ? isHeroTop
+                          ? "text-[#F6EEDC] bg-white/15"
+                          : "text-primary bg-primary/10"
+                        : isHeroTop
+                          ? "text-[#F6EEDC]/85 hover:text-[#F6EEDC] hover:bg-white/10"
+                          : "text-foreground/80 bg-white/40 hover:text-primary hover:bg-surface-container-high"
                     }`}
                   >
                     <item.icon className="h-4 w-4" aria-hidden="true" />

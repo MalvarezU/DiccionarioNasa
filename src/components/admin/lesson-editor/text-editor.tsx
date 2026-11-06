@@ -27,7 +27,7 @@ export interface EditorTextoRicoProps {
   value: string
   /** Se llama con el markdown serializado tras cada cambio. */
   onChange: (markdown: string) => void
-  /** Límite de caracteres (markdown). Por defecto 20.000. */
+  /** Límite de caracteres (HTML). Por defecto 40.000 (= LIMITS.maxHtml). */
   maxChars?: number
   disabled?: boolean
   ariaLabel?: string
@@ -39,7 +39,7 @@ export interface EditorTextoRicoProps {
 export function EditorTextoRico({
   value,
   onChange,
-  maxChars = 20_000,
+  maxChars = 40_000,
   disabled = false,
   ariaLabel = "Texto de la lección",
   ariaLabelledBy,

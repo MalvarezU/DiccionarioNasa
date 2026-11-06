@@ -153,3 +153,101 @@ describe("useLessonEditor — validación con el MISMO contrato del server", () 
     })
   })
 })
+
+// ====================================================================
+// EDGE / ADVERSARIAL BATTERY — historial y mutaciones no-op
+// ====================================================================
+describe("useLessonEditor — edge/adversarial", () => {
+  it("moveBlock no-op en extremo NO marca dirty", () => {
+    const { result } = renderHook(() => useLessonEditor({ blocks: [texto(), texto2] }))
+    // estado inicial limpio
+    expect(result.current.dirty).toBe(false)
+    act(() => result.current.moveBlock("b1", -1))
+    expect(result.current.blocks.map((b) => b.id)).toEqual(["b1", "b2"])
+    expect(result.current.dirty).toBe(false)
+  })
+
+  it("moveBlock con id inexistente NO marca dirty", () => {
+    const { result } = renderHook(() => useLessonEditor({ blocks: [texto(), texto2] }))
+    act(() => result.current.moveBlock("nope", 1))
+    expect(result.current.dirty).toBe(false)
+  })
+
+  it("reorder no-op (id inexistente) NO marca dirty", () => {
+    const { result } = renderHook(() => useLessonEditor({ blocks: [texto(), texto2] }))
+    act(() => result.current.reorder("nope", "b2"))
+    expect(result.current.dirty).toBe(false)
+  })
+
+  it("reorder con activeId===overId es no-op y no marca dirty", () => {
+    const { result } = renderHook(() => useLessonEditor({ blocks: [texto(), texto2] }))
+    act(() => result.current.reorder("b1", "b1"))
+    expect(result.current.dirty).toBe(false)
+  })
+
+  it("historial se capea en 50 estados (el más viejo se descarta)", () => {
+    const { result } = renderHook(() => useLessonEditor({ title: "T0", blocks: [] }))
+    for (let i = 1; i <= 51; i++) {
+      act(() => result.current.setTitle(`T${i}`))
+    }
+    // 50 undos disponibles como máximo
+    let undos = 0
+    while (result.current.puedeDeshacer) {
+      act(() => result.current.undo())
+      undos++
+      if (undos > 60) break
+    }
+    expect(undos).toBeLessThanOrEqual(50)
+    expect(result.current.title).not.toBe("T0")
+  })
+
+  it("addBlock más allá de maxBlocks deja documento inválido (no crashea)", () => {
+    const { result } = renderHook(() => useLessonEditor({ blocks: [] }))
+    for (let i = 0; i < 101; i++) {
+      act(() => result.current.addBlock("text"))
+    }
+    expect(result.current.blocks).toHaveLength(101)
+    expect(result.current.valido).toBe(false)
+    expect(result.current.documento).toBeNull()
+  })
+
+  it("setTitle vacío marca dirty y documento sigue válido (título no valida el doc)", () => {
+    const { result } = renderHook(() => useLessonEditor({ title: "T", blocks: [texto()] }))
+    act(() => result.current.setTitle(""))
+    expect(result.current.dirty).toBe(true)
+  })
+
+  it("setBlock con id inexistente no cambia nada ni marca dirty", () => {
+    const { result } = renderHook(() => useLessonEditor({ blocks: [texto()] }))
+    act(() => result.current.setBlock("nope", texto()))
+    expect(result.current.blocks).toHaveLength(1)
+    expect(result.current.dirty).toBe(false)
+  })
+
+  it("undo tras markSaved marca dirty (el doc difiere del guardado)", () => {
+    const { result } = renderHook(() => useLessonEditor({ title: "T", blocks: [texto()] }))
+    act(() => result.current.setTitle("T2"))
+    act(() => result.current.markSaved())
+    expect(result.current.dirty).toBe(false)
+    act(() => result.current.undo())
+    expect(result.current.title).toBe("T")
+    expect(result.current.dirty).toBe(true)
+  })
+
+  it("markSaved dos veces no rompe", () => {
+    const { result } = renderHook(() => useLessonEditor({ blocks: [texto()] }))
+    act(() => result.current.addBlock("text"))
+    act(() => result.current.markSaved())
+    act(() => result.current.markSaved())
+    expect(result.current.dirty).toBe(false)
+  })
+
+  it("redo tras nueva edición se descarta", () => {
+    const { result } = renderHook(() => useLessonEditor({ title: "T", blocks: [texto()] }))
+    act(() => result.current.setTitle("T2"))
+    act(() => result.current.undo())
+    expect(result.current.puedeRehacer).toBe(true)
+    act(() => result.current.setTitle("T3"))
+    expect(result.current.puedeRehacer).toBe(false)
+  })
+})

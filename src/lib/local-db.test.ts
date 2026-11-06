@@ -140,6 +140,31 @@ describe("searchLocalWords", () => {
     expect(results).toHaveLength(1)
   })
 
+  it("finds words starting with a single char (spanish)", async () => {
+    const results = await searchLocalWords("c")
+    expect(results).toHaveLength(1)
+    expect(results[0].id).toBe("1")
+  })
+
+  it("finds words starting with a single char (nasaYuwe)", async () => {
+    const results = await searchLocalWords("k")
+    expect(results).toHaveLength(1)
+    expect(results[0].id).toBe("2")
+  })
+
+  it("does not match mid-string for a single char", async () => {
+    // "s" appears mid-string in "casa" but single-char search uses startsWith,
+    // so only "sol" (wordB) should match, not "casa" (wordA).
+    const results = await searchLocalWords("s")
+    expect(results).toHaveLength(1)
+    expect(results[0].id).toBe("2")
+  })
+
+  it("returns empty array for single char with no matches", async () => {
+    const results = await searchLocalWords("z")
+    expect(results).toEqual([])
+  })
+
   it("finds matches with accent in the query", async () => {
     const results = await searchLocalWords("árbol")
     expect(results).toHaveLength(1)

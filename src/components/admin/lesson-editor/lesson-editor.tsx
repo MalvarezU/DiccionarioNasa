@@ -333,6 +333,11 @@ export function LessonEditor({
       </div>
 
       {/* Agregar bloque */}
+      {editor.blocks.length >= 100 ? (
+        <p className="mb-2 text-xs text-destructive" role="status">
+          Alcanzaste el máximo de 100 bloques por lección.
+        </p>
+      ) : null}
       <div className="rounded-lg border border-outline-variant/30 bg-surface-container-low p-2">
         <span className="mb-2 block text-xs font-semibold text-muted-foreground">
           Agregar bloque

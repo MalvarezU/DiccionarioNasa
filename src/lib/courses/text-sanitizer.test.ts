@@ -57,7 +57,7 @@ describe("sanitizeLessonHtml", () => {
   })
 
   it("remueve <svg> y su contenido script", () => {
-    expect(sanitizeLessonHtml('<svg><script>alert(1)</script></svg>')).toBe("")
+    expect(sanitizeLessonHtml("<svg><script>alert(1)</script></svg>")).toBe("")
   })
 
   it("remueve <form>, <input>, <button> (form es nonTextTag → descarta su contenido)", () => {
@@ -196,5 +196,167 @@ describe("sanitizeLessonContent", () => {
     const content = { version: 2, blocks: [] }
     const out = sanitizeLessonContent(content as any)
     expect(out.blocks).toHaveLength(0)
+  })
+})
+
+// ====================================================================
+// EDGE / ADVERSARIAL BATTERY — frontera de seguridad del bloque de texto
+// ====================================================================
+describe("sanitizeLessonHtml — edge/adversarial", () => {
+  it("descarta script inline en cualquier combinación de mayúsculas", () => {
+    expect(sanitizeLessonHtml("<SCRIPT>alert(1)</SCRIPT>")).toBe("")
+    expect(sanitizeLessonHtml("<ScRiPt>alert(1)</sCrIpT>")).toBe("")
+  })
+
+  it("script vacío o con solo whitespace", () => {
+    expect(sanitizeLessonHtml("<script>   </script>")).toBe("")
+    expect(sanitizeLessonHtml("<script></script>")).toBe("")
+  })
+
+  it("script dentro de un p permitido se descarta completo (nonTextTags)", () => {
+    expect(sanitizeLessonHtml("<p>ok</p><script>alert(1)</script><p>fin</p>")).toBe("<p>ok</p><p>fin</p>")
+  })
+
+  it("iframe, object, embed, form se descartan con su contenido", () => {
+    expect(sanitizeLessonHtml('<iframe src="https://evil.com"></iframe>')).toBe("")
+    expect(sanitizeLessonHtml('<object data="x"><param name="y" /></object>')).toBe("")
+    expect(sanitizeLessonHtml('<embed src="x.swf" />')).toBe("")
+    expect(sanitizeLessonHtml('<form action="evil"><input /></form>')).toBe("")
+  })
+
+  it("svg con script anidado se descarta entero (svg no whitelisted)", () => {
+    expect(sanitizeLessonHtml("<svg><script>alert(1)</script></svg>")).toBe("")
+    expect(sanitizeLessonHtml('<svg onload="alert(1)">x</svg>')).toBe("x")
+  })
+
+  it("style tag se descarta con su CSS", () => {
+    expect(sanitizeLessonHtml("<style>body{display:none}</style><p>x</p>")).toBe("<p>x</p>")
+  })
+
+  it("img no whitelisted se descarta entero (no queda onerror)", () => {
+    const out = sanitizeLessonHtml('<img src="x" onerror="alert(1)">')
+    expect(out).not.toContain("onerror")
+    expect(out).not.toContain("img")
+  })
+
+  it("a con href javascript: se descarta (a no whitelisted)", () => {
+    expect(sanitizeLessonHtml('<a href="javascript:alert(1)">x</a>')).toBe("x")
+  })
+
+  it("atributos en tags permitidos se eliminan (style, class, onclick, id)", () => {
+    const out = sanitizeLessonHtml('<p style="color:red" class="x" onclick="alert(1)" id="y">t</p>')
+    expect(out).toBe("<p>t</p>")
+  })
+
+  it("onmouseover/onfocus/etc. en span se eliminan", () => {
+    expect(sanitizeLessonHtml('<span onmouseover="alert(1)" onfocus="alert(2)">t</span>')).toBe("<span>t</span>")
+  })
+
+  it("data-* attributes se eliminan", () => {
+    expect(sanitizeLessonHtml('<p data-x="y">t</p>')).toBe("<p>t</p>")
+  })
+
+  it("href javascript en span no aplica (span no tiene attrs permitidos)", () => {
+    expect(sanitizeLessonHtml('<span href="javascript:alert(1)">t</span>')).toBe("<span>t</span>")
+  })
+
+  it("HTML malformado no rompe ni deja tag colgado", () => {
+    expect(sanitizeLessonHtml("<p><strong>negrita sin cerrar")).toBe("<p><strong>negrita sin cerrar</strong></p>")
+    expect(sanitizeLessonHtml("<<script>alert(1)</script>")).toBe("&lt;")
+    expect(sanitizeLessonHtml("<p>texto</p")).toBe("<p>texto</p>")
+  })
+
+  it("comentarios HTML se eliminan", () => {
+    expect(sanitizeLessonHtml("<!-- <script>alert(1)</script> --><p>x</p>")).toBe("<p>x</p>")
+  })
+
+  it("CDATA no pasa como tag", () => {
+    const out = sanitizeLessonHtml("<![CDATA[<script>alert(1)</script>]]>")
+    expect(out).not.toContain("<script")
+  })
+
+  it("entidades que podrían recomponerse a tag no se interpretan", () => {
+    // &lt;script&gt; ya es texto escapado; sanitizer no debe decodificarlo
+    expect(sanitizeLessonHtml("&lt;script&gt;alert(1)&lt;/script&gt;")).toBe("&lt;script&gt;alert(1)&lt;/script&gt;")
+  })
+
+  it("null byte no se propaga", () => {
+    const out = sanitizeLessonHtml("<p>a\u0000b</p>")
+    expect(out).toContain("a")
+    expect(out).toContain("b")
+  })
+
+  it("unicode line separators no rompen", () => {
+    expect(sanitizeLessonHtml("<p>a\u2028b\u2029c</p>")).toBe("<p>a\u2028b\u2029c</p>")
+  })
+
+  it("tag desconocido se elimina pero conserva su texto", () => {
+    expect(sanitizeLessonHtml("<foo>texto</foo>")).toBe("texto")
+    expect(sanitizeLessonHtml("<custom-tag>x</custom-tag>")).toBe("x")
+  })
+
+  it("anidamiento profundo no rompe", () => {
+    const deep = "<p>" + "<strong>".repeat(50) + "x" + "</strong>".repeat(50) + "</p>"
+    const out = sanitizeLessonHtml(deep)
+    expect(out).toContain("x")
+  })
+
+  it("payload de 40k chars no se trunca por el sanitizer (eso es del validador)", () => {
+    const big = "<p>" + "a".repeat(40_000) + "</p>"
+    expect(sanitizeLessonHtml(big).length).toBeGreaterThan(40_000)
+  })
+
+  it("br variants se normalizan siempre", () => {
+    expect(sanitizeLessonHtml("<BR>")).toBe("<br />")
+    expect(sanitizeLessonHtml("<Br/>")).toBe("<br />")
+  })
+
+  it("h1-h3 con attrs se limpian", () => {
+    expect(sanitizeLessonHtml('<h1 onclick="x" style="y">t</h1>')).toBe("<h1>t</h1>")
+  })
+
+  it("ul/li con attrs se limpian", () => {
+    expect(sanitizeLessonHtml('<ul class="x"><li onclick="y">z</li></ul>')).toBe("<ul><li>z</li></ul>")
+  })
+
+  it("span vacío se conserva", () => {
+    expect(sanitizeLessonHtml("<span></span>")).toBe("<span></span>")
+  })
+
+  it("texto con < y > sueltos se escapa", () => {
+    const out = sanitizeLessonHtml("5 < 10 && 20 > 5")
+    expect(out).not.toContain("<10")
+  })
+})
+
+describe("sanitizeLessonContent — edge", () => {
+  it("sanitiza solo bloques type=text, deja el resto intacto", () => {
+    const content = {
+      version: 2,
+      blocks: [
+        { type: "text", html: "<p>x</p><script>alert(1)</script>" },
+        { type: "image", url: "https://x/a.png", alt: "a" },
+      ],
+    }
+    const out = sanitizeLessonContent(content as any)
+    expect((out.blocks[0] as any).html).toBe("<p>x</p>")
+    expect((out.blocks[1] as any).url).toBe("https://x/a.png")
+  })
+
+  it("no cae si html no es string en bloque text", () => {
+    const content = { version: 2, blocks: [{ type: "text", html: 42 }] }
+    const out = sanitizeLessonContent(content as any)
+    expect((out.blocks[0] as any).html).toBe(42)
+  })
+
+  it("no cae si blocks no es array (no sanitiza, no tira)", () => {
+    const content = { version: 2, blocks: null } as any
+    expect(() => sanitizeLessonContent(content)).not.toThrow()
+  })
+
+  it("bloque con html vacío queda vacío", () => {
+    const content = { version: 2, blocks: [{ type: "text", html: "" }] }
+    const out = sanitizeLessonContent(content as any)
+    expect((out.blocks[0] as any).html).toBe("")
   })
 })
