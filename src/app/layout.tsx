@@ -32,8 +32,9 @@ export const metadata: Metadata = {
     "indigenous language",
   ],
   icons: {
-    icon: "/icon-192.png",
-    apple: "/apple-touch-icon-180.png",
+    icon: "/icon-192.png?v=5",
+    shortcut: "/favicon.ico?v=5",
+    apple: "/apple-touch-icon-180.png?v=5",
   },
   manifest: "/manifest.webmanifest",
   openGraph: {

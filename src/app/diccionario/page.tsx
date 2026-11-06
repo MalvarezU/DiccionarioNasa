@@ -211,6 +211,13 @@ function DiccionarioContent() {
             className="object-cover object-[50%_35%] z-0"
             aria-hidden="true"
           />
+          {/* Tinte montana sobre la foto (multiply, el scrim ya es
+              montana-deep): verdor notorio sin matar la foto clara.
+              Orden: foto → tinte → scrim → texto. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 z-[1] bg-montana/25 mix-blend-multiply"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-montana-deep/70 via-montana-deep/55 to-montana-deep/30 z-10" />
           <div
             className="absolute inset-0 opacity-[0.08] z-0"
@@ -224,12 +231,12 @@ function DiccionarioContent() {
             <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-start lg:gap-12">
               {/* Panel de búsqueda PRIMERO en el DOM: en móvil aparece junto
                   al navbar; en lg se reordena a la derecha (order). */}
-              <div className="order-1 mx-auto w-full max-w-xl rounded-2xl border border-crema/25 bg-montana-deep/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
+              <div className="order-1 mx-auto w-full max-w-xl rounded-2xl border border-crema/25 bg-territorio/50 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
                 <SearchBar variant="hero-panel" onWordSelect={handleWordSelect} />
               </div>
               {/* Copy de bienvenida: segundo en el DOM, a la izquierda en lg */}
               <div className="order-2 text-center lg:text-left lg:order-1">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-crema/30 bg-montana-deep/30 px-3 py-1 text-xs font-medium text-crema backdrop-blur-md">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-crema/30 bg-territorio/50 px-3 py-1 text-xs font-medium text-crema backdrop-blur-md">
                   <BookOpen className="h-3 w-3 text-crema" aria-hidden="true" />
                   Diccionario bilingüe
                 </span>

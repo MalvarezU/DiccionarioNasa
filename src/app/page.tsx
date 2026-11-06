@@ -65,11 +65,18 @@ function HomeContent() {
             alt=""
             fill
             sizes="100vw"
+            priority
             className="object-cover sm:object-[50%_30%] opacity-100 z-0"
             aria-hidden="true"
             onError={(e) => {
               e.currentTarget.style.display = "none";
             }}
+          />
+          {/* Tinte territorio sobre la foto (multiply): verdor notorio
+              sin matar la foto. Orden: foto → tinte → scrim → texto. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 z-[1] bg-territorio/30 mix-blend-multiply"
           />
 
           <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 text-center z-20">
@@ -106,7 +113,7 @@ function HomeContent() {
                     className={`group inline-flex items-center justify-center gap-2.5 rounded-xl px-5 py-3 text-sm font-medium transition-colors duration-200 backdrop-blur-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema ${
                       principal
                         ? "bg-amarillo text-amarillo-foreground shadow-lg hover:bg-amarillo-oscuro hover:shadow-xl sm:px-6"
-                        : "border border-crema/40 bg-montana-deep/25 text-crema hover:bg-crema/15 hover:border-crema/60"
+                        : "border border-crema/40 bg-territorio/50 text-crema hover:bg-crema/15 hover:border-crema/60"
                     }`}
                   >
                     <Icon
@@ -122,7 +129,7 @@ function HomeContent() {
             <div className="mt-6 flex justify-center">
               <a
                 href="#instalar"
-                className="group inline-flex items-center gap-2 rounded-full border border-crema/40 bg-montana-deep/25 px-5 py-2.5 text-sm font-medium text-crema backdrop-blur-md transition-colors duration-200 hover:bg-crema/15 hover:border-crema/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
+                className="group inline-flex items-center gap-2 rounded-full border border-crema/40 bg-territorio/50 px-5 py-2.5 text-sm font-medium text-crema backdrop-blur-md transition-colors duration-200 hover:bg-crema/15 hover:border-crema/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
               >
                 <Download className="h-4 w-4 shrink-0" />
                 Descargar app

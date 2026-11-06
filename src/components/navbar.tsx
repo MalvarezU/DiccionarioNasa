@@ -142,18 +142,20 @@ export function NavBar() {
                 : "focus-visible:outline-primary"
             } group`}
           >
-            <Image
-              src="/logoPiiyaakblanco.png"
-              alt="Piiyaak"
-              width={29}
-              height={32}
-              priority
-              className={
-                isHeroTop
-                  ? "h-8 w-auto rounded-md ring-1 ring-crema/25"
-                  : "h-8 w-auto rounded-md ring-1 ring-black/10"
-              }
-            />
+            {/* Placa verde permanente: el isotipo PNG transparente vive
+                siempre sobre montana sólido, en los dos estados del
+                header (hero-top frosted y sólido). El wordmark serif
+                al lado queda como está. */}
+            <span className="flex items-center justify-center rounded-lg bg-montana p-1.5">
+              <Image
+                src="/logoPiiyaakblanco.png"
+                alt="Piiyaak"
+                width={32}
+                height={36}
+                priority
+                className="h-9 w-8"
+              />
+            </span>
             <span
               className={
                 isHeroTop
