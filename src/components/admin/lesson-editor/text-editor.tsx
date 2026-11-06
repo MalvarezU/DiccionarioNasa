@@ -15,6 +15,7 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { useEditor, useEditorState, EditorContent, type Editor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
+import { Placeholder } from "@tiptap/extension-placeholder"
 import { TEXT_BLOCK_PROSE, TEXT_COLOR_SWATCH, TEXT_COLOR_TOKENS, type TextColorToken } from "@/lib/courses/lesson-html"
 import { htmlToPlainText } from "@/lib/html-to-text"
 import { TextoColoreado } from "./texto-coloreado"
@@ -32,6 +33,8 @@ export interface EditorTextoRicoProps {
   disabled?: boolean
   ariaLabel?: string
   ariaLabelledBy?: string
+  /** Texto placeholder cuando el editor está vacío. */
+  placeholder?: string
   /** Variante compacta: solo negrita/cursiva, altura reducida. */
   mini?: boolean
 }
@@ -43,6 +46,7 @@ export function EditorTextoRico({
   disabled = false,
   ariaLabel = "Texto de la lección",
   ariaLabelledBy,
+  placeholder = "Escribí aquí el contenido de la lección…",
   mini = false,
 }: EditorTextoRicoProps) {
   /** Último markdown que ESTE editor leyó o emitió. null al montar. */
@@ -73,10 +77,17 @@ export function EditorTextoRico({
       // Va en full y en mini: así el mini no destruye colores ya guardados
       // si alguna vez recibe HTML con marca. El selector solo sale en full.
       TextoColoreado,
+      // Placeholder visual cuando el doc está vacío (no se guarda como contenido).
+      Placeholder.configure({ placeholder }),
 
     ],
     content: "",
     immediatelyRender: false,
+    editorProps: {
+      attributes: {
+        class: "outline-none",
+      },
+    },
     // CRÍTICO: sin esto, el componente no se re-renderiza en transacciones
     // sin cambio de documento (toggle de marca en cursor colapsado → stored
     // mark). El botón quedaba "pegado" un keystroke detrás.

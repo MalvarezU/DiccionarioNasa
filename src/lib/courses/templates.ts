@@ -20,7 +20,7 @@ export const PLANTILLAS_LECCION: PlantillaLeccion[] = [
     nombre: "Texto simple",
     descripcion: "Un bloque de texto para empezar a escribir.",
     bloques: [
-      { id: newBlockId(), type: "text", html: "<p>Escribí aquí el contenido de la lección…</p>" },
+      { id: newBlockId(), type: "text", html: "" },
     ],
   },
   {

@@ -66,6 +66,7 @@
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tanstack/react-virtual": "^3.13.24",
+    "@tiptap/extension-placeholder": "^3.33.0",
     "@tiptap/react": "^3.32.2",
     "@tiptap/starter-kit": "^3.32.2",
     "@types/sanitize-html": "^2.16.2",
