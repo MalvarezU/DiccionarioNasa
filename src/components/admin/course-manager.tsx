@@ -77,6 +77,8 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     titulo?: string
   } | null>(null)
   const [procesando, setProcesando] = useState(false)
+  /** Id del curso cuya navegación iniciamos nosotros (anti-race con la URL). */
+  const pendingSelectRef = useRef<string | null>(null)
 
   const {
     courses,
@@ -303,6 +305,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
   const continuarGuard = useCallback(
     (g: GuardPendiente) => {
       if (g.kind === "curso") {
+        pendingSelectRef.current = g.id
         syncCursoUrl(g.id)
         void loadDetail(g.id)
       } else {
@@ -320,6 +323,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
         setGuard({ kind: "curso", id })
         return
       }
+      pendingSelectRef.current = id
       syncCursoUrl(id)
       void loadDetail(id)
     },
@@ -415,6 +419,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
       initialCurso && courses.some((c) => c.id === initialCurso)
         ? initialCurso
         : courses[0]!.id
+    pendingSelectRef.current = target
     if (target !== initialCurso) syncCursoUrl(target)
     void loadDetail(target)
   }, [loading, courses, initialCurso, syncCursoUrl, loadDetail])
@@ -423,8 +428,16 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
   const cursoParam = searchParams.get("curso")
   useEffect(() => {
     if (!initDoneRef.current) return
-    if (!cursoParam || cursoParam === selectedId) return
+    if (!cursoParam) return
+    if (cursoParam === selectedId) {
+      // Navegación propia asentada: liberar el guard.
+      pendingSelectRef.current = null
+      return
+    }
     if (!courses.some((c) => c.id === cursoParam)) return
+    // Si hay una navegación propia en vuelo, no revertir a un id viejo
+    // (la URL aún no asentó) — anti-race.
+    if (pendingSelectRef.current !== null) return
     requestSelect(cursoParam)
   }, [cursoParam, selectedId, courses, requestSelect])
 
