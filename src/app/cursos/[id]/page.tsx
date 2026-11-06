@@ -8,6 +8,8 @@ import Link from "next/link"
 import { NavBar } from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumbs } from "@/components/breadcrumbs"
+import { AuthModal } from "@/components/auth-modal"
+import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CoursePlayerSkeleton } from "@/components/skeletons"
@@ -85,6 +87,7 @@ export default function CursoDetailPage({
     }
   }, [params])
   const { data: session } = useSession()
+  const { toast } = useToast()
   const isAuthed = !!session?.user
 
   const [course, setCourse] = useState<CourseDetail | null>(null)
@@ -93,6 +96,8 @@ export default function CursoDetailPage({
   const [reloadKey, setReloadKey] = useState(0)
   const [completedLessons, setCompletedLessons] = useState<string[]>([])
   const [lastVisited, setLastVisited] = useState<string | null>(null)
+  // Única fuente del AuthModal (H4): el canvas y el outline solo piden sesión.
+  const [authOpen, setAuthOpen] = useState(false)
 
   // Lección activa on-demand (contenido + palabras del endpoint de lección).
   // El loader es dueño de la cache; acá solo queda el registro de lo que
@@ -172,33 +177,43 @@ export default function CursoDetailPage({
 
   const handleLessonComplete = useCallback(
     async (lessonId: string, score?: number | null) => {
+      // H3: anónimo no escribe progreso — ni memoria ni localStorage ni
+      // backend — y tampoco avanza cerrojos (el gate H1 impediría llegar
+      // acá; el early-return lo garantiza por construcción).
+      if (!isAuthed) return
       setCompletedLessons((prev) => (prev.includes(lessonId) ? prev : [...prev, lessonId]))
       if (!course) return
-      if (isAuthed) {
-        try {
-          await fetch("/api/progress", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              lessonId,
-              completed: true,
-              ...(typeof score === "number" ? { score } : {}),
-            }),
-          })
-        } catch {
-          // el estado local ya quedó; reintentará al reabrir
-        }
-      } else {
-        try {
-          const next = [...loadAnon(course.id), lessonId]
-          localStorage.setItem(`${ANON_KEY}:${course.id}`, JSON.stringify([...new Set(next)]))
-        } catch {
-          // sin almacenamiento: solo sesión en memoria
-        }
+      try {
+        await fetch("/api/progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lessonId,
+            completed: true,
+            ...(typeof score === "number" ? { score } : {}),
+          }),
+        })
+      } catch {
+        // el estado local ya quedó; reintentará al reabrir
       }
     },
     [course, isAuthed]
   )
+
+  // Pedir sesión: abre el modal (login por defecto) + aviso. Único punto
+  // donde canvas y outline delegan el gate (H1/H2).
+  const requireAuth = useCallback(() => {
+    setAuthOpen(true)
+    toast({ title: "Iniciá sesión para interactuar con los cursos" })
+  }, [toast])
+
+  // Auto-cierre: si la sesión aparece (login dentro del modal), caerlo sin
+  // que el usuario tenga que descartar un pop-up que ya resolvió. Es un
+  // pacto con un evento externo (la sesión), no derivación de estado.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- cierre por aparición de sesión (evento, no derivación)
+    if (isAuthed && authOpen) setAuthOpen(false)
+  }, [isAuthed, authOpen])
 
   const handleLessonOpen = useCallback(
     async (lessonId: string) => {
@@ -353,7 +368,7 @@ export default function CursoDetailPage({
             </h1>
             <span className="text-xs text-muted-foreground">
               {course.modules.length} módulos · {totalLessons} lecciones
-              {!isAuthed && " · progreso solo en este navegador"}
+              {!isAuthed && " · iniciá sesión para guardar tu avance"}
             </span>
           </div>
         </div>
@@ -427,6 +442,8 @@ export default function CursoDetailPage({
                 lastVisitedLessonId={lastVisited}
                 onSelect={handleSelectLesson}
                 onHoverLesson={handleHoverLesson}
+                isAuthed={isAuthed}
+                onRequireAuth={requireAuth}
               />
             }
             canvas={
@@ -485,9 +502,16 @@ export default function CursoDetailPage({
                     prev={nav.prev}
                     next={nav.next}
                     completed={completedSet.has(canvasLesson.id)}
-                    locked={!nav.canAccess(canvasLesson.id)}
+                    // Unión de cerrojos (H2): secuencial OR gate de sesión
+                    // (anónimo en módulo 2+). El canvas elige el banner según
+                    // la causa (sessionLocked).
+                    locked={
+                      !nav.canAccess(canvasLesson.id) ||
+                      (!isAuthed && active.moduleIndex >= 2)
+                    }
                     requiredLesson={nav.requiredLessonFor(canvasLesson.id)}
                     anonymous={!isAuthed}
+                    onRequireAuth={requireAuth}
                     onComplete={handleLessonComplete}
                     onNavigate={handleSelectLesson}
                     onGoRequired={handleSelectLesson}
@@ -524,6 +548,9 @@ export default function CursoDetailPage({
           </div>
         )}
       </main>
+      {/* Gate de sesión (H1/H2): único AuthModal del player. La sesión que
+          aparece por el login lo cierra en el effect de arriba. */}
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
       <SiteFooter />
     </div>
   )

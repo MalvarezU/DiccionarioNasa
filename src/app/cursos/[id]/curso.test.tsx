@@ -10,9 +10,30 @@ configure({ asyncUtilTimeout: 5000 })
 
 vi.mock("next-auth/react", () => ({
   useSession: vi.fn(() => ({ data: null })),
+  signIn: vi.fn(),
 }))
 
+// El Toaster vive en el layout (no en la page): para asserts de toast nos
+// quedamos con el hook mockeado, igual que los tests de AuthModal.
+const toastMocks = vi.hoisted(() => ({ toast: vi.fn() }))
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({ toast: toastMocks.toast, toasts: [], dismiss: toastMocks.toast }),
+}))
+
+const AUTHED_SESSION = {
+  data: { user: { id: "u1" } as never, expires: "2099-01-01T00:00:00Z" },
+  status: "authenticated" as const,
+  update: vi.fn(),
+}
+
+const ANON_SESSION = { data: null, status: "unauthenticated" as const, update: vi.fn() }
+
 import { useSession } from "next-auth/react"
+
+// Helper local: activa sesión autenticada en el mock de arriba.
+function mockAuthed(): void {
+  vi.mocked(useSession).mockReturnValue(AUTHED_SESSION)
+}
 
 vi.mock("@/components/navbar", () => ({
   NavBar: () => <div data-testid="navbar" />,
@@ -87,6 +108,9 @@ describe("/cursos/[id] player", () => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
     window.history.replaceState(null, "", "/cursos/c1")
+    // mockReturnValue persiste entre tests (clearAllMocks no borra
+    // implementaciones): anónimo explícito como base de cada test.
+    vi.mocked(useSession).mockReturnValue(ANON_SESSION)
   })
 
   function mockCourse() {
@@ -100,7 +124,50 @@ describe("/cursos/[id] player", () => {
     })
   }
 
-  it("bloquea el módulo 2 hasta completar el 1 (secuencial)", async () => {
+  /** mockCourse con la lección L1 armada con quiz (para tests de gate). */
+  function mockCourseQuiz() {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.includes("/manifest")) return Response.json(MANIFEST) as never
+      const m = u.match(/\/lessons\/([^/?]+)/)
+      if (m) {
+        const base = lessonPayload(m[1])
+        if (m[1] === "l1") {
+          return Response.json({
+            ...base,
+            lesson: {
+              ...base.lesson,
+              content: {
+                version: 2,
+                blocks: [
+                  ...base.lesson.content.blocks,
+                  {
+                    id: "q-l1",
+                    type: "quiz",
+                    passScore: 50,
+                    questions: [
+                      {
+                        prompt: "¿Cómo se saluda?",
+                        options: [
+                          { text: "¡Bien!", correct: true },
+                          { text: "Mal", correct: false },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          }) as never
+        }
+        return Response.json(base) as never
+      }
+      return Response.json({ completedIds: [], lastVisitedLessonId: null, pct: 0 }) as never
+    })
+  }
+
+  it("bloquea el módulo 2 hasta completar el 1 (secuencial, con sesión)", async () => {
+    mockAuthed()
     mockCourse()
     render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
     expect(await screen.findByRole("heading", { name: "Básico" })).toBeDefined()
@@ -117,7 +184,8 @@ describe("/cursos/[id] player", () => {
     expect(screen.getAllByText("0/3 lecciones")).toHaveLength(1)
   })
 
-  it("deep-link ?leccion= a lección bloqueada muestra el banner con CTA", async () => {
+  it("deep-link a bloqueada secuencial muestra el banner con CTA (con sesión)", async () => {
+    mockAuthed()
     mockCourse()
     window.history.replaceState(null, "", "/cursos/c1?leccion=l3")
     render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
@@ -127,6 +195,150 @@ describe("/cursos/[id] player", () => {
     expect(
       screen.getByRole("button", { name: /Ir a la lección requerida/ })
     ).toBeDefined()
+  })
+
+  // -------------------------------------- gate de sesión (H1/H2/H3) ---
+  describe("gate de sesión para anónimos", () => {
+    it("anónimo: click en radio del quiz abre modal + toast, sin marcar ni escribir progreso", async () => {
+      mockCourseQuiz()
+      const user = userEvent.setup()
+      render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+      const radio = await screen.findByRole("radio", { name: /Opción 1 de la pregunta 1/ })
+      await user.click(radio)
+      const dialog = await screen.findByRole("dialog")
+      expect(dialog).toBeDefined()
+      expect(screen.getByRole("heading", { name: /Iniciar sesión/ })).toBeDefined()
+      expect(toastMocks.toast).toHaveBeenCalledWith({
+        title: "Iniciá sesión para interactuar con los cursos",
+      })
+      // El click no alcanzó al radio del quiz
+      expect(radio).toHaveAttribute("aria-checked", "false")
+      // H3: cero escrituras de progreso anónimas
+      expect(localStorage.getItem("piiyaak:course:anon:v1:c1")).toBeNull()
+    })
+
+    it("anónimo: 'Marcar como completada' pide sesión y no escribe progreso", async () => {
+      mockCourse()
+      const user = userEvent.setup()
+      render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+      await user.click(await screen.findByRole("button", { name: /Marcar como completada/ }))
+      expect(await screen.findByRole("dialog")).toBeDefined()
+      expect(toastMocks.toast).toHaveBeenCalledWith({
+        title: "Iniciá sesión para interactuar con los cursos",
+      })
+      expect(localStorage.getItem("piiyaak:course:anon:v1:c1")).toBeNull()
+      const progressPosts = vi
+        .mocked(fetch)
+        .mock.calls.filter(([u]) => String(u).includes("/api/progress"))
+      expect(progressPosts).toHaveLength(0)
+    })
+
+    it("anónimo: click 'Revisar' no llega a revisar (sin respuestas registradas)", async () => {
+      mockCourseQuiz()
+      const user = userEvent.setup()
+      render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+      await screen.findByRole("heading", { level: 2, name: "L1" })
+      const revisar = screen.getByRole("button", { name: "Revisar" })
+      expect(revisar).toBeDisabled()
+    })
+
+    it("anónimo: deep-link a módulo 2 → banner de sesión con CTA que abre el modal", async () => {
+      mockCourse()
+      window.history.replaceState(null, "", "/cursos/c1?leccion=l3")
+      const user = userEvent.setup()
+      render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+      expect(await screen.findByRole("heading", { level: 2, name: "L3" })).toBeDefined()
+      const banner = await screen.findByRole("status")
+      expect(banner.textContent).toContain("requiere sesión")
+      expect(banner.textContent).toContain("módulo 2")
+      expect(banner.textContent).not.toContain("Completá el Módulo")
+      // Sin contenido y sin CTA secuencial para anónimo
+      expect(screen.queryByRole("button", { name: /Marcar como completada/ })).toBeNull()
+      expect(screen.queryByRole("button", { name: /Ir a la lección requerida/ })).toBeNull()
+      await user.click(screen.getByRole("button", { name: "Iniciar sesión" }))
+      expect(await screen.findByRole("dialog")).toBeDefined()
+      expect(banner.textContent).toContain("requiere sesión")
+    })
+
+    it("anónimo: outline del módulo 2 pide sesión y no navega", async () => {
+      mockCourse()
+      const user = userEvent.setup()
+      render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+      await screen.findByRole("heading", { level: 2, name: "L1" })
+      const outline = screen.getByRole("navigation", { name: /Contenido de/ })
+      expect(outline.textContent).toContain(
+        "Iniciá sesión para acceder a partir del módulo 2"
+      )
+      const l3 = outline.querySelector('[data-lesson-state="locked"]')
+      expect(l3).not.toBeNull()
+      expect(l3).toHaveAttribute("aria-disabled", "true")
+      await user.click(l3 as HTMLElement)
+      expect(await screen.findByRole("dialog")).toBeDefined()
+      // No se navega: la lección activa sigue siendo L1 (el canvas queda
+      // aria-hidden detrás del modal: hidden:true) y la URL no cambia.
+      expect(
+        screen.getByRole("heading", { level: 2, name: "L1", hidden: true })
+      ).toBeDefined()
+      expect(window.location.search).toBe("?leccion=l1")
+    })
+
+    it("autenticado: el gate no aplica — radio se marca y el quiz reporta progreso", async () => {
+      mockAuthed()
+      mockCourseQuiz()
+      const user = userEvent.setup()
+      render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+      const radio = await screen.findByRole("radio", { name: /Opción 1 de la pregunta 1/ })
+      await user.click(radio)
+      expect(radio).toHaveAttribute("aria-checked", "true")
+      expect(toastMocks.toast).not.toHaveBeenCalled()
+      await user.click(screen.getByRole("button", { name: "Revisar" }))
+      expect(await screen.findByText(/Aprobaste con 100%/)).toBeDefined()
+      await waitFor(() => {
+        const post = vi
+          .mocked(fetch)
+          .mock.calls.find(
+            ([u, init]) =>
+              String(u).includes("/api/progress") &&
+              (init as RequestInit | undefined)?.method === "POST"
+          )
+        expect(post).toBeDefined()
+        expect(String((post as [unknown, RequestInit])[1]?.body)).toContain('"lessonId":"l1"')
+        expect(String((post as [unknown, RequestInit])[1]?.body)).toContain('"score":100')
+      })
+      // La lección quedó completada en el outline
+      expect(await screen.findAllByText("1/3 lecciones")).toHaveLength(1)
+    })
+
+    it("autenticado: outline del módulo 2 navegable según secuencial (regresión)", async () => {
+      mockAuthed()
+      mockCourse()
+      const user = userEvent.setup()
+      render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+      const outline = await screen.findByRole("navigation", { name: /Contenido de/ })
+      // Sin sesiones-gates: el cerrojo del módulo 2 es secuencial solamente
+      expect(outline.textContent).toContain("Completá el Módulo 1")
+      expect(
+        screen.queryByText("Iniciá sesión para acceder a partir del módulo 2")
+      ).toBeNull()
+      await user.click(outline.querySelector('[data-lesson-state="locked"]') as HTMLElement)
+      expect(await screen.findByRole("heading", { level: 2, name: "L3" })).toBeDefined()
+      expect(screen.getByRole("status").textContent).toContain("Completá el Módulo 1")
+    })
+
+    it("anónimo: el modal se auto-cierra cuando aparece la sesión", async () => {
+      mockCourse()
+      const user = userEvent.setup()
+      const view = render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+      await user.click(await screen.findByRole("button", { name: /Marcar como completada/ }))
+      expect(await screen.findByRole("dialog")).toBeDefined()
+      mockAuthed()
+      // Sin dispatch de SessionProvider: la re-renderización con el nuevo mock
+      // dispara el effect de auto-cierre (sesión apareció).
+      view.rerender(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).toBeNull()
+      })
+    })
   })
 
   it("completar lección reporta progreso y desbloquea", async () => {
@@ -163,6 +375,7 @@ describe("/cursos/[id] player", () => {
   })
 
   it("lección con 0 bloques en secuencial desbloquea el módulo siguiente al completar", async () => {
+    mockAuthed()
     const manifest2 = {
       ...MANIFEST,
       modules: [

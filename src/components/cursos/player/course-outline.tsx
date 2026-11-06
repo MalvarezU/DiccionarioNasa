@@ -18,6 +18,15 @@ export interface CourseOutlineProps {
    * cache de la lección). Opcional: el outline funciona igual sin él.
    */
   onHoverLesson?: (lessonId: string) => void
+  /**
+   * Sesión activa. false = gate de sesión (H2): para anónimos toda lección
+   * del módulo 2+ queda bloqueada además del unlock secuencial (unión).
+   * Default true: el modo seguro (sin gate) es lo correcto para previews
+   * y reutilizaciones fuera del player.
+   */
+  isAuthed?: boolean
+  /** Abre el AuthModal (vive en page.tsx). Necesario para el gate anónimo. */
+  onRequireAuth?: () => void
 }
 
 type LessonState = "done" | "current" | "locked" | "todo"
@@ -34,6 +43,8 @@ export function CourseOutline({
   lastVisitedLessonId,
   onSelect,
   onHoverLesson,
+  isAuthed = true,
+  onRequireAuth,
 }: CourseOutlineProps) {
   const totalLessons = course.modules.reduce((n, m) => n + m.lessons.length, 0)
   const doneTotal = course.modules.reduce(
@@ -114,7 +125,11 @@ export function CourseOutline({
       <ol className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-5">
         {course.modules.map((module, moduleIdx) => {
           const moduleIndex = moduleIdx + 1
-          const unlocked = isModuleUnlocked(course, moduleIdx, completedIds)
+          const seqUnlocked = isModuleUnlocked(course, moduleIdx, completedIds)
+          // Cerrojo de sesión (H2): anónimo no accede al módulo 2+, aunque el
+          // secuencial lo tenga abierto. Unión: unlocked = secuencial && sesión.
+          const sessionLocked = !isAuthed && moduleIndex >= 2
+          const unlocked = seqUnlocked && !sessionLocked
           const done = module.lessons.filter((l) => completedIds.has(l.id)).length
           const total = module.lessons.length
           return (
@@ -137,12 +152,17 @@ export function CourseOutline({
                   style={{ width: total > 0 ? `${Math.round((done / total) * 100)}%` : "0%" }}
                 />
               </div>
-              {!unlocked && (
+              {sessionLocked ? (
+                <p className="mb-2 flex items-center gap-1.5 text-xs text-primary-foreground/70">
+                  <Lock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  Iniciá sesión para acceder a partir del módulo 2
+                </p>
+              ) : !seqUnlocked ? (
                 <p className="mb-2 flex items-center gap-1.5 text-xs text-primary-foreground/70">
                   <Lock className="h-3 w-3 shrink-0" aria-hidden="true" />
                   Completá el Módulo {moduleIndex - 1} para desbloquear este módulo
                 </p>
-              )}
+              ) : null}
               <ol className="space-y-1">
                 {module.lessons.map((lesson) => {
                   const isDone = completedIds.has(lesson.id)
@@ -171,7 +191,17 @@ export function CourseOutline({
                           onHoverLesson?.(lesson.id)
                         }}
                         onMouseEnter={() => onHoverLesson?.(lesson.id)}
-                        onClick={() => onSelect(lesson.id)}
+                        onClick={() => {
+                          // Bloqueada-anónima (módulo 2+): pedir sesión aquí
+                          // mismo sin navegar; el deep-link cae en el mismo
+                          // estado del canvas. Secuencial (usuario con
+                          // sesión): navegación actual con banner de requerida.
+                          if (locked && !isAuthed) {
+                            onRequireAuth?.()
+                            return
+                          }
+                          onSelect(lesson.id)
+                        }}
                         aria-current={isCurrent ? "true" : undefined}
                         aria-disabled={locked ? "true" : undefined}
                         aria-describedby={locked ? lockHintId : undefined}
@@ -228,8 +258,9 @@ export function CourseOutline({
                       </button>
                       {locked && (
                         <span id={lockHintId} className="sr-only">
-                          Sin acceso — completá el Módulo {moduleIndex - 1} para desbloquear
-                          esta lección
+                          {sessionLocked
+                            ? "Sin acceso — iniciá sesión para acceder a partir del módulo 2"
+                            : `Sin acceso — completá el Módulo ${moduleIndex - 1} para desbloquear esta lección`}
                         </span>
                       )}
                     </li>

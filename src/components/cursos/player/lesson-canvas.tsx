@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { ArrowLeft, ArrowRight, CheckCircle2, Lock } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,11 @@ export interface LessonCanvasProps {
   locked: boolean
   requiredLesson: { id: string; title: string; number: number | null } | null
   anonymous: boolean
+  /**
+   * Abre el AuthModal (vive en page.tsx) al pedir sesión. Requerido para el
+   * gate anónimo: sin callback el click se captura igual (sirve de guard).
+   */
+  onRequireAuth?: () => void
   onComplete: (lessonId: string, score?: number | null) => void
   onNavigate: (lessonId: string) => void
   onGoRequired: (lessonId: string) => void
@@ -50,6 +55,7 @@ export function LessonCanvas({
   locked,
   requiredLesson,
   anonymous,
+  onRequireAuth,
   onComplete,
   onNavigate,
   onGoRequired,
@@ -58,6 +64,29 @@ export function LessonCanvas({
   const titleRef = useRef<HTMLHeadingElement>(null)
   const sectionRef = useRef<HTMLElement>(null)
   const firstRender = useRef(true)
+
+  // Cerrojo de sesión (H2): para anónimos, todo lo del módulo 2+ queda fuera
+  // de alcance, sin importar el desbloqueo secuencial (unión de cerrojos).
+  const sessionLocked = anonymous && moduleIndex >= 2
+
+  // Intercepción de interactivos (H1): el componente LessonContentView queda
+  // INTACTO y sin saber de sesiones — el gate vive acá, en el wrapper, con un
+  // onClickCapture (fase de captura de React: corre ANTES de los onClick de
+  // los botones internos). Cubre radios de quiz/escucha, Revisar, Reintentar
+  // y "Marcar como completada" (incluido el estado de lección vacía, que
+  // renderiza fuera de [data-testid="lesson-content"]). El <audio controls>
+  // nativo no es <button> → pasa sin captura (contenido pasivo).
+  const interceptClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (!anonymous) return
+      const target = e.target
+      if (!(target instanceof Element) || !target.closest("button")) return
+      e.preventDefault()
+      e.stopPropagation()
+      onRequireAuth?.()
+    },
+    [anonymous, onRequireAuth]
+  )
 
   // Al cambiar de lección: foco al título + scroll reset sin animación
   // (percepción de página nueva). El primer montaje no roba el foco.
@@ -112,45 +141,69 @@ export function LessonCanvas({
           )}
           {anonymous && (
             <Badge variant="outline" className="text-2xs">
-              Se guarda solo en este navegador
+              Iniciá sesión para guardar tu avance
             </Badge>
           )}
         </div>
 
         <div className="mt-6">
           {locked ? (
-            <div
-              role="status"
-              className="space-y-3 rounded-xl border border-outline-variant/30 bg-surface-container-low p-5"
-            >
-              <p className="flex items-start gap-2 text-sm font-medium">
-                <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                Esta lección está bloqueada. Completá el Módulo {moduleIndex - 1} para
-                desbloquearla.
-              </p>
-              {requiredLesson && (
+            sessionLocked ? (
+              // Deep-link anónimo a módulo 2+: estado bloqueado por sesión con
+              // CTA al modal (no el banner secuencial y no el contenido).
+              <div
+                role="status"
+                className="space-y-3 rounded-xl border border-outline-variant/30 bg-surface-container-low p-5"
+              >
+                <p className="flex items-start gap-2 text-sm font-medium">
+                  <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  Esta lección requiere sesión. Iniciá sesión para acceder a
+                  partir del módulo 2.
+                </p>
                 <Button
                   type="button"
-                  onClick={() => onGoRequired(requiredLesson.id)}
+                  onClick={() => onRequireAuth?.()}
                   className="min-h-[44px] gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  Ir a la lección requerida
-                  {requiredLesson.number !== null && (
-                    <span className="tabular-nums">
-                      {moduleIndex - 1}.{requiredLesson.number}
-                    </span>
-                  )}
+                  Iniciar sesión
                 </Button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div
+                role="status"
+                className="space-y-3 rounded-xl border border-outline-variant/30 bg-surface-container-low p-5"
+              >
+                <p className="flex items-start gap-2 text-sm font-medium">
+                  <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  Esta lección está bloqueada. Completá el Módulo {moduleIndex - 1} para
+                  desbloquearla.
+                </p>
+                {requiredLesson && (
+                  <Button
+                    type="button"
+                    onClick={() => onGoRequired(requiredLesson.id)}
+                    className="min-h-[44px] gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    Ir a la lección requerida
+                    {requiredLesson.number !== null && (
+                      <span className="tabular-nums">
+                        {moduleIndex - 1}.{requiredLesson.number}
+                      </span>
+                    )}
+                  </Button>
+                )}
+              </div>
+            )
           ) : parse && parse.ok ? (
-            <LessonContentView
-              key={lesson.id}
-              content={parse.content}
-              words={words}
-              interactive
-              onCompleta={(score) => onComplete(lesson.id, score)}
-            />
+            <div onClickCapture={interceptClick}>
+              <LessonContentView
+                key={lesson.id}
+                content={parse.content}
+                words={words}
+                interactive
+                onCompleta={(score) => onComplete(lesson.id, score)}
+              />
+            </div>
           ) : (
             <p className="rounded-lg border border-dashed border-destructive/40 px-4 py-6 text-center text-sm text-destructive">
               Esta lección no tiene contenido válido.

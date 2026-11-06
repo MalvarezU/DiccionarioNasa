@@ -33,6 +33,8 @@ function props(overrides: Partial<Parameters<typeof CourseOutline>[0]> = {}) {
     completedIds: new Set<string>(),
     lastVisitedLessonId: null as string | null,
     onSelect: vi.fn(),
+    isAuthed: true,
+    onRequireAuth: vi.fn(),
     ...overrides,
   }
 }
@@ -251,5 +253,82 @@ describe("CourseOutline", () => {
       />
     )
     expect(screen.queryByRole("button", { name: "Continuar donde quedé" })).toBeNull()
+  })
+
+  // ------------------------------------------------ H2: gate de sesión ---
+  describe("gate de sesión (H2) — módulo 2+ para anónimos", () => {
+    it("anónimo: lección del módulo 2 con cerrojo de sesión y hint al modal", () => {
+      render(<CourseOutline {...props({ isAuthed: false })} />)
+      const madre = lessonButton(/Madre/)
+      expect(madre).toHaveAttribute("data-lesson-state", "locked")
+      expect(madre).not.toBeDisabled()
+      expect(madre).toHaveAttribute("aria-disabled", "true")
+      expect(
+        screen.getByText("Iniciá sesión para acceder a partir del módulo 2")
+      ).toBeDefined()
+      // El hint secuencial queda para quien sí tiene sesión
+      expect(screen.queryByText(/para desbloquear este módulo/)).toBeNull()
+    })
+
+    it("anónimo: click en módulo 2+ pide sesión y NO navega", async () => {
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+      const onRequireAuth = vi.fn()
+      render(
+        <CourseOutline {...props({ isAuthed: false, onSelect, onRequireAuth })} />
+      )
+      await user.click(lessonButton(/Madre/))
+      expect(onRequireAuth).toHaveBeenCalledTimes(1)
+      expect(onSelect).not.toHaveBeenCalled()
+    })
+
+    it("anónimo: módulo 1 sin cerrojo de sesión (la secuencial manda dentro del módulo 1)", () => {
+      render(<CourseOutline {...props({ isAuthed: false })} />)
+      expect(lessonButton(/Hola/)).toHaveAttribute("data-lesson-state", "current")
+      // La segunda del módulo 1 sigue transitando por lo secuencial normal:
+      // sin nada completado no cae en locked-de-sesión
+      expect(lessonButton(/Adiós/).getAttribute("data-lesson-state")).toBe("todo")
+    })
+
+    it("anónimo con secuencia incompleta: click en módulo 2 sigue pidiendo sesión (unión de cerrojos)", async () => {
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+      const onRequireAuth = vi.fn()
+      render(
+        <CourseOutline
+          {...props({ isAuthed: false, onSelect, onRequireAuth })}
+        />
+      )
+      // Módulo 2 bloqueado secuencialmente Y por sesión: el click pide sesión
+      await user.click(lessonButton(/Madre/))
+      expect(onRequireAuth).toHaveBeenCalledTimes(1)
+      expect(onSelect).not.toHaveBeenCalled()
+    })
+
+    it("sr-only hint anónimo: sesión, no secuencial", () => {
+      render(<CourseOutline {...props({ isAuthed: false })} />)
+      const madre = lessonButton(/Madre/)
+      const hintId = madre.getAttribute("aria-describedby")
+      expect(hintId).not.toBeNull()
+      expect(document.getElementById(hintId!)?.textContent).toContain("iniciá sesión")
+      expect(document.getElementById(hintId!)?.textContent).not.toContain("completá el Módulo")
+    })
+
+    it("autenticado: módulo 2 navega según secuencial (regresión)", async () => {
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+      const onRequireAuth = vi.fn()
+      render(<CourseOutline {...props({ isAuthed: true, onSelect, onRequireAuth })} />)
+      const madre = lessonButton(/Madre/)
+      await user.click(madre)
+      expect(onSelect).toHaveBeenCalledWith("l21")
+      expect(onRequireAuth).not.toHaveBeenCalled()
+    })
+
+    it("sin isAuthed explícito (default true): ningún gate de sesión — previews/reuso seguro", () => {
+      render(<CourseOutline {...props()} />)
+      expect(screen.queryByText(/Iniciá sesión para acceder/)).toBeNull()
+      expect(lessonButton(/Madre/).getAttribute("data-lesson-state")).toBe("locked")
+    })
   })
 })
