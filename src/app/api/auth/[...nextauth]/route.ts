@@ -17,6 +17,18 @@ if (!secret) {
   throw new Error("NEXTAUTH_SECRET no está definido");
 }
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const hasGoogle = !!googleClientId && !!googleClientSecret;
+
+if (process.env.NODE_ENV === "production" && !hasGoogle) {
+  // Login/registro online depende de Google (Fase 1 Google-first):
+  // fallar en voz alta en lugar de arrancar sin el proveedor.
+  throw new Error(
+    "GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET son obligatorios en producción"
+  );
+}
+
 /** Inactividad máxima por rol y frecuencia de re-sellado (5 min).
  *  Admin 30 min (CA-29: panel sensible); resto 30 días (UX web/móvil). */
 export const ADMIN_INACTIVITY_LIMIT_S = 30 * 60;
@@ -90,12 +102,12 @@ export const authOptions: NextAuthOptions = {
       // testearla directo sin depender de ese merge interno.
       authorize: authorizeCredentials,
     }),
-    // B1.3: solo si hay credenciales (dev/prod sin Google sigue andando).
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    // Google-first (Fase 1): obligatorio en producción, opcional en dev.
+    ...(googleClientId && googleClientSecret
       ? [
           GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
           }),
         ]
       : []),
