@@ -140,7 +140,14 @@ export function NavBar() {
               logoPiiyaakblanco.png is the white badge version (transparent
               background); the serif wordmark stays for legibility at small
               sizes. */}
-          <Link href="/" className="flex items-center gap-2 shrink-0 group">
+          <Link
+            href="/"
+            className={`flex items-center gap-2 shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 ${
+              isHeroTop
+                ? "focus-visible:outline-crema"
+                : "focus-visible:outline-primary"
+            } group`}
+          >
             <Image
               src="/logoPiiyaakblanco.png"
               alt="Piiyaak"
@@ -174,18 +181,18 @@ export function NavBar() {
                     key={item.href}
                     href={item.href}
                     aria-current={isActive(item.href) ? "page" : undefined}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                    className={`link-underline-terracota flex items-center gap-1.5 px-1 py-1.5 rounded-sm text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
                       isHeroTop
                         ? "focus-visible:outline-crema"
                         : "focus-visible:outline-primary"
                     } ${
                       isActive(item.href)
                         ? isHeroTop
-                          ? "text-crema bg-crema/15"
-                          : "text-primary bg-primary/10"
+                          ? "text-crema"
+                          : "text-primary"
                         : isHeroTop
-                          ? "text-crema/85 hover:text-crema hover:bg-crema/10"
-                          : "text-foreground/80 bg-card hover:text-primary hover:bg-surface-container-high"
+                          ? "text-crema/85 hover:text-crema"
+                          : "text-foreground/80 hover:text-primary"
                     }`}
                   >
                     <item.icon className="h-4 w-4" />
@@ -268,7 +275,7 @@ export function NavBar() {
                     size="sm"
                     className={
                       isHeroTop
-                        ? "gap-1.5 text-xs sm:text-sm text-crema/90 hover:text-crema hover:bg-crema/10"
+                        ? "gap-1.5 text-xs sm:text-sm text-crema/90 hover:text-crema hover:bg-crema/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
                         : "gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground"
                     }
                   >
@@ -338,7 +345,7 @@ export function NavBar() {
                 size="sm"
                 className={
                   isHeroTop
-                    ? "gap-1.5 text-xs sm:text-sm bg-crema text-primary hover:bg-background transition-colors"
+                    ? "gap-1.5 text-xs sm:text-sm bg-crema text-primary hover:bg-background transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
                     : "gap-1.5 text-xs sm:text-sm bg-primary hover:bg-montana-deep transition-colors"
                 }
                 onClick={() => setAuthModalOpen(true)}
@@ -359,7 +366,7 @@ export function NavBar() {
                       size="icon"
                       className={
                         isHeroTop
-                          ? "size-8 text-crema/90 hover:text-crema hover:bg-crema/10"
+                          ? "size-8 text-crema/90 hover:text-crema hover:bg-crema/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
                           : "size-8 text-muted-foreground hover:text-foreground"
                       }
                       onClick={() => setSettingsOpen(true)}

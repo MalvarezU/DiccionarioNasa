@@ -302,7 +302,7 @@ function DiccionarioContent() {
               ) : featuredWords.length > 0 ? (
                 <div
                   ref={featuredGridRef}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+                  className="anim-stagger-children grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
                 >
                   {featuredWords.map((word) => (
                     <WordCard

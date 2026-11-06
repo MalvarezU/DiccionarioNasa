@@ -41,9 +41,9 @@ export function CourseCard({ course, navEnabled, statusBadge }: CourseCardProps)
 
   return (
     <Card
-      className={`relative flex flex-col overflow-hidden rounded-xl border-outline-variant py-0 shadow-none md:min-h-[13rem] transition-[transform,border-color] motion-reduce:transform-none ${
+      className={`relative flex flex-col overflow-hidden rounded-xl border-outline-variant py-0 shadow-none md:min-h-[13rem] transition-[transform,box-shadow,border-color] motion-reduce:transform-none ${
         navEnabled
-          ? "group cursor-pointer hover:border-primary/40"
+          ? "group cursor-pointer hover:border-primary/40 motion-safe:hover:shadow-md motion-safe:hover:-translate-y-0.5"
           : "opacity-70"
       }`}
     >

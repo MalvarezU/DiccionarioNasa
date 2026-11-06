@@ -405,6 +405,71 @@
   }
 }
 
+/* F5 — motion global sutil, CSS-only, 0 deps. Tres utilidades nuevas, todas
+   tras `@media (prefers-reduced-motion: no-preference)` explícito (misma
+   razón que F4: `motion-safe:` no genera nada para clases custom; con
+   preferencia reducida rige el bloque global de abajo que neutraliza
+   duraciones). Easing único: cubic-bezier(0.22, 1, 0.36, 1).
+   - .anim-page-reveal: fade + translateY 8px→0, 200ms. La usa
+     `src/app/template.tsx` (solo opacity/transform: sin layout shift).
+   - .anim-stagger-children: reveal escalonado genérico para los 5 primeros
+     hijos (+60ms cada uno), mismo patrón y mismos keyframes (`player-reveal`)
+     que el stagger del player F4. Del 6.º en adelante entran sin delay.
+     `backwards` aplica el estado `from` durante el delay (sin flash).
+   - .link-underline-terracota: subrayado terracota (var(--color-terracota))
+     que crece 0→100% en 200ms. `[aria-current="page"]` lo deja completo. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes page-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .anim-page-reveal {
+    animation: page-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .anim-stagger-children > *:nth-child(-n + 5) {
+    animation: player-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  .anim-stagger-children > *:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .anim-stagger-children > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .anim-stagger-children > *:nth-child(4) {
+    animation-delay: 180ms;
+  }
+  .anim-stagger-children > *:nth-child(5) {
+    animation-delay: 240ms;
+  }
+
+  .link-underline-terracota {
+    background-image: linear-gradient(
+      to right,
+      var(--color-terracota),
+      var(--color-terracota)
+    );
+    background-repeat: no-repeat;
+    background-position: left calc(100% - 1px);
+    background-size: 0% 2px;
+    padding-bottom: 2px;
+    transition: background-size 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .link-underline-terracota:hover {
+    background-size: 100% 2px;
+  }
+  .link-underline-terracota[aria-current="page"] {
+    background-size: 100% 2px;
+  }
+}
+
 /* Respect user motion preferences (WCAG 2.3.3) */
 @media (prefers-reduced-motion: reduce) {
   *,
