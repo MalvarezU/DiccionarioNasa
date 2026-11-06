@@ -5,6 +5,7 @@ import { Check, Lock, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { PlayerCourse } from "./types"
 import { isModuleUnlocked } from "./use-lesson-navigation"
+import { lessonNumberLabel, moduleLabel } from "./labels"
 
 export interface CourseOutlineProps {
   course: PlayerCourse
@@ -104,10 +105,7 @@ export function CourseOutline({
             <li key={module.id}>
               <h3 className="flex items-baseline justify-between gap-2">
                 <span className="min-w-0 truncate text-sm font-semibold" title={module.title}>
-                  <span className="tabular-nums text-primary-foreground/70">
-                    {moduleIndex} ·{" "}
-                  </span>
-                  {module.title}
+                  {moduleLabel(moduleIndex, module.title)}
                 </span>
                 <span className="shrink-0 rounded-full border border-white/20 px-2 py-0.5 text-2xs tabular-nums text-primary-foreground/80">
                   {done}/{total}
@@ -141,8 +139,7 @@ export function CourseOutline({
                       : locked
                         ? "locked"
                         : "todo"
-                  const number =
-                    lesson.lessonNumber !== null ? `${moduleIndex}.${lesson.lessonNumber}` : null
+                  const number = lessonNumberLabel(moduleIndex, lesson.lessonNumber, lesson.title)
                   const lockHintId = `lock-hint-${lesson.id}`
                   return (
                     <li key={lesson.id}>

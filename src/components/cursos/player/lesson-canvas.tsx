@@ -8,6 +8,7 @@ import { LessonContentView } from "../blocks/lesson-content-view"
 import { parseLessonContent } from "@/lib/courses/blocks"
 import type { CourseWordData } from "@/lib/courses/word-data"
 import type { LessonNeighbor, PlayerLesson } from "./types"
+import { lessonNumberLabel, moduleLabel } from "./labels"
 import { cn } from "@/lib/utils"
 
 export interface LessonCanvasProps {
@@ -53,7 +54,7 @@ export function LessonCanvas({
   onNavigate,
   onGoRequired,
 }: LessonCanvasProps) {
-  const number = lesson.lessonNumber !== null ? `${moduleIndex}.${lesson.lessonNumber}` : null
+  const number = lessonNumberLabel(moduleIndex, lesson.lessonNumber, lesson.title)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const sectionRef = useRef<HTMLElement>(null)
   const firstRender = useRef(true)
@@ -81,7 +82,7 @@ export function LessonCanvas({
     >
       <div key={lesson.id} className="anim-player-reveal">
         <p className="text-sm text-muted-foreground">
-          Módulo {moduleIndex} · {moduleTitle}
+          {moduleLabel(moduleIndex, moduleTitle)}
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           {number && (
@@ -159,22 +160,23 @@ export function LessonCanvas({
 
         <nav
           aria-label="Navegación de lecciones"
-          className="sticky bottom-0 -mx-1 mt-8 flex items-stretch gap-3 border-t border-outline-variant/30 bg-surface-container-low/95 px-1 py-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0"
+          className="sticky bottom-0 -mx-1 mt-8 flex items-stretch gap-3 border-t border-outline-variant/30 bg-surface-container-low/95 px-1 py-3 backdrop-blur lg:static lg:justify-between lg:border-0 lg:bg-transparent lg:p-0"
         >
           {prev ? (
             <Button
               type="button"
               onClick={() => onNavigate(prev.id)}
               disabled={prev.locked}
-              className="min-h-[44px] min-w-0 flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="min-h-[44px] min-w-0 flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 lg:max-w-[320px]"
             >
               <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="min-w-0 truncate text-left">
-                {prev.number !== null && (
-                  <span className="tabular-nums">
-                    {prev.moduleIndex}.{prev.number} ·{" "}
-                  </span>
-                )}
+                {(() => {
+                  const label = lessonNumberLabel(prev.moduleIndex, prev.number, prev.title)
+                  return label !== null ? (
+                    <span className="tabular-nums">{label} · </span>
+                  ) : null
+                })()}
                 {prev.title}
               </span>
             </Button>
@@ -187,15 +189,16 @@ export function LessonCanvas({
               onClick={() => onNavigate(next.id)}
               disabled={next.locked}
               className={cn(
-                "min-h-[44px] min-w-0 flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                "min-h-[44px] min-w-0 flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 lg:max-w-[320px]"
               )}
             >
               <span className="min-w-0 truncate text-right">
-                {next.number !== null && (
-                  <span className="tabular-nums">
-                    {next.moduleIndex}.{next.number} ·{" "}
-                  </span>
-                )}
+                {(() => {
+                  const label = lessonNumberLabel(next.moduleIndex, next.number, next.title)
+                  return label !== null ? (
+                    <span className="tabular-nums">{label} · </span>
+                  ) : null
+                })()}
                 {next.title}
               </span>
               <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
