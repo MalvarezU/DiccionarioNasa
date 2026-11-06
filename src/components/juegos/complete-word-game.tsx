@@ -187,7 +187,7 @@ export function CompleteWordGame({
           <CheckCircle2 className="h-16 w-16 text-secondary" />
           <h3 className="text-2xl font-serif text-foreground">¡Completado!</h3>
           <p className="text-muted-foreground">
-            Completaste <strong className="text-montana">{correctCount}</strong> de{" "}
+            Completaste <strong className="text-tertiary">{correctCount}</strong> de{" "}
             <strong>{questions.length}</strong> palabras
           </p>
           <Button onClick={handleRestart} variant="outline" className="gap-2 mt-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">

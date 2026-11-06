@@ -288,8 +288,8 @@ export function MemoryGame({ words: providedWords, initialPairs = 6 }: MemoryGam
           </h3>
           <p className="text-muted-foreground">
             Encontraste todas las parejas en{" "}
-            <strong className="text-montana">{moves}</strong> movimientos y{" "}
-            <strong className="text-montana">{formatTime(seconds)}</strong>
+            <strong className="text-tertiary">{moves}</strong> movimientos y{" "}
+            <strong className="text-tertiary">{formatTime(seconds)}</strong>
           </p>
           <Button
             onClick={restart}
@@ -335,11 +335,11 @@ export function MemoryGame({ words: providedWords, initialPairs = 6 }: MemoryGam
       </div>
       <div className="flex items-center justify-between" role="status" aria-live="polite">
         <div className="flex gap-3">
-          <Badge variant="secondary" className="gap-1.5 text-sm">
+          <Badge variant="outline" className="gap-1.5 text-sm border-tertiary/30 bg-tertiary-container text-tertiary">
             <Target className="h-4 w-4" aria-hidden="true" />
             Movimientos: {moves}
           </Badge>
-          <Badge variant="secondary" className="gap-1.5 text-sm">
+          <Badge variant="outline" className="gap-1.5 text-sm border-tertiary/30 bg-tertiary-container text-tertiary">
             <Timer className="h-4 w-4" aria-hidden="true" />
             {formatTime(seconds)}
           </Badge>

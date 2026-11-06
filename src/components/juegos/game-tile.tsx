@@ -103,7 +103,7 @@ export function GameTile({
       <CardHeader className="pb-3">
         {locked && (
           <div className="flex justify-end">
-            <Badge variant="outline" className="shrink-0 text-2xs">
+            <Badge variant="outline" className="shrink-0 text-2xs border-tertiary/30 bg-tertiary-container text-tertiary">
               <Lock className="h-3 w-3 mr-1" />
               Sin contenido
             </Badge>

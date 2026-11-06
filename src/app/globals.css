@@ -89,9 +89,9 @@
 
   /* Surface hierarchy (hojas crema): tres pasos con salto visible para que
      las cards se despeguen sin depender de bordes ni sombras. */
-  --surface-container-low: #ece4d0;
-  --surface-container-high: #e3d6b8;
-  --surface-container-highest: #d9c8a4;
+  --surface-container-low: #e8e2c9;
+  --surface-container-high: #ded2b0;
+  --surface-container-highest: #d3c199;
 
   /* Cards & Popovers */
   --card: var(--surface-container-low);
@@ -102,7 +102,7 @@
   /* Primary: verde montaña (#173f35) */
   --primary: #173f35;
   --primary-foreground: #f5f0e6;
-  --primary-container: #0e2a22;
+  --primary-container: #0c261f;
 
   /* Secondary: verde territorio (#496b55) */
   --secondary: #496b55;
@@ -136,7 +136,7 @@
   /* Borders — WCAG 1.4.11 pide 3:1 en controles (input, checkbox, select).
      Medido contra la superficie MÁS CLARA sobre la que pueden descansar.
      --outline-variant queda decorativo (separadores, bordes de card). */
-  --border: #5f6f63;
+  --border: #556f60;
   --outline-variant: #d8c9a8;
   --input: var(--border);
   --ring: var(--primary);
@@ -157,6 +157,13 @@
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
+}
+
+/* Selección de texto: amarillo tierra con tinta montaña (5.6 AA).
+   Un solo sitio, sin tocar tokens de texto. */
+::selection {
+  background: #d7ae55;
+  color: #173f35;
 }
 
 @layer base {

@@ -67,7 +67,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="h-5 w-5 text-secondary" />
             <CardTitle className="text-base font-semibold text-foreground">
               Palabra del Día
             </CardTitle>
@@ -87,7 +87,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="h-5 w-5 text-secondary" />
             <CardTitle className="text-base font-semibold text-foreground">
               Palabra del Día
             </CardTitle>
@@ -116,7 +116,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
       <Card className="border-outline-variant/30 bg-surface-container-low">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="h-5 w-5 text-secondary" />
             <CardTitle className="text-base font-semibold text-foreground">
               Palabra del Día
             </CardTitle>
@@ -149,7 +149,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="h-5 w-5 text-secondary" />
             <CardTitle className="font-serif text-base font-semibold text-primary">
               Palabra del Día
             </CardTitle>
@@ -197,7 +197,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
                 </span>
               )}
               {wordData.category && (
-                <Badge variant="secondary" className="text-2xs px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20">
+                <Badge variant="secondary" className="text-2xs px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30">
                   {wordData.category}
                 </Badge>
               )}

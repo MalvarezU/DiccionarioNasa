@@ -139,7 +139,7 @@ export function WordCard({ word, variant, onOpen, onPlayState }: WordCardProps) 
           </span>
         </p>
         {word.category && (
-          <span className="inline-flex shrink-0 items-center rounded-full border border-tertiary/20 bg-tertiary-container px-1.5 py-px text-2xs font-medium text-tertiary">
+          <span className="inline-flex shrink-0 items-center rounded-full border border-secondary/30 bg-secondary-container px-1.5 py-px text-2xs font-medium text-montana">
             {word.category}
           </span>
         )}
@@ -160,7 +160,7 @@ export function WordCard({ word, variant, onOpen, onPlayState }: WordCardProps) 
       {(word.category || hasAudio) && (
         <div className="flex items-start justify-between gap-2">
           {word.category ? (
-            <span className="inline-flex items-center rounded-full border border-tertiary/20 bg-tertiary-container px-2 py-0.5 text-2xs font-medium text-tertiary">
+            <span className="inline-flex items-center rounded-full border border-secondary/30 bg-secondary-container px-2 py-0.5 text-2xs font-medium text-montana">
               {word.category}
             </span>
           ) : (

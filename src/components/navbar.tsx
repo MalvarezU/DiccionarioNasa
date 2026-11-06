@@ -145,13 +145,13 @@ export function NavBar() {
             <Image
               src="/logoPiiyaakblanco.png"
               alt="Piiyaak"
-              width={25}
-              height={28}
+              width={29}
+              height={32}
               priority
               className={
                 isHeroTop
-                  ? "h-7 w-auto rounded-md ring-1 ring-crema/25"
-                  : "h-7 w-auto rounded-md ring-1 ring-black/10"
+                  ? "h-8 w-auto rounded-md ring-1 ring-crema/25"
+                  : "h-8 w-auto rounded-md ring-1 ring-black/10"
               }
             />
             <span
@@ -186,7 +186,7 @@ export function NavBar() {
                           : "text-primary"
                         : isHeroTop
                           ? "text-crema/85 hover:text-crema"
-                          : "text-foreground/80 hover:text-primary"
+                          : "text-foreground/80 hover:text-secondary"
                     }`}
                   >
                     <item.icon className="h-4 w-4" />
@@ -210,10 +210,10 @@ export function NavBar() {
                       isActive(item.href)
                         ? isHeroTop
                           ? "text-crema bg-crema/15"
-                          : "text-primary bg-primary/10"
+                          : "bg-secondary-container text-montana"
                         : isHeroTop
                           ? "text-crema/85 hover:text-crema hover:bg-crema/10"
-                          : "text-foreground/80 bg-card hover:text-primary hover:bg-surface-container-high"
+                          : "text-foreground/80 bg-card hover:text-secondary hover:bg-surface-container-high"
                     }`}
                   >
                     <item.icon className="h-4 w-4" aria-hidden="true" />

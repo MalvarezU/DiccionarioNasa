@@ -39,7 +39,7 @@ export function WordListCard({ word, meta, action }: WordListCardProps) {
             {word.category && (
               <Badge
                 variant="secondary"
-                className="text-2xs shrink-0 px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
+                className="text-2xs shrink-0 px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30"
               >
                 {word.category}
               </Badge>

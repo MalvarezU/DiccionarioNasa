@@ -40,8 +40,8 @@ export function ResumeBand({ course, nextLesson, progressPct }: ResumeBandProps)
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div className="min-w-0 space-y-1">
-          {/* F-E4: micro-etiqueta que nombra la banda; el dato del curso manda. */}
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          {/* F-E4: micro-etiqueta que nombra la banda; territorio sobrio. */}
+          <p className="text-[11px] uppercase tracking-wide text-secondary font-medium">
             Retomar curso
           </p>
           <p className="font-serif text-xl font-bold text-primary">
@@ -55,7 +55,7 @@ export function ResumeBand({ course, nextLesson, progressPct }: ResumeBandProps)
           </p>
           <Progress
             value={progressPct}
-            className="h-1.5 max-w-56"
+            className="h-1.5 max-w-56 bg-surface-container-high [&_[data-slot=progress-indicator]]:bg-secondary"
             aria-label={`Avance: ${progressPct}%`}
           />
         </div>

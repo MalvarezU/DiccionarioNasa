@@ -224,12 +224,12 @@ function DiccionarioContent() {
             <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-start lg:gap-12">
               {/* Panel de búsqueda PRIMERO en el DOM: en móvil aparece junto
                   al navbar; en lg se reordena a la derecha (order). */}
-              <div className="order-1 mx-auto w-full max-w-xl rounded-2xl border border-crema/25 bg-black/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
+              <div className="order-1 mx-auto w-full max-w-xl rounded-2xl border border-crema/25 bg-montana-deep/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
                 <SearchBar variant="hero-panel" onWordSelect={handleWordSelect} />
               </div>
               {/* Copy de bienvenida: segundo en el DOM, a la izquierda en lg */}
               <div className="order-2 text-center lg:text-left lg:order-1">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-crema/30 bg-black/30 px-3 py-1 text-xs font-medium text-crema backdrop-blur-md">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-crema/30 bg-montana-deep/30 px-3 py-1 text-xs font-medium text-crema backdrop-blur-md">
                   <BookOpen className="h-3 w-3 text-crema" aria-hidden="true" />
                   Diccionario bilingüe
                 </span>

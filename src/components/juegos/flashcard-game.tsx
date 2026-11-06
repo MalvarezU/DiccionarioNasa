@@ -235,7 +235,7 @@ export function FlashcardGame({
           <CheckCircle2 className="h-16 w-16 text-secondary" />
           <h3 className="text-2xl font-serif text-foreground">¡Completado!</h3>
           <p className="text-muted-foreground">
-            Acertaste <strong className="text-montana">{correctCount}</strong> de{" "}
+            Acertaste <strong className="text-tertiary">{correctCount}</strong> de{" "}
             <strong>{total}</strong> palabras
           </p>
           <Badge
@@ -286,7 +286,7 @@ export function FlashcardGame({
           </span>
           <div className="flex items-center gap-3">
             {streak >= 2 && (
-              <Badge variant="secondary" className="gap-1 bg-secondary-container text-montana">
+              <Badge variant="secondary" className="gap-1 border border-tertiary/30 bg-tertiary-container text-tertiary">
                 <Flame className="h-3.5 w-3.5" aria-hidden="true" />
                 Racha: {streak}
               </Badge>

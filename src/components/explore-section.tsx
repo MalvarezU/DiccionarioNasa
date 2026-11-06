@@ -59,7 +59,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
       <div>
         <div className="text-center mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
-            <List className="h-7 w-7 text-primary" />
+            <List className="h-7 w-7 text-secondary" />
             Índice Alfabético
           </h2>
           <p className="mt-2 text-sm sm:text-base text-muted-foreground">
@@ -78,7 +78,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
       <div>
         <div className="text-center mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
-            <List className="h-7 w-7 text-primary" />
+            <List className="h-7 w-7 text-secondary" />
             Índice Alfabético
           </h2>
           <p className="mt-2 text-sm sm:text-base text-muted-foreground">
@@ -107,7 +107,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
       <div>
         <div className="text-center mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
-            <List className="h-7 w-7 text-primary" />
+            <List className="h-7 w-7 text-secondary" />
             Índice Alfabético
           </h2>
         </div>
@@ -126,7 +126,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
       {/* Header */}
       <div className="text-center mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
-          <List className="h-7 w-7 text-primary" />
+          <List className="h-7 w-7 text-secondary" />
           Índice Alfabético
         </h2>
         <p className="mt-2 text-sm sm:text-base text-muted-foreground">
@@ -160,7 +160,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
             <Filter className="h-4 w-4" />
             Filtrar por categoría
             {selectedCategory && (
-              <Badge variant="secondary" className="text-2xs px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20">
+              <Badge variant="secondary" className="text-2xs px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30">
                 {getCategoryDisplay(selectedCategory)}
               </Badge>
             )}
@@ -180,7 +180,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                     onClick={() => handleCategorySelect(null)}
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                       !selectedCategory
-                        ? "bg-primary/10 text-primary font-medium"
+                        ? "bg-secondary-container text-montana font-medium"
                         : "text-foreground hover:bg-muted/60"
                     }`}
                   >
@@ -196,7 +196,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                       onClick={() => handleCategorySelect(cat)}
                       className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                         selectedCategory === cat
-                          ? "bg-primary/10 text-primary font-medium"
+                          ? "bg-secondary-container text-montana font-medium"
                           : "text-foreground hover:bg-muted/60"
                       }`}
                     >
@@ -383,7 +383,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                                     <Badge
                                       key={cat}
                                       variant="secondary"
-                                      className="text-2xs px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
+                                      className="text-2xs px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30"
                                     >
                                       {getCategoryDisplay(cat)}
                                     </Badge>

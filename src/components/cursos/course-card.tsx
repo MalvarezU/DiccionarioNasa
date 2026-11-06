@@ -146,7 +146,7 @@ export function CourseCard({ course, navEnabled, statusBadge }: CourseCardProps)
           ) : (
             <>
               {statusBadge == null ? (
-                <Badge variant="outline" className="mt-1 w-fit text-2xs">
+                <Badge variant="outline" className="mt-1 w-fit text-2xs border-tertiary/30 bg-tertiary-container text-tertiary">
                   Sin contenido
                 </Badge>
               ) : null}
