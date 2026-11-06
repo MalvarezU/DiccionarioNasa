@@ -105,7 +105,7 @@ function HomeContent() {
                     href={m.href}
                     className={`group inline-flex items-center justify-center gap-2.5 rounded-xl px-5 py-3 text-sm font-medium transition-colors duration-200 backdrop-blur-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema ${
                       principal
-                        ? "bg-amarillo text-amarillo-foreground shadow-lg hover:bg-[#c39a45] hover:shadow-xl sm:px-6"
+                        ? "bg-amarillo text-amarillo-foreground shadow-lg hover:bg-amarillo-oscuro hover:shadow-xl sm:px-6"
                         : "border border-crema/40 bg-black/25 text-crema hover:bg-crema/15 hover:border-crema/60"
                     }`}
                   >

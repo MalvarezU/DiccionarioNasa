@@ -18,6 +18,7 @@
   --color-montana-deep: #0e2a22;
   --color-territorio: #496b55;
   --color-amarillo-tierra: #d7ae55;
+  --color-amarillo-oscuro: #c39a45;
   --color-terracota: #b96f4a;
   --color-crema: #f5f0e6;
 }
@@ -407,7 +408,7 @@
 
 /* F5 — motion global sutil, CSS-only, 0 deps. Tres utilidades nuevas, todas
    tras `@media (prefers-reduced-motion: no-preference)` explícito (misma
-   razón que F4: `motion-safe:` no genera nada para clases custom; con
+   razón que F4: la variante motion-safe no genera nada para clases custom; con
    preferencia reducida rige el bloque global de abajo que neutraliza
    duraciones). Easing único: cubic-bezier(0.22, 1, 0.36, 1).
    - .anim-page-reveal: fade + translateY 8px→0, 200ms. La usa
