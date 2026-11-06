@@ -11,7 +11,6 @@ describe("PerfilHeader", () => {
         name="María"
         email="maria@test.com"
         role="user"
-        image={null}
         loading={false}
         stats={stats}
       />
@@ -19,22 +18,21 @@ describe("PerfilHeader", () => {
     expect(screen.getByRole("heading", { name: "María" })).toBeDefined()
     expect(screen.getByText("maria@test.com")).toBeDefined()
     expect(screen.getByText("user")).toBeDefined()
-    // Avatar por inicial cuando no hay foto de Google
+    // Avatar por inicial (sin foto de perfil)
     expect(screen.queryByRole("img")).toBeNull()
   })
 
-  it("shows the Google photo when available", () => {
+  it("always shows the initial avatar, never a photo", () => {
     render(
       <PerfilHeader
         name="María"
         email="maria@test.com"
-        image="https://lh3.googleusercontent.com/a/photo"
         loading={false}
         stats={stats}
       />
     )
-    const img = document.querySelector("img")
-    expect(img?.getAttribute("src")).toBe("https://lh3.googleusercontent.com/a/photo")
+    expect(screen.queryByRole("img")).toBeNull()
+    expect(screen.getByText("M")).toBeDefined()
   })
 
   it("falls back to the email prefix without a name", () => {

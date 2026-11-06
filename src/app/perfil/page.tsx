@@ -68,7 +68,7 @@ function PerfilContent() {
   };
 
   const sessionUser = session?.user as
-    | { name?: string | null; email?: string; image?: string | null; role?: string }
+    | { name?: string | null; email?: string; role?: string }
     | undefined;
 
   return (
@@ -98,7 +98,6 @@ function PerfilContent() {
             name={profile?.name ?? sessionUser?.name ?? null}
             email={profile?.email ?? sessionUser?.email ?? ""}
             role={sessionUser?.role}
-            image={sessionUser?.image}
             loading={loading}
             stats={stats}
           />
