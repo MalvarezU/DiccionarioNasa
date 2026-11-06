@@ -9,7 +9,6 @@ interface PerfilHeaderProps {
   name: string | null;
   email: string;
   role?: string;
-  image?: string | null;
   loading: boolean;
   stats: PerfilStats;
 }
@@ -22,14 +21,13 @@ const STAT_ITEMS = [
 ] as const;
 
 /**
- * Cabecera de Mi espacio: avatar (foto de Google o inicial), nombre, email,
+ * Cabecera de Mi espacio: avatar con inicial, nombre, email,
  * rol y 4 stats derivados de las mismas llamadas de los tabs (sin costo extra).
  */
 export function PerfilHeader({
   name,
   email,
   role,
-  image,
   loading,
   stats,
 }: PerfilHeaderProps) {
@@ -39,25 +37,12 @@ export function PerfilHeader({
   return (
     <section aria-labelledby="perfil-titulo" className="rounded-2xl border border-outline-variant/30 bg-surface-container-low p-5 sm:p-6 shadow-sm">
       <div className="flex items-center gap-4">
-        {image ? (
-          // <img> a propósito: el avatar de Google vive en un host fuera de
-          // los remotePatterns de next/image (solo R2).
-          <img
-            src={image}
-            alt=""
-            width={56}
-            height={56}
-            className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-secondary/30"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground"
-          >
-            {initial}
-          </div>
-        )}
+        <div
+          aria-hidden="true"
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground"
+        >
+          {initial}
+        </div>
         <div className="min-w-0">
           <h1
             id="perfil-titulo"

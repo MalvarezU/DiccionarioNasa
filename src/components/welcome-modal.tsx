@@ -20,7 +20,6 @@ interface WelcomeModalProps {
   onOpenChange: (open: boolean) => void;
   initialName: string;
   email: string;
-  image?: string | null;
   /** Se llama cuando el onboarding queda completo (guardar u omitir). */
   onCompleted: () => void;
 }
@@ -36,7 +35,6 @@ export function WelcomeModal({
   onOpenChange,
   initialName,
   email,
-  image,
   onCompleted,
 }: WelcomeModalProps) {
   const [name, setName] = useState(initialName);
@@ -174,20 +172,12 @@ export function WelcomeModal({
 
         <div className="grid gap-4 py-2">
           <div className="flex items-center gap-3">
-            {image ? (
-              <img
-                src={image}
-                alt=""
-                className="h-12 w-12 rounded-full object-cover"
-              />
-            ) : (
-              <div
-                aria-hidden="true"
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary"
-              >
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-            )}
+            <div
+              aria-hidden="true"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary"
+            >
+              {displayName.charAt(0).toUpperCase()}
+            </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{email}</p>
               <p className="text-xs text-muted-foreground">Cuenta de Google</p>

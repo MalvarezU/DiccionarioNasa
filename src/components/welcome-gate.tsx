@@ -22,7 +22,6 @@ export function WelcomeGate() {
 
   const email = session?.user?.email ?? null;
   const sessionName = session?.user?.name ?? "";
-  const sessionImage = (session?.user as { image?: string | null } | undefined)?.image ?? null;
 
   useEffect(() => {
     if (status !== "authenticated" || !email) return;
@@ -62,7 +61,6 @@ export function WelcomeGate() {
       onOpenChange={setOpen}
       initialName={profile.name || sessionName}
       email={profile.email}
-      image={sessionImage}
       onCompleted={() => {
         setDone(true);
         setOpen(false);

@@ -14,7 +14,6 @@ const baseProps = {
   onOpenChange: vi.fn(),
   initialName: "María",
   email: "maria@test.com",
-  image: null as string | null,
   onCompleted: vi.fn(),
 }
 
@@ -30,13 +29,13 @@ describe("WelcomeModal", () => {
     expect(container.innerHTML).toBe("")
   })
 
-  it("prefills Google data (name, email) and shows avatar when available", () => {
-    render(<WelcomeModal {...baseProps} image="https://img/test.jpg" />)
+  it("prefills Google data (name, email) and shows the initial avatar", () => {
+    render(<WelcomeModal {...baseProps} />)
     expect(screen.getByRole("heading", { name: /bienvenido/i })).toBeDefined()
     expect(screen.getByDisplayValue("María")).toBeDefined()
     expect(screen.getByText("maria@test.com")).toBeDefined()
-    const avatar = document.querySelector('img[src="https://img/test.jpg"]')
-    expect(avatar).not.toBeNull()
+    expect(document.querySelector('img[src="https://img/test.jpg"]')).toBeNull()
+    expect(screen.getByText("M")).toBeDefined()
   })
 
   it("blocks save without terms acceptance", async () => {
