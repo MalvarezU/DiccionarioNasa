@@ -471,8 +471,35 @@ function CoursePlayerSkeleton() {
     <div
       data-slot="skeleton-course-player"
       data-testid="skeleton-course-player"
-      className="mx-auto grid w-full max-w-[1400px] gap-10 px-6 py-8 lg:grid-cols-[288px_minmax(0,1fr)] lg:px-10 xl:grid-cols-[320px_minmax(0,1fr)]"
+      className="mx-auto w-full max-w-[1400px] px-6 py-8 lg:px-10"
     >
+      {/* Header: espejo del header real del curso (breadcrumbs + back-link +
+          tile + h1 + meta + descripción, mismo spacing mb-8/space-y-3/mb-4):
+          el header también entra con fade, sin pop. */}
+      <div aria-hidden="true" className="mb-8 space-y-3">
+        <div className="mb-4 flex items-center gap-1.5">
+          <Skeleton className="h-4 w-12 border-transparent" />
+          <Skeleton className="h-4 w-4 border-transparent" />
+          <Skeleton className="h-4 w-14 border-transparent" />
+          <Skeleton className="h-4 w-4 border-transparent" />
+          <Skeleton className="h-4 w-32 border-transparent" />
+        </div>
+        <Skeleton className="h-4 w-28 border-transparent" />
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-12 w-12 rounded-xl border-transparent" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-8 w-56 border-transparent sm:w-72" />
+              <Skeleton className="h-3 w-40 border-transparent" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full max-w-2xl border-transparent" />
+            <Skeleton className="h-4 w-2/3 max-w-xl border-transparent" />
+          </div>
+        </div>
+      </div>
+      <div className="grid w-full gap-10 lg:grid-cols-[288px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
       {/* Sidebar: bloque dark de alto viewport como el outline real */}
       <div
         aria-hidden="true"
@@ -541,6 +568,7 @@ function CoursePlayerSkeleton() {
           <Skeleton className="h-11 flex-1 border-transparent" />
           <Skeleton className="h-11 flex-1 border-transparent" />
         </div>
+      </div>
       </div>
     </div>
   )
