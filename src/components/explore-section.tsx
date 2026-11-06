@@ -181,13 +181,13 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                       !selectedCategory
                         ? "bg-secondary-container text-montana font-medium"
-                        : "text-foreground hover:bg-muted/60"
+                        : "text-foreground hover:bg-secondary-container hover:text-montana"
                     }`}
                   >
                     Todas las categorías
                   </button>
 
-                  <Separator className="my-1" />
+                  <Separator className="my-1 bg-terracota/25" />
 
                   {categories.map((cat) => (
                     <button
@@ -197,7 +197,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                       className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                         selectedCategory === cat
                           ? "bg-secondary-container text-montana font-medium"
-                          : "text-foreground hover:bg-muted/60"
+                          : "text-foreground hover:bg-secondary-container hover:text-montana"
                       }`}
                     >
                       {getCategoryDisplay(cat)}
@@ -211,8 +211,8 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
 
         {selectedCategory && (
           <Badge
-            variant="secondary"
-            className="gap-1.5 py-1 px-3 text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+            variant="outline"
+            className="gap-1.5 py-1 px-3 text-xs cursor-pointer border-terracota/40 bg-tertiary-container text-tertiary hover:bg-tertiary-fixed/60 transition-colors"
             onClick={() => handleCategorySelect(null)}
           >
             {getCategoryDisplay(selectedCategory)}

@@ -146,11 +146,69 @@ function HomeContent() {
           <DownloadBanner />
         </Reveal>
 
-        {/* Word of the Day */}
-        <Reveal as="section" className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
-          <WordOfDayCard onWordSelect={handleWordSelect} />
-        </Reveal>
-      <InstallSectionLazy />
+        {/* Palabra del Día — zona territorio lavado */}
+        <section className="bg-secondary-container/40">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
+            <Reveal>
+              <WordOfDayCard onWordSelect={handleWordSelect} />
+            </Reveal>
+          </div>
+        </section>
+        <InstallSectionLazy />
+
+        {/* Seguir explorando — accesos directos al índice A-Z y a juegos */}
+        <section
+          aria-labelledby="seguir-titulo"
+          className="bg-secondary-container/50"
+        >
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
+            <Reveal>
+              <h2
+                id="seguir-titulo"
+                className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-primary"
+              >
+                Seguí explorando
+              </h2>
+              <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-xl">
+                Recorré el índice de la A a la Z o practicá lo aprendido jugando.
+              </p>
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Link
+                  href="/diccionario?tab=explore"
+                  className="group flex items-center gap-4 rounded-xl border border-territorio/20 bg-background p-4 sm:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-territorio/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary-container text-montana">
+                    <BookOpen className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-foreground">
+                      Diccionario
+                    </span>
+                    <span className="block text-sm text-muted-foreground">
+                      Todas las palabras, de la A a la Z.
+                    </span>
+                  </span>
+                </Link>
+                <Link
+                  href="/juegos"
+                  className="group flex items-center gap-4 rounded-xl border border-territorio/20 bg-background p-4 sm:p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-territorio/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary-container text-montana">
+                    <Gamepad2 className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-foreground">
+                      Juegos
+                    </span>
+                    <span className="block text-sm text-muted-foreground">
+                      Flashcards, memoria y completar palabras.
+                    </span>
+                  </span>
+                </Link>
+              </div>
+            </Reveal>
+          </div>
+        </section>
       </main>
 
       <SiteFooter />

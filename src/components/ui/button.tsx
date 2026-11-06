@@ -15,11 +15,11 @@ const buttonVariants = cva(
           "bg-destructive text-primary-foreground shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20",
         cta: "bg-amarillo text-amarillo-foreground shadow-xs hover:bg-amarillo-oscuro font-semibold active:scale-[0.98]",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground motion-safe:hover:-translate-y-px active:scale-[0.98] ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "border bg-background shadow-xs hover:bg-secondary-container hover:text-montana motion-safe:hover:-translate-y-px active:scale-[0.98] ease-[cubic-bezier(0.22,1,0.36,1)]",
         secondary:
           "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 motion-safe:hover:-translate-y-px active:scale-[0.98] ease-[cubic-bezier(0.22,1,0.36,1)]",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground motion-safe:hover:-translate-y-px active:scale-[0.98] ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "hover:bg-secondary-container hover:text-montana motion-safe:hover:-translate-y-px active:scale-[0.98] ease-[cubic-bezier(0.22,1,0.36,1)]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

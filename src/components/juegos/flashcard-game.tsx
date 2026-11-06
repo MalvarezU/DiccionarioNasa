@@ -286,7 +286,7 @@ export function FlashcardGame({
           </span>
           <div className="flex items-center gap-3">
             {streak >= 2 && (
-              <Badge variant="secondary" className="gap-1 border border-tertiary/30 bg-tertiary-container text-tertiary">
+              <Badge variant="secondary" className="gap-1 border border-amarillo/60 bg-amarillo/20 text-montana">
                 <Flame className="h-3.5 w-3.5" aria-hidden="true" />
                 Racha: {streak}
               </Badge>

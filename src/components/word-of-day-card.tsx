@@ -165,7 +165,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
               </Badge>
             )}
             {wordDate && (
-              <span className="text-2xs text-muted-foreground">
+              <span className="text-2xs font-medium text-montana bg-amarillo/20 border border-amarillo/50 rounded-full px-2 py-0.5">
                 {new Date(wordDate + "T00:00:00").toLocaleDateString("es-CO", {
                   day: "numeric",
                   month: "short",

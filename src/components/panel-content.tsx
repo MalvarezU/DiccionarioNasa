@@ -90,7 +90,7 @@ export function PanelContent({
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "favorites"
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              : "text-muted-foreground hover:text-montana hover:bg-secondary-container"
           }`}
           aria-pressed={activeTab === "favorites"}
         >
@@ -103,7 +103,7 @@ export function PanelContent({
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "history"
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              : "text-muted-foreground hover:text-montana hover:bg-secondary-container"
           }`}
           aria-pressed={activeTab === "history"}
         >

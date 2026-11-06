@@ -215,7 +215,7 @@ export function NavBar() {
                           : "bg-secondary-container text-montana"
                         : isHeroTop
                           ? "text-crema/85 hover:text-crema hover:bg-crema/10"
-                          : "text-foreground/80 bg-card hover:text-secondary hover:bg-surface-container-high"
+                          : "text-foreground/80 bg-card hover:text-montana hover:bg-secondary-container"
                     }`}
                   >
                     <item.icon className="h-4 w-4" aria-hidden="true" />
