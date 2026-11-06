@@ -42,12 +42,12 @@ describe("FeaturedCourseCard", () => {
     expect(img.getAttribute("src")).toMatch(/cover\.jpg/)
   })
 
-  it("F-E3 overlay duotone: grayscale + mix-blend-multiply solo con cover", () => {
+  it("F-G tinte azulado: multiply sin grayscale en cover, ausente en placeholder", () => {
     const { container, unmount } = render(
       <FeaturedCourseCard course={{ ...base, coverImage: COVER }} />
     )
     const img = screen.getByAltText("Portada de Curso Destacado")
-    expect(img.className).toMatch(/grayscale/)
+    expect(img.className).not.toMatch(/grayscale/)
     expect(container.querySelector(".mix-blend-multiply")).not.toBeNull()
     unmount()
     const { container: sinCover } = render(<FeaturedCourseCard course={base} />)

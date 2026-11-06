@@ -6,10 +6,10 @@ import { Progress } from "@/components/ui/progress"
 import type { CourseSummary } from "./course-card"
 
 // F-E3 (fork del usuario): intensidad fija del overlay duotone slate. Misma
-// receta que CourseCard (grayscale + mix-blend-multiply); constante por
-// archivo para que afinar acá sea una sola línea. Opacity decimal porque
-// Tailwind no genera valores dinámicos; raster idéntico a bg-primary/25.
-const OVERLAY_OPACITY = 25
+// receta que CourseCard (mix-blend-multiply sobre imagen a color, sin
+// grayscale); constante por archivo para que afinar acá sea una sola línea.
+// Opacity decimal porque Tailwind no genera valores dinámicos.
+const OVERLAY_OPACITY = 12
 
 interface FeaturedCourseCardProps {
   course: CourseSummary
@@ -40,10 +40,11 @@ export function FeaturedCourseCard({ course }: FeaturedCourseCardProps) {
                 src={course.coverImage}
                 alt={`Portada de ${course.title}`}
                 fill
-                className="object-cover grayscale"
+                className="object-cover"
                 sizes="(max-width: 767px) 100vw, 66vw"
               />
-              {/* F-E3: tinte slate duotone multiplicando sobre el grayscale.
+              {/* F-G: tinte azulado sutil multiplicando sobre la imagen a
+                  color (sin grayscale — cast azul sobre colores naturales).
                   Solo con cover real — el placeholder queda limpio. */}
               <div
                 aria-hidden="true"

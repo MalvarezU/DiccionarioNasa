@@ -54,12 +54,13 @@ describe("CourseCard coverImage", () => {
     )
   })
 
-  it("F-E3 overlay duotone: cover con grayscale + mix-blend-multiply", () => {
+  it("F-G tinte azulado: overlay multiply SIN grayscale en cover normal", () => {
     const { container } = render(
       <CourseCard course={{ ...base, coverImage: COVER }} navEnabled />
     )
     const img = screen.getByAltText("Portada de Nasa Yuwe básico")
-    expect(img.className).toMatch(/grayscale/)
+    // La imagen conserva su color: el grayscale es semántico del bloqueo.
+    expect(img.className).not.toMatch(/grayscale/)
     const overlay = container.querySelector(".mix-blend-multiply")
     expect(overlay).not.toBeNull()
     expect(overlay?.className).toMatch(/bg-primary/)
@@ -152,7 +153,7 @@ describe("CourseCard horizontal", () => {
     expect(container.querySelectorAll("a")).toHaveLength(0)
   })
 
-  it("bloqueado con cover: grayscale + overlay de Lock + chip de estado", () => {
+  it("bloqueado con cover: grayscale semántico + overlay de Lock + chip", () => {
     const { container } = render(
       <CourseCard
         course={{ ...base, coverImage: COVER }}
@@ -161,8 +162,8 @@ describe("CourseCard horizontal", () => {
       />
     )
     const img = screen.getByAltText("Portada de Nasa Yuwe básico")
+    // En bloqueado el grayscale ES semántico (estado de acceso, no estética).
     expect(img.className).toMatch(/grayscale/)
-    // F-E3: el duotone también viste la variante bloqueada.
     expect(container.querySelector(".mix-blend-multiply")).not.toBeNull()
     expect(screen.getByTestId("estado")).toBeDefined()
     expect(screen.getByText("Borrador")).toBeDefined()

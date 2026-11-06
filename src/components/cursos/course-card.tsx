@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress"
 // usa opacity decimal en vez de una clase bg-primary/N porque Tailwind no
 // genera valores dinámicos; el raster resultante es idéntico (misma fórmula
 // de mezcla con alfa). Ajustar aquí = una sola línea.
-const OVERLAY_OPACITY = 25
+const OVERLAY_OPACITY = 12
 
 export interface CourseSummary {
   id: string
@@ -56,7 +56,7 @@ export function CourseCard({ course, navEnabled, statusBadge }: CourseCardProps)
               alt={`Portada de ${course.title}`}
               fill
               sizes="(min-width:1024px) 264px, (min-width:768px) 240px, (max-width:639px) 100vw"
-              className="object-cover grayscale"
+              className={`object-cover ${navEnabled ? "" : "grayscale"}`}
             />
           ) : (
             <div
@@ -67,8 +67,10 @@ export function CourseCard({ course, navEnabled, statusBadge }: CourseCardProps)
             </div>
           )}
           {hasCover ? (
-            /* F-E3: tinte slate duotone multiplicando sobre el grayscale.
-               Solo con cover real — el placeholder queda limpio. */
+            /* F-G: tinte azulado sutil multiplicando sobre la imagen a color
+               (sin grayscale — conserva los colores naturales, cast azul).
+               Solo con cover real — el placeholder queda limpio. En la
+               variante bloqueada el grayscale vive en su propio overlay. */
             <div
               aria-hidden="true"
               className="absolute inset-0 bg-primary mix-blend-multiply"
