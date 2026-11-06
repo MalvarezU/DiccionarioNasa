@@ -34,38 +34,31 @@ function ButtonSkeleton({ className }: { className?: string }) {
 /* ---------------------------------------------------------------- cursos -- */
 
 /**
- * Réplica de `CourseCard`: miniatura 48px, título serif, línea de módulos,
- * descripción de dos renglones, barra de avance y acción.
+ * Réplica de `CourseCard` horizontal: portada a la izquierda (16/9 arriba en
+ * móvil) + aside con título, descripción, meta, avance y acción.
  */
 function CourseCardSkeleton() {
   return (
     <div
       data-slot="skeleton-course-card"
       data-testid="skeleton-course-card"
-      className="rounded-xl border border-outline-variant/20 bg-card"
+      className="overflow-hidden rounded-xl border border-outline-variant/20 bg-card"
     >
-      <div className="flex flex-col gap-3 p-4 pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-3 w-28" />
-            </div>
+      <div className="grid sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
+        <Skeleton className="aspect-[16/9] rounded-none sm:aspect-auto sm:h-full sm:min-h-[11rem]" />
+        <div className="flex flex-col gap-2 p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-2">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
           </div>
-        </div>
-      </div>
-      <div className="px-4 pb-4">
-        <div className="mb-4 space-y-2">
           <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-4/5" />
-        </div>
-        <div className="mb-4 space-y-2">
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-3 w-28" />
+          <div className="flex-1" />
           <Skeleton className="h-2 w-full rounded-full" />
-          <Skeleton className="h-3 w-24" />
-        </div>
-        <div className="flex items-center justify-end">
-          <Skeleton className="h-4 w-20" />
+          <div className="flex items-center justify-end">
+            <Skeleton className="h-4 w-20" />
+          </div>
         </div>
       </div>
     </div>
@@ -147,8 +140,8 @@ function CourseListBandsSkeleton() {
         </div>
       </div>
       {/* Catálogo: 3 placeholders de card con el mismo grid que el listado
-        real, para que el swap no mueva layout. */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        real (1 col en móvil, 2 desde md), para que el swap no mueva layout. */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {Array.from({ length: 3 }, (_, i) => (
           <CourseCardSkeleton key={i} />
         ))}

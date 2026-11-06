@@ -290,7 +290,7 @@ export default function CursosPage() {
 
             {rows.length > 0 ? (
               <section aria-label="Todos los cursos">
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   {rows.map((course) => (
                     <CourseCatalogCard key={course.id} course={course} />
                   ))}
@@ -306,7 +306,7 @@ export default function CursosPage() {
                 <p className="mb-2 text-sm text-muted-foreground">
                   Borradores y archivados: solo visibles para el equipo editorial.
                 </p>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   {visibleManaged.map((course) => (
                     <CourseCatalogCard key={course.id} course={course} />
                   ))}

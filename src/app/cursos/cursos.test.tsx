@@ -66,9 +66,12 @@ describe("/cursos [B2.2]", () => {
   it("muestra skeleton de bandas mientras carga", async () => {
     mockList([])
     const { container } = render(<CursosPage />)
-    expect(
-      container.querySelector('[data-testid="skeleton-course-list-bands"]')
-    ).not.toBeNull()
+    const bands = container.querySelector('[data-testid="skeleton-course-list-bands"]')
+    expect(bands).not.toBeNull()
+    // El skeleton replica el grid real: 1 col en móvil, 2 desde md (sin xl:3).
+    const skeletonGrid = bands?.querySelector("div.grid.grid-cols-1")
+    expect(skeletonGrid?.className).toMatch(/md:grid-cols-2/)
+    expect(skeletonGrid?.className).not.toMatch(/xl:grid-cols-3/)
     await screen.findByText(/Aún no hay cursos/)
   })
 
@@ -193,7 +196,7 @@ describe("/cursos [B2.2]", () => {
     const grid = screen.getByLabelText("Todos los cursos")
     const gridInner = grid.querySelector("div.grid")
     expect(gridInner?.className).toMatch(/md:grid-cols-2/)
-    expect(gridInner?.className).toMatch(/xl:grid-cols-3/)
+    expect(gridInner?.className).not.toMatch(/xl:grid-cols-3/)
     // Una card por curso no destacado, con descripción y meta visibles
     expect(grid.textContent).toMatch(/Descr uno/)
     expect(grid.textContent).toMatch(/Descr dos/)
@@ -232,7 +235,7 @@ describe("/cursos [B2.2]", () => {
     const gestion = await screen.findByLabelText("Cursos en gestión")
     const gestionInner = gestion.querySelector("div.grid")
     expect(gestionInner?.className).toMatch(/md:grid-cols-2/)
-    expect(gestionInner?.className).toMatch(/xl:grid-cols-3/)
+    expect(gestionInner?.className).not.toMatch(/xl:grid-cols-3/)
     expect(screen.getByText("Borrador X")).toBeDefined()
     expect(screen.getByText("desc borrador")).toBeDefined()
     expect(screen.getByText("Borrador")).toBeDefined()
