@@ -1,30 +1,24 @@
-import type { ReactNode } from "react"
-import { Badge } from "@/components/ui/badge"
 import { CourseCard, type CourseSummary } from "./course-card"
 
 /**
- * Badge de estado del catálogo — misma lógica del índice anterior, movida
- * acá sin reescribirla: DRAFT/ARCHIVED y sin-contenido en outline,
- * Completado/En curso en secondary. Null = curso fresco sin marca.
+ * Etiqueta de estado del catálogo — misma decisión del índice anterior,
+ * pero como texto puro: el chip visual (vidrio sobre la portada) lo pinta
+ * CourseCard desde el F-E1. Null = curso fresco, sin marca.
  */
-function catalogStatusBadge(course: CourseSummary): ReactNode {
-  if (course.status === "DRAFT")
-    return <Badge variant="outline">Borrador</Badge>
-  if (course.status === "ARCHIVED")
-    return <Badge variant="outline">Archivado</Badge>
-  if (course.lessons === 0) return <Badge variant="outline">Sin contenido</Badge>
-  if (course.progressPct === 100)
-    return <Badge variant="secondary">Completado</Badge>
-  if (course.progressPct !== null && course.progressPct > 0)
-    return <Badge variant="secondary">En curso</Badge>
+function catalogStatusLabel(course: CourseSummary): string | null {
+  if (course.status === "DRAFT") return "Borrador"
+  if (course.status === "ARCHIVED") return "Archivado"
+  if (course.lessons === 0) return "Sin contenido"
+  if (course.progressPct === 100) return "Completado"
+  if (course.progressPct !== null && course.progressPct > 0) return "En curso"
   return null
 }
 
 /**
- * Tarjeta del catálogo: delega en CourseCard (cover + descripción +
- * progreso) sin prop `index` — el listado ya no numera. La variante
- * bloqueada (borrador/archivado/sin lecciones) sale del mismo cálculo de
- * acceso que usaba el índice.
+ * Tarjeta del catálogo: delega en CourseCard (cover duotone + chip de
+ * estado + descripción + progreso) sin prop `index` — el listado ya no
+ * numera. La variante bloqueada (borrador/archivado/sin lecciones) sale
+ * del mismo cálculo de acceso que usaba el índice.
  */
 export function CourseCatalogCard({ course }: { course: CourseSummary }) {
   const navEnabled =
@@ -33,7 +27,7 @@ export function CourseCatalogCard({ course }: { course: CourseSummary }) {
     <CourseCard
       course={course}
       navEnabled={navEnabled}
-      statusBadge={catalogStatusBadge(course)}
+      statusBadge={catalogStatusLabel(course)}
     />
   )
 }

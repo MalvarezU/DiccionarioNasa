@@ -17,8 +17,9 @@ interface ResumeBandProps {
 }
 
 /**
- * Tira de "continuar donde quedaste": vellum-low, título serif, posición
- * actual y CTA slate hacia la próxima lección pendiente.
+ * Tira de "continuar donde quedaste": vellum-low con eyebrow que explica la
+ * banda, título serif protagonista, posición actual y CTA slate hacia la
+ * próxima lección pendiente.
  */
 export function ResumeBand({ course, nextLesson, progressPct }: ResumeBandProps) {
   const href = nextLesson
@@ -39,7 +40,11 @@ export function ResumeBand({ course, nextLesson, progressPct }: ResumeBandProps)
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div className="min-w-0 space-y-1">
-          <p className="font-serif text-lg font-bold text-primary">
+          {/* F-E4: micro-etiqueta que nombra la banda; el dato del curso manda. */}
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Retomar curso
+          </p>
+          <p className="font-serif text-xl font-bold text-primary">
             {course.title}
           </p>
           <p className="truncate text-sm text-muted-foreground" title={continues}>

@@ -13,6 +13,17 @@ const course: CourseSummary = {
 }
 
 describe("ResumeBand", () => {
+  it("F-E4: eyebrow 'Retomar curso' precede al título protagonista", () => {
+    render(
+      <ResumeBand course={course} nextLesson={null} progressPct={10} />
+    )
+    expect(screen.getByText("Retomar curso")).toBeDefined()
+    expect(screen.getByText("Nasa Yuwe básico")).toBeDefined()
+    // El eyebrow es la primera línea del bloque de datos, antes del título.
+    const datos = screen.getByText("Retomar curso").parentElement
+    expect(datos?.firstElementChild?.textContent).toBe("Retomar curso")
+  })
+
   it("enlaza a la próxima lección con ?leccion=", () => {
     render(
       <ResumeBand

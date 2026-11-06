@@ -34,23 +34,25 @@ function ButtonSkeleton({ className }: { className?: string }) {
 /* ---------------------------------------------------------------- cursos -- */
 
 /**
- * Réplica de `CourseCard` horizontal: portada a la izquierda (16/9 arriba en
- * móvil) + aside con título, descripción, meta, avance y acción.
+ * Réplica de `CourseCard` (F-E1): cover a la izquierda en columna rem fija
+ * (16/9 arriba en móvil), chip sobre el cover + aside con título,
+ * descripción, meta, avance y acción.
  */
 function CourseCardSkeleton() {
   return (
     <div
       data-slot="skeleton-course-card"
       data-testid="skeleton-course-card"
-      className="overflow-hidden rounded-xl border border-outline-variant/20 bg-card"
+      className="flex flex-col overflow-hidden rounded-xl border border-outline-variant/20 bg-card md:min-h-[13rem]"
     >
-      <div className="grid sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
-        <Skeleton className="aspect-[16/9] rounded-none sm:aspect-auto sm:h-full sm:min-h-[11rem]" />
-        <div className="flex flex-col gap-2 p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-2">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
-          </div>
+      <div className="flex-1 grid grid-cols-1 sm:grid-cols-[11rem_1fr] md:grid-cols-[15rem_1fr] lg:grid-cols-[16.5rem_1fr]">
+        <div className="relative aspect-[16/9] sm:aspect-auto sm:h-full">
+          <Skeleton className="h-full rounded-none" />
+          {/* Chip de estado sobre la portada (espejo de CourseCard) */}
+          <Skeleton className="absolute left-2 top-2 h-5 w-16 rounded-full" />
+        </div>
+        <div className="flex flex-col gap-2 p-4 sm:p-5 md:py-6">
+          <Skeleton className="h-6 w-3/4" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-5/6" />
           <Skeleton className="h-3 w-28" />
@@ -115,11 +117,12 @@ function CourseListBandsSkeleton() {
           <Skeleton className="h-10 w-48 rounded-md" />
         </div>
       </div>
-      {/* Resume band */}
+      {/* Resume band: eyebrow + título protagonista (F-E4) */}
       <div className="rounded-xl border border-outline-variant/30 px-5 py-4 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <div className="min-w-0 flex-1 space-y-2">
-            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-7 w-48" />
             <Skeleton className="h-4 w-72 max-w-full" />
             <Skeleton className="h-3 w-24" />
             <Skeleton className="h-1.5 w-56 max-w-full rounded-full" />

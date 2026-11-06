@@ -211,7 +211,8 @@ describe("player-motion (F4)", () => {
     u4()
 
     render(<CourseCatalogCard course={summaryCourse} />)
-    expect(screen.getByText("En curso").closest(".shrink-0")).not.toBeNull()
+    // F-E1: el chip de estado vive ahora sobre la portada (vidrio, sup-izq).
+    expect(screen.getByText("En curso").closest("[class*='bg-background/85']")).not.toBeNull()
     expect(screen.getByText("2 módulos · 4 lecciones").className).toContain(
       "tabular-nums"
     )

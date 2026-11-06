@@ -5,14 +5,20 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import type { CourseSummary } from "./course-card"
 
+// F-E3 (fork del usuario): intensidad fija del overlay duotone slate. Misma
+// receta que CourseCard (grayscale + mix-blend-multiply); constante por
+// archivo para que afinar acá sea una sola línea. Opacity decimal porque
+// Tailwind no genera valores dinámicos; raster idéntico a bg-primary/25.
+const OVERLAY_OPACITY = 25
+
 interface FeaturedCourseCardProps {
   course: CourseSummary
 }
 
 /**
- * Curso destacado: portada a ancho + aside con meta. Toda la tarjeta es
- * clicable vía stretched-link (un solo interactivo real); el CTA es
- * decorativo (aria-hidden) como en CourseCard.
+ * Curso sugerido (F-E5): portada a ancho con tinte duotone + aside con meta.
+ * Toda la tarjeta es clicable vía stretched-link (un solo interactivo real);
+ * el CTA es decorativo (aria-hidden) como en CourseCard.
  */
 export function FeaturedCourseCard({ course }: FeaturedCourseCardProps) {
   const navEnabled = course.lessons > 0
@@ -20,7 +26,7 @@ export function FeaturedCourseCard({ course }: FeaturedCourseCardProps) {
 
   return (
     <article
-      aria-label={`Curso destacado: ${course.title}`}
+      aria-label={`Curso sugerido: ${course.title}`}
       className={`relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-low ${
         navEnabled ? "group" : ""
       }`}
@@ -29,13 +35,22 @@ export function FeaturedCourseCard({ course }: FeaturedCourseCardProps) {
         {/* Portada: 2/3 en xl, full arriba en apilado */}
         <div className="relative min-h-52 overflow-hidden bg-surface-container-high md:col-span-2 md:min-h-64">
           {course.coverImage ? (
-            <Image
-              src={course.coverImage}
-              alt={`Portada de ${course.title}`}
-              fill
-              className="object-cover"
-              sizes="(max-width: 767px) 100vw, 66vw"
-            />
+            <>
+              <Image
+                src={course.coverImage}
+                alt={`Portada de ${course.title}`}
+                fill
+                className="object-cover grayscale"
+                sizes="(max-width: 767px) 100vw, 66vw"
+              />
+              {/* F-E3: tinte slate duotone multiplicando sobre el grayscale.
+                  Solo con cover real — el placeholder queda limpio. */}
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-primary mix-blend-multiply"
+                style={{ opacity: OVERLAY_OPACITY / 100 }}
+              />
+            </>
           ) : (
             <div
               aria-hidden="true"
@@ -48,7 +63,7 @@ export function FeaturedCourseCard({ course }: FeaturedCourseCardProps) {
         {/* Aside con meta */}
         <div className="flex flex-col justify-center gap-3 p-5 sm:p-6">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Destacado
+            Curso sugerido
           </p>
           <h2 className="font-serif text-2xl font-bold text-primary">
             {navEnabled ? (

@@ -11,15 +11,19 @@ const base: CourseSummary = {
   progressPct: null,
 }
 
+const COVER = "https://cdn.test/cover.jpg"
+
 /**
  * Edge F5.e (mitad card): la portada ausente o vacía cae al placeholder
  * con ícono en vez de un <img> con src roto.
  */
 describe("CourseCard coverImage", () => {
-  it("sin cover usa placeholder con ícono (sin img)", () => {
+  it("sin cover usa placeholder con ícono (sin img y sin overlay duotone)", () => {
     const { container } = render(<CourseCard course={base} navEnabled />)
     expect(container.querySelector("img")).toBeNull()
     expect(container.querySelector("svg")).not.toBeNull()
+    // F-E3: el overlay duotone SOLO aplica sobre cover real.
+    expect(container.querySelector(".mix-blend-multiply")).toBeNull()
   })
 
   it.each([undefined, null, ""])("coverImage %p usa placeholder", (coverImage) => {
@@ -33,10 +37,7 @@ describe("CourseCard coverImage", () => {
 
   it("con cover renderiza imagen con alt de portada y padre relative (fill)", () => {
     const { container } = render(
-      <CourseCard
-        course={{ ...base, coverImage: "https://cdn.test/cover.jpg" }}
-        navEnabled
-      />
+      <CourseCard course={{ ...base, coverImage: COVER }} navEnabled />
     )
     const img = screen.getByAltText("Portada de Nasa Yuwe básico")
     expect(img.getAttribute("src")).toMatch(/cover\.jpg/)
@@ -45,7 +46,28 @@ describe("CourseCard coverImage", () => {
     expect(container.innerHTML).toMatch(/aspect-\[16\/9\]/)
   })
 
-  it("statusBadge opcional: se muestra arriba-derecha sin romper el CTA", () => {
+  it("F-E1: sizes determinista para las columnas rem del grid", () => {
+    render(<CourseCard course={{ ...base, coverImage: COVER }} navEnabled />)
+    const img = screen.getByAltText("Portada de Nasa Yuwe básico")
+    expect(img.getAttribute("sizes")).toBe(
+      "(min-width:1024px) 264px, (min-width:768px) 240px, (max-width:639px) 100vw"
+    )
+  })
+
+  it("F-E3 overlay duotone: cover con grayscale + mix-blend-multiply", () => {
+    const { container } = render(
+      <CourseCard course={{ ...base, coverImage: COVER }} navEnabled />
+    )
+    const img = screen.getByAltText("Portada de Nasa Yuwe básico")
+    expect(img.className).toMatch(/grayscale/)
+    const overlay = container.querySelector(".mix-blend-multiply")
+    expect(overlay).not.toBeNull()
+    expect(overlay?.className).toMatch(/bg-primary/)
+    // El overlay vive dentro del contenedor de la portada.
+    expect(overlay?.parentElement?.className).toMatch(/relative/)
+  })
+
+  it("statusBadge opcional: chip de vidrio sobre la portada (F-E1)", () => {
     const { container } = render(
       <CourseCard
         course={base}
@@ -53,13 +75,19 @@ describe("CourseCard coverImage", () => {
         statusBadge={<span data-testid="estado">En curso</span>}
       />
     )
-    expect(screen.getByTestId("estado")).toBeDefined()
-    expect(screen.getByTestId("estado").closest(".shrink-0")).not.toBeNull()
+    const chip = screen
+      .getByTestId("estado")
+      .closest("[class*='bg-background/85']")
+    expect(chip).not.toBeNull()
+    // Chip posicionado dentro del contenedor de la portada.
+    expect(chip?.className).toMatch(/absolute/)
+    expect(chip?.className).toMatch(/backdrop-blur-sm/)
+    expect(chip?.parentElement?.className).toMatch(/relative/)
     expect(screen.getByText("Comenzar")).toBeDefined()
     expect(container.querySelector("a[href='/cursos/c1']")).not.toBeNull()
   })
 
-  it("sin statusBadge no hay badge (API intacta)", () => {
+  it("sin statusBadge no hay chip (API intacta)", () => {
     const { container } = render(<CourseCard course={base} navEnabled />)
     expect(container.textContent).not.toMatch(/En curso/)
     expect(container.textContent).not.toMatch(/Completado/)
@@ -68,7 +96,8 @@ describe("CourseCard coverImage", () => {
 
 /**
  * F-C: layout horizontal — cover al lado del título, un solo interactivo
- * real (Link stretched), CTA decorativo, bloqueado sin progreso.
+ * real (Link stretched), CTA decorativo, bloqueado sin progreso. F-E1
+ * compacta el layout y mueve el badge a la portada.
  */
 describe("CourseCard horizontal", () => {
   it("título envuelto en Link al curso + descripción y meta visibles", () => {
@@ -77,6 +106,16 @@ describe("CourseCard horizontal", () => {
     expect(link?.getAttribute("href")).toBe("/cursos/c1")
     expect(screen.getByText("Ruta inicial.")).toBeDefined()
     expect(screen.getByText("2 módulos · 8 lecciones")).toBeDefined()
+  })
+
+  it("F-E1: grid en rem fijo + card hairline sin sombra con min-h anti-covers-chatos", () => {
+    const { container } = render(<CourseCard course={base} navEnabled />)
+    const html = container.innerHTML
+    expect(html).toMatch(/sm:grid-cols-\[11rem_1fr\]/)
+    expect(html).toMatch(/md:grid-cols-\[15rem_1fr\]/)
+    expect(html).toMatch(/lg:grid-cols-\[16\.5rem_1fr\]/)
+    expect(html).toMatch(/md:min-h-\[13rem\]/)
+    expect(html).toMatch(/shadow-none/)
   })
 
   it("un solo interactivo real: el CTA es decorativo (aria-hidden)", () => {
@@ -113,16 +152,18 @@ describe("CourseCard horizontal", () => {
     expect(container.querySelectorAll("a")).toHaveLength(0)
   })
 
-  it("bloqueado con cover: imagen en grayscale + overlay de Lock", () => {
+  it("bloqueado con cover: grayscale + overlay de Lock + chip de estado", () => {
     const { container } = render(
       <CourseCard
-        course={{ ...base, coverImage: "https://cdn.test/cover.jpg" }}
+        course={{ ...base, coverImage: COVER }}
         navEnabled={false}
         statusBadge={<span data-testid="estado">Borrador</span>}
       />
     )
     const img = screen.getByAltText("Portada de Nasa Yuwe básico")
     expect(img.className).toMatch(/grayscale/)
+    // F-E3: el duotone también viste la variante bloqueada.
+    expect(container.querySelector(".mix-blend-multiply")).not.toBeNull()
     expect(screen.getByTestId("estado")).toBeDefined()
     expect(screen.getByText("Borrador")).toBeDefined()
   })

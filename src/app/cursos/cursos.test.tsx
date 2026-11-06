@@ -168,17 +168,17 @@ describe("/cursos [B2.2]", () => {
     await screen.findByLabelText("Continuar Viejo")
     expect(screen.getByText("Retomar donde quedaste")).toBeDefined()
     // featured = el más reciente (Nuevo), no el curso en marcha
-    expect(screen.getByLabelText("Curso destacado: Nuevo")).toBeDefined()
+    expect(screen.getByLabelText("Curso sugerido: Nuevo")).toBeDefined()
   })
 
-  it("featured es el más reciente y rows excluyen el destacado", async () => {
+  it("featured es el más reciente y rows excluyen el sugerido", async () => {
     mockList([
       { id: "c1", title: "Primero", description: "d", modules: 1, lessons: 1, progressPct: null },
       { id: "c2", title: "Segundo", description: "d", modules: 1, lessons: 1, progressPct: null },
       { id: "c3", title: "Tercero", description: "d", modules: 1, lessons: 1, progressPct: null },
     ])
     render(<CursosPage />)
-    await screen.findByLabelText("Curso destacado: Tercero")
+    await screen.findByLabelText("Curso sugerido: Tercero")
     const rows = screen.getByLabelText("Todos los cursos")
     expect(rows.textContent).toMatch(/Primero/)
     expect(rows.textContent).toMatch(/Segundo/)
@@ -192,12 +192,12 @@ describe("/cursos [B2.2]", () => {
       { id: "c3", title: "Tercero", description: "Descr tres", modules: 1, lessons: 1, progressPct: null },
     ])
     render(<CursosPage />)
-    await screen.findByLabelText("Curso destacado: Tercero")
+    await screen.findByLabelText("Curso sugerido: Tercero")
     const grid = screen.getByLabelText("Todos los cursos")
     const gridInner = grid.querySelector("div.grid")
     expect(gridInner?.className).toMatch(/md:grid-cols-2/)
     expect(gridInner?.className).not.toMatch(/xl:grid-cols-3/)
-    // Una card por curso no destacado, con descripción y meta visibles
+    // Una card por curso no sugerido, con descripción y meta visibles
     expect(grid.textContent).toMatch(/Descr uno/)
     expect(grid.textContent).toMatch(/Descr dos/)
     expect(grid.textContent).toMatch(/1 módulos · 2 lecciones/)

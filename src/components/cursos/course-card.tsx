@@ -6,6 +6,12 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 
+// F-E3 (fork del usuario): intensidad fija del overlay duotone slate. El div
+// usa opacity decimal en vez de una clase bg-primary/N porque Tailwind no
+// genera valores dinámicos; el raster resultante es idéntico (misma fórmula
+// de mezcla con alfa). Ajustar aquí = una sola línea.
+const OVERLAY_OPACITY = 25
+
 export interface CourseSummary {
   id: string
   title: string
@@ -20,32 +26,37 @@ export interface CourseSummary {
 interface CourseCardProps {
   course: CourseSummary
   navEnabled: boolean
-  /** Badge de estado arriba-derecha (Borrador/En curso/…). Ausente = sin badge. */
+  /** Chip de estado sobre la portada, esquina sup-izq (F-E1). Ausente = sin chip. */
   statusBadge?: ReactNode
 }
 
+/**
+ * Card del catálogo estilo featured compacto (F-E1): cover en columna de rem
+ * fijo con bleed, hairline sin sombra y aside puro texto. Duotone del cover
+ * y chip de estado viven sobre la portada, no en el aside.
+ */
 export function CourseCard({ course, navEnabled, statusBadge }: CourseCardProps) {
   const hasCover = Boolean(course.coverImage)
   const started = course.progressPct !== null && course.progressPct > 0
 
   return (
     <Card
-      className={`relative overflow-hidden transition-[transform,box-shadow] motion-reduce:transform-none ${
+      className={`relative flex flex-col overflow-hidden rounded-xl border-outline-variant py-0 shadow-none md:min-h-[13rem] transition-[transform,border-color] motion-reduce:transform-none ${
         navEnabled
-          ? "group cursor-pointer hover:shadow-md hover:border-primary/40"
+          ? "group cursor-pointer hover:border-primary/40"
           : "opacity-70"
       }`}
     >
-      <div className="grid sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
-        {/* Portada: arriba en móvil (16/9), a la izquierda desde sm */}
-        <div className="relative aspect-[16/9] bg-surface-container-high sm:aspect-auto sm:h-full sm:min-h-[11rem]">
+      <div className="flex-1 grid grid-cols-1 sm:grid-cols-[11rem_1fr] md:grid-cols-[15rem_1fr] lg:grid-cols-[16.5rem_1fr]">
+        {/* Portada: arriba en móvil (16/9), a la izquierda desde sm, edge-to-edge */}
+        <div className="relative aspect-[16/9] bg-surface-container-high sm:aspect-auto sm:h-full">
           {hasCover ? (
             <Image
               src={course.coverImage as string}
               alt={`Portada de ${course.title}`}
               fill
-              sizes="(max-width: 639px) 100vw, 192px"
-              className={`object-cover${navEnabled ? "" : " grayscale"}`}
+              sizes="(min-width:1024px) 264px, (min-width:768px) 240px, (max-width:639px) 100vw"
+              className="object-cover grayscale"
             />
           ) : (
             <div
@@ -55,6 +66,15 @@ export function CourseCard({ course, navEnabled, statusBadge }: CourseCardProps)
               <GraduationCap className="h-12 w-12 text-primary/30" />
             </div>
           )}
+          {hasCover ? (
+            /* F-E3: tinte slate duotone multiplicando sobre el grayscale.
+               Solo con cover real — el placeholder queda limpio. */
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-primary mix-blend-multiply"
+              style={{ opacity: OVERLAY_OPACITY / 100 }}
+            />
+          ) : null}
           {navEnabled ? null : (
             <div
               aria-hidden="true"
@@ -65,31 +85,35 @@ export function CourseCard({ course, navEnabled, statusBadge }: CourseCardProps)
               </span>
             </div>
           )}
+          {statusBadge ? (
+            /* Chip de estado sobre el cover: vidrio translúcido ap-izq para
+               que la portada se lea completa. */
+            <div className="absolute left-2 top-2 inline-flex items-center rounded-full border border-outline-variant bg-background/85 px-2 py-0.5 text-[11px] font-medium tracking-wide text-foreground backdrop-blur-sm">
+              {statusBadge}
+            </div>
+          ) : null}
         </div>
         {/* Aside: título + descripción + meta */}
-        <div className="flex flex-col gap-2 p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-2">
-            <h3
-              className={`font-serif text-lg font-bold line-clamp-2 ${
-                navEnabled ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              {navEnabled ? (
-                /* Único interactivo real: stretched-link, toda la Card es clicable */
-                <Link
-                  href={`/cursos/${course.id}`}
-                  className="after:absolute after:inset-0 focus-visible:underline focus-visible:underline-offset-4"
-                >
-                  {course.title}
-                </Link>
-              ) : (
-                course.title
-              )}
-            </h3>
-            {statusBadge ? <div className="shrink-0">{statusBadge}</div> : null}
-          </div>
+        <div className="flex flex-col gap-2 p-4 sm:p-5 md:py-6">
+          <h3
+            className={`font-serif text-lg font-bold line-clamp-2 ${
+              navEnabled ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            {navEnabled ? (
+              /* Único interactivo real: stretched-link, toda la Card es clicable */
+              <Link
+                href={`/cursos/${course.id}`}
+                className="after:absolute after:inset-0 focus-visible:underline focus-visible:underline-offset-4"
+              >
+                {course.title}
+              </Link>
+            ) : (
+              course.title
+            )}
+          </h3>
           {course.description ? (
-            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
               {course.description}
             </p>
           ) : null}
