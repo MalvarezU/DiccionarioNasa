@@ -276,7 +276,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
                   title={`Con audio: ${publishedWithAudio}`}
                 />
                 <div
-                  className="h-full bg-tertiary transition-all duration-500"
+                  className="h-full bg-terracota transition-all duration-500"
                   style={{ width: `${(stats.publishedWithoutAudio / stats.publishedCount) * 100}%` }}
                   title={`Sin audio: ${stats.publishedWithoutAudio}`}
                 />
@@ -290,7 +290,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               <span className="font-semibold text-foreground">{formatNumber(publishedWithAudio)}</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-tertiary inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-terracota inline-block" />
               <span className="text-muted-foreground">Sin audio:</span>
               <span className="font-semibold text-tertiary">{formatNumber(stats.publishedWithoutAudio)}</span>
             </span>

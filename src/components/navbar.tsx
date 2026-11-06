@@ -146,14 +146,14 @@ export function NavBar() {
                 siempre sobre montana sólido, en los dos estados del
                 header (hero-top frosted y sólido). El wordmark serif
                 al lado queda como está. */}
-            <span className="flex items-center justify-center rounded-lg bg-montana p-1.5">
+            <span className="flex items-center justify-center rounded-lg bg-montana p-1">
               <Image
                 src="/logoPiiyaakblanco.png"
                 alt="Piiyaak"
-                width={32}
-                height={36}
+                width={38}
+                height={42}
                 priority
-                className="h-9 w-8"
+                className="h-[42px] w-[38px]"
               />
             </span>
             <span
