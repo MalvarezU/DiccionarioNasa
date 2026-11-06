@@ -128,6 +128,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         <div className="grid gap-4 py-2">
           <Button
             type="button"
+            variant="cta"
             className="w-full gap-2 min-h-[44px]"
             disabled={isLoading}
             onClick={handleGoogle}

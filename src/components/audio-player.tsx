@@ -188,7 +188,7 @@ function AudioPlayerInner({ src, wordLabel, isCached }: { src: string; wordLabel
 
       {/* HU1.3.2: Offline message when audio is not cached */}
       {isOfflineNotCached && (
-        <p className="text-xs text-amber-700 flex items-center gap-1.5 pl-1">
+        <p className="text-xs text-tertiary flex items-center gap-1.5 pl-1">
           <WifiOff className="h-3 w-3 shrink-0" />
           Audio disponible solo en línea o guardando esta palabra como favorita cuando tengas conexión
         </p>

@@ -360,7 +360,7 @@ export default function CursoDetailPage({
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <GraduationCap className="h-6 w-6 text-white" />
+            <GraduationCap className="h-6 w-6 text-crema" />
           </div>
           <div>
             <h1 className="font-serif text-2xl font-bold text-primary sm:text-3xl">

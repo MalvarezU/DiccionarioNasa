@@ -485,10 +485,10 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {!isOnline && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <CloudOff
-              className={`h-3.5 w-3.5 ${sobreOscuro ? "text-amber-300" : "text-amber-600"}`}
+              className={`h-3.5 w-3.5 ${sobreOscuro ? "text-tertiary-fixed" : "text-tertiary"}`}
             />
             <span
-              className={`text-xs font-medium ${sobreOscuro ? "text-amber-200" : "text-amber-700"}`}
+              className={`text-xs font-medium ${sobreOscuro ? "text-tertiary-fixed" : "text-tertiary"}`}
               style={sobreOscuro ? { textShadow: "0 1px 4px rgba(0,0,0,0.7)" } : undefined}
             >
               Búsqueda local (sin conexión)
@@ -500,7 +500,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {isOnline && esGrande && !panelMode && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <Cloud
-              className={`h-3.5 w-3.5 ${sobreOscuro ? "text-emerald-300" : "text-emerald-600"}`}
+              className={`h-3.5 w-3.5 ${sobreOscuro ? "text-secondary-container" : "text-secondary"}`}
               aria-hidden="true"
             />
             <span
@@ -528,7 +528,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               >
                 {/* Offline banner — context-aware for local DB readiness */}
                 {!isOnline && (
-                  <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
+                  <div className="px-3 py-1.5 text-xs font-medium text-tertiary bg-tertiary-container border-b border-tertiary/30 flex items-center gap-1.5">
                     <CloudOff className="h-3 w-3" />
                     {localDBReady
                       ? "Sin conexión — mostrando resultados locales"
@@ -660,7 +660,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               >
                 {/* Offline banner — context-aware for local DB readiness */}
                 {!isOnline && (
-                  <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
+                  <div className="px-3 py-1.5 text-xs font-medium text-tertiary bg-tertiary-container border-b border-tertiary/30 flex items-center gap-1.5">
                     <CloudOff className="h-3 w-3" />
                     {localDBReady
                       ? "Sin conexión — mostrando resultados locales"

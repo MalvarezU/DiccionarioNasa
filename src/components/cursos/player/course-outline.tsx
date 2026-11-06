@@ -91,7 +91,7 @@ export function CourseOutline({
       onKeyDown={onKeyDown}
       className="flex max-h-[calc(100dvh-3.5rem)] flex-col overflow-hidden rounded-xl bg-primary text-primary-foreground"
     >
-      <div className="shrink-0 border-b border-white/10 px-5 pb-4 pt-5">
+      <div className="shrink-0 border-b border-crema/10 px-5 pb-4 pt-5">
         <p className="text-xs uppercase tracking-wide text-primary-foreground/70">
           Índice del curso
         </p>
@@ -104,7 +104,7 @@ export function CourseOutline({
         </div>
         <div
           aria-hidden="true"
-          className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/15"
+          className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-crema/15"
         >
           <div
             className="h-full rounded-full bg-secondary transition-[width]"
@@ -115,7 +115,7 @@ export function CourseOutline({
           <button
             type="button"
             onClick={() => onSelect(lastVisitedLessonId)}
-            className="mt-3 min-h-[44px] w-full shrink-0 rounded-lg bg-primary-foreground px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-white"
+            className="mt-3 min-h-[44px] w-full shrink-0 rounded-lg bg-primary-foreground px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-crema"
           >
             Continuar donde quedé
           </button>
@@ -138,14 +138,14 @@ export function CourseOutline({
                 <span className="min-w-0 truncate text-sm font-semibold" title={module.title}>
                   {moduleLabel(moduleIndex, module.title)}
                 </span>
-                <span className="shrink-0 rounded-full border border-white/20 px-2 py-0.5 text-2xs tabular-nums text-primary-foreground/80">
+                <span className="shrink-0 rounded-full border border-crema/20 px-2 py-0.5 text-2xs tabular-nums text-primary-foreground/80">
                   {done}/{total}
                 </span>
               </h3>
               {/* Barra fina oliva del módulo (decorativa: el pill lleva el dato). */}
               <div
                 aria-hidden="true"
-                className="mb-2 mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/15"
+                className="mb-2 mt-1.5 h-1 w-full overflow-hidden rounded-full bg-crema/15"
               >
                 <div
                   className="h-full rounded-full bg-secondary transition-[width]"
@@ -213,7 +213,7 @@ export function CourseOutline({
                           "focus-oliva",
                           isCurrent
                             ? "bg-primary-foreground font-semibold text-primary"
-                            : "text-primary-foreground hover:bg-white/10",
+                            : "text-primary-foreground hover:bg-crema/10",
                           locked && !isCurrent && "opacity-70"
                         )}
                       >
@@ -223,8 +223,8 @@ export function CourseOutline({
                             "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs",
                             isCurrent
                               ? "bg-primary text-primary-foreground"
-                              : "border border-white/25",
-                            isDone && !isCurrent && "border-secondary bg-secondary text-white"
+                              : "border border-crema/25",
+                            isDone && !isCurrent && "border-secondary bg-secondary text-crema"
                           )}
                         >
                           {isDone ? (

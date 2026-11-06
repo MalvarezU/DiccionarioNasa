@@ -204,8 +204,9 @@ export function DownloadBanner() {
           {bannerState === "idle" && (
             <Button
               size="sm"
+              variant="cta"
               onClick={handleDownload}
-              className="h-7 px-2.5 text-xs bg-primary hover:bg-montana-deep text-primary-foreground"
+              className="h-7 px-2.5 text-xs"
             >
               <Download className="size-3.5" />
               <span className="hidden sm:inline">Descargar</span>

@@ -181,11 +181,11 @@ export function NavBar() {
                     } ${
                       isActive(item.href)
                         ? isHeroTop
-                          ? "text-crema bg-white/15"
+                          ? "text-crema bg-crema/15"
                           : "text-primary bg-primary/10"
                         : isHeroTop
-                          ? "text-crema/85 hover:text-crema hover:bg-white/10"
-                          : "text-foreground/80 bg-white/40 hover:text-primary hover:bg-surface-container-high"
+                          ? "text-crema/85 hover:text-crema hover:bg-crema/10"
+                          : "text-foreground/80 bg-card hover:text-primary hover:bg-surface-container-high"
                     }`}
                   >
                     <item.icon className="h-4 w-4" />
@@ -208,11 +208,11 @@ export function NavBar() {
                     } ${
                       isActive(item.href)
                         ? isHeroTop
-                          ? "text-crema bg-white/15"
+                          ? "text-crema bg-crema/15"
                           : "text-primary bg-primary/10"
                         : isHeroTop
-                          ? "text-crema/85 hover:text-crema hover:bg-white/10"
-                          : "text-foreground/80 bg-white/40 hover:text-primary hover:bg-surface-container-high"
+                          ? "text-crema/85 hover:text-crema hover:bg-crema/10"
+                          : "text-foreground/80 bg-card hover:text-primary hover:bg-surface-container-high"
                     }`}
                   >
                     <item.icon className="h-4 w-4" aria-hidden="true" />
@@ -233,7 +233,7 @@ export function NavBar() {
                   variant="secondary"
                   className={
                     isHeroTop
-                      ? "gap-1.5 text-2xs font-normal bg-white/10 text-crema border border-crema/20"
+                      ? "gap-1.5 text-2xs font-normal bg-crema/10 text-crema border border-crema/20"
                       : "gap-1.5 text-2xs font-normal bg-secondary/10 text-secondary border border-secondary/20"
                   }
                 >
@@ -245,11 +245,11 @@ export function NavBar() {
                   variant="secondary"
                   className={
                     isHeroTop
-                      ? "gap-1.5 text-2xs font-normal bg-white/10 text-crema border border-crema/20"
+                      ? "gap-1.5 text-2xs font-normal bg-crema/10 text-crema border border-crema/20"
                       : "gap-1.5 text-2xs font-normal bg-tertiary/10 text-tertiary border border-tertiary/20"
                   }
                 >
-                  <WifiOff className={isHeroTop ? "h-3 w-3 text-amber-300" : "h-3 w-3"} />
+                  <WifiOff className={isHeroTop ? "h-3 w-3 text-tertiary-fixed" : "h-3 w-3"} />
                   <span className="hidden sm:inline">Sin conexión</span>
                 </Badge>
               ))}
@@ -268,14 +268,14 @@ export function NavBar() {
                     size="sm"
                     className={
                       isHeroTop
-                        ? "gap-1.5 text-xs sm:text-sm text-crema/90 hover:text-crema hover:bg-white/10"
+                        ? "gap-1.5 text-xs sm:text-sm text-crema/90 hover:text-crema hover:bg-crema/10"
                         : "gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground"
                     }
                   >
                     <div
                       className={
                         isHeroTop
-                          ? "flex items-center justify-center h-6 w-6 rounded-full bg-white/10 text-crema shrink-0"
+                          ? "flex items-center justify-center h-6 w-6 rounded-full bg-crema/10 text-crema shrink-0"
                           : "flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary shrink-0"
                       }
                     >
@@ -359,7 +359,7 @@ export function NavBar() {
                       size="icon"
                       className={
                         isHeroTop
-                          ? "size-8 text-crema/90 hover:text-crema hover:bg-white/10"
+                          ? "size-8 text-crema/90 hover:text-crema hover:bg-crema/10"
                           : "size-8 text-muted-foreground hover:text-foreground"
                       }
                       onClick={() => setSettingsOpen(true)}
