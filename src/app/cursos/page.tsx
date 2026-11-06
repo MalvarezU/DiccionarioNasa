@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { type CourseSummary } from "@/components/cursos/course-card"
 import { ResumeBand, type ResumeNextLesson } from "@/components/cursos/resume-band"
 import { FeaturedCourseCard } from "@/components/cursos/featured-course-card"
-import { CourseIndexRow } from "@/components/cursos/course-index-row"
+import { CourseCatalogCard } from "@/components/cursos/course-catalog-card"
 import { CourseListBandsSkeleton } from "@/components/skeletons"
 
 const ANON_KEY = "piiyaak:course:anon:v1"
@@ -290,9 +290,9 @@ export default function CursosPage() {
 
             {rows.length > 0 ? (
               <section aria-label="Todos los cursos">
-                <div className="border-t border-outline-variant/40">
-                  {rows.map((course, i) => (
-                    <CourseIndexRow key={course.id} course={course} index={i} />
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {rows.map((course) => (
+                    <CourseCatalogCard key={course.id} course={course} />
                   ))}
                 </div>
               </section>
@@ -306,12 +306,10 @@ export default function CursosPage() {
                 <p className="mb-2 text-sm text-muted-foreground">
                   Borradores y archivados: solo visibles para el equipo editorial.
                 </p>
-                <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low/50 px-4">
-                  <div className="border-t border-outline-variant/40">
-                    {visibleManaged.map((course, i) => (
-                      <CourseIndexRow key={course.id} course={course} index={i} />
-                    ))}
-                  </div>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {visibleManaged.map((course) => (
+                    <CourseCatalogCard key={course.id} course={course} />
+                  ))}
                 </div>
               </section>
             ) : null}

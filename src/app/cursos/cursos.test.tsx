@@ -182,6 +182,63 @@ describe("/cursos [B2.2]", () => {
     expect(rows.textContent).not.toMatch(/Tercero/)
   })
 
+  it("grid sin numeración: cards con descripción y meta, featured aparte", async () => {
+    mockList([
+      { id: "c1", title: "Primero", description: "Descr uno", modules: 1, lessons: 2, progressPct: null },
+      { id: "c2", title: "Segundo", description: "Descr dos", modules: 2, lessons: 3, progressPct: null },
+      { id: "c3", title: "Tercero", description: "Descr tres", modules: 1, lessons: 1, progressPct: null },
+    ])
+    render(<CursosPage />)
+    await screen.findByLabelText("Curso destacado: Tercero")
+    const grid = screen.getByLabelText("Todos los cursos")
+    const gridInner = grid.querySelector("div.grid")
+    expect(gridInner?.className).toMatch(/md:grid-cols-2/)
+    expect(gridInner?.className).toMatch(/xl:grid-cols-3/)
+    // Una card por curso no destacado, con descripción y meta visibles
+    expect(grid.textContent).toMatch(/Descr uno/)
+    expect(grid.textContent).toMatch(/Descr dos/)
+    expect(grid.textContent).toMatch(/1 módulos · 2 lecciones/)
+    expect(grid.textContent).not.toMatch(/Descr tres/)
+    // Sin numeración del índice anterior
+    expect(grid.textContent).not.toMatch(/\b01\b/)
+    expect(grid.textContent).not.toMatch(/\b02\b/)
+    expect(grid.textContent).not.toMatch(/\b03\b/)
+  })
+
+  it("gestión en grid con badge de borrador y sin link", async () => {
+    mockSession.data = { user: { id: "u9", role: "editor" } }
+    mockSession.status = "authenticated"
+    vi.mocked(fetch).mockImplementation(((url: string) => {
+      if (url === "/api/courses") {
+        return Promise.resolve(
+          Response.json({
+            courses: [{ id: "c1", title: "Pub", description: "d", modules: 1, lessons: 1, progressPct: null }],
+          })
+        )
+      }
+      if (url === "/api/courses?all=1") {
+        return Promise.resolve(
+          Response.json({
+            courses: [
+              { id: "c1", title: "Pub", description: "d", status: "PUBLISHED", modules: 1, lessons: 1, progressPct: null },
+              { id: "cd", title: "Borrador X", description: "desc borrador", status: "DRAFT", modules: 0, lessons: 0, progressPct: null },
+            ],
+          })
+        )
+      }
+      return Promise.reject(new Error(`unexpected ${url}`))
+    }) as typeof fetch)
+    render(<CursosPage />)
+    const gestion = await screen.findByLabelText("Cursos en gestión")
+    const gestionInner = gestion.querySelector("div.grid")
+    expect(gestionInner?.className).toMatch(/md:grid-cols-2/)
+    expect(gestionInner?.className).toMatch(/xl:grid-cols-3/)
+    expect(screen.getByText("Borrador X")).toBeDefined()
+    expect(screen.getByText("desc borrador")).toBeDefined()
+    expect(screen.getByText("Borrador")).toBeDefined()
+    expect(screen.getByText("Borrador X").closest("a")).toBeNull()
+  })
+
   it("editor ve apartado de gestión con borradores", async () => {
     mockSession.data = { user: { id: "u9", role: "editor" } }
     mockSession.status = "authenticated"

@@ -41,4 +41,24 @@ describe("CourseCard coverImage", () => {
     const img = screen.getByAltText("Portada de Nasa Yuwe básico")
     expect(img.getAttribute("src")).toMatch(/cover\.jpg/)
   })
+
+  it("statusBadge opcional: se muestra arriba-derecha sin romper el CTA", () => {
+    const { container } = render(
+      <CourseCard
+        course={base}
+        navEnabled
+        statusBadge={<span data-testid="estado">En curso</span>}
+      />
+    )
+    expect(screen.getByTestId("estado")).toBeDefined()
+    expect(screen.getByTestId("estado").closest(".shrink-0")).not.toBeNull()
+    expect(screen.getByText("Comenzar")).toBeDefined()
+    expect(container.querySelector("a[href='/cursos/c1']")).not.toBeNull()
+  })
+
+  it("sin statusBadge no hay badge (API intacta)", () => {
+    const { container } = render(<CourseCard course={base} navEnabled />)
+    expect(container.textContent).not.toMatch(/En curso/)
+    expect(container.textContent).not.toMatch(/Completado/)
+  })
 })

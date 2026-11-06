@@ -7,7 +7,7 @@ import { LessonCanvas } from "./lesson-canvas"
 import { PlayerShell } from "./player-shell"
 import { ResumeBand } from "../resume-band"
 import { FeaturedCourseCard } from "../featured-course-card"
-import { CourseIndexRow } from "../course-index-row"
+import { CourseCatalogCard } from "../course-catalog-card"
 import type { PlayerCourse, PlayerLesson } from "./types"
 import type { CourseSummary } from "../course-card"
 
@@ -185,7 +185,7 @@ describe("player-motion (F4)", () => {
     )
   })
 
-  it("tabular-nums en conteos y porcentajes (outline, canvas, bandas, filas)", () => {
+  it("tabular-nums en conteos y porcentajes (outline, canvas, bandas, tarjetas)", () => {
     const { unmount: u1 } = render(<CourseOutline {...outlineProps()} />)
     expect(screen.getByText(/0\/3/).closest(".tabular-nums")).not.toBeNull()
     expect(screen.getByText("0%").closest(".tabular-nums")).not.toBeNull()
@@ -210,9 +210,12 @@ describe("player-motion (F4)", () => {
     expect(screen.getByText("72% completado").className).toContain("tabular-nums")
     u4()
 
-    render(<CourseIndexRow course={summaryCourse} index={0} />)
-    expect(screen.getByText("01").className).toContain("tabular-nums")
-    expect(screen.getByText(/72%/).closest(".tabular-nums")).not.toBeNull()
+    render(<CourseCatalogCard course={summaryCourse} />)
+    expect(screen.getByText("En curso").closest(".shrink-0")).not.toBeNull()
+    expect(screen.getByText("2 módulos · 4 lecciones").className).toContain(
+      "tabular-nums"
+    )
+    expect(screen.getByText("72% completado").className).toContain("tabular-nums")
   })
 
   it("foco visible: outline con anillo oliva, canvas con anillo del sistema", () => {

@@ -102,7 +102,7 @@ function CourseListSkeleton() {
 /**
  * Réplica de las bandas del listado editorial: hero (título serif clamp +
  * summary + CTA), tira de continuación, featured (portada 2/3 + aside) y 3
- * filas de índice. Alturas fijas a propósito: el swap al dato real no mueve
+ * placeholders de card en el mismo grid del catálogo. Alturas fijas a propósito: el swap al dato real no mueve
  * layout (CLS ≈ 0, ver §F del plan de rediseño).
  */
 function CourseListBandsSkeleton() {
@@ -146,18 +146,11 @@ function CourseListBandsSkeleton() {
           <Skeleton className="h-4 w-24" />
         </div>
       </div>
-      {/* Index rows */}
-      <div className="border-t border-outline-variant/40">
+      {/* Catálogo: 3 placeholders de card con el mismo grid que el listado
+        real, para que el swap no mueva layout. */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="flex items-center gap-4 border-b border-outline-variant/40 py-4 sm:gap-6">
-            <Skeleton className="h-8 w-10 shrink-0" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-5 w-56 max-w-full" />
-              <Skeleton className="h-4 w-40" />
-            </div>
-            <Skeleton className="hidden h-5 w-20 rounded-full sm:block" />
-            <Skeleton className="h-4 w-4 shrink-0 rounded-full" />
-          </div>
+          <CourseCardSkeleton key={i} />
         ))}
       </div>
     </div>

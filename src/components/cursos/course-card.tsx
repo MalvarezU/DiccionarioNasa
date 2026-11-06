@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import Link from "next/link"
 import { GraduationCap, ArrowRight, Lock } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,9 +19,11 @@ export interface CourseSummary {
 interface CourseCardProps {
   course: CourseSummary
   navEnabled: boolean
+  /** Badge de estado arriba-derecha (Borrador/En curso/…). Ausente = sin badge. */
+  statusBadge?: ReactNode
 }
 
-export function CourseCard({ course, navEnabled }: CourseCardProps) {
+export function CourseCard({ course, navEnabled, statusBadge }: CourseCardProps) {
   return (
     <Card
       className={`relative transition-[transform,box-shadow] motion-reduce:transform-none ${
@@ -57,11 +60,12 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
                       {course.title}
                     </Link>
                   </CardTitle>
-                  <span className="text-2xs text-muted-foreground">
+                  <span className="text-2xs text-muted-foreground tabular-nums">
                     {course.modules} módulos · {course.lessons} lecciones
                   </span>
                 </div>
               </div>
+              {statusBadge ? <div className="shrink-0">{statusBadge}</div> : null}
             </div>
           </CardHeader>
           <CardContent>
@@ -71,7 +75,7 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
             {course.progressPct !== null && (
               <div className="mb-4 space-y-1">
                 <Progress value={course.progressPct} className="h-2" aria-label={`Avance: ${course.progressPct}%`} />
-                <p className="text-2xs text-muted-foreground">
+                <p className="text-2xs text-muted-foreground tabular-nums">
                   {course.progressPct}% completado
                 </p>
               </div>
@@ -100,11 +104,14 @@ export function CourseCard({ course, navEnabled }: CourseCardProps) {
                   <CardTitle className="text-lg font-serif text-muted-foreground">
                     {course.title}
                   </CardTitle>
-                  <Badge variant="outline" className="mt-1 text-2xs">
-                    Sin contenido
-                  </Badge>
+                  {statusBadge == null ? (
+                    <Badge variant="outline" className="mt-1 text-2xs">
+                      Sin contenido
+                    </Badge>
+                  ) : null}
                 </div>
               </div>
+              {statusBadge ? <div className="shrink-0">{statusBadge}</div> : null}
             </div>
           </CardHeader>
           <CardContent>
