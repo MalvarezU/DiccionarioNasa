@@ -34,6 +34,10 @@ vi.mock("./settings-dialog", () => ({
     open ? <div data-testid="settings-dialog" /> : null,
 }))
 
+vi.mock("./welcome-gate", () => ({
+  WelcomeGate: () => null,
+}))
+
 import { useSession, signOut } from "next-auth/react"
 import { usePathname, useRouter } from "next/navigation"
 import { useOnlineStatus } from "@/hooks/use-online-status"

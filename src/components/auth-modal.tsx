@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, LogIn, UserPlus, Chrome } from "lucide-react";
+import { Loader2, LogIn, Chrome, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { LegalTermsModal, type LegalTab } from "@/components/legal-terms-modal";
 
@@ -21,13 +21,17 @@ interface AuthModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/**
+ * Acceso Google-first (Fase 2):
+ * - Vía principal: botón Google (única forma de crear cuenta).
+ * - Vía secundaria: correo + contraseña, colapsada por defecto, solo para
+ *   quienes ya crearon una contraseña desde su perfil. Sin registro por correo.
+ */
 export function AuthModal({ open, onOpenChange }: AuthModalProps) {
-  const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showCredentials, setShowCredentials] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [legalOpen, setLegalOpen] = useState(false);
   const [legalTab, setLegalTab] = useState<LegalTab>("terms");
@@ -41,11 +45,27 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const resetForm = () => {
     setEmail("");
     setPassword("");
-    setConfirmPassword("");
-    setName("");
     setAcceptedTerms(false);
+    setShowCredentials(false);
     setIsLoading(false);
     setLegalOpen(false);
+  };
+
+  const requireTerms = () => {
+    if (!acceptedTerms) {
+      toast({
+        title: "Aceptación requerida",
+        description: "Debes aceptar los Términos y Condiciones y la Política de Privacidad",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const handleGoogle = () => {
+    if (!requireTerms()) return;
+    signIn("google", { callbackUrl: "/" });
   };
 
   const handleLogin = async () => {
@@ -53,6 +73,8 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       toast({ title: "Campos requeridos", description: "Ingresa email y contraseña", variant: "destructive" });
       return;
     }
+
+    if (!requireTerms()) return;
 
     setIsLoading(true);
     try {
@@ -87,98 +109,9 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     }
   };
 
-  const handleRegister = async () => {
-    if (!email || !password) {
-      toast({ title: "Campos requeridos", description: "Ingresa email y contraseña", variant: "destructive" });
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast({ title: "Contraseñas no coinciden", description: "La contraseña y su confirmación deben ser iguales", variant: "destructive" });
-      return;
-    }
-
-    if (password.length < 8) {
-      toast({ title: "Contraseña muy corta", description: "La contraseña debe tener al menos 8 caracteres", variant: "destructive" });
-      return;
-    }
-
-    if (!acceptedTerms) {
-      toast({
-        title: "Aceptación requerida",
-        description: "Debes aceptar los Términos y Condiciones y la Política de Privacidad",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          name: name || undefined,
-          acceptedTerms: true,
-          acceptedPrivacy: true,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        if (data.requiresVerification) {
-          // B1.2: cuenta creada pendiente de verificación por correo
-          toast({
-            title: "¡Cuenta creada!",
-            description: "Revisa tu correo para verificarla antes de entrar",
-          });
-          resetForm();
-          setMode("login");
-          return;
-        }
-        // Auto-login after register (solo sin verificación, ej. desarrollo)
-        const result = await signIn("credentials", {
-          email,
-          password,
-          redirect: false,
-        });
-
-        if (result?.ok) {
-          toast({
-            title: "¡Cuenta creada!",
-            description: "Tu cuenta ha sido creada y has iniciado sesión",
-          });
-          resetForm();
-          onOpenChange(false);
-        }
-      } else {
-        toast({
-          title: "Error al registrarse",
-          description: data.message || "No se pudo crear la cuenta",
-          variant: "destructive",
-        });
-      }
-    } catch {
-      toast({
-        title: "Error",
-        description: "No se pudo crear la cuenta. Intenta de nuevo.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "login") {
-      handleLogin();
-    } else {
-      handleRegister();
-    }
+    handleLogin();
   };
 
   return (
@@ -186,144 +119,110 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
-          </DialogTitle>
+          <DialogTitle>Iniciar sesión</DialogTitle>
           <DialogDescription>
-            {mode === "login"
-              ? "Inicia sesión para guardar palabras favoritas y acceder a ellas desde cualquier dispositivo."
-              : "Regístrate para guardar tus palabras favoritas y seguir tu aprendizaje."}
+            Entra con tu cuenta de Google para guardar palabras favoritas y acceder a ellas desde cualquier dispositivo.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="grid gap-4 py-2">
-          {mode === "register" && (
-            <div className="grid gap-2">
-              <Label htmlFor="auth-name">Nombre (opcional)</Label>
-              <Input
-                id="auth-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Tu nombre"
-                disabled={isLoading}
-              />
-            </div>
-          )}
+        <div className="grid gap-4 py-2">
+          <Button
+            type="button"
+            className="w-full gap-2 min-h-[44px]"
+            disabled={isLoading}
+            onClick={handleGoogle}
+          >
+            <Chrome className="h-4 w-4" aria-hidden="true" />
+            Continuar con Google
+          </Button>
 
-          <div className="grid gap-2">
-            <Label htmlFor="auth-email">Email</Label>
-            <Input
-              id="auth-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
-              required
+          <label className="flex items-start gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0"
               disabled={isLoading}
             />
-          </div>
+            <span>
+              Acepto los{" "}
+              <button
+                type="button"
+                onClick={() => openLegal("terms")}
+                className="text-primary underline"
+              >
+                Términos y Condiciones
+              </button>{" "}
+              y la{" "}
+              <button
+                type="button"
+                onClick={() => openLegal("privacy")}
+                className="text-primary underline"
+              >
+                Política de Privacidad
+              </button>
+              .
+            </span>
+          </label>
 
-          <div className="grid gap-2">
-            <Label htmlFor="auth-password">Contraseña</Label>
-            <Input
-              id="auth-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={mode === "register" ? "Mínimo 8 caracteres" : "Tu contraseña"}
-              required
-              minLength={mode === "register" ? 8 : 1}
-              disabled={isLoading}
-            />
-          </div>
-
-          {mode === "register" && (
-            <div className="grid gap-2">
-              <Label htmlFor="auth-confirm-password">Confirmar contraseña</Label>
-              <Input
-                id="auth-confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repite tu contraseña"
-                required
-                minLength={8}
-                disabled={isLoading}
-                aria-invalid={confirmPassword.length > 0 && password !== confirmPassword}
-                className={confirmPassword.length > 0 && password !== confirmPassword ? "border-destructive" : ""}
-              />
-              {confirmPassword.length > 0 && password !== confirmPassword && (
-                <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
-              )}
-            </div>
-          )}
-
-          {mode === "register" && (
-            <label className="flex items-start gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="mt-1 h-4 w-4 shrink-0"
-                disabled={isLoading}
-              />
-              <span>
-                Acepto los{" "}
-                <button
-                  type="button"
-                  onClick={() => openLegal("terms")}
-                  className="text-primary underline"
-                >
-                  Términos y Condiciones
-                </button>{" "}
-                y la{" "}
-                <button
-                  type="button"
-                  onClick={() => openLegal("privacy")}
-                  className="text-primary underline"
-                >
-                  Política de Privacidad
-                </button>
-                .
-              </span>
-            </label>
-          )}
-
-          <div className="flex flex-col gap-2">
-            <Button type="submit" className="w-full gap-2" disabled={isLoading}>
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : mode === "login" ? (
-                <LogIn className="h-4 w-4" />
-              ) : (
-                <UserPlus className="h-4 w-4" />
-              )}
-              {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2"
-              disabled={isLoading}
-              onClick={() => signIn("google", { callbackUrl: "/" })}
-            >
-              <Chrome className="h-4 w-4" />
-              Continuar con Google
-            </Button>
-          </div>
-        </form>
-
-        <div className="text-center pt-2 border-t">
-          <p className="text-sm text-muted-foreground">
-            {mode === "login" ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}
+          <div className="border-t pt-2">
             <button
               type="button"
-              className="ml-1 text-primary font-medium hover:underline"
-              onClick={() => setMode(mode === "login" ? "register" : "login")}
+              aria-expanded={showCredentials}
+              aria-controls="auth-credentials"
+              onClick={() => setShowCredentials((v) => !v)}
+              className="flex min-h-[44px] w-full items-center justify-center gap-1 text-sm font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
-              {mode === "login" ? "Regístrate" : "Inicia sesión"}
+              Usar correo y contraseña
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${showCredentials ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
             </button>
-          </p>
+
+            {showCredentials && (
+              <form id="auth-credentials" onSubmit={handleSubmit} className="grid gap-4 pt-2">
+                <p className="text-xs text-muted-foreground">
+                  Solo si ya creaste una contraseña desde tu perfil. Las cuentas nuevas se crean con Google.
+                </p>
+                <div className="grid gap-2">
+                  <Label htmlFor="auth-email">Email</Label>
+                  <Input
+                    id="auth-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="tu@email.com"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="auth-password">Contraseña</Label>
+                  <Input
+                    id="auth-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Tu contraseña"
+                    required
+                    minLength={1}
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <Button type="submit" variant="outline" className="w-full gap-2 min-h-[44px]" disabled={isLoading}>
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <LogIn className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  Iniciar sesión con correo
+                </Button>
+              </form>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
