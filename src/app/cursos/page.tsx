@@ -156,7 +156,8 @@ export default function CursosPage() {
     }
   }, [])
 
-  // Apartado de gestión: solo editor+, reutiliza el endpoint existente.
+  // Apartado de gestión: solo editor+. Se excluyen los borradores: no deben
+  // verse en la ruta pública de cursos (solo archivados, para previsualizar).
   useEffect(() => {
     if (!isEditor) return
     let alive = true
@@ -165,7 +166,7 @@ export default function CursosPage() {
       .then((data) => {
         if (!alive || !data || !Array.isArray(data.courses)) return
         setManaged(
-          (data.courses as CourseSummary[]).filter((c) => c.status !== "PUBLISHED")
+          (data.courses as CourseSummary[]).filter((c) => c.status === "ARCHIVED")
         )
       })
       .catch(() => {
@@ -421,7 +422,7 @@ export default function CursosPage() {
                   En gestión
                 </h2>
                 <p className="mb-2 text-sm text-muted-foreground">
-                  Borradores y archivados: solo visibles para el equipo editorial.
+                  Archivados: solo visibles para el equipo editorial.
                 </p>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   {managedRows.map((course) => (

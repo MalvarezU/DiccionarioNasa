@@ -209,7 +209,7 @@ describe("/cursos [B2.2]", () => {
     expect(grid.textContent).not.toMatch(/\b03\b/)
   })
 
-  it("gestión en grid con badge de borrador y sin link", async () => {
+  it("gestión en grid con badge de archivado y sin link", async () => {
     mockSession.data = { user: { id: "u9", role: "editor" } }
     mockSession.status = "authenticated"
     vi.mocked(fetch).mockImplementation(((url: string) => {
@@ -225,6 +225,7 @@ describe("/cursos [B2.2]", () => {
           Response.json({
             courses: [
               { id: "c1", title: "Pub", description: "d", status: "PUBLISHED", modules: 1, lessons: 1, progressPct: null },
+              { id: "ca", title: "Archivado X", description: "desc archivado", status: "ARCHIVED", modules: 0, lessons: 0, progressPct: null },
               { id: "cd", title: "Borrador X", description: "desc borrador", status: "DRAFT", modules: 0, lessons: 0, progressPct: null },
             ],
           })
@@ -237,13 +238,15 @@ describe("/cursos [B2.2]", () => {
     const gestionInner = gestion.querySelector("div.grid")
     expect(gestionInner?.className).toMatch(/md:grid-cols-2/)
     expect(gestionInner?.className).not.toMatch(/xl:grid-cols-3/)
-    expect(screen.getByText("Borrador X")).toBeDefined()
-    expect(screen.getByText("desc borrador")).toBeDefined()
-    expect(screen.getByText("Borrador")).toBeDefined()
-    expect(screen.getByText("Borrador X").closest("a")).toBeNull()
+    expect(screen.getByText("Archivado X")).toBeDefined()
+    expect(screen.getByText("desc archivado")).toBeDefined()
+    expect(screen.getByText("Archivado")).toBeDefined()
+    expect(screen.getByText("Archivado X").closest("a")).toBeNull()
+    // Los borradores no deben verse en la ruta de cursos.
+    expect(screen.queryByText("Borrador X")).toBeNull()
   })
 
-  it("editor ve apartado de gestión con borradores", async () => {
+  it("editor no ve borradores en el apartado de gestión", async () => {
     mockSession.data = { user: { id: "u9", role: "editor" } }
     mockSession.status = "authenticated"
     vi.mocked(fetch).mockImplementation(((url: string) => {
@@ -267,8 +270,9 @@ describe("/cursos [B2.2]", () => {
       return Promise.reject(new Error(`unexpected ${url}`))
     }) as typeof fetch)
     render(<CursosPage />)
-    await screen.findByLabelText("Cursos en gestión")
-    expect(screen.getByText("Borrador X")).toBeDefined()
+    // Sin archivados, el apartado no se renderiza y el borrador no aparece.
+    expect(screen.queryByLabelText("Cursos en gestión")).toBeNull()
+    expect(screen.queryByText("Borrador X")).toBeNull()
   })
 
   it("click en CTA de error reintenta (reload)", async () => {
