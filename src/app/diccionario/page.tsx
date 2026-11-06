@@ -197,11 +197,11 @@ function DiccionarioContent() {
             className="object-cover object-[50%_35%] z-0"
             aria-hidden="true"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#1B2733]/70 via-[#1B2733]/55 to-[#1B2733]/30 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-montana-deep/70 via-montana-deep/55 to-montana-deep/30 z-10" />
           <div
             className="absolute inset-0 opacity-[0.08] z-0"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232F3E4E' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4H2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23173f35' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4H2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
               backgroundRepeat: "repeat",
             }}
             aria-hidden="true"
@@ -210,41 +210,41 @@ function DiccionarioContent() {
             <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-start lg:gap-12">
               {/* Panel de búsqueda PRIMERO en el DOM: en móvil aparece junto
                   al navbar; en lg se reordena a la derecha (order). */}
-              <div className="order-1 mx-auto w-full max-w-xl rounded-2xl border border-white/25 bg-black/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
+              <div className="order-1 mx-auto w-full max-w-xl rounded-2xl border border-crema/25 bg-black/30 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
                 <SearchBar variant="hero-panel" onWordSelect={handleWordSelect} />
               </div>
               {/* Copy de bienvenida: segundo en el DOM, a la izquierda en lg */}
               <div className="order-2 text-center lg:text-left lg:order-1">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium text-[#F6EEDC] backdrop-blur-md">
-                  <BookOpen className="h-3 w-3 text-[#F6EEDC]" aria-hidden="true" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-crema/30 bg-black/30 px-3 py-1 text-xs font-medium text-crema backdrop-blur-md">
+                  <BookOpen className="h-3 w-3 text-crema" aria-hidden="true" />
                   Diccionario bilingüe
                 </span>
                 <h1
-                  className="mt-4 text-2xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-[#F6EEDC]"
+                  className="mt-4 text-2xl sm:text-4xl md:text-5xl font-semibold font-serif tracking-tight text-crema"
                   style={{ textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.5)" }}
                 >
                   Diccionario Nasa Yuwe
                 </h1>
                 <p
-                  className="mt-3 text-lg sm:text-xl font-medium text-white"
+                  className="mt-3 text-lg sm:text-xl font-medium text-crema"
                   style={{ textShadow: "0 2px 6px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.6)" }}
                 >
                   Busca palabras, pronunciaciones y contexto cultural
                 </p>
                 <div
-                  className="mt-6 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm sm:text-base text-white/90 lg:justify-start"
+                  className="mt-6 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm sm:text-base text-crema/90 lg:justify-start"
                   style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}
                 >
                   <div className="flex items-center gap-2">
-                    <Leaf className="h-4 w-4 text-[#F6EEDC]" />
+                    <Leaf className="h-4 w-4 text-crema" />
                     <span>Palabras de la comunidad</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Volume2 className="h-4 w-4 text-[#F6EEDC]" />
+                    <Volume2 className="h-4 w-4 text-crema" />
                     <span>Pronunciación guiada</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-[#F6EEDC]" />
+                    <BookOpen className="h-4 w-4 text-crema" />
                     <span>Español ↔ Nasa Yuwe</span>
                   </div>
                 </div>
@@ -302,7 +302,7 @@ function DiccionarioContent() {
               ) : featuredWords.length > 0 ? (
                 <div
                   ref={featuredGridRef}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+                  className="anim-stagger-children grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
                 >
                   {featuredWords.map((word) => (
                     <WordCard

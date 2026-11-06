@@ -252,7 +252,7 @@ export default function CursosPage() {
             </p>
             <div className="flex flex-wrap items-center gap-3">
               {resume ? (
-                <Button asChild>
+                <Button asChild variant="cta">
                   <Link
                     href={
                       resume.next

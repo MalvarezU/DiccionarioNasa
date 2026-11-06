@@ -15,7 +15,7 @@ import type { CourseSummary } from "../course-card"
 // contrato temporal (duraciones, delays, gating) se verifica sobre el fuente
 // de globals.css y el resto sobre clases/atributos del DOM renderizado.
 const css = fs.readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8")
-const playerCss = css.slice(css.indexOf("F4 — motion"))
+const playerCss = css.slice(css.indexOf("F4 — motion"), css.indexOf("/* F5"))
 
 const LONG_TITLE = "We'we fxi'zenxi u'juy'sawe'sx fiy len'i' pta'nzxi dxi'j nxuna'"
 

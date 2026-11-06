@@ -32,8 +32,8 @@ export const metadata: Metadata = {
     "indigenous language",
   ],
   icons: {
-    icon: "/logoPiiyaakblanco.png",
-    apple: "/logoPiiyaakblanco.png",
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
   },
   manifest: "/manifest.webmanifest",
   openGraph: {
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2F3E4E",
+  themeColor: "#173f35",
   width: "device-width",
   initialScale: 1,
 };

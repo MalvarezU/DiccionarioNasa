@@ -11,6 +11,16 @@
    de la utilidad .text-2xs. */
 @theme {
   --text-2xs: 0.75rem;
+
+  /* Paleta territorio Piiyaak (guía de cliente): nombres fijos para clases
+     con nombre (bg-montana, text-terracota, ...) en vez de hex sueltos. */
+  --color-montana: #173f35;
+  --color-montana-deep: #0e2a22;
+  --color-territorio: #496b55;
+  --color-amarillo-tierra: #d7ae55;
+  --color-amarillo-oscuro: #c39a45;
+  --color-terracota: #b96f4a;
+  --color-crema: #f5f0e6;
 }
 
 @theme inline {
@@ -38,6 +48,8 @@
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
+  --color-amarillo: var(--amarillo);
+  --color-amarillo-foreground: var(--amarillo-foreground);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -65,60 +77,71 @@
 
 :root {
   --radius: 0.375rem;
-  
-  /* Warm ivory background system (Piiyaak direction) */
-  --background: #f6eedc;
-  --foreground: #2f3e4e;
-  
-  /* Surface hierarchy (vellum sheets): three steps with a visible gap so
-     cards lift off the page without relying on borders and shadows. */
-  --surface-container-low: #f1e5cd;
-  --surface-container-high: #e9dabd;
-  --surface-container-highest: #e0cfae;
-  
+
+  /* Paleta territorio Piiyaak (guía de cliente):
+     Crema ~50% base · Verde montaña ~25% texto/marca ·
+     Verde territorio ~12% secciones · Amarillo tierra ~7% CTA ·
+     Terracota ~6% detalles. Sin blanco/negro puro.
+     Contrastes verificados: montaña/crema 10.3 AAA · crema/montaña 10.3 AAA ·
+     crema/territorio 5.3 AA · amarillo/montaña 5.6 AA · terracota-texto/crema ~5.9 AA. */
+  --background: #f5f0e6;
+  --foreground: #173f35;
+
+  /* Surface hierarchy (hojas crema): tres pasos con salto visible para que
+     las cards se despeguen sin depender de bordes ni sombras. */
+  --surface-container-low: #ece4d0;
+  --surface-container-high: #e3d6b8;
+  --surface-container-highest: #d9c8a4;
+
   /* Cards & Popovers */
   --card: var(--surface-container-low);
   --card-foreground: var(--foreground);
   --popover: var(--surface-container-low);
   --popover-foreground: var(--foreground);
-  
-  /* Primary: slate (#2f3e4e) */
-  --primary: #2f3e4e;
-  --primary-foreground: #f6eedc;
-  --primary-container: #22303d;
 
-  /* Secondary: olive (#5e6b45) */
-  --secondary: #5e6b45;
-  --secondary-foreground: #f6eedc;
-  --secondary-container: #dde1cb;
+  /* Primary: verde montaña (#173f35) */
+  --primary: #173f35;
+  --primary-foreground: #f5f0e6;
+  --primary-container: #0e2a22;
 
-  /* Tertiary: earth (#7a5f33) */
-  --tertiary: #7a5f33;
-  --tertiary-foreground: #f6eedc;
-  --tertiary-container: #f0e3c6;
-  --tertiary-fixed: #e4d3ac;
-  
+  /* Secondary: verde territorio (#496b55) */
+  --secondary: #496b55;
+  --secondary-foreground: #f5f0e6;
+  --secondary-container: #d8e0d2;
+
+  /* Tertiary: terracota oscurecida para texto (#8c4a2a, ~5.9:1 en crema).
+     El terracota puro #b96f4a (3.4:1, solo texto grande/decoración) vive como
+     color con nombre --color-terracota, no como token de texto. */
+  --tertiary: #8c4a2a;
+  --tertiary-foreground: #f5f0e6;
+  --tertiary-container: #f2dfc9;
+  --tertiary-fixed: #e5c39e;
+
+  /* CTA: amarillo tierra (#d7ae55) con texto verde montaña (5.6 AA).
+     Nunca como texto ni sobre crema (1.8). */
+  --amarillo: #d7ae55;
+  --amarillo-foreground: #173f35;
+
   /* Muted */
   --muted: var(--surface-container-high);
-  --muted-foreground: #55606d;
-  
+  --muted-foreground: #40584d;
+
   /* Accent */
   --accent: var(--secondary);
   --accent-foreground: var(--secondary-foreground);
-  
-  /* Destructive: brick (#a44a3a) */
-  --destructive: #a44a3a;
-  
-  /* Borders — WCAG 1.4.11 asks for 3:1 on control outlines (input,
-     checkbox, select). Measured against the LIGHTEST surface they can
-     rest on, not the page background. --outline-variant stays decorative
-     (separators, card edges) on purpose. */
-  --border: #7c7260;
-  --outline-variant: #c4b697;
+
+  /* Destructive: ladrillo-terracota profundo (#8f3b28, ~6.5:1 en crema) */
+  --destructive: #8f3b28;
+
+  /* Borders — WCAG 1.4.11 pide 3:1 en controles (input, checkbox, select).
+     Medido contra la superficie MÁS CLARA sobre la que pueden descansar.
+     --outline-variant queda decorativo (separadores, bordes de card). */
+  --border: #5f6f63;
+  --outline-variant: #d8c9a8;
   --input: var(--border);
   --ring: var(--primary);
 
-  /* Charts: slate, olive, earth, brick, deep sand */
+  /* Charts: montaña, territorio, terracota, ladrillo, arena terracota */
   --chart-1: var(--primary);
   --chart-2: var(--secondary);
   --chart-3: var(--tertiary);
@@ -167,12 +190,12 @@
     padding-right: 0 !important;
   }
   /* Paint the reserved 15px gutter as a custom scrollbar (Chromium/Safari):
-     ivory track keeps the gutter on-system over dark side content (hero
-     photo, slate footer), and the softened-slate thumb reads as part of
-     the palette. Thumb #6e7a88 is a desaturated mix toward slate #2f3e4e
-     (blue undertone, not neutral gray) with 3.8:1 contrast on ivory
-     #f6eedc — passes 3:1 non-text. No transitions by design, so there is
-     nothing for prefers-reduced-motion to neutralize. */
+     crema track keeps the gutter on-system over dark side content (hero
+     photo, deep-montaña footer), and the softened-verde thumb reads as part
+     of the palette. Thumb #5a6e62 is a desaturated mix toward verde montaña
+     #173f35 with ~5:1 contrast on crema #f5f0e6 — passes 3:1 non-text.
+     No transitions by design, so there is nothing for
+     prefers-reduced-motion to neutralize. */
   ::-webkit-scrollbar {
     width: 15px;
   }
@@ -180,7 +203,7 @@
     background: var(--background);
   }
   ::-webkit-scrollbar-thumb {
-    background: #6e7a88;
+    background: #5a6e62;
     border-radius: 999px;
     border: 3px solid var(--background);
   }
@@ -192,7 +215,7 @@
   @supports not selector(::-webkit-scrollbar) {
     html {
       scrollbar-width: thin;
-      scrollbar-color: #6e7a88 var(--background);
+      scrollbar-color: #5a6e62 var(--background);
     }
   }
   body {
@@ -244,8 +267,8 @@
   pointer-events: none;
 }
 
-/* Focus ring: 3px olive with 2px ivory offset for light surfaces.
-   On dark surfaces use an ivory ring instead (see WU follow-ups). */
+/* Focus ring: 3px verde territorio with 2px crema offset for light surfaces.
+   On dark surfaces use a crema/amarillo ring instead (see F5 follow-ups). */
 @utility focus-oliva {
   outline: 3px solid var(--secondary);
   outline-offset: 2px;
@@ -380,6 +403,71 @@
   }
   .lesson-canvas [data-testid="lesson-content"] > *:nth-child(5) {
     animation-delay: 240ms;
+  }
+}
+
+/* F5 — motion global sutil, CSS-only, 0 deps. Tres utilidades nuevas, todas
+   tras `@media (prefers-reduced-motion: no-preference)` explícito (misma
+   razón que F4: la variante motion-safe no genera nada para clases custom; con
+   preferencia reducida rige el bloque global de abajo que neutraliza
+   duraciones). Easing único: cubic-bezier(0.22, 1, 0.36, 1).
+   - .anim-page-reveal: fade + translateY 8px→0, 200ms. La usa
+     `src/app/template.tsx` (solo opacity/transform: sin layout shift).
+   - .anim-stagger-children: reveal escalonado genérico para los 5 primeros
+     hijos (+60ms cada uno), mismo patrón y mismos keyframes (`player-reveal`)
+     que el stagger del player F4. Del 6.º en adelante entran sin delay.
+     `backwards` aplica el estado `from` durante el delay (sin flash).
+   - .link-underline-terracota: subrayado terracota (var(--color-terracota))
+     que crece 0→100% en 200ms. `[aria-current="page"]` lo deja completo. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes page-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .anim-page-reveal {
+    animation: page-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .anim-stagger-children > *:nth-child(-n + 5) {
+    animation: player-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  .anim-stagger-children > *:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .anim-stagger-children > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .anim-stagger-children > *:nth-child(4) {
+    animation-delay: 180ms;
+  }
+  .anim-stagger-children > *:nth-child(5) {
+    animation-delay: 240ms;
+  }
+
+  .link-underline-terracota {
+    background-image: linear-gradient(
+      to right,
+      var(--color-terracota),
+      var(--color-terracota)
+    );
+    background-repeat: no-repeat;
+    background-position: left calc(100% - 1px);
+    background-size: 0% 2px;
+    padding-bottom: 2px;
+    transition: background-size 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .link-underline-terracota:hover {
+    background-size: 100% 2px;
+  }
+  .link-underline-terracota[aria-current="page"] {
+    background-size: 100% 2px;
   }
 }
 

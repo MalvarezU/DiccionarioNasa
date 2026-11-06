@@ -141,7 +141,7 @@ export function DownloadBanner() {
           mt-2 flex items-center gap-2 rounded-lg border px-3 py-1.5
           ${
             bannerState === "error"
-              ? "border-[#A44A3A]/25 bg-[#F1DCD2]"
+              ? "border-destructive/25 bg-destructive/10"
               : "border-outline-variant/30 bg-surface-container-high"
           }
         `}
@@ -158,7 +158,7 @@ export function DownloadBanner() {
             <CheckCircle2 className="size-4 text-secondary" />
           )}
           {bannerState === "error" && (
-            <AlertCircle className="size-4 text-[#A44A3A]" />
+            <AlertCircle className="size-4 text-destructive" />
           )}
         </div>
 
@@ -186,12 +186,12 @@ export function DownloadBanner() {
           )}
 
           {bannerState === "error" && (
-            <p className="text-xs font-medium text-[#A44A3A]">
+            <p className="text-xs font-medium text-destructive">
               Error al descargar. Se reanudará cuando haya conexión.{" "}
               <Button
                 variant="link"
                 onClick={handleRetry}
-                className="h-auto p-0 text-xs font-semibold text-[#A44A3A] underline underline-offset-2"
+                className="h-auto p-0 text-xs font-semibold text-destructive underline underline-offset-2"
               >
                 Reintentar
               </Button>
@@ -204,8 +204,9 @@ export function DownloadBanner() {
           {bannerState === "idle" && (
             <Button
               size="sm"
+              variant="cta"
               onClick={handleDownload}
-              className="h-7 px-2.5 text-xs bg-primary hover:bg-[#22303D] text-primary-foreground"
+              className="h-7 px-2.5 text-xs"
             >
               <Download className="size-3.5" />
               <span className="hidden sm:inline">Descargar</span>

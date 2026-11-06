@@ -86,8 +86,8 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
           </p>
         </div>
         <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-amber-50">
-            <Download className="h-8 w-8 text-amber-600" />
+          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-tertiary-container">
+            <Download className="h-8 w-8 text-tertiary" />
           </div>
           <p className="text-sm font-medium text-foreground max-w-md text-center">
             El diccionario se está descargando.

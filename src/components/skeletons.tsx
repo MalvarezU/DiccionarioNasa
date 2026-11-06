@@ -516,31 +516,31 @@ function CoursePlayerSkeleton() {
         className="hidden h-[calc(100dvh-3.5rem)] w-full space-y-3 rounded-xl bg-primary/90 p-5 lg:block"
       >
         <div className="space-y-2">
-          <div className="h-3 w-24 rounded bg-white/10" />
-          <div className="h-6 w-40 rounded bg-white/10" />
-          <div className="h-1 w-full rounded-full bg-white/10" />
+          <div className="h-3 w-24 rounded bg-crema/10" />
+          <div className="h-6 w-40 rounded bg-crema/10" />
+          <div className="h-1 w-full rounded-full bg-crema/10" />
         </div>
-        <div className="space-y-2 rounded-xl border border-white/10 p-4">
+        <div className="space-y-2 rounded-xl border border-crema/10 p-4">
           <div className="flex items-center justify-between gap-3">
-            <div className="h-5 w-32 rounded bg-white/10" />
-            <div className="h-4 w-10 rounded-full bg-white/10" />
+            <div className="h-5 w-32 rounded bg-crema/10" />
+            <div className="h-4 w-10 rounded-full bg-crema/10" />
           </div>
-          <div className="h-1 w-full rounded-full bg-white/10" />
+          <div className="h-1 w-full rounded-full bg-crema/10" />
           <div className="space-y-1.5 pt-1">
-            <div className="h-9 w-full rounded-lg bg-white/10" />
-            <div className="h-9 w-full rounded-lg bg-white/10" />
-            <div className="h-9 w-4/5 rounded-lg bg-white/10" />
+            <div className="h-9 w-full rounded-lg bg-crema/10" />
+            <div className="h-9 w-full rounded-lg bg-crema/10" />
+            <div className="h-9 w-4/5 rounded-lg bg-crema/10" />
           </div>
         </div>
-        <div className="space-y-2 rounded-xl border border-white/10 p-4">
+        <div className="space-y-2 rounded-xl border border-crema/10 p-4">
           <div className="flex items-center justify-between gap-3">
-            <div className="h-5 w-28 rounded bg-white/10" />
-            <div className="h-4 w-10 rounded-full bg-white/10" />
+            <div className="h-5 w-28 rounded bg-crema/10" />
+            <div className="h-4 w-10 rounded-full bg-crema/10" />
           </div>
-          <div className="h-1 w-full rounded-full bg-white/10" />
+          <div className="h-1 w-full rounded-full bg-crema/10" />
           <div className="space-y-1.5 pt-1">
-            <div className="h-9 w-full rounded-lg bg-white/10" />
-            <div className="h-9 w-3/5 rounded-lg bg-white/10" />
+            <div className="h-9 w-full rounded-lg bg-crema/10" />
+            <div className="h-9 w-3/5 rounded-lg bg-crema/10" />
           </div>
         </div>
       </div>

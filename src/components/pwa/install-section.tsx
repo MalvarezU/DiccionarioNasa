@@ -66,6 +66,7 @@ export function InstallSection() {
             </CardHeader>
             <CardContent>
               <Button
+                variant="cta"
                 className="gap-2 w-full"
                 disabled={instalada}
                 aria-haspopup="dialog"
@@ -103,7 +104,7 @@ export function InstallSection() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 rounded-xl border bg-card p-6">
-          <div className="bg-white p-3 rounded-lg shrink-0" aria-hidden={false}>
+          <div className="bg-card p-3 rounded-lg shrink-0" aria-hidden={false}>
             <QRCodeSVG
               value={origen || "https://piiyaak.org"}
               size={160}

@@ -45,8 +45,8 @@ describe("PWA [B3.2] — service worker no cachea respuestas no-store", () => {
     expect(sw).toMatch(/!cc\.includes\("no-store"\)/)
   })
 
-  it("la caché del shell subió de v2 a v3 (limpia caché vieja con CSS stale)", () => {
-    expect(sw).toContain('SHELL_CACHE = "piiyaak-shell-v3"')
-    expect(sw).not.toContain('SHELL_CACHE = "piiyaak-shell-v2"')
+  it("la caché del shell subió de v3 a v4 (limpia caché vieja con CSS stale)", () => {
+    expect(sw).toContain('SHELL_CACHE = "piiyaak-shell-v4"')
+    expect(sw).not.toContain('SHELL_CACHE = "piiyaak-shell-v3"')
   })
 })

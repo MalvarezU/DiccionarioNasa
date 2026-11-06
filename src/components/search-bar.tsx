@@ -440,7 +440,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {/* Search Input */}
         <div className="relative">
           <Search
-            className={`absolute left-3 top-1/2 -translate-y-1/2 ${sobreOscuro ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
+            className={`absolute left-3 top-1/2 -translate-y-1/2 ${sobreOscuro ? "text-crema/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
             aria-hidden="true"
           />
           <Input
@@ -462,7 +462,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
             onKeyDown={handleKeyDown}
             className={`pl-10 w-full transition-colors ${
               sobreOscuro
-                ? "h-14 text-base sm:text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-white placeholder:text-white/70 border-white/30 hover:border-white/60 focus-visible:border-white focus-visible:ring-white/30"
+                ? "h-14 text-base sm:text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-crema placeholder:text-crema/70 border-crema/30 hover:border-crema/60 focus-visible:border-crema focus-visible:ring-crema/30"
                 : esGrande
                   ? "h-14 text-lg rounded-xl pr-10 bg-surface-container-low border shadow-md focus-visible:border-secondary/60 focus-visible:ring-secondary/25 text-foreground placeholder:text-muted-foreground focus-visible:shadow-lg"
                   : "h-10 pr-9 bg-surface-container-low border-border focus-visible:border-secondary/60 focus-visible:ring-secondary/25 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:shadow-md"
@@ -476,7 +476,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           />
           {isLoading && (
             <Loader2
-              className={`absolute right-3 top-1/2 -translate-y-1/2 animate-spin ${sobreOscuro ? "text-white/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 animate-spin ${sobreOscuro ? "text-crema/70 h-5 w-5" : "text-muted-foreground h-4 w-4"}`}
             />
           )}
         </div>
@@ -485,10 +485,10 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {!isOnline && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <CloudOff
-              className={`h-3.5 w-3.5 ${sobreOscuro ? "text-amber-300" : "text-amber-600"}`}
+              className={`h-3.5 w-3.5 ${sobreOscuro ? "text-tertiary-fixed" : "text-tertiary"}`}
             />
             <span
-              className={`text-xs font-medium ${sobreOscuro ? "text-amber-200" : "text-amber-700"}`}
+              className={`text-xs font-medium ${sobreOscuro ? "text-tertiary-fixed" : "text-tertiary"}`}
               style={sobreOscuro ? { textShadow: "0 1px 4px rgba(0,0,0,0.7)" } : undefined}
             >
               Búsqueda local (sin conexión)
@@ -500,11 +500,11 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         {isOnline && esGrande && !panelMode && (
           <div className="mt-2 flex items-center gap-1.5 justify-center">
             <Cloud
-              className={`h-3.5 w-3.5 ${sobreOscuro ? "text-emerald-300" : "text-emerald-600"}`}
+              className={`h-3.5 w-3.5 ${sobreOscuro ? "text-secondary-container" : "text-secondary"}`}
               aria-hidden="true"
             />
             <span
-              className={`text-xs font-medium ${sobreOscuro ? "text-white/80" : "text-muted-foreground"}`}
+              className={`text-xs font-medium ${sobreOscuro ? "text-crema/80" : "text-muted-foreground"}`}
               style={sobreOscuro ? { textShadow: "0 1px 4px rgba(0,0,0,0.7)" } : undefined}
             >
               Búsqueda en línea
@@ -528,7 +528,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               >
                 {/* Offline banner — context-aware for local DB readiness */}
                 {!isOnline && (
-                  <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
+                  <div className="px-3 py-1.5 text-xs font-medium text-tertiary bg-tertiary-container border-b border-tertiary/30 flex items-center gap-1.5">
                     <CloudOff className="h-3 w-3" />
                     {localDBReady
                       ? "Sin conexión — mostrando resultados locales"
@@ -557,7 +557,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                     <Button
                       variant="default"
                       size="sm"
-                      className="gap-1.5 bg-primary hover:bg-[#22303D] transition-colors"
+                      className="gap-1.5 bg-primary hover:bg-montana-deep transition-colors"
                       disabled={!isOnline}
                       onClick={() => {
                         setSuggestOpen(true);
@@ -660,7 +660,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               >
                 {/* Offline banner — context-aware for local DB readiness */}
                 {!isOnline && (
-                  <div className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
+                  <div className="px-3 py-1.5 text-xs font-medium text-tertiary bg-tertiary-container border-b border-tertiary/30 flex items-center gap-1.5">
                     <CloudOff className="h-3 w-3" />
                     {localDBReady
                       ? "Sin conexión — mostrando resultados locales"
@@ -689,7 +689,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                     <Button
                       variant="default"
                       size="sm"
-                      className="gap-1.5 bg-primary hover:bg-[#22303D] transition-colors"
+                      className="gap-1.5 bg-primary hover:bg-montana-deep transition-colors"
                       disabled={!isOnline}
                       onClick={() => {
                         setSuggestOpen(true);

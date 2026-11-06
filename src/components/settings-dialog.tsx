@@ -152,21 +152,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <div
             className={`flex items-center gap-3 p-3 rounded-lg border ${
               isOnline
-                ? "bg-[#E3E6D2] border-[#5E6B45]/30"
-                : "bg-[#F0E3C6] border-[#7A5F33]/30"
+                ? "bg-secondary-container border-secondary/30"
+                : "bg-tertiary-container border-tertiary/30"
             }`}
           >
             {isOnline ? (
-              <Wifi className="h-5 w-5 text-[#5E6B45] shrink-0" />
+              <Wifi className="h-5 w-5 text-secondary shrink-0" />
             ) : (
-              <WifiOff className="h-5 w-5 text-[#7A5F33] shrink-0" />
+              <WifiOff className="h-5 w-5 text-tertiary shrink-0" />
             )}
             <div className="min-w-0">
               <p
                 className={`text-sm font-medium ${
                   isOnline
-                    ? "text-[#4C5738]"
-                    : "text-[#7A5F33]"
+                    ? "text-montana"
+                    : "text-tertiary"
                 }`}
               >
                 {isOnline ? "Conectado a internet" : "Sin conexión a internet"}
@@ -192,7 +192,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <span className="text-muted-foreground">Estado</span>
                 <p className="font-medium text-foreground">
                   {isReady ? (
-                    <span className="flex items-center gap-1 text-[#4C5738]">
+                    <span className="flex items-center gap-1 text-montana">
                       <CheckCircle2 className="h-3 w-3" />
                       Descargada
                     </span>
@@ -202,7 +202,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       Descargando...
                     </span>
                   ) : (
-                    <span className="text-[#7A5F33]">
+                    <span className="text-tertiary">
                       No descargada
                     </span>
                   )}
@@ -243,10 +243,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
           {/* ─── Success message after sync completes ───────────── */}
           {effectiveFeedback === "success" && !isDownloading && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-[#E3E6D2] border border-[#5E6B45]/30">
-              <CheckCircle2 className="h-5 w-5 text-[#5E6B45] shrink-0" />
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary-container border border-secondary/30">
+              <CheckCircle2 className="h-5 w-5 text-secondary shrink-0" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-[#4C5738]">
+                <p className="text-sm font-medium text-montana">
                   Sincronización completada
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -258,9 +258,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
           {/* ─── Offline message when user tries to sync ────────── */}
           {effectiveFeedback === "offline" && !isDownloading && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-[#F0E3C6] border border-[#7A5F33]/30">
-              <CloudOff className="h-5 w-5 text-[#7A5F33] shrink-0" />
-              <p className="text-sm font-medium text-[#7A5F33]">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-tertiary-container border border-tertiary/30">
+              <CloudOff className="h-5 w-5 text-tertiary shrink-0" />
+              <p className="text-sm font-medium text-tertiary">
                 Sin conexión a internet. Conéctate para sincronizar.
               </p>
             </div>

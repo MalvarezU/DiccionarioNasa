@@ -123,12 +123,12 @@ export function NavBar() {
     <>
       <SkipLink />
       {isHeroTop && (
-        <style>{`@supports not (backdrop-filter: blur(4px)){.navbar-hero-top{background-color:rgb(27 39 51/.9)}}@media (prefers-contrast: more){.navbar-hero-top{background-color:rgb(27 39 51/.9)}}`}</style>
+        <style>{`@supports not (backdrop-filter: blur(4px)){.navbar-hero-top{background-color:rgb(14 42 34/.9)}}@media (prefers-contrast: more){.navbar-hero-top{background-color:rgb(14 42 34/.9)}}`}</style>
       )}
       <header
         className={
           isHeroTop
-            ? "fixed inset-x-0 top-0 z-50 h-14 bg-[#1B2733]/25 backdrop-blur-sm backdrop-brightness-[.92] border-b border-white/10 motion-safe:transition-[background-color,border-color] motion-safe:duration-300 navbar-hero-top"
+            ? "fixed inset-x-0 top-0 z-50 h-14 bg-montana-deep/25 backdrop-blur-sm backdrop-brightness-[.92] border-b border-crema/10 motion-safe:transition-[background-color,border-color] motion-safe:duration-300 navbar-hero-top"
             : hasHero
               ? "fixed inset-x-0 top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90 motion-safe:transition-[background-color,border-color] motion-safe:duration-300"
               : "sticky top-0 z-50 w-full border-b border-outline-variant/20 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90"
@@ -140,7 +140,14 @@ export function NavBar() {
               logoPiiyaakblanco.png is the white badge version (transparent
               background); the serif wordmark stays for legibility at small
               sizes. */}
-          <Link href="/" className="flex items-center gap-2 shrink-0 group">
+          <Link
+            href="/"
+            className={`flex items-center gap-2 shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 ${
+              isHeroTop
+                ? "focus-visible:outline-crema"
+                : "focus-visible:outline-primary"
+            } group`}
+          >
             <Image
               src="/logoPiiyaakblanco.png"
               alt="Piiyaak"
@@ -149,14 +156,14 @@ export function NavBar() {
               priority
               className={
                 isHeroTop
-                  ? "h-7 w-auto rounded-md ring-1 ring-white/25"
+                  ? "h-7 w-auto rounded-md ring-1 ring-crema/25"
                   : "h-7 w-auto rounded-md ring-1 ring-black/10"
               }
             />
             <span
               className={
                 isHeroTop
-                  ? "hidden min-[400px]:inline font-serif font-semibold text-lg tracking-tight text-[#F6EEDC]/90 transition-colors group-hover:text-[#F6EEDC]"
+                  ? "hidden min-[400px]:inline font-serif font-semibold text-lg tracking-tight text-crema/90 transition-colors group-hover:text-crema"
                   : "hidden min-[400px]:inline font-serif font-semibold text-lg tracking-tight text-primary group-hover:text-primary/80 transition-colors"
               }
             >
@@ -174,18 +181,18 @@ export function NavBar() {
                     key={item.href}
                     href={item.href}
                     aria-current={isActive(item.href) ? "page" : undefined}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                    className={`link-underline-terracota flex items-center gap-1.5 px-1 py-1.5 rounded-sm text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
                       isHeroTop
-                        ? "focus-visible:outline-[#F6EEDC]"
+                        ? "focus-visible:outline-crema"
                         : "focus-visible:outline-primary"
                     } ${
                       isActive(item.href)
                         ? isHeroTop
-                          ? "text-[#F6EEDC] bg-white/15"
-                          : "text-primary bg-primary/10"
+                          ? "text-crema"
+                          : "text-primary"
                         : isHeroTop
-                          ? "text-[#F6EEDC]/85 hover:text-[#F6EEDC] hover:bg-white/10"
-                          : "text-foreground/80 bg-white/40 hover:text-primary hover:bg-surface-container-high"
+                          ? "text-crema/85 hover:text-crema"
+                          : "text-foreground/80 hover:text-primary"
                     }`}
                   >
                     <item.icon className="h-4 w-4" />
@@ -203,16 +210,16 @@ export function NavBar() {
                     aria-current={isActive(item.href) ? "page" : undefined}
                     className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[56px] px-2 rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
                       isHeroTop
-                        ? "focus-visible:outline-[#F6EEDC]"
+                        ? "focus-visible:outline-crema"
                         : "focus-visible:outline-primary"
                     } ${
                       isActive(item.href)
                         ? isHeroTop
-                          ? "text-[#F6EEDC] bg-white/15"
+                          ? "text-crema bg-crema/15"
                           : "text-primary bg-primary/10"
                         : isHeroTop
-                          ? "text-[#F6EEDC]/85 hover:text-[#F6EEDC] hover:bg-white/10"
-                          : "text-foreground/80 bg-white/40 hover:text-primary hover:bg-surface-container-high"
+                          ? "text-crema/85 hover:text-crema hover:bg-crema/10"
+                          : "text-foreground/80 bg-card hover:text-primary hover:bg-surface-container-high"
                     }`}
                   >
                     <item.icon className="h-4 w-4" aria-hidden="true" />
@@ -233,7 +240,7 @@ export function NavBar() {
                   variant="secondary"
                   className={
                     isHeroTop
-                      ? "gap-1.5 text-2xs font-normal bg-white/10 text-[#F6EEDC] border border-white/20"
+                      ? "gap-1.5 text-2xs font-normal bg-crema/10 text-crema border border-crema/20"
                       : "gap-1.5 text-2xs font-normal bg-secondary/10 text-secondary border border-secondary/20"
                   }
                 >
@@ -245,11 +252,11 @@ export function NavBar() {
                   variant="secondary"
                   className={
                     isHeroTop
-                      ? "gap-1.5 text-2xs font-normal bg-white/10 text-[#F6EEDC] border border-white/20"
+                      ? "gap-1.5 text-2xs font-normal bg-crema/10 text-crema border border-crema/20"
                       : "gap-1.5 text-2xs font-normal bg-tertiary/10 text-tertiary border border-tertiary/20"
                   }
                 >
-                  <WifiOff className={isHeroTop ? "h-3 w-3 text-amber-300" : "h-3 w-3"} />
+                  <WifiOff className={isHeroTop ? "h-3 w-3 text-tertiary-fixed" : "h-3 w-3"} />
                   <span className="hidden sm:inline">Sin conexión</span>
                 </Badge>
               ))}
@@ -268,14 +275,14 @@ export function NavBar() {
                     size="sm"
                     className={
                       isHeroTop
-                        ? "gap-1.5 text-xs sm:text-sm text-[#F6EEDC]/90 hover:text-[#F6EEDC] hover:bg-white/10"
+                        ? "gap-1.5 text-xs sm:text-sm text-crema/90 hover:text-crema hover:bg-crema/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
                         : "gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground"
                     }
                   >
                     <div
                       className={
                         isHeroTop
-                          ? "flex items-center justify-center h-6 w-6 rounded-full bg-white/10 text-[#F6EEDC] shrink-0"
+                          ? "flex items-center justify-center h-6 w-6 rounded-full bg-crema/10 text-crema shrink-0"
                           : "flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary shrink-0"
                       }
                     >
@@ -338,8 +345,8 @@ export function NavBar() {
                 size="sm"
                 className={
                   isHeroTop
-                    ? "gap-1.5 text-xs sm:text-sm bg-[#F6EEDC] text-[#2F3E4E] hover:bg-[#FFF9EC] transition-colors"
-                    : "gap-1.5 text-xs sm:text-sm bg-primary hover:bg-[#22303D] transition-colors"
+                    ? "gap-1.5 text-xs sm:text-sm bg-crema text-primary hover:bg-background transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
+                    : "gap-1.5 text-xs sm:text-sm bg-primary hover:bg-montana-deep transition-colors"
                 }
                 onClick={() => setAuthModalOpen(true)}
                 aria-label="Iniciar sesión"
@@ -359,7 +366,7 @@ export function NavBar() {
                       size="icon"
                       className={
                         isHeroTop
-                          ? "size-8 text-[#F6EEDC]/90 hover:text-[#F6EEDC] hover:bg-white/10"
+                          ? "size-8 text-crema/90 hover:text-crema hover:bg-crema/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
                           : "size-8 text-muted-foreground hover:text-foreground"
                       }
                       onClick={() => setSettingsOpen(true)}

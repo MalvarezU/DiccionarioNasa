@@ -18,8 +18,9 @@ interface WordCardProps {
 }
 
 const CARD_FOCUS =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5E6B45]"
-const CARD_HOVER = "hover:shadow-md hover:border-secondary/40"
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+const CARD_HOVER = "motion-safe:hover:shadow-md motion-safe:hover:-translate-y-0.5 hover:border-secondary/40"
+const CARD_TRANSITION = "transition-[transform,box-shadow,border-color]"
 
 /**
  * Tarjeta de palabra del diccionario. La card completa abre la ficha;
@@ -109,7 +110,7 @@ export function WordCard({ word, variant, onOpen, onPlayState }: WordCardProps) 
         aria-label={`Ver ficha de ${word.nasaYuwe}`}
         onClick={() => onOpen(word.id)}
         onKeyDown={handleKeyDown}
-        className={`flex cursor-pointer items-center gap-2 rounded-xl border border-outline-variant/30 bg-surface-container-low px-3 py-2 ${CARD_HOVER} ${CARD_FOCUS}`}
+        className={`flex cursor-pointer items-center gap-2 rounded-xl border border-outline-variant/30 bg-surface-container-low px-3 py-2 ${CARD_TRANSITION} ${CARD_HOVER} ${CARD_FOCUS}`}
       >
         {hasAudio && (
           <button
@@ -154,7 +155,7 @@ export function WordCard({ word, variant, onOpen, onPlayState }: WordCardProps) 
       aria-label={`Ver ficha de ${word.nasaYuwe}`}
       onClick={() => onOpen(word.id)}
       onKeyDown={handleKeyDown}
-      className={`cursor-pointer rounded-xl border border-outline-variant/30 bg-surface-container-low p-5 ${CARD_HOVER} ${CARD_FOCUS}`}
+      className={`cursor-pointer rounded-xl border border-outline-variant/30 bg-surface-container-low p-5 ${CARD_TRANSITION} ${CARD_HOVER} ${CARD_FOCUS}`}
     >
       {(word.category || hasAudio) && (
         <div className="flex items-start justify-between gap-2">
