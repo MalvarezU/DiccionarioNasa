@@ -6,12 +6,11 @@
 |------|-----------|
 | Motor | MariaDB 10.11 (Hostinger en prod, MariaDB 10.11 local en dev) |
 | ORM | Prisma (`prisma-client-js`) |
-| Migraciones | Prisma Migrate (11 migraciones) |
-| Extensiones | `unaccent` (búsqueda insensible a acentos) |
+| Migraciones | Prisma Migrate (baseline `*_mysql_baseline` + aditivas) |
+| Búsqueda sin acentos | Collation `utf8mb4_unicode_ci` (case- y accent-insensitive; `unaccent` solo existió en la era Postgres) |
 
 **Variables de entorno:**
-- `DATABASE_URL` — conexión pooled (Supavisor/pgbouncer)
-- `DIRECT_URL` — conexión directa (migraciones)
+- `DATABASE_URL` — conexión a MariaDB (`mysql://...`, sin pooler ni `DIRECT_URL`: el provider `mysql` no los usa)
 
 ---
 
@@ -238,7 +237,7 @@ Cursos de la ruta de aprendizaje.
 | `id` | TEXT (cuid) | PK | |
 | `title` | TEXT | NOT NULL | |
 | `description` | TEXT | | |
-| `coverImage` | TEXT | | URL de portada (Supabase Storage) |
+| `coverImage` | TEXT | | URL de portada (R2, `images/...`) |
 | `status` | ENUM `ContentStatus` | NOT NULL, default `DRAFT` | |
 | `sequential` | BOOLEAN | NOT NULL, default `true` | Si el avance es ordenado |
 | `createdAt` | TIMESTAMP | NOT NULL, default `now()` | |
@@ -301,15 +300,15 @@ Progreso del usuario por lección.
 
 ### 3.8 `MediaAsset`
 
-Imágenes binarias almacenadas en Postgres (bytea), servidas por `/api/media/[id]`.
+Metadatos de archivos guardados en Cloudflare R2, servidos por `/api/media/[id]` (302 a la URL pública). La columna binaria `data` se eliminó (era `BYTEA` en la era Postgres, luego `LONGBLOB` en MariaDB): el binario vive en el bucket y acá solo la clave.
 
 | Columna | Tipo | Constraint | Descripción |
 |---------|------|------------|-------------|
 | `id` | TEXT (cuid) | PK | |
+| `objectKey` | TEXT | UNIQUE | Clave en R2 (`images/<uuid>.<ext>` \| `audios/<wordId>/...`) |
 | `filename` | TEXT | NOT NULL | Nombre original |
 | `mimeType` | TEXT | NOT NULL | MIME detectado por firma binaria |
 | `size` | INT | NOT NULL | Bytes |
-| `data` | BYTEA | NOT NULL | Binario |
 | `uploadedBy` | TEXT | | userId (sin FK — flexibilidad) |
 | `createdAt` | TIMESTAMP | NOT NULL, default `now()` | |
 
@@ -431,7 +430,7 @@ Registro de auditoría de cambios en el diccionario.
 
 ---
 
-## 6. Extensiones PostgreSQL
+## 6. Extensiones PostgreSQL (era pre-baseline `mysql`; sin efecto en el motor vigente)
 
 | Extensión | Motivo |
 |-----------|--------|
@@ -439,7 +438,7 @@ Registro de auditoría de cambios en el diccionario.
 
 ---
 
-## 7. Migraciones (orden cronológico)
+## 7. Migraciones Postgres, era pre-baseline (orden cronológico; registro histórico)
 
 | # | Archivo | Descripción |
 |---|---------|-------------|
@@ -461,12 +460,12 @@ Registro de auditoría de cambios en el diccionario.
 
 1. **IDs `cuid()` en TEXT** — legibles en URL, sin enumeración secuencial.
 2. **AuditLog con UUID** — expone menos información de volumen que un serial.
-3. **MediaAsset en MariaDB (LONGBLOB)** — mismo origen que la API → el service worker del PWA puede cachear offline sin CORS. (Legado: bytea en Postgres/Supabase, deprecado.)
+3. **MediaAsset: metadatos en MariaDB, binario en R2** — mismo origen que la API → el service worker del PWA puede cachear offline sin CORS. (Legado: binario `data` en BD — bytea en Postgres/Supabase, luego LONGBLOB en MariaDB —, columna eliminada.)
 4. **`illustrationUrl` como string, no relación** — mismo patrón que `audioUrl`: el binario vive en MediaAsset pero se referencia por URL para cacheabilidad.
 5. **`Lesson.content` como JSONB** — permite bloques tipados sin esquema fijo por tipo; la validación vive en `src/lib/courses/blocks.ts`.
 6. **`Lesson.type` DEPRECATED** — el tipo ahora vive en cada bloque de `content`; se conserva para backfill.
 7. **Unique compuesto en UserGameSession** — `(userId, game)` y `(sessionKey, game)` permiten upsert atómico sin colisionar con NULLs.
-8. **`unaccent` explícito en migración** — paridad entre prod (Supabase panel) y dev local.
+8. **Sin `unaccent` en MariaDB** — la era Postgres lo fijaba explícito en migración; en el motor vigente (MariaDB, prod Hostinger + local) la paridad la da la collation `utf8mb4_unicode_ci` por base de datos.
 
 ---
 
@@ -493,7 +492,7 @@ Migración del motor a **MariaDB** (paridad con Hostinger: su hosting Node.js + 
 
 - `docker-compose.test.mysql.yml`: MariaDB 10.11 efímera en `localhost:3307` (BD `piiyaak_test`, collation `utf8mb4_unicode_ci`).
 - `.env.test.mysql` (local, gitignored) → `DATABASE_URL="mysql://test:test@localhost:3307/piiyaak_test"`.
-- `./scripts/e2e-local.sh` auto-detecta el motor: usa `.env.test.mysql` si existe; si no, `.env.test` (Postgres).
+- `./scripts/e2e-local.sh` auto-detecta el motor por el esquema de `DATABASE_URL` (`mysql://` → compose MariaDB, `postgresql://` → compose Postgres legacy). El motor vigente es MariaDB (`.env.test.mysql`); el path Postgres es legacy de la era Supabase.
 - Si levantás el dev server en un puerto distinto del 3000 (p. ej. para no chocar con otro server), exportá `NEXTAUTH_URL=http://localhost:<puerto>` además de `E2E_BASE_URL`: si no, el signout de NextAuth apunta al puerto viejo y el test de logout falla.
 - npm: `bun run db:test:up:mysql`.
 
@@ -508,5 +507,5 @@ Migración del motor a **MariaDB** (paridad con Hostinger: su hosting Node.js + 
 
 - El host no admite flags de servidor: la collation se fija **por base de datos** desde phpMyAdmin (Operations → Collation) antes de importar.
 - Sin Remote MySQL: correr migraciones + seed localmente y exportar dump → importar por phpMyAdmin.
-- Verificar `max_allowed_packet` del plan contra `MediaAsset.data` (LONGBLOB).
+- `MediaAsset` ya no guarda binario en BD (columna `data` eliminada, vive en R2): no hay requisito de `max_allowed_packet` por media.
 - La app Next.js en cPanel es un plan aparte (Node.js App); `127.0.0.1`, no `localhost`.
