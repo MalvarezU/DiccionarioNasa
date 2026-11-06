@@ -1,6 +1,7 @@
 "use client";
 
-import { Clock, History, Search, Trash2 } from "lucide-react";
+import { ArrowRight, Clock, History, Search, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { HistorySkeleton } from "@/components/skeletons";
@@ -70,6 +71,12 @@ export function HistoryTab({
             <p className="text-xs text-muted-foreground max-w-sm text-center">
               Las palabras que consultes aparecerán aquí agrupadas por fecha.
             </p>
+            <Button asChild className="gap-2 min-h-[44px]">
+              <Link href="/diccionario">
+                Explorar el diccionario
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
           </div>
         ) : (
           <div className="space-y-6">
@@ -119,10 +126,18 @@ export function HistoryTab({
         </div>
 
         {searches.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Todavía no buscaste nada. Lo que escribas en el diccionario
-            aparecerá aquí.
-          </p>
+          <div className="flex flex-col items-start gap-3">
+            <p className="text-sm text-muted-foreground">
+              Todavía no buscaste nada. Lo que escribas en el diccionario
+              aparecerá aquí.
+            </p>
+            <Button asChild className="gap-2 min-h-[44px]">
+              <Link href="/diccionario">
+                Explorar el diccionario
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {searches.map((s) => (

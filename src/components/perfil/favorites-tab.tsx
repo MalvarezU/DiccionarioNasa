@@ -1,6 +1,7 @@
 "use client";
 
-import { Heart, HeartOff, Loader2 } from "lucide-react";
+import { ArrowRight, Heart, HeartOff, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { FavoritesGridSkeleton } from "@/components/skeletons";
 import { WordListCard } from "./word-list-card";
@@ -35,6 +36,12 @@ export function FavoritesTab({
           Explora el diccionario y marca palabras como favoritas para verlas
           aquí.
         </p>
+        <Button asChild className="gap-2 min-h-[44px]">
+          <Link href="/diccionario">
+            Explorar el diccionario
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </Button>
       </div>
     );
   }
