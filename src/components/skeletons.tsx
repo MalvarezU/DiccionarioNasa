@@ -475,38 +475,51 @@ function ModuleSkeleton({ lessons = 3 }: { lessons?: number }) {
 }
 
 /**
- * Réplica del player master-detail: sidebar de 320px estática + canvas con
- * min-h fijo. Alturas fijas a propósito: el swap al dato real no mueve
- * layout (CLS ≈ 0, ver §F del plan de rediseño).
+ * Réplica del player master-detail: sidebar dark de alto viewport + canvas
+ * con min-h fijo. Mismo grid que el shell real
+ * (`lg:288px / xl:320px + gap-10`): el swap al dato real no mueve layout
+ * (CLS ≈ 0, ver §F del plan de rediseño).
  */
 function CoursePlayerSkeleton() {
   return (
     <div
       data-slot="skeleton-course-player"
       data-testid="skeleton-course-player"
-      className="mx-auto w-full max-w-[1400px] gap-10 px-6 py-8 lg:px-10 xl:grid xl:grid-cols-[320px_minmax(0,1fr)]"
+      className="mx-auto grid w-full max-w-[1400px] gap-10 px-6 py-8 lg:grid-cols-[288px_minmax(0,1fr)] lg:px-10 xl:grid-cols-[320px_minmax(0,1fr)]"
     >
-      {/* Sidebar: header del curso + bloques de módulo */}
-      <div aria-hidden="true" className="hidden space-y-4 xl:block">
+      {/* Sidebar: bloque dark de alto viewport como el outline real */}
+      <div
+        aria-hidden="true"
+        className="hidden h-[calc(100dvh-3.5rem)] w-full space-y-3 rounded-xl bg-primary/90 p-5 lg:block"
+      >
         <div className="space-y-2">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-1 w-full rounded-full" />
+          <div className="h-3 w-24 rounded bg-white/10" />
+          <div className="h-6 w-40 rounded bg-white/10" />
+          <div className="h-1 w-full rounded-full bg-white/10" />
         </div>
-        {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="space-y-2 rounded-xl border border-outline-variant/20 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-10 rounded-full" />
-            </div>
-            <Skeleton className="h-1 w-full rounded-full" />
-            <div className="space-y-1.5 pt-1">
-              <Skeleton className="h-9 w-full rounded-lg" />
-              <Skeleton className="h-9 w-full rounded-lg" />
-              <Skeleton className="h-9 w-4/5 rounded-lg" />
-            </div>
+        <div className="space-y-2 rounded-xl border border-white/10 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="h-5 w-32 rounded bg-white/10" />
+            <div className="h-4 w-10 rounded-full bg-white/10" />
           </div>
-        ))}
+          <div className="h-1 w-full rounded-full bg-white/10" />
+          <div className="space-y-1.5 pt-1">
+            <div className="h-9 w-full rounded-lg bg-white/10" />
+            <div className="h-9 w-full rounded-lg bg-white/10" />
+            <div className="h-9 w-4/5 rounded-lg bg-white/10" />
+          </div>
+        </div>
+        <div className="space-y-2 rounded-xl border border-white/10 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="h-5 w-28 rounded bg-white/10" />
+            <div className="h-4 w-10 rounded-full bg-white/10" />
+          </div>
+          <div className="h-1 w-full rounded-full bg-white/10" />
+          <div className="space-y-1.5 pt-1">
+            <div className="h-9 w-full rounded-lg bg-white/10" />
+            <div className="h-9 w-3/5 rounded-lg bg-white/10" />
+          </div>
+        </div>
       </div>
       {/* Canvas: breadcrumb + título + bloques, min-h fijo anti-CLS */}
       <div aria-hidden="true" className="min-h-[max(420px,60dvh)] space-y-4">

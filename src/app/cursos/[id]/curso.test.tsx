@@ -113,8 +113,8 @@ describe("/cursos/[id] player", () => {
     expect(l3).toHaveAttribute("aria-disabled", "true")
     // El canvas abre en la primera desbloqueada
     expect(await screen.findByRole("heading", { level: 2, name: "L1" })).toBeDefined()
-    // El conteo vive en el header del curso y en el resumen del outline
-    expect(screen.getAllByText("0/3 lecciones")).toHaveLength(2)
+    // El conteo vive solo en el resumen del outline (el header ya no duplica %)
+    expect(screen.getAllByText("0/3 lecciones")).toHaveLength(1)
   })
 
   it("deep-link ?leccion= a lección bloqueada muestra el banner con CTA", async () => {
@@ -152,7 +152,7 @@ describe("/cursos/[id] player", () => {
         })
       )
     })
-    expect(await screen.findAllByText("1/3 lecciones")).toHaveLength(2)
+    expect(await screen.findAllByText("1/3 lecciones")).toHaveLength(1)
   })
 
   it("fetch roto muestra error visible, jamás skeletons infinitos", async () => {
@@ -192,7 +192,7 @@ describe("/cursos/[id] player", () => {
       expect(outline.querySelector('[data-lesson-state="todo"]')).not.toBeNull()
     })
     expect(outline.textContent).not.toMatch(/Completá el Módulo/)
-    expect(await screen.findAllByText("1/2 lecciones")).toHaveLength(2)
+    expect(await screen.findAllByText("1/2 lecciones")).toHaveLength(1)
   })
 
   it("módulo vacío: pill 0/0, sin botones, el canvas abre la lección real", async () => {
@@ -216,7 +216,7 @@ describe("/cursos/[id] player", () => {
     expect(outline.textContent).toContain("0/0")
     // Solo la lección real es seleccionable
     expect(outline.querySelectorAll("[data-lesson-button]")).toHaveLength(1)
-    expect(await screen.findAllByText("0/1 lecciones")).toHaveLength(2)
+    expect(await screen.findAllByText("0/1 lecciones")).toHaveLength(1)
   })
 
   it("reintento tras fallo del manifest recupera el curso", async () => {

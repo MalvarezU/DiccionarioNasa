@@ -219,4 +219,37 @@ describe("CourseOutline", () => {
     expect(btn?.getAttribute("title")).toBe(longTitle)
     expect(btn?.querySelector(".truncate")).not.toBeNull()
   })
+
+  it("Continuar donde quedé: aparece solo si hay visitada distinta de la activa y navega", async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    render(
+      <CourseOutline
+        {...props({ onSelect, activeLessonId: "l12", lastVisitedLessonId: "l11" })}
+      />
+    )
+    const cta = screen.getByRole("button", { name: "Continuar donde quedé" })
+    expect(cta.className).toContain("min-h-[44px]")
+    await user.click(cta)
+    expect(onSelect).toHaveBeenCalledWith("l11")
+  })
+
+  it("Continuar donde quedé: oculto si es la activa o ya está completada", () => {
+    const { rerender } = render(
+      <CourseOutline
+        {...props({ activeLessonId: "l11", lastVisitedLessonId: "l11" })}
+      />
+    )
+    expect(screen.queryByRole("button", { name: "Continuar donde quedé" })).toBeNull()
+    rerender(
+      <CourseOutline
+        {...props({
+          activeLessonId: "l12",
+          lastVisitedLessonId: "l11",
+          completedIds: new Set(["l11"]),
+        })}
+      />
+    )
+    expect(screen.queryByRole("button", { name: "Continuar donde quedé" })).toBeNull()
+  })
 })

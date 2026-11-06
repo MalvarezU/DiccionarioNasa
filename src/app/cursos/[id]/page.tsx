@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { notFound } from "next/navigation"
-import { GraduationCap, ArrowLeft, BookOpen, CheckCircle2 } from "lucide-react"
+import { GraduationCap, ArrowLeft, BookOpen } from "lucide-react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { NavBar } from "@/components/navbar"
@@ -10,7 +10,6 @@ import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import { CoursePlayerSkeleton } from "@/components/skeletons"
 import { CourseOutline } from "@/components/cursos/player/course-outline"
 import { LessonCanvas } from "@/components/cursos/player/lesson-canvas"
@@ -233,10 +232,7 @@ export default function CursoDetailPage({
     [nav, handleLessonOpen]
   )
 
-  const handleContinue = useCallback(() => {
-    if (!lastVisited) return
-    handleSelectLesson(lastVisited)
-  }, [lastVisited, handleSelectLesson])
+  // "Continuar donde quedé" vive en el outline (usa onSelect directo).
 
   // Carga on-demand de la lección activa: cache primero (sin flash), red si
   // falta. Solo sets asíncronos en el then; el fallo se reintenta borrando
@@ -301,8 +297,6 @@ export default function CursoDetailPage({
   const totalLessons = course
     ? course.modules.reduce((n, m) => n + m.lessons.length, 0)
     : 0
-  const progress =
-    totalLessons > 0 ? Math.round((completedLessons.length / totalLessons) * 100) : 0
 
   // Búsqueda lineal O(lecciones): derivación barata, sin memo (el compiler
   // es dueño de la memoización acá).
@@ -366,37 +360,6 @@ export default function CursoDetailPage({
         {course.description && (
           <p className="leading-relaxed text-muted-foreground">{course.description}</p>
         )}
-
-        {/* Progreso */}
-        <div className="space-y-2">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <span className="text-sm text-muted-foreground">Tu progreso</span>
-              <p className="font-serif text-4xl font-bold tabular-nums text-primary">
-                {progress}%
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <span className="text-sm font-medium tabular-nums text-foreground">
-                {completedLessons.length}/{totalLessons} lecciones
-              </span>
-              {lastVisited && (
-                <Button onClick={handleContinue} className="gap-2">
-                  Continuar donde quedé
-                </Button>
-              )}
-            </div>
-          </div>
-          <Progress value={progress} className="h-2" aria-label={`Avance: ${progress}%`} />
-          {progress === 100 && totalLessons > 0 && (
-            <div className="mt-2 flex items-center gap-2 rounded-lg border border-secondary/20 bg-secondary/10 p-3">
-              <CheckCircle2 className="h-5 w-5 text-secondary" />
-              <p className="text-sm font-medium text-secondary">
-                ¡Felicitaciones! Completaste el curso
-              </p>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   ) : null

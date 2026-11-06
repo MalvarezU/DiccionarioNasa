@@ -15,7 +15,8 @@ export interface PlayerShellProps {
   loading?: ReactNode
   error?: ReactNode
   empty?: ReactNode
-  /** Encabezado del curso (título serif, meta, % total, CTA continuar). */
+  /** Encabezado del curso (título serif, meta, descripción). El % y el
+   *  CTA "Continuar donde quedé" viven en el outline, no acá. */
   header?: ReactNode
   outline: ReactNode
   canvas: ReactNode
@@ -51,7 +52,7 @@ export function PlayerShell({ loading, error, empty, header, outline, canvas }: 
       ) : empty ? (
         <div>{empty}</div>
       ) : (
-        <>
+        <div className="anim-player-reveal">
           <div className="mb-4 lg:hidden">
             <Button
               type="button"
@@ -65,7 +66,7 @@ export function PlayerShell({ loading, error, empty, header, outline, canvas }: 
           </div>
           <div className="grid gap-10 lg:grid-cols-[288px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
             <div className="hidden lg:block">
-              <div className="sticky top-14 max-h-[calc(100dvh-3.5rem-1.5rem)]">
+              <div className="sticky top-14 max-h-[calc(100dvh-3.5rem)]">
                 {outline}
               </div>
             </div>
@@ -83,7 +84,7 @@ export function PlayerShell({ loading, error, empty, header, outline, canvas }: 
               <div className="p-4">{outline}</div>
             </SheetContent>
           </Sheet>
-        </>
+        </div>
       )}
     </div>
   )

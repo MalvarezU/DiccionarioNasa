@@ -67,13 +67,20 @@ export function CourseOutline({
     }
   }
 
+  // "Continuar donde quedé": solo si hay última visitada, no es la activa
+  // y aún no está completada. Derivación barata durante el render, sin memo.
+  const showContinue =
+    lastVisitedLessonId !== null &&
+    lastVisitedLessonId !== activeLessonId &&
+    !completedIds.has(lastVisitedLessonId)
+
   return (
     <nav
       aria-label={`Contenido de ${course.title}`}
       onKeyDown={onKeyDown}
-      className="overflow-hidden rounded-xl bg-primary text-primary-foreground"
+      className="flex max-h-[calc(100dvh-3.5rem)] flex-col overflow-hidden rounded-xl bg-primary text-primary-foreground"
     >
-      <div className="border-b border-white/10 px-5 pb-4 pt-5">
+      <div className="shrink-0 border-b border-white/10 px-5 pb-4 pt-5">
         <p className="text-xs uppercase tracking-wide text-primary-foreground/70">
           Índice del curso
         </p>
@@ -93,9 +100,18 @@ export function CourseOutline({
             style={{ width: `${pct}%` }}
           />
         </div>
+        {showContinue && (
+          <button
+            type="button"
+            onClick={() => onSelect(lastVisitedLessonId)}
+            className="mt-3 min-h-[44px] w-full shrink-0 rounded-lg bg-primary-foreground px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-white"
+          >
+            Continuar donde quedé
+          </button>
+        )}
       </div>
 
-      <ol className="max-h-[calc(100dvh-3.5rem-1.5rem)] space-y-5 overflow-y-auto px-5 py-5">
+      <ol className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-5">
         {course.modules.map((module, moduleIdx) => {
           const moduleIndex = moduleIdx + 1
           const unlocked = isModuleUnlocked(course, moduleIdx, completedIds)

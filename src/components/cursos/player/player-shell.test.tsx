@@ -61,6 +61,14 @@ describe("PlayerShell", () => {
     expect(canvas?.className).toContain("min-h-[max(420px,60dvh)]")
   })
 
+  it("ready: contenido envuelto en anim-player-reveal (fade 200ms, no pop)", () => {
+    const { container } = render(<PlayerShell {...shell()} />)
+    const reveal = container.querySelector(".anim-player-reveal")
+    expect(reveal).not.toBeNull()
+    expect(reveal?.querySelector('[data-testid="outline"]')).not.toBeNull()
+    expect(reveal?.querySelector('[data-testid="canvas"]')).not.toBeNull()
+  })
+
   it("móvil: botón abre el Sheet y Esc lo cierra", async () => {
     const user = userEvent.setup()
     render(<PlayerShell {...shell()} />)
