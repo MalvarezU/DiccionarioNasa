@@ -49,8 +49,11 @@ describe("FavoritesTab", () => {
     expect(onRemove).toHaveBeenCalledWith("word-1")
   })
 
-  it("shows the empty state", () => {
+  it("shows the empty state with explore CTA", () => {
     render(<FavoritesTab favorites={[]} loading={false} removingId={null} onRemove={vi.fn()} />)
     expect(screen.getByText("No tienes palabras favoritas")).toBeDefined()
+    const link = screen.getByRole("link", { name: /explorar el diccionario/i })
+    expect(link.getAttribute("href")).toBe("/diccionario")
+    expect(link.className).toContain("min-h-[44px]")
   })
 })

@@ -59,10 +59,16 @@ describe("HistoryTab", () => {
     expect(props.onClearSearches).toHaveBeenCalledOnce()
   })
 
-  it("shows empty states without clear buttons", () => {
+  it("shows empty states with explore CTAs and without clear buttons", () => {
     renderTab({ history: [], searches: [] })
     expect(screen.getByText("No tienes historial de consultas")).toBeDefined()
     expect(screen.getByText(/todavía no buscaste nada/i)).toBeDefined()
     expect(screen.queryByRole("button", { name: /limpiar/i })).toBeNull()
+    const links = screen.getAllByRole("link", { name: /explorar el diccionario/i })
+    expect(links).toHaveLength(2)
+    for (const link of links) {
+      expect(link.getAttribute("href")).toBe("/diccionario")
+      expect(link.className).toContain("min-h-[44px]")
+    }
   })
 })
