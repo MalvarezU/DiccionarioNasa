@@ -107,9 +107,23 @@ describe("NavBar", () => {
     render(<NavBar />)
 
     await user.click(screen.getByText("M"))
-    expect(screen.getByText("Mis favoritos")).toBeDefined()
+    expect(screen.getByText("Mis favoritas")).toBeDefined()
     expect(screen.getByText("Mi historial")).toBeDefined()
     expect(screen.getByText("Cerrar sesión")).toBeDefined()
+  })
+
+  it("links favorites and history to /perfil tabs [fase2]", async () => {
+    mockSession({ user: { name: "Mario", email: "mario@test.com", role: "user" } })
+    const user = userEvent.setup()
+    render(<NavBar />)
+
+    await user.click(screen.getByText("M"))
+    expect(screen.getByText("Mis favoritas").closest("a")?.getAttribute("href")).toBe(
+      "/perfil?tab=favorites"
+    )
+    expect(screen.getByText("Mi historial").closest("a")?.getAttribute("href")).toBe(
+      "/perfil?tab=history"
+    )
   })
 
   it("shows admin link for admin users", async () => {

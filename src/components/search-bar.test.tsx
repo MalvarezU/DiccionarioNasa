@@ -316,3 +316,48 @@ describe("SearchBar grouped results (WU-L3)", () => {
     ).toBeNull()
   })
 })
+
+describe("SearchBar — guardado de búsquedas [fase2]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    vi.mocked(useOnlineStatus).mockReturnValue(true)
+    mockDB()
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: mockResults }))
+    )
+  })
+
+  it("POSTs search-history al abrir un resultado (sin bloquear)", async () => {
+    const user = userEvent.setup()
+    render(<SearchBar />)
+
+    await user.type(screen.getByRole("combobox"), "so")
+    const item = await screen.findByText("atek")
+    await user.click(item)
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/dictionary/search-history",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ query: "so" }),
+      })
+    )
+  })
+
+  it("POSTs search-history al confirmar con Enter", async () => {
+    const user = userEvent.setup()
+    render(<SearchBar />)
+
+    await user.type(screen.getByRole("combobox"), "so")
+    await screen.findByText("atek")
+    await user.keyboard("{ArrowDown}")
+    await user.keyboard("{Enter}")
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/dictionary/search-history",
+      expect.objectContaining({ method: "POST" })
+    )
+    expect(await screen.findByTestId("word-detail-card")).toBeDefined()
+  })
+})

@@ -1,9 +1,14 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("next-auth/react", () => ({
   useSession: vi.fn(),
+}))
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: vi.fn(),
+  usePathname: vi.fn(),
 }))
 
 vi.mock("next/link", () => ({
@@ -30,26 +35,100 @@ vi.mock("@/hooks/use-toast", () => ({
 }))
 
 import { useSession } from "next-auth/react"
-import { useToast } from "@/hooks/use-toast"
+import { useSearchParams, usePathname } from "next/navigation"
 import PerfilPage from "./page"
 
 function mockSession(status: "authenticated" | "unauthenticated" | "loading") {
   vi.mocked(useSession).mockReturnValue({
-    data: status === "authenticated" ? { user: { email: "t@test.com" }, expires: "2099" } : null,
+    data:
+      status === "authenticated"
+        ? {
+            user: {
+              name: "Test",
+              email: "t@test.com",
+              role: "user",
+              image: null,
+            },
+          }
+        : null,
     status,
     update: vi.fn(),
   } as never)
 }
 
-const profileWithoutPassword = {
-  user: { id: "u1", email: "t@test.com", name: "Test", hasPassword: false, onboardedAt: "2026-01-01T00:00:00.000Z" },
+function mockTab(tab: string | null) {
+  vi.mocked(useSearchParams).mockReturnValue(
+    new URLSearchParams(tab ? `tab=${tab}` : "") as never
+  )
+  vi.mocked(usePathname).mockReturnValue("/perfil")
 }
 
-describe("/perfil", () => {
+const favoriteWord = {
+  id: "word-1",
+  spanish: "agua",
+  nasaYuwe: "yu'",
+  pronunciation: "yuʔ",
+  category: "sustantivo",
+  audioUrl: null,
+}
+
+function mockApi() {
+  vi.mocked(fetch).mockImplementation((url) => {
+    const u = String(url)
+    if (u.includes("/api/user/profile"))
+      return Promise.resolve(
+        Response.json({ user: { id: "u1", email: "t@test.com", name: "Test", hasPassword: false } })
+      )
+    if (u.includes("/api/dictionary/favorites"))
+      return Promise.resolve(
+        Response.json({
+          favorites: [{ id: "fav-1", wordId: "word-1", createdAt: "2026-03-15T10:00:00.000Z", word: favoriteWord }],
+        })
+      )
+    if (u.includes("/api/dictionary/search-history"))
+      return Promise.resolve(
+        Response.json({ history: [{ id: "s-1", query: "nasa", createdAt: "2026-03-20T13:00:00.000Z" }] })
+      )
+    if (u.includes("/api/dictionary/history"))
+      return Promise.resolve(
+        Response.json({
+          history: [
+            {
+              id: "hist-1",
+              wordId: "word-1",
+              createdAt: "2026-03-20T14:00:00.000Z",
+              word: favoriteWord,
+            },
+          ],
+        })
+      )
+    if (u.includes("/api/user/course-progress"))
+      return Promise.resolve(
+        Response.json({
+          courses: [
+            {
+              courseId: "c-1",
+              title: "Nasa Yuwe básico",
+              coverImage: null,
+              lessonsTotal: 10,
+              lessonsCompleted: 4,
+              percent: 40,
+              lastVisitedAt: "2026-03-20T14:00:00.000Z",
+              lastLessonId: "l-5",
+              lastLessonTitle: "Saludos",
+            },
+          ],
+        })
+      )
+    return Promise.resolve(Response.json({}))
+  })
+}
+
+describe("/perfil — Mi espacio", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     global.fetch = vi.fn()
-    vi.mocked(useToast).mockReturnValue({ toast: vi.fn(), dismiss: vi.fn(), toasts: [] })
+    mockTab(null)
   })
 
   it("prompts login when unauthenticated", async () => {
@@ -62,85 +141,99 @@ describe("/perfil", () => {
     expect(screen.getByTestId("auth-modal")).toBeDefined()
   })
 
-  it("shows profile data and create-password form when hasPassword is false", async () => {
+  it("shows header with name and the three tabs on favorites by default", async () => {
     mockSession("authenticated")
-    vi.mocked(fetch).mockResolvedValueOnce(Response.json(profileWithoutPassword))
+    mockApi()
     render(<PerfilPage />)
 
-    await waitFor(() => expect(screen.getByDisplayValue("t@test.com")).toBeDefined())
-    expect(screen.getByDisplayValue("Test")).toBeDefined()
-    expect(screen.getByRole("heading", { name: /crear contraseña/i })).toBeDefined()
-    expect(screen.getByRole("button", { name: /^crear contraseña$/i })).toBeDefined()
+    expect(await screen.findByRole("heading", { name: "Test" })).toBeDefined()
+    expect(screen.getByText("t@test.com")).toBeDefined()
+    const tablist = screen.getByRole("tablist", { name: /secciones de mi espacio/i })
+    expect(within(tablist).getByRole("tab", { name: /favoritos/i })).toBeDefined()
+    expect(within(tablist).getByRole("tab", { name: /historial/i })).toBeDefined()
+    expect(within(tablist).getByRole("tab", { name: /mi avance/i })).toBeDefined()
+    // Datos del servidor en el tab por defecto
+    expect(await screen.findByText("yu'")).toBeDefined()
+    // Stats derivados: 1 favorita, 1 vista, 1 en curso, 4 completadas
+    expect(screen.getByText("Favoritas")).toBeDefined()
   })
 
-  it("edits name via PATCH profile", async () => {
-    const { toast } = vi.mocked(useToast)()
+  it("opens the history tab directly with ?tab=history", async () => {
     mockSession("authenticated")
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(Response.json(profileWithoutPassword))
-      .mockResolvedValueOnce(Response.json({ user: { id: "u1", email: "t@test.com", name: "Nuevo" } }))
+    mockTab("history")
+    mockApi()
+    render(<PerfilPage />)
+
+    expect(await screen.findByText("Palabras vistas")).toBeDefined()
+    expect(screen.getByText("Búsquedas recientes")).toBeDefined()
+    expect(screen.getByText("nasa")).toBeDefined()
+  })
+
+  it("opens the progress tab directly with ?tab=progress", async () => {
+    mockSession("authenticated")
+    mockTab("progress")
+    mockApi()
+    render(<PerfilPage />)
+
+    expect(await screen.findByText("Nasa Yuwe básico")).toBeDefined()
+    expect(screen.getByRole("link", { name: /continuar/i })).toBeDefined()
+  })
+
+  it("removes a favorite with one click via POST toggle", async () => {
+    mockSession("authenticated")
+    mockTab(null)
+    mockApi()
     const user = userEvent.setup()
     render(<PerfilPage />)
 
-    await waitFor(() => expect(screen.getByDisplayValue("Test")).toBeDefined())
-    await user.clear(screen.getByLabelText("Nombre"))
-    await user.type(screen.getByLabelText("Nombre"), "Nuevo")
-    await user.click(screen.getByRole("button", { name: /guardar nombre/i }))
+    await screen.findByText("yu'")
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ isFavorite: false }))
+    await user.click(screen.getByRole("button", { name: /quitar yu' de favoritas/i }))
 
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith("/api/user/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Nuevo" }),
-      })
-    )
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Nombre actualizado" }))
-  })
-
-  it("creates password via POST /api/auth/password when none exists", async () => {
-    mockSession("authenticated")
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(Response.json(profileWithoutPassword))
-      .mockResolvedValueOnce(Response.json({ ok: true }))
-    const user = userEvent.setup()
-    render(<PerfilPage />)
-
-    await waitFor(() => expect(screen.getByPlaceholderText("Mínimo 8 caracteres")).toBeDefined())
-    await user.type(screen.getByPlaceholderText("Mínimo 8 caracteres"), "password123")
-    await user.type(screen.getByPlaceholderText("Repite tu contraseña"), "password123")
-    await user.click(screen.getByRole("button", { name: /^crear contraseña$/i }))
-
-    await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith("/api/auth/password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: "password123" }),
-      })
-    )
-  })
-
-  it("changes password via POST /api/auth/password/change when one exists", async () => {
-    mockSession("authenticated")
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(
-        Response.json({ user: { ...profileWithoutPassword.user, hasPassword: true } })
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/dictionary/favorites",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ wordId: "word-1" }),
+        })
       )
-      .mockResolvedValueOnce(Response.json({ ok: true }))
+    )
+    await waitFor(() => expect(screen.queryByText("yu'")).toBeNull())
+  })
+
+  it("clears history via DELETE and shows the empty state", async () => {
+    mockSession("authenticated")
+    mockTab("history")
+    mockApi()
     const user = userEvent.setup()
     render(<PerfilPage />)
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: /cambiar contraseña/i })).toBeDefined())
-    await user.type(screen.getByPlaceholderText("Tu contraseña actual"), "oldpass123")
-    await user.type(screen.getByPlaceholderText("Mínimo 8 caracteres"), "newpass123")
-    await user.type(screen.getByPlaceholderText("Repite tu contraseña"), "newpass123")
-    await user.click(screen.getByRole("button", { name: /^cambiar contraseña$/i }))
+    await screen.findByText("Palabras vistas")
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ success: true }))
+    await user.click(screen.getByRole("button", { name: /limpiar todo/i }))
 
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith("/api/auth/password/change", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword: "oldpass123", newPassword: "newpass123" }),
-      })
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/dictionary/history",
+        expect.objectContaining({ method: "DELETE" })
+      )
     )
+  })
+
+  it("keeps account and security collapsed at the bottom", async () => {
+    mockSession("authenticated")
+    mockTab(null)
+    mockApi()
+    const user = userEvent.setup()
+    render(<PerfilPage />)
+
+    await screen.findByText("yu'")
+    const toggle = screen.getByRole("button", { name: /cuenta y seguridad/i })
+    expect(toggle.getAttribute("aria-expanded")).toBe("false")
+    expect(screen.queryByLabelText("Nombre")).toBeNull()
+
+    await user.click(toggle)
+    expect(screen.getByLabelText("Nombre")).toBeDefined()
   })
 })

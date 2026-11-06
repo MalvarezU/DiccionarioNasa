@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock, Gamepad2, GraduationCap, UserRound, UserPlus } from "lucide-react"
 import { useOnlineStatus } from "@/hooks/use-online-status"
@@ -29,22 +29,6 @@ import { SkipLink } from "@/components/skip-link"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AuthModal, type AuthModalMode } from "@/components/auth-modal"
 
-/** Open the favorites/history panel.
- *  - On /diccionario: dispatch the in-page "open-panel" event (no navigation).
- *  - Elsewhere: navigate to /diccionario with ?panel=... so the page opens it.
- */
-function dispatchOpenPanel(
-  tab: "favorites" | "history",
-  pathname: string | null,
-  router: { push: (href: string) => void },
-) {
-  if (pathname === "/diccionario") {
-    window.dispatchEvent(new CustomEvent("open-panel", { detail: { tab } }))
-  } else {
-    router.push(`/diccionario?panel=${tab}`)
-  }
-}
-
 /** Los 3 módulos de la plataforma Piiyaak. */
 const NAV_ITEMS = [
   { href: "/diccionario", label: "Diccionario", icon: BookOpen },
@@ -56,7 +40,6 @@ export function NavBar() {
   const isOnline = useOnlineStatus()
   const { isPwa, ready } = usePwaMode()
   const pathname = usePathname()
-  const router = useRouter()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authMode, setAuthMode] = useState<AuthModalMode>("login")
@@ -312,17 +295,21 @@ export function NavBar() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="cursor-pointer"
-                    onClick={() => dispatchOpenPanel("favorites", pathname, router)}
+                    asChild
                   >
-                    <Heart className="mr-2 h-4 w-4 text-primary" />
-                    Mis favoritos
+                    <Link href="/perfil?tab=favorites">
+                      <Heart className="mr-2 h-4 w-4 text-primary" />
+                      Mis favoritas
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="cursor-pointer"
-                    onClick={() => dispatchOpenPanel("history", pathname, router)}
+                    asChild
                   >
-                    <Clock className="mr-2 h-4 w-4 text-primary" />
-                    Mi historial
+                    <Link href="/perfil?tab=history">
+                      <Clock className="mr-2 h-4 w-4 text-primary" />
+                      Mi historial
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer" asChild>
                     <Link href="/perfil">

@@ -173,6 +173,20 @@ function DiccionarioContent() {
     return () => window.removeEventListener("open-panel", handler);
   }, [openPanel]);
 
+  // Deep-link desde /perfil (?palabra=<wordId>): abre el detalle de la
+  // palabra sin pasar por el buscador. Solo lee el param y limpia la URL;
+  // el registro de historial de vistas del efecto de arriba sigue intacto.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const palabra = params.get("palabra");
+    if (palabra) {
+      setSelectedWordId(palabra);
+      setDetailOpen(true);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />

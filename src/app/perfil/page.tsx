@@ -1,278 +1,183 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Loader2, Save, KeyRound, UserRound } from "lucide-react";
+import { BookOpenCheck, Clock, Heart } from "lucide-react";
 import { NavBar } from "@/components/navbar";
 import { SiteFooter } from "@/components/site-footer";
 import { AuthModal } from "@/components/auth-modal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PerfilHeader } from "@/components/perfil/perfil-header";
+import { FavoritesTab } from "@/components/perfil/favorites-tab";
+import { HistoryTab } from "@/components/perfil/history-tab";
+import { ProgressTab } from "@/components/perfil/progress-tab";
+import { AccountCard } from "@/components/perfil/account-card";
+import { usePerfilData } from "@/components/perfil/use-perfil-data";
+import { parsePerfilTab, type PerfilTab } from "@/components/perfil/types";
 
-interface ProfileData {
-  id: string;
-  email: string;
-  name: string | null;
-  hasPassword: boolean;
-}
+const TAB_ITEMS = [
+  { value: "favorites", label: "Favoritos", icon: Heart },
+  { value: "history", label: "Historial", icon: Clock },
+  { value: "progress", label: "Mi avance", icon: BookOpenCheck },
+] as const satisfies ReadonlyArray<{ value: PerfilTab; label: string; icon: typeof Heart }>;
 
 /**
- * /perfil — Cuenta del usuario (Fase 2 Google-first):
- * ver nombre/email, editar nombre (PATCH profile), crear contraseña si no hay
- * (POST /api/auth/password) o cambiarla si ya existe (POST .../change).
+ * /perfil — "Mi espacio" (fase 2): header con avatar y stats, tabs
+ * Favoritos / Historial / Mi avance (datos del servidor) y tarjeta de
+ * cuenta colapsada al pie. `?tab=favorites|history|progress` permite
+ * entrada directa desde la navbar.
  */
-export default function PerfilPage() {
-  const { status } = useSession();
-  const { toast } = useToast();
+function PerfilContent() {
+  const { status, data: session } = useSession();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [authOpen, setAuthOpen] = useState(false);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [name, setName] = useState("");
-  const [savingName, setSavingName] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [savingPassword, setSavingPassword] = useState(false);
+  const [tab, setTab] = useState<PerfilTab>(() =>
+    parsePerfilTab(searchParams.get("tab"))
+  );
 
-  const loadProfile = useCallback(async () => {
-    try {
-      const res = await fetch("/api/user/profile");
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setProfile(data.user);
-      setName(data.user.name ?? "");
-    } catch {
-      toast({
-        title: "No se pudo cargar tu perfil",
-        description: "Revisa tu conexión e intenta de nuevo.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+  const {
+    profile,
+    favorites,
+    history,
+    searches,
+    courses,
+    loading,
+    stats,
+    removeFavorite,
+    removingId,
+    clearHistory,
+    clearingHistory,
+    clearSearches,
+    clearingSearches,
+    setProfile,
+  } = usePerfilData();
 
-  useEffect(() => {
-    if (status === "authenticated") loadProfile();
-    else if (status === "unauthenticated") setLoading(false);
-  }, [status, loadProfile]);
-
-  const handleSaveName = async () => {
-    const trimmed = name.trim();
-    if (!trimmed || trimmed.length > 100) {
-      toast({
-        title: "Nombre inválido",
-        description: "El nombre debe tener entre 1 y 100 caracteres",
-        variant: "destructive",
-      });
-      return;
-    }
-    setSavingName(true);
-    try {
-      const res = await fetch("/api/user/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        toast({
-          title: "No se pudo guardar",
-          description: data?.message ?? "Intenta de nuevo.",
-          variant: "destructive",
-        });
-        return;
-      }
-      setProfile((p) => (p ? { ...p, name: data.user.name } : p));
-      toast({ title: "Nombre actualizado", description: "Tu nombre se guardó correctamente" });
-    } catch {
-      toast({ title: "Error", description: "No se pudo guardar. Intenta de nuevo.", variant: "destructive" });
-    } finally {
-      setSavingName(false);
+  const handleTabChange = (value: string) => {
+    const next = parsePerfilTab(value);
+    setTab(next);
+    // Shallow: refleja el tab en la URL sin recargar (deep-link copiable).
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      params.set("tab", next);
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
     }
   };
 
-  const handlePassword = async () => {
-    if (profile?.hasPassword && !currentPassword) {
-      toast({ title: "Falta la contraseña actual", description: "Escribe tu contraseña actual", variant: "destructive" });
-      return;
-    }
-    if (newPassword.length < 8) {
-      toast({ title: "Contraseña muy corta", description: "La contraseña debe tener al menos 8 caracteres", variant: "destructive" });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast({ title: "Contraseñas no coinciden", description: "La contraseña nueva y su confirmación deben ser iguales", variant: "destructive" });
-      return;
-    }
-    setSavingPassword(true);
-    try {
-      const url = profile?.hasPassword ? "/api/auth/password/change" : "/api/auth/password";
-      const body = profile?.hasPassword
-        ? { currentPassword, newPassword }
-        : { password: newPassword };
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        toast({
-          title: profile?.hasPassword ? "No se pudo cambiar" : "No se pudo crear",
-          description: data?.message ?? "Intenta de nuevo.",
-          variant: "destructive",
-        });
-        return;
-      }
-      setProfile((p) => (p ? { ...p, hasPassword: true } : p));
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      toast({
-        title: profile?.hasPassword ? "Contraseña actualizada" : "Contraseña creada",
-        description: profile?.hasPassword
-          ? "Ya puedes entrar con tu nueva contraseña"
-          : "Ya puedes entrar también con correo y contraseña",
-      });
-    } catch {
-      toast({ title: "Error", description: "No se pudo guardar. Intenta de nuevo.", variant: "destructive" });
-    } finally {
-      setSavingPassword(false);
-    }
-  };
+  const sessionUser = session?.user as
+    | { name?: string | null; email?: string; image?: string | null; role?: string }
+    | undefined;
 
+  return (
+    <main id="contenido" className="flex-1 mx-auto w-full max-w-4xl px-4 sm:px-6 py-8">
+      {loading || status === "loading" ? (
+        <div className="grid gap-4" aria-busy="true" aria-label="Cargando tu espacio">
+          <Skeleton className="h-44 w-full rounded-2xl" />
+          <Skeleton className="h-12 w-full rounded-lg" />
+          <Skeleton className="h-64 w-full rounded-2xl" />
+        </div>
+      ) : status === "unauthenticated" ? (
+        <div className="rounded-2xl border p-6 text-center">
+          <h1 className="font-serif text-2xl font-semibold tracking-tight">
+            Mi espacio
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Inicia sesión para ver tus favoritas, tu historial y tu avance.
+          </p>
+          <Button className="mt-4 min-h-[44px]" onClick={() => setAuthOpen(true)}>
+            Iniciar sesión
+          </Button>
+          <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+        </div>
+      ) : (
+        <div className="grid gap-6 anim-page-reveal">
+          <PerfilHeader
+            name={profile?.name ?? sessionUser?.name ?? null}
+            email={profile?.email ?? sessionUser?.email ?? ""}
+            role={sessionUser?.role}
+            image={sessionUser?.image}
+            loading={loading}
+            stats={stats}
+          />
+
+          <Tabs value={tab} onValueChange={handleTabChange}>
+            <TabsList
+              aria-label="Secciones de Mi espacio"
+              className="h-auto w-full justify-start gap-1 overflow-x-auto p-1 sm:w-fit"
+            >
+              {TAB_ITEMS.map((item) => (
+                <TabsTrigger
+                  key={item.value}
+                  value={item.value}
+                  className="min-h-[44px] flex-1 gap-2 px-4 sm:flex-none"
+                >
+                  <item.icon className="h-4 w-4" aria-hidden="true" />
+                  {item.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            <TabsContent value="favorites" className="mt-4">
+              <h2 className="sr-only">Favoritos</h2>
+              <FavoritesTab
+                favorites={favorites}
+                loading={loading}
+                removingId={removingId}
+                onRemove={removeFavorite}
+              />
+            </TabsContent>
+            <TabsContent value="history" className="mt-4">
+              <h2 className="sr-only">Historial</h2>
+              <HistoryTab
+                history={history}
+                searches={searches}
+                loading={loading}
+                clearingHistory={clearingHistory}
+                clearingSearches={clearingSearches}
+                onClearHistory={clearHistory}
+                onClearSearches={clearSearches}
+              />
+            </TabsContent>
+            <TabsContent value="progress" className="mt-4">
+              <h2 className="sr-only">Mi avance</h2>
+              <ProgressTab courses={courses} loading={loading} />
+            </TabsContent>
+          </Tabs>
+
+          {profile && (
+            <AccountCard
+              profile={profile}
+              onProfileChange={(p) =>
+                setProfile((prev) => (prev ? { ...prev, ...p } : prev))
+              }
+            />
+          )}
+        </div>
+      )}
+    </main>
+  );
+}
+
+export default function PerfilPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
-      <main id="contenido" className="flex-1 mx-auto w-full max-w-2xl px-4 sm:px-6 py-8">
-        <h1 className="text-2xl font-serif font-semibold tracking-tight">Mi perfil</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Tus datos y tu acceso con correo y contraseña.
-        </p>
-
-        {loading ? (
-          <div className="mt-6 grid gap-4" aria-busy="true" aria-label="Cargando perfil">
-            <Skeleton className="h-24 w-full rounded-lg" />
-            <Skeleton className="h-40 w-full rounded-lg" />
-          </div>
-        ) : status === "unauthenticated" ? (
-          <div className="mt-6 rounded-lg border p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Inicia sesión para ver y editar tu perfil.
-            </p>
-            <Button className="mt-4 min-h-[44px]" onClick={() => setAuthOpen(true)}>
-              Iniciar sesión
-            </Button>
-            <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
-          </div>
-        ) : profile ? (
-          <div className="mt-6 grid gap-6">
-            <section aria-labelledby="perfil-datos" className="rounded-lg border p-5">
-              <h2 id="perfil-datos" className="flex items-center gap-2 text-base font-semibold">
-                <UserRound className="h-4 w-4" aria-hidden="true" />
-                Tus datos
-              </h2>
-              <div className="mt-4 grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="perfil-email">Email</Label>
-                  <Input id="perfil-email" value={profile.email} disabled readOnly />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="perfil-name">Nombre</Label>
-                  <Input
-                    id="perfil-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Tu nombre"
-                    maxLength={100}
-                    disabled={savingName}
-                  />
-                </div>
-                <div>
-                  <Button onClick={handleSaveName} disabled={savingName} className="gap-2 min-h-[44px]">
-                    {savingName ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Save className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    Guardar nombre
-                  </Button>
-                </div>
-              </div>
-            </section>
-
-            <section aria-labelledby="perfil-password" className="rounded-lg border p-5">
-              <h2 id="perfil-password" className="flex items-center gap-2 text-base font-semibold">
-                <KeyRound className="h-4 w-4" aria-hidden="true" />
-                {profile.hasPassword ? "Cambiar contraseña" : "Crear contraseña"}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {profile.hasPassword
-                  ? "Actualiza la contraseña que usas para entrar con correo."
-                  : "Tu cuenta se creó con Google. Crea una contraseña si también quieres entrar con correo."}
-              </p>
-              <div className="mt-4 grid gap-4">
-                {profile.hasPassword && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="perfil-current">Contraseña actual</Label>
-                    <Input
-                      id="perfil-current"
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Tu contraseña actual"
-                      disabled={savingPassword}
-                    />
-                  </div>
-                )}
-                <div className="grid gap-2">
-                  <Label htmlFor="perfil-new">
-                    {profile.hasPassword ? "Contraseña nueva" : "Contraseña"}
-                  </Label>
-                  <Input
-                    id="perfil-new"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Mínimo 8 caracteres"
-                    disabled={savingPassword}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="perfil-confirm">Confirmar contraseña</Label>
-                  <Input
-                    id="perfil-confirm"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repite tu contraseña"
-                    disabled={savingPassword}
-                    aria-invalid={confirmPassword.length > 0 && newPassword !== confirmPassword}
-                    className={confirmPassword.length > 0 && newPassword !== confirmPassword ? "border-destructive" : ""}
-                  />
-                  {confirmPassword.length > 0 && newPassword !== confirmPassword && (
-                    <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
-                  )}
-                </div>
-                <div>
-                  <Button onClick={handlePassword} disabled={savingPassword} className="gap-2 min-h-[44px]">
-                    {savingPassword ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <KeyRound className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    {profile.hasPassword ? "Cambiar contraseña" : "Crear contraseña"}
-                  </Button>
-                </div>
-              </div>
-            </section>
-          </div>
-        ) : null}
-      </main>
+      <Suspense
+        fallback={
+          <main id="contenido" className="flex-1 mx-auto w-full max-w-4xl px-4 sm:px-6 py-8">
+            <div className="grid gap-4" aria-busy="true" aria-label="Cargando tu espacio">
+              <Skeleton className="h-44 w-full rounded-2xl" />
+              <Skeleton className="h-12 w-full rounded-lg" />
+              <Skeleton className="h-64 w-full rounded-2xl" />
+            </div>
+          </main>
+        }
+      >
+        <PerfilContent />
+      </Suspense>
       <SiteFooter />
     </div>
   );
