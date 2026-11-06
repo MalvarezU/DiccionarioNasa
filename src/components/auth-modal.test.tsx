@@ -23,15 +23,58 @@ describe("AuthModal (Google-first)", () => {
     vi.mocked(useToast).mockReturnValue({ toast: vi.fn(), dismiss: vi.fn(), toasts: [] })
   })
 
-  it("renders Google as the primary action and no register mode", () => {
+  it("renders login mode by default with Google primary and collapsed credentials", () => {
     render(<AuthModal open={true} onOpenChange={onOpenChange} />)
     expect(screen.getByRole("heading", { name: /iniciar sesión/i })).toBeDefined()
     expect(screen.getByRole("button", { name: /continuar con google/i })).toBeDefined()
+    // Sin formulario de credenciales visible por defecto
+    expect(screen.queryByPlaceholderText("tu@email.com")).toBeNull()
     // Sin registro por correo: no hay modo "Crear cuenta" ni "Regístrate"
     expect(screen.queryByRole("button", { name: /crear cuenta/i })).toBeNull()
     expect(screen.queryByText("Regístrate")).toBeNull()
-    // Sin formulario de credenciales visible por defecto
+    // Footer visible para pasar al modo registro
+    expect(screen.getByRole("button", { name: /crear una/i })).toBeDefined()
+  })
+
+  it("renders register mode when initialMode is register", () => {
+    render(<AuthModal open={true} onOpenChange={onOpenChange} initialMode="register" />)
+    expect(screen.getByRole("heading", { name: /creá tu cuenta/i })).toBeDefined()
+    expect(
+      screen.getByText(/tu cuenta se crea al instante, sin formulario ni correo de verificación/i)
+    ).toBeDefined()
+    expect(screen.getByRole("button", { name: /continuar con google/i })).toBeDefined()
+    expect(screen.getByRole("checkbox")).toBeDefined()
+    // En registro no hay vía de correo: solo Google crea cuentas nuevas
+    expect(screen.queryByRole("button", { name: /correo y contraseña/i })).toBeNull()
     expect(screen.queryByPlaceholderText("tu@email.com")).toBeNull()
+    // Footer visible para volver al login
+    expect(screen.getByRole("button", { name: /entrar/i })).toBeDefined()
+  })
+
+  it("switches between login and register via the footer links", async () => {
+    const user = userEvent.setup()
+    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+
+    await user.click(screen.getByRole("button", { name: /crear una/i }))
+    expect(screen.getByRole("heading", { name: /creá tu cuenta/i })).toBeDefined()
+
+    await user.click(screen.getByRole("button", { name: /entrar/i }))
+    expect(screen.getByRole("heading", { name: /iniciar sesión/i })).toBeDefined()
+    expect(screen.getByRole("button", { name: /correo y contraseña/i })).toBeDefined()
+  })
+
+  it("resets to initialMode when reopened after switching", async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <AuthModal open={true} onOpenChange={onOpenChange} initialMode="login" />
+    )
+
+    await user.click(screen.getByRole("button", { name: /crear una/i }))
+    expect(screen.getByRole("heading", { name: /creá tu cuenta/i })).toBeDefined()
+
+    rerender(<AuthModal open={false} onOpenChange={onOpenChange} initialMode="login" />)
+    rerender(<AuthModal open={true} onOpenChange={onOpenChange} initialMode="login" />)
+    expect(screen.getByRole("heading", { name: /iniciar sesión/i })).toBeDefined()
   })
 
   it("renders nothing when closed", () => {
@@ -39,37 +82,49 @@ describe("AuthModal (Google-first)", () => {
     expect(container.innerHTML).toBe("")
   })
 
-  it("never calls the removed /api/auth/register endpoint", async () => {
+  it("never calls the removed /api/auth/register endpoint in either mode", async () => {
     const user = userEvent.setup()
-    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+    render(<AuthModal open={true} onOpenChange={onOpenChange} initialMode="register" />)
 
+    await user.click(screen.getByRole("checkbox"))
     await user.click(screen.getByRole("button", { name: /continuar con google/i }))
+    // Pasar a login y completar el flujo de credenciales
+    await user.click(screen.getByRole("button", { name: /entrar/i }))
     await user.click(screen.getByRole("button", { name: /correo y contraseña/i }))
     await user.type(screen.getByPlaceholderText("tu@email.com"), "test@test.com")
     await user.type(screen.getByPlaceholderText("Tu contraseña"), "password123")
-    await user.click(screen.getByRole("checkbox"))
     await user.click(screen.getByRole("button", { name: /iniciar sesión con correo/i }))
 
     expect(global.fetch).not.toHaveBeenCalled()
     expect(vi.mocked(fetch).mock.calls.join(" ")).not.toContain("/api/auth/register")
   })
 
-  it("requires terms before Google sign-in", async () => {
+  it("requires terms before Google sign-in in both modes", async () => {
     const { toast } = vi.mocked(useToast)()
     const user = userEvent.setup()
-    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
 
+    const { unmount } = render(
+      <AuthModal open={true} onOpenChange={onOpenChange} initialMode="register" />
+    )
     await user.click(screen.getByRole("button", { name: /continuar con google/i }))
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Aceptación requerida" })
+    )
+    expect(signIn).not.toHaveBeenCalled()
+    unmount()
 
+    vi.clearAllMocks()
+    render(<AuthModal open={true} onOpenChange={onOpenChange} initialMode="login" />)
+    await user.click(screen.getByRole("button", { name: /continuar con google/i }))
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Aceptación requerida" })
     )
     expect(signIn).not.toHaveBeenCalled()
   })
 
-  it("calls Google sign-in after accepting terms", async () => {
+  it("calls Google sign-in after accepting terms in register mode", async () => {
     const user = userEvent.setup()
-    render(<AuthModal open={true} onOpenChange={onOpenChange} />)
+    render(<AuthModal open={true} onOpenChange={onOpenChange} initialMode="register" />)
 
     await user.click(screen.getByRole("checkbox"))
     await user.click(screen.getByRole("button", { name: /continuar con google/i }))

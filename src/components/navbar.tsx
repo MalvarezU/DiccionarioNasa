@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
-import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock, Gamepad2, GraduationCap, UserRound } from "lucide-react"
+import { BookOpen, Wifi, WifiOff, Settings, Shield, LogIn, LogOut, Heart, Clock, Gamepad2, GraduationCap, UserRound, UserPlus } from "lucide-react"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import { usePwaMode } from "@/hooks/use-pwa-mode"
 import { Badge } from "@/components/ui/badge"
@@ -27,7 +27,7 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { WelcomeGate } from "@/components/welcome-gate"
 import { SkipLink } from "@/components/skip-link"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AuthModal } from "@/components/auth-modal"
+import { AuthModal, type AuthModalMode } from "@/components/auth-modal"
 
 /** Open the favorites/history panel.
  *  - On /diccionario: dispatch the in-page "open-panel" event (no navigation).
@@ -59,6 +59,17 @@ export function NavBar() {
   const router = useRouter()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<AuthModalMode>("login")
+  const openAuth = (mode: AuthModalMode) => {
+    setAuthMode(mode)
+    setAuthModalOpen(true)
+  }
+  const handleAuthOpenChange = (v: boolean) => {
+    // Al cerrar se vuelve al modo login: el aviso ?auth=required del
+    // middleware siempre abre en login sin setState dentro del efecto.
+    if (!v) setAuthMode("login")
+    setAuthModalOpen(v)
+  }
   const { data: session, status } = useSession()
   const isAuthenticated = !!session?.user
   const isLoadingSession = status === "loading"
@@ -340,6 +351,21 @@ export function NavBar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
+              <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={
+                  isHeroTop
+                    ? "gap-1.5 text-xs sm:text-sm text-crema/90 hover:text-crema hover:bg-crema/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
+                    : "gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground"
+                }
+                onClick={() => openAuth("register")}
+                aria-label="Registrarme"
+              >
+                <UserPlus className="h-4 w-4" />
+                <span className="hidden min-[400px]:inline">Registrarme</span>
+              </Button>
               <Button
                 variant="default"
                 size="sm"
@@ -348,12 +374,13 @@ export function NavBar() {
                     ? "gap-1.5 text-xs sm:text-sm bg-crema text-primary hover:bg-background transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
                     : "gap-1.5 text-xs sm:text-sm bg-primary hover:bg-montana-deep transition-colors"
                 }
-                onClick={() => setAuthModalOpen(true)}
+                onClick={() => openAuth("login")}
                 aria-label="Iniciar sesión"
               >
                 <LogIn className="h-4 w-4" />
                 <span className="hidden min-[400px]:inline">Iniciar sesión</span>
               </Button>
+              </>
             )}
 
             {/* Settings Button — PWA-only: hidden in regular browser tabs */}
@@ -387,7 +414,7 @@ export function NavBar() {
 
       {/* Modals */}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
+      <AuthModal open={authModalOpen} onOpenChange={handleAuthOpenChange} initialMode={authMode} />
       <WelcomeGate />
     </>
   )
