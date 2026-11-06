@@ -213,7 +213,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
               >
                 Usar correo y contraseña
                 <ChevronDown
-                  className={`h-4 w-4 transition-transform ${showCredentials ? "rotate-180" : ""}`}
+                  className={`h-4 w-4 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${showCredentials ? "rotate-180" : ""}`}
                   aria-hidden="true"
                 />
               </button>

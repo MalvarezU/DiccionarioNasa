@@ -118,7 +118,7 @@ export function WordCard({ word, variant, onOpen, onPlayState }: WordCardProps) 
             onClick={togglePlay}
             aria-label={playLabel}
             aria-pressed={isPlaying}
-            className={`flex min-h-8 min-w-8 items-center justify-center rounded-full bg-secondary/10 transition-colors hover:bg-secondary/20 ${CARD_FOCUS}`}
+            className={`flex min-h-8 min-w-8 items-center justify-center rounded-full bg-secondary/10 transition-colors hover:bg-secondary/20 ${isPlaying ? "anim-audio-pulse" : ""} ${CARD_FOCUS}`}
           >
             {isPlaying ? (
               <Pause className="h-4 w-4 text-secondary" aria-hidden="true" />
@@ -172,7 +172,7 @@ export function WordCard({ word, variant, onOpen, onPlayState }: WordCardProps) 
               onClick={togglePlay}
               aria-label={playLabel}
               aria-pressed={isPlaying}
-              className={`flex min-h-11 min-w-11 items-center justify-center rounded-full bg-secondary/10 transition-colors hover:bg-secondary/20 ${CARD_FOCUS}`}
+              className={`flex min-h-11 min-w-11 items-center justify-center rounded-full bg-secondary/10 transition-colors hover:bg-secondary/20 ${isPlaying ? "anim-audio-pulse" : ""} ${CARD_FOCUS}`}
             >
               {isPlaying ? (
                 <Pause className="h-5 w-5 text-secondary" aria-hidden="true" />

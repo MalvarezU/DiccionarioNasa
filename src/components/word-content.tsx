@@ -236,8 +236,9 @@ export function WordContent({
         {/* Favorite button */}
         <div className="flex flex-col gap-2 pb-2">
           <Button
+            key={isFavorite ? "favorito" : "no-favorito"}
             variant={isFavorite ? "default" : "outline"}
-            className={`w-full gap-2 transition-colors ${isFavorite ? "bg-secondary hover:bg-secondary/90" : "hover:border-tertiary/50 hover:text-tertiary"}`}
+            className={`w-full gap-2 transition-colors ${isFavorite ? "bg-secondary hover:bg-secondary/90 anim-match-pop" : "hover:border-tertiary/50 hover:text-tertiary"}`}
             onClick={onToggleFavorite}
             disabled={isTogglingFav || isDownloading}
           >

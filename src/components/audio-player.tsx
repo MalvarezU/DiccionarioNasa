@@ -126,7 +126,7 @@ function AudioPlayerInner({ src, wordLabel, isCached }: { src: string; wordLabel
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 rounded-full bg-primary/10 hover:bg-primary/20 shrink-0"
+          className={`h-9 w-9 rounded-full bg-primary/10 hover:bg-primary/20 shrink-0 ${isPlaying ? "anim-audio-pulse" : ""}`}
           onClick={handlePlayPause}
           disabled={isLoading || isOfflineNotCached}
           aria-label={isPlaying ? "Pausar audio" : "Reproducir audio"}

@@ -164,7 +164,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                 {getCategoryDisplay(selectedCategory)}
               </Badge>
             )}
-            <ChevronDown className={`h-3 w-3 transition-transform ${filterDropdownOpen ? "rotate-180" : ""}`} />
+            <ChevronDown className={`h-3 w-3 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${filterDropdownOpen ? "rotate-180" : ""}`} />
           </Button>
 
           {filterDropdownOpen && (

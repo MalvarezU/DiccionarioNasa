@@ -469,7 +469,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               }
             }}
             onKeyDown={handleKeyDown}
-            className={`pl-10 w-full transition-colors ${
+            className={`pl-10 w-full transition-[color,box-shadow,border-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] ${
               sobreOscuro
                 ? "h-14 text-base sm:text-lg rounded-xl pr-10 shadow-lg bg-montana-deep/45 backdrop-blur-md text-crema placeholder:text-crema/70 border-crema/30 hover:border-crema/60 focus-visible:border-crema focus-visible:ring-crema/30"
                 : esGrande
