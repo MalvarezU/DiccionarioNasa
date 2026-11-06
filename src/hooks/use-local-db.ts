@@ -58,7 +58,7 @@ export function useLocalDB(): UseLocalDBReturn {
       `/api/dictionary/export?page=${startPage}&pageSize=${PAGE_SIZE}`
     )
     if (!firstRes.ok) {
-      throw new Error("Error al conectar con el servidor")
+      throw new Error("Error al conectar con el servidor (status " + firstRes.status + ")")
     }
     const firstData = await firstRes.json()
     const totalWords: number = firstData.total ?? 0
