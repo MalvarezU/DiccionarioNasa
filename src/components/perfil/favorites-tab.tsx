@@ -47,7 +47,7 @@ export function FavoritesTab({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="anim-stagger-children grid grid-cols-1 sm:grid-cols-2 gap-3">
       {favorites.map((fav) => (
         <WordListCard
           key={fav.id}

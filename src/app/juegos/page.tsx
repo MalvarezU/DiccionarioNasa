@@ -2,6 +2,7 @@ import { NavBar } from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { GameTile, type GameMotif } from "@/components/juegos/game-tile"
+import { Reveal } from "@/components/reveal"
 
 const JUEGOS: Array<{
   href: string
@@ -57,18 +58,20 @@ export default function JuegosPage() {
         </div>
 
         {/* Cards de juegos */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {JUEGOS.map((juego) => (
-            <GameTile
-              key={juego.href}
-              motivo={juego.motivo}
-              href={juego.href}
-              title={juego.title}
-              description={juego.description}
-              locked={juego.locked}
-            />
-          ))}
-        </div>
+        <Reveal>
+          <div className="anim-stagger-children grid grid-cols-1 md:grid-cols-3 gap-6">
+            {JUEGOS.map((juego) => (
+              <GameTile
+                key={juego.href}
+                motivo={juego.motivo}
+                href={juego.href}
+                title={juego.title}
+                description={juego.description}
+                locked={juego.locked}
+              />
+            ))}
+          </div>
+        </Reveal>
       </main>
       <SiteFooter />
     </div>

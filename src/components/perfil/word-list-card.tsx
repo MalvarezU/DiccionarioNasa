@@ -24,7 +24,7 @@ interface WordListCardProps {
  */
 export function WordListCard({ word, meta, action }: WordListCardProps) {
   return (
-    <Card className="group bg-surface-container-low border border-outline-variant/30 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/40">
+    <Card className="group bg-surface-container-low border border-outline-variant/30 shadow-sm transition-all duration-200 hover:shadow-lg hover:border-primary/40">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="font-serif text-lg text-primary">

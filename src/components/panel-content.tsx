@@ -124,7 +124,7 @@ export function PanelContent({
               {favorites.map((fav) => (
                 <Card
                   key={fav.id}
-                  className="group cursor-pointer transition-all duration-200 bg-surface-container-low border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
+                  className="group cursor-pointer transition-all duration-200 bg-surface-container-low border border-outline-variant/30 shadow-sm hover:shadow-lg hover:border-primary/40"
                   onClick={() => handleWordClick(fav.word.id)}
                 >
                   <CardHeader className="pb-2">
@@ -209,7 +209,7 @@ export function PanelContent({
                     {items.map((item) => (
                       <Card
                         key={item.id}
-                        className="group cursor-pointer transition-all duration-200 bg-surface-container-low border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
+                        className="group cursor-pointer transition-all duration-200 bg-surface-container-low border border-outline-variant/30 shadow-sm hover:shadow-lg hover:border-primary/40"
                         onClick={() => handleWordClick(item.word.id)}
                       >
                         <CardHeader className="pb-2">

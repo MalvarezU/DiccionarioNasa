@@ -19,7 +19,7 @@ interface WordCardProps {
 
 const CARD_FOCUS =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-const CARD_HOVER = "motion-safe:hover:shadow-md motion-safe:hover:-translate-y-0.5 hover:border-secondary/40"
+const CARD_HOVER = "motion-safe:hover:shadow-lg motion-safe:hover:-translate-y-0.5 hover:border-secondary/40"
 const CARD_TRANSITION = "transition-[transform,box-shadow,border-color]"
 
 /**

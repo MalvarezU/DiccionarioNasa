@@ -14,6 +14,7 @@ import { normalizeSearchText } from "@/lib/search-text"
 import { ResumeBand, type ResumeNextLesson } from "@/components/cursos/resume-band"
 import { FeaturedCourseCard } from "@/components/cursos/featured-course-card"
 import { CourseCatalogCard } from "@/components/cursos/course-catalog-card"
+import { Reveal } from "@/components/reveal"
 import { CourseListBandsSkeleton } from "@/components/skeletons"
 
 const ANON_KEY = "piiyaak:course:anon:v1"
@@ -392,7 +393,8 @@ export default function CursosPage() {
                 </Button>
               </div>
             ) : catalogRows.length > 0 ? (
-              <section
+              <Reveal
+                as="section"
                 aria-label={
                   isSearching ? "Resultados de búsqueda" : "Todos los cursos"
                 }
@@ -402,7 +404,7 @@ export default function CursosPage() {
                     <CourseCatalogCard key={course.id} course={course} />
                   ))}
                 </div>
-              </section>
+              </Reveal>
             ) : null}
 
             {isEditor && managedRows.length > 0 ? (

@@ -97,7 +97,7 @@ export function GameTile({
       className={`h-full transition-all ${
         locked
           ? "opacity-60"
-          : "group cursor-pointer motion-safe:hover:shadow-md motion-safe:hover:-translate-y-0.5 hover:border-primary/40"
+          : "group cursor-pointer motion-safe:hover:shadow-lg motion-safe:hover:-translate-y-0.5 hover:border-primary/40"
       }`}
     >
       <CardHeader className="pb-3">

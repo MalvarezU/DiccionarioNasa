@@ -14,7 +14,8 @@ import { NavBar } from "@/components/navbar";
 import { InstallBanner } from "@/components/pwa/install-banner";
 import { SiteFooter } from "@/components/site-footer";
 import { InstallSectionLazy } from "@/components/pwa/install-section-lazy";
-import { DownloadBanner } from "@/components/download-banner";
+import { DownloadBanner } from "@/components/download-banner"
+import { Reveal } from "@/components/reveal";
 import { WordOfDayCard } from "@/components/word-of-day-card";
 import { WordDetailCard } from "@/components/word-detail-card";
 
@@ -141,12 +142,14 @@ function HomeContent() {
 
         {/* Download para uso sin conexión */}
         <InstallBanner destino="/#instalar" />
-        <DownloadBanner />
+        <Reveal>
+          <DownloadBanner />
+        </Reveal>
 
         {/* Word of the Day */}
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
+        <Reveal as="section" className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
           <WordOfDayCard onWordSelect={handleWordSelect} />
-        </section>
+        </Reveal>
       <InstallSectionLazy />
       </main>
 
