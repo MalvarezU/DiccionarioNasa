@@ -25,8 +25,8 @@ vi.mock("@/hooks/use-toast", () => ({
 }))
 
 vi.mock("./auth-modal", () => ({
-  AuthModal: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="auth-modal" /> : null,
+  AuthModal: ({ open, initialMode }: { open: boolean; initialMode?: string }) =>
+    open ? <div data-testid="auth-modal" data-mode={initialMode ?? "login"} /> : null,
 }))
 
 vi.mock("./settings-dialog", () => ({
@@ -138,12 +138,24 @@ describe("NavBar", () => {
     expect(screen.queryByText("Panel de administración")).toBeNull()
   })
 
-  it("opens auth modal when login button is clicked", async () => {
+  it("opens auth modal in login mode when login button is clicked", async () => {
     const user = userEvent.setup()
     render(<NavBar />)
 
     await user.click(screen.getByRole("button", { name: /iniciar sesión/i }))
-    expect(screen.getByTestId("auth-modal")).toBeDefined()
+    const modal = screen.getByTestId("auth-modal")
+    expect(modal).toBeDefined()
+    expect(modal.getAttribute("data-mode")).toBe("login")
+  })
+
+  it("shows a Registrarme CTA that opens the modal in register mode", async () => {
+    const user = userEvent.setup()
+    render(<NavBar />)
+
+    await user.click(screen.getByRole("button", { name: /registrarme/i }))
+    const modal = screen.getByTestId("auth-modal")
+    expect(modal).toBeDefined()
+    expect(modal.getAttribute("data-mode")).toBe("register")
   })
 
   it("opens settings when gear icon is clicked", async () => {
