@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -704,10 +705,13 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="course-desc">Descripción</Label>
-                        <Input
+                        <Textarea
                           id="course-desc"
                           value={editDesc}
                           onChange={(e) => setEditDesc(e.target.value)}
+                          rows={4}
+                          className="min-h-[100px] resize-y"
+                          placeholder="Escribe una descripción del curso..."
                         />
                       </div>
                       {/* Portada */}

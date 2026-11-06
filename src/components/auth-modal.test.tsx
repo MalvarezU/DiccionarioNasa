@@ -232,5 +232,42 @@ describe("AuthModal", () => {
 
       expect(screen.getByText("Las contraseñas no coinciden")).toBeDefined()
     })
+
+    it("opens the legal modal in place instead of navigating [terminos]", async () => {
+      const user = await renderRegister()
+
+      // No external navigation links remain in register mode
+      expect(document.querySelector('a[target="_blank"]')).toBeNull()
+
+      await user.click(screen.getByRole("button", { name: /términos y condiciones/i }))
+      expect(screen.getByRole("heading", { name: /términos y privacidad/i })).toBeDefined()
+    })
+
+    it("accepting in the legal modal checks the terms box [terminos]", async () => {
+      const user = await renderRegister()
+
+      await user.click(screen.getByRole("button", { name: /política de privacidad/i }))
+      await user.click(screen.getByRole("button", { name: /aceptar términos y privacidad/i }))
+
+      expect(screen.getByRole("checkbox")).toHaveProperty("checked", true)
+    })
+
+    it("blocks submit without acceptance even after opening the modal [terminos]", async () => {
+      const { toast } = vi.mocked(useToast)()
+      const user = await renderRegister()
+
+      await user.type(screen.getByPlaceholderText(emailPlaceholder), "test@test.com")
+      await user.type(screen.getByPlaceholderText(regPasswordPlaceholder), "password123")
+      await user.type(screen.getByPlaceholderText(confirmPlaceholder), "password123")
+      // Open and close the legal modal without accepting
+      await user.click(screen.getByRole("button", { name: /términos y condiciones/i }))
+      await user.click(screen.getByRole("button", { name: /^cerrar$/i }))
+      await user.click(screen.getByRole("button", { name: /crear cuenta/i }))
+
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Aceptación requerida" })
+      )
+      expect(fetch).not.toHaveBeenCalled()
+    })
   })
 })

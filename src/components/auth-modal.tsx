@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, LogIn, UserPlus, Chrome } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { LegalTermsModal, type LegalTab } from "@/components/legal-terms-modal";
 
 interface AuthModalProps {
   open: boolean;
@@ -28,7 +29,14 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [name, setName] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [legalOpen, setLegalOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<LegalTab>("terms");
   const { toast } = useToast();
+
+  const openLegal = (tab: LegalTab) => {
+    setLegalTab(tab);
+    setLegalOpen(true);
+  };
 
   const resetForm = () => {
     setEmail("");
@@ -37,6 +45,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     setName("");
     setAcceptedTerms(false);
     setIsLoading(false);
+    setLegalOpen(false);
   };
 
   const handleLogin = async () => {
@@ -173,6 +182,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -259,13 +269,21 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               />
               <span>
                 Acepto los{" "}
-                <a href="/terminos" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                <button
+                  type="button"
+                  onClick={() => openLegal("terms")}
+                  className="text-primary underline"
+                >
                   Términos y Condiciones
-                </a>{" "}
+                </button>{" "}
                 y la{" "}
-                <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                <button
+                  type="button"
+                  onClick={() => openLegal("privacy")}
+                  className="text-primary underline"
+                >
                   Política de Privacidad
-                </a>
+                </button>
                 .
               </span>
             </label>
@@ -309,5 +327,12 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         </div>
       </DialogContent>
     </Dialog>
+    <LegalTermsModal
+      open={legalOpen}
+      onOpenChange={setLegalOpen}
+      initialTab={legalTab}
+      onAccept={() => setAcceptedTerms(true)}
+    />
+    </>
   );
 }
