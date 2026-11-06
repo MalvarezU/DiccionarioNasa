@@ -68,7 +68,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               <div className="mt-3 pt-3 border-t border-secondary/20">
                 <div className="w-full h-1.5 rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-secondary transition-all duration-500"
+                    className="h-full rounded-full bg-secondary transition-all duration-300"
                     style={{ width: `${(stats.publishedCount / stats.totalWords) * 100}%` }}
                   />
                 </div>
@@ -98,7 +98,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               <div className="mt-3 pt-3 border-t border-tertiary/20">
                 <div className="w-full h-1.5 rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-tertiary transition-all duration-500"
+                    className="h-full rounded-full bg-tertiary transition-all duration-300"
                     style={{ width: `${(stats.draftCount / stats.totalWords) * 100}%` }}
                   />
                 </div>
@@ -128,7 +128,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               <div className="mt-3 pt-3 border-t border-outline-variant/20">
                 <div className="w-full h-1.5 rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-muted-foreground/50 transition-all duration-500"
+                    className="h-full rounded-full bg-muted-foreground/50 transition-all duration-300"
                     style={{ width: `${(stats.archivedCount / stats.totalWords) * 100}%` }}
                   />
                 </div>
@@ -193,7 +193,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               <div className="mt-2">
                 <div className="w-full h-1.5 rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-tertiary transition-all duration-500"
+                    className="h-full rounded-full bg-tertiary transition-all duration-300"
                     style={{ width: `${(stats.publishedWithoutAudio / stats.publishedCount) * 100}%` }}
                   />
                 </div>
@@ -219,7 +219,7 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
               <div className="mt-2">
                 <div className="w-full h-1.5 rounded-full bg-surface-container-high">
                   <div
-                    className="h-full rounded-full bg-secondary transition-all duration-500"
+                    className="h-full rounded-full bg-secondary transition-all duration-300"
                     style={{ width: `${(publishedWithAudio / stats.publishedCount) * 100}%` }}
                   />
                 </div>
@@ -271,12 +271,12 @@ export function DashboardStats({ stats, statusSum, sumMatchesTotal, publishedWit
             {stats.publishedCount > 0 && (
               <>
                 <div
-                  className="h-full bg-secondary transition-all duration-500"
+                  className="h-full bg-secondary transition-all duration-300"
                   style={{ width: `${(publishedWithAudio / stats.publishedCount) * 100}%` }}
                   title={`Con audio: ${publishedWithAudio}`}
                 />
                 <div
-                  className="h-full bg-terracota transition-all duration-500"
+                  className="h-full bg-terracota transition-all duration-300"
                   style={{ width: `${(stats.publishedWithoutAudio / stats.publishedCount) * 100}%` }}
                   title={`Sin audio: ${stats.publishedWithoutAudio}`}
                 />

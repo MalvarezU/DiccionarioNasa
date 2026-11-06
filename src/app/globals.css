@@ -12,6 +12,10 @@
 @theme {
   --text-2xs: 0.75rem;
 
+  /* Suavizado global: toda transición sin easing explícito hereda la
+     curva de la casa en vez del ease brusco por defecto de Tailwind. */
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+
   /* Paleta territorio Piiyaak (guía de cliente): nombres fijos para clases
      con nombre (bg-montana, text-terracota, ...) en vez de hex sueltos. */
   --color-montana: #173f35;
@@ -180,6 +184,7 @@
   html {
     background-color: var(--background);
     scrollbar-gutter: stable;
+    scroll-behavior: smooth;
   }
   /* Radix (react-remove-scroll-bar) compensates the disappearing classic
      scrollbar by injecting `margin-right: {gap}px !important` on <body>
