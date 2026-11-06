@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import CursosPage from "./page"
+import { CourseListBandsSkeleton } from "@/components/skeletons"
 
 vi.mock("@/components/navbar", () => ({
   NavBar: () => <div data-testid="navbar" />,
@@ -282,5 +283,123 @@ describe("/cursos [B2.2]", () => {
     render(<CursosPage />)
     await user.click(await screen.findByText("Reintentar"))
     expect(reload).toHaveBeenCalled()
+  })
+
+  describe("buscador de cursos (F-E2)", () => {
+    const catalogoBusqueda = [
+      { id: "c1", title: "Maíz sagrado", description: "palabras del eje", modules: 1, lessons: 2, progressPct: null },
+      { id: "c2", title: "Color rojo", description: "sobre las descripciones", modules: 1, lessons: 2, progressPct: null },
+      { id: "c3", title: "Números", description: "cuenta uno a diez", modules: 1, lessons: 2, progressPct: null },
+    ]
+
+    it("barra base: label sr-only, role search y clear solo con query", async () => {
+      const user = userEvent.setup()
+      mockList(catalogoBusqueda)
+      render(<CursosPage />)
+      const input = await screen.findByPlaceholderText("Buscar curso")
+      expect(input.getAttribute("id")).toBe("cursos-busqueda")
+      const label = screen.getByText("Buscar cursos")
+      expect(label.tagName).toBe("LABEL")
+      expect(label.className).toContain("sr-only")
+      expect(screen.getByRole("search", { name: "Buscar cursos" })).toBeDefined()
+      // Sin query: sin botón de limpiar; con query: aparece
+      expect(screen.queryByRole("button", { name: "Limpiar búsqueda" })).toBeNull()
+      await user.type(input, "maiz")
+      expect(screen.getByRole("button", { name: "Limpiar búsqueda" })).toBeDefined()
+    })
+
+    it("tipear filtra el grid: conteo de cards = matches (insensible a tildes, título y descripción)", async () => {
+      const user = userEvent.setup()
+      mockList(catalogoBusqueda)
+      render(<CursosPage />)
+      const input = await screen.findByPlaceholderText("Buscar curso")
+      // "maiz" encuentra "Maíz" sin tilde
+      await user.type(input, "maiz")
+      const results = await screen.findByLabelText("Resultados de búsqueda")
+      expect(results.querySelectorAll('[data-slot="card"]')).toHaveLength(1)
+      expect(results.textContent).toMatch(/Maíz sagrado/)
+      // Match por descripción
+      await user.clear(input)
+      await user.type(input, "descripciones")
+      const byDesc = await screen.findByLabelText("Resultados de búsqueda")
+      expect(byDesc.textContent).toMatch(/Color rojo/)
+      // La sección editorial ya no está mientras se busca
+      expect(screen.queryByLabelText("Todos los cursos")).toBeNull()
+    })
+
+    it("sin matches: estado vacío propio y Limpiar restaura grid y bandas", async () => {
+      const user = userEvent.setup()
+      mockList([
+        { id: "c1", title: "Canelo", description: "d", modules: 1, lessons: 2, progressPct: 50 },
+        { id: "c2", title: "Bravo", description: "d", modules: 1, lessons: 2, progressPct: null },
+      ])
+      render(<CursosPage />)
+      await screen.findByLabelText("Continuar Canelo")
+      await user.type(screen.getByPlaceholderText("Buscar curso"), "zzz sin match")
+      expect(await screen.findByText("Sin resultados")).toBeDefined()
+      expect(screen.getByText(/No hay cursos para «zzz sin match»/)).toBeDefined()
+      // Colapso a resultados: bandas y featured fuera del DOM
+      expect(screen.queryByLabelText("Continuar Canelo")).toBeNull()
+      expect(screen.queryByLabelText(/Curso sugerido/)).toBeNull()
+      await user.click(screen.getByText("Limpiar búsqueda"))
+      // Se restaura el layout editorial completo
+      expect(await screen.findByLabelText("Continuar Canelo")).toBeDefined()
+      expect(screen.getByLabelText("Todos los cursos")).toBeDefined()
+    })
+
+    it("con query activa featured y resume no están en el DOM", async () => {
+      const user = userEvent.setup()
+      mockList([
+        { id: "c1", title: "Canelo", description: "d", modules: 1, lessons: 2, progressPct: 50 },
+        { id: "c2", title: "Bravo", description: "d", modules: 1, lessons: 2, progressPct: null },
+      ])
+      render(<CursosPage />)
+      await screen.findByLabelText("Continuar Canelo")
+      expect(screen.getByLabelText("Curso sugerido: Bravo")).toBeDefined()
+      await user.type(screen.getByPlaceholderText("Buscar curso"), "bravo")
+      const results = await screen.findByLabelText("Resultados de búsqueda")
+      // El curso que era featured entra al grid de resultados
+      expect(results.textContent).toMatch(/Bravo/)
+      expect(screen.queryByLabelText("Curso sugerido: Bravo")).toBeNull()
+      expect(screen.queryByLabelText("Continuar Canelo")).toBeNull()
+    })
+
+    it("contador de resultados: visible tabular-nums + aria-live sr-only", async () => {
+      const user = userEvent.setup()
+      mockList([
+        { id: "c1", title: "Maíz uno", description: "d", modules: 1, lessons: 2, progressPct: null },
+        { id: "c2", title: "Maíz dos", description: "d", modules: 1, lessons: 2, progressPct: null },
+        { id: "c3", title: "Color", description: "d", modules: 1, lessons: 2, progressPct: null },
+      ])
+      render(<CursosPage />)
+      const input = await screen.findByPlaceholderText("Buscar curso")
+      await user.type(input, "maiz")
+      await screen.findByLabelText("Resultados de búsqueda")
+      // Contador visible, tabular-nums, texto exacto
+      const visible = screen.getByText("2 cursos")
+      expect(visible.tagName).toBe("P")
+      expect(visible.className).toContain("tabular-nums")
+      // Región viva aparte, sr-only
+      const live = document.querySelector('[aria-live="polite"]')
+      expect(live).not.toBeNull()
+      expect(live!.textContent).toBe("2 cursos encontrados")
+    })
+
+    it("el skeleton de bandas replica la barra de búsqueda antes del grid", () => {
+      const { container } = render(<CourseListBandsSkeleton />)
+      const bar = container.querySelector('[data-slot="skeleton-search-bar"]')
+      expect(bar).not.toBeNull()
+      expect(bar!.className).toContain("h-10")
+      expect(bar!.className).toContain("rounded-full")
+      expect(bar!.className).toContain("border-outline-variant")
+      expect(bar!.className).toContain("bg-surface-container-low")
+      expect(bar!.className).toContain("md:max-w-md")
+      // La barra queda ANTES de las filas del grid
+      const grid = container.querySelector("div.grid.grid-cols-1")
+      expect(grid).not.toBeNull()
+      expect(
+        bar!.compareDocumentPosition(grid!) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy()
+    })
   })
 })

@@ -142,6 +142,13 @@ function CourseListBandsSkeleton() {
           <Skeleton className="h-4 w-24" />
         </div>
       </div>
+      {/* F-E2: barra de búsqueda entre featured y grid. Misma silueta que el
+          Input real (h-10 rounded-full sobre surface-container-low) para que
+          el swap no mueva layout. */}
+      <Skeleton
+        data-slot="skeleton-search-bar"
+        className="h-10 rounded-full border-outline-variant bg-surface-container-low md:max-w-md"
+      />
       {/* Catálogo: 3 placeholders de card con el mismo grid que el listado
         real (1 col en móvil, 2 desde md), para que el swap no mueva layout. */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">

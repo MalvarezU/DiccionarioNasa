@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useDeferredValue, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { GraduationCap } from "lucide-react"
+import { GraduationCap, Search, X } from "lucide-react"
 import { NavBar } from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { type CourseSummary } from "@/components/cursos/course-card"
 import { ResumeBand, type ResumeNextLesson } from "@/components/cursos/resume-band"
 import { FeaturedCourseCard } from "@/components/cursos/featured-course-card"
@@ -94,6 +95,26 @@ interface Resume {
   pct: number
 }
 
+/**
+ * F-E2: búsqueda insensible a mayúsculas y tildes ("maiz" encuentra
+ * "Maíz"). NFD descompone los diacríticos combinados y \p{Diacritic}
+ * los elimina; lowercase recién al final, sobre la forma desnuda.
+ */
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+}
+
+/** Filtra por título Y descripción; la query llega ya normalizada. */
+function courseMatches(course: CourseSummary, query: string): boolean {
+  return (
+    normalizeSearchText(course.title).includes(query) ||
+    normalizeSearchText(course.description ?? "").includes(query)
+  )
+}
+
 export default function CursosPage() {
   const { data: session, status } = useSession()
   const role = (session?.user as { role?: string } | undefined)?.role
@@ -104,6 +125,7 @@ export default function CursosPage() {
   const [managed, setManaged] = useState<CourseSummary[]>([])
   const [fetchError, setFetchError] = useState(false)
   const [resume, setResume] = useState<Resume | null>(null)
+  const [query, setQuery] = useState("")
 
   // Catálogo publicado (+ ?all=1 en editor+: el endpoint ya existe y
   // devuelve todos los estados; acá solo separamos DRAFT/ARCHIVED).
@@ -196,6 +218,24 @@ export default function CursosPage() {
   // Sin rol editor el apartado se oculta aunque hubiera datos viejos.
   const visibleManaged = isEditor ? managed : []
 
+  // F-E2 buscador: filtro CLIENTE sobre el catálogo ya cargado. El input
+  // corre con el valor fresco y el filtrado con el valor diferido
+  // (useDeferredValue: debounce sin timers; catálogos <50 cursos).
+  const deferredQuery = useDeferredValue(query)
+  const normalizedQuery = normalizeSearchText(deferredQuery.trim())
+  const isSearching = normalizedQuery.length > 0
+
+  // Colapso a resultados (fork resuelto): con query activa TODO el
+  // catálogo publicado entra al grid (incluido el curso que era featured,
+  // que se oculta como portada); en modo editorial se excluye como siempre.
+  const catalogRows = isSearching
+    ? published.filter((c) => courseMatches(c, normalizedQuery))
+    : rows
+  const managedRows = isSearching
+    ? visibleManaged.filter((c) => courseMatches(c, normalizedQuery))
+    : visibleManaged
+  const searchingWithoutResults = isSearching && catalogRows.length === 0
+
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
@@ -278,7 +318,9 @@ export default function CursosPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {resume ? (
+            {/* F-E2 colapso a resultados: con query activa solo vive el modo
+                retrieval — resume band y featured no se renderizan. */}
+            {!isSearching && resume ? (
               <ResumeBand
                 course={resume.course}
                 nextLesson={resume.next}
@@ -286,19 +328,94 @@ export default function CursosPage() {
               />
             ) : null}
 
-            {featured ? <FeaturedCourseCard course={featured} /> : null}
+            {!isSearching && featured ? (
+              <FeaturedCourseCard course={featured} />
+            ) : null}
 
-            {rows.length > 0 ? (
-              <section aria-label="Todos los cursos">
+            {/* F-E2 buscador: barra propia entre featured y grid. No sticky;
+                el filtrado es cliente sobre el catálogo ya cargado. */}
+            <form
+              role="search"
+              aria-label="Buscar cursos"
+              onSubmit={(event) => event.preventDefault()}
+              className="md:max-w-md"
+            >
+              <label htmlFor="cursos-busqueda" className="sr-only">
+                Buscar cursos
+              </label>
+              <div className="relative">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                  id="cursos-busqueda"
+                  type="text"
+                  value={query}
+                  placeholder="Buscar curso"
+                  onChange={(event) => setQuery(event.target.value)}
+                  className="h-10 rounded-full border-outline-variant bg-surface-container-low pl-9 pr-9"
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    aria-label="Limpiar búsqueda"
+                    onClick={() => setQuery("")}
+                    className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <X aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+            </form>
+
+            {isSearching ? (
+              <div>
+                <p className="text-sm tabular-nums text-muted-foreground">
+                  {catalogRows.length === 1 ? "1 curso" : `${catalogRows.length} cursos`}
+                </p>
+                {/* Anuncio para lectores de pantalla: el grid cambia demasiado
+                    seguido para narrarse entero; el número basta. */}
+                <p className="sr-only" role="status" aria-live="polite">
+                  {catalogRows.length === 1
+                    ? "1 curso encontrado"
+                    : `${catalogRows.length} cursos encontrados`}
+                </p>
+              </div>
+            ) : null}
+
+            {searchingWithoutResults ? (
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-outline-variant/20 bg-muted/30 px-6 py-12 text-center">
+                <h2 className="font-serif text-xl font-bold text-primary">
+                  Sin resultados
+                </h2>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  No hay cursos para «{deferredQuery.trim()}».
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => setQuery("")}
+                >
+                  Limpiar búsqueda
+                </Button>
+              </div>
+            ) : catalogRows.length > 0 ? (
+              <section
+                aria-label={
+                  isSearching ? "Resultados de búsqueda" : "Todos los cursos"
+                }
+              >
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {rows.map((course) => (
+                  {catalogRows.map((course) => (
                     <CourseCatalogCard key={course.id} course={course} />
                   ))}
                 </div>
               </section>
             ) : null}
 
-            {isEditor && visibleManaged.length > 0 ? (
+            {isEditor && managedRows.length > 0 ? (
               <section aria-label="Cursos en gestión">
                 <h2 className="mb-2 font-serif text-lg font-bold text-primary">
                   En gestión
@@ -307,7 +424,7 @@ export default function CursosPage() {
                   Borradores y archivados: solo visibles para el equipo editorial.
                 </p>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {visibleManaged.map((course) => (
+                  {managedRows.map((course) => (
                     <CourseCatalogCard key={course.id} course={course} />
                   ))}
                 </div>
