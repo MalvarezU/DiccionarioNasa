@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SuggestWordModal } from "@/components/suggest-word-modal";
 import { WordDetailCard } from "@/components/word-detail-card";
 import { searchLocalWords, isLocalDBReady } from "@/lib/local-db";
+import { saveSearchHistory } from "@/lib/save-search-history";
 
 const SINGLE_CHAR_DEBOUNCE_MS = 1000;
 interface SearchResult {
@@ -374,6 +375,10 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   const handleSelect = useCallback(
     (result: SearchResult) => {
       stopAll();
+      // Guardar la búsqueda (fire-and-forget, nunca bloquea la apertura).
+      // Si no hay texto (p. ej. navegación por flechas tras limpiar),
+      // se guarda la palabra abierta para no perder la señal.
+      saveSearchHistory(query.trim() || `${result.nasaYuwe} ${result.spanish}`);
       setQuery("");
       setIsOpen(false);
       if (onWordSelect) {
@@ -383,7 +388,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         setDetailOpen(true);
       }
     },
-    [onWordSelect, stopAll]
+    [onWordSelect, stopAll, query]
   );
 
   const handleKeyDown = useCallback(
@@ -391,6 +396,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
       if (e.key === "Enter") {
         if (query.trim().length === 1 && flatResults.length === 0) {
           e.preventDefault();
+          saveSearchHistory(query);
           performSearch(query.trim());
           return;
         }
@@ -398,6 +404,9 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < flatResults.length) {
           handleSelect(flatResults[highlightedIndex]);
+        } else {
+          // Enter sin resaltar: también es una búsqueda explícita.
+          saveSearchHistory(query);
         }
         return;
       }
