@@ -1,9 +1,9 @@
 "use client"
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { Suspense, useCallback, useDeferredValue, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye, X, ChevronDown } from "lucide-react"
+import { Plus, Trash2, Pencil, ArrowUp, ArrowDown, GraduationCap, BookOpen, Loader2, Eye, X, ChevronDown, Search } from "lucide-react"
 import * as Accordion from "@radix-ui/react-accordion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -31,6 +31,7 @@ import { Separator } from "@/components/ui/separator"
 import { MediaPicker } from "@/components/media/media-picker"
 import { CourseManagerListSkeleton } from "@/components/skeletons"
 import { STATUS_LABEL, lessonSinContenido } from "./course-types"
+import { normalizeSearchText } from "@/lib/search-text"
 import { useCourseManager } from "./use-course-manager"
 import { ConfirmDialog } from "./confirm-dialog"
 
@@ -70,6 +71,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
   const searchParams = useSearchParams()
   const [initialCurso] = useState(() => searchParams.get("curso"))
   const [initialFiltro] = useState(() => searchParams.get("filtro"))
+  const [initialQuery] = useState(() => searchParams.get("q") ?? "")
   const [guard, setGuard] = useState<GuardPendiente | null>(null)
   const [confirmPendiente, setConfirmPendiente] = useState<{
     kind: "course" | "module" | "lesson"
@@ -161,8 +163,45 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
     syncFiltroUrl(f)
   }
 
-  const cursosFiltrados =
+  /** Buscador de la lista (client-side, espejado en ?q=). */
+  const [query, setQuery] = useState(initialQuery)
+  /** Query propia en vuelo (anti-race: la URL aún no asentó). */
+  const pendingQueryRef = useRef<string | null>(null)
+
+  /** Espeja la búsqueda en ?q= (se omite cuando está vacía). */
+  const syncQueryUrl = useCallback(
+    (q: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (q.trim() === "") params.delete("q")
+      else params.set("q", q)
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [router, pathname, searchParams]
+  )
+
+  function changeQuery(q: string) {
+    setQuery(q)
+    pendingQueryRef.current = q
+    syncQueryUrl(q)
+  }
+
+  const deferredQuery = useDeferredValue(query)
+  const normalizedQuery = normalizeSearchText(deferredQuery.trim())
+  const isSearching = normalizedQuery.length > 0
+
+  function cursoMatchesBusqueda(c: { title: string; description: string | null }): boolean {
+    return (
+      normalizeSearchText(c.title).includes(normalizedQuery) ||
+      normalizeSearchText(c.description ?? "").includes(normalizedQuery)
+    )
+  }
+
+  const porEstado =
     filtro === "todos" ? courses : courses.filter((c) => c.status === filtro)
+  const cursosFiltrados = isSearching
+    ? porEstado.filter(cursoMatchesBusqueda)
+    : porEstado
 
   // Aplica ?filtro= entrante (deep-link/atras): solo cuando trae un valor
   // válido distinto al actual; nunca resetea el estado local a "todos".
@@ -170,6 +209,18 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
   useEffect(() => {
     if (filtroValido(filtroParam) && filtroParam !== filtro) setFiltro(filtroParam)
   }, [filtroParam, filtro])
+
+  // Aplica ?q= entrante (deep-link/atras): espeja la URL en el input.
+  // Si hay una escritura propia en vuelo, no revertir (la URL aún no asentó).
+  const qParam = searchParams.get("q") ?? ""
+  useEffect(() => {
+    if (qParam === query) {
+      pendingQueryRef.current = null
+      return
+    }
+    if (pendingQueryRef.current !== null) return
+    setQuery(qParam)
+  }, [qParam, query])
 
   /** Renombrado inline de módulo: id en edición + borrador del título. */
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -452,7 +503,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
   }, [isDirty])
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Lista */}
       <Card className="lg:col-span-1 flex flex-col rounded-2xl border-outline-variant/30 lg:max-h-[calc(100dvh-13rem)] lg:overflow-hidden" data-testid="cursos-card">
         <CardHeader className="shrink-0">
@@ -468,7 +519,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
             ) : null}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
           <form onSubmit={onCreateCourse} className="flex gap-2 shrink-0">
             <Input
               value={newTitle}
@@ -481,6 +532,40 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               <Plus className="h-4 w-4" />
             </Button>
           </form>
+          <form
+            role="search"
+            aria-label="Buscar cursos"
+            onSubmit={(e) => e.preventDefault()}
+            className="shrink-0"
+          >
+            <label htmlFor="cm-busqueda" className="sr-only">
+              Buscar cursos
+            </label>
+            <div className="relative">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                id="cm-busqueda"
+                type="text"
+                value={query}
+                placeholder="Buscar curso..."
+                onChange={(e) => changeQuery(e.target.value)}
+                className="h-10 rounded-full border-outline-variant bg-surface-container-low pl-9 pr-9"
+              />
+              {query ? (
+                <button
+                  type="button"
+                  aria-label="Limpiar búsqueda"
+                  onClick={() => changeQuery("")}
+                  className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <X aria-hidden="true" className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+          </form>
           <div
             role="group"
             aria-label="Filtrar cursos por estado"
@@ -492,7 +577,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                 type="button"
                 aria-pressed={filtro === f}
                 onClick={() => changeFiltro(f)}
-                className={`rounded-full border px-2.5 py-1 text-2xs transition-colors ${
+                className={`rounded-full border px-3 py-1.5 text-2xs transition-colors ${
                   filtro === f
                     ? "border-secondary bg-secondary/10 text-secondary"
                     : "border-outline-variant/30 text-muted-foreground hover:border-secondary/40"
@@ -535,7 +620,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                   type="button"
                   data-course-id={c.id}
                   onClick={() => requestSelect(c.id)}
-                  className={`w-full text-left p-3 rounded-xl border border-outline-variant/30 transition-colors ${
+                  className={`w-full text-left p-4 rounded-xl border border-outline-variant/30 transition-colors ${
                     selectedId === c.id
                       ? "border-secondary bg-secondary/5"
                       : "border-outline-variant/30 hover:border-secondary/40"
@@ -546,7 +631,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                     <Badge variant="outline" className="border-secondary/20 bg-secondary/10 text-secondary text-2xs">
                       {STATUS_LABEL[c.status] ?? c.status}
                     </Badge>
-                    <span className="text-2xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {c.modules} módulos · {c.lessons} lecciones
                     </span>
                   </div>
@@ -554,7 +639,11 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               ))}
               {cursosFiltrados.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  {courses.length === 0 ? "Sin cursos. Crea el primero." : "Sin cursos con este estado."}
+                  {courses.length === 0
+                    ? "Sin cursos. Crea el primero."
+                    : isSearching
+                      ? `Sin resultados para «${deferredQuery.trim()}».`
+                      : "Sin cursos con este estado."}
                 </p>
               )}
             </div>
@@ -624,7 +713,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
           ) : (
             <div className="space-y-4">
               {/* Form documental plegable */}
-              <div className={`rounded-xl border border-outline-variant/30 bg-background ${formAbierto ? "p-5" : "px-3 py-2"}`}>
+              <div className={`rounded-xl border border-outline-variant/30 bg-background ${formAbierto ? "p-6" : "px-3 py-2"}`}>
                 <div className="flex items-center gap-2">
                   <button
                     ref={chevronRef}

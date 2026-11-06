@@ -3,12 +3,17 @@ import { render, screen, waitFor, fireEvent, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event"
 import type { ReactNode } from "react"
 
-const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), curso: "" as string }))
+const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), curso: "" as string, q: "" as string }))
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: nav.push, replace: nav.replace }),
   usePathname: () => "/admin/cursos",
-  useSearchParams: () => new URLSearchParams(nav.curso ? `curso=${nav.curso}` : ""),
+  useSearchParams: () => {
+    const params = new URLSearchParams()
+    if (nav.curso) params.set("curso", nav.curso)
+    if (nav.q) params.set("q", nav.q)
+    return params
+  },
 }))
 
 const toastMock = vi.fn()
@@ -66,6 +71,7 @@ function resetNav() {
   nav.push.mockClear()
   nav.replace.mockClear()
   nav.curso = ""
+  nav.q = ""
 }
 
 /** Respuestas base: lista + detalles + escrituras OK. */
@@ -1042,5 +1048,77 @@ describe("CourseManager form plegable", () => {
     await user.click(screen.getByRole("button", { name: /Intermedio/ }))
     const dialogo = await screen.findByRole("alertdialog")
     expect(dialogo.textContent).toContain("Tenés cambios sin guardar")
+  })
+})
+
+describe("CourseManager buscador [CU-5]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    resetNav()
+    localStorage.clear()
+  })
+
+  it("filtra por título insensible a tildes y muestra mensaje de cero resultados", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await screen.findByRole("button", { name: /Básico/ })
+    await screen.findByRole("button", { name: /Intermedio/ })
+
+    const input = screen.getByPlaceholderText("Buscar curso...")
+    await user.type(input, "basico")
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Básico/ })).toBeDefined()
+      expect(screen.queryByRole("button", { name: /Intermedio/ })).toBeNull()
+    })
+
+    await user.clear(input)
+    await user.type(input, "zzz sin match")
+    expect(await screen.findByText(/Sin resultados para «zzz sin match»/)).toBeDefined()
+  })
+
+  it("espeja la búsqueda en ?q= y limpiar restaura la lista", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await screen.findByRole("button", { name: /Básico/ })
+    const input = screen.getByPlaceholderText("Buscar curso...")
+    await user.type(input, "intermedio")
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /Básico/ })).toBeNull()
+    )
+    expect(nav.replace).toHaveBeenCalledWith(
+      expect.stringContaining("q=intermedio"),
+      { scroll: false }
+    )
+
+    await user.click(screen.getByRole("button", { name: "Limpiar búsqueda" }))
+    await screen.findByRole("button", { name: /Básico/ })
+    expect((input as HTMLInputElement).value).toBe("")
+  })
+
+  it("init desde ?q= filtra sin tipear", async () => {
+    nav.q = "intermedio"
+    mockBase()
+    render(<CourseManager canDelete />)
+
+    await screen.findByRole("button", { name: /Intermedio/ })
+    expect(screen.queryByRole("button", { name: /Básico/ })).toBeNull()
+    expect((screen.getByPlaceholderText("Buscar curso...") as HTMLInputElement).value).toBe("intermedio")
+  })
+
+  it("combina búsqueda con chip de estado", async () => {
+    mockBase()
+    const user = userEvent.setup()
+    render(<CourseManager canDelete />)
+
+    await screen.findByRole("button", { name: /Básico/ })
+    await user.click(screen.getByRole("button", { name: "Publicado" }))
+    const input = screen.getByPlaceholderText("Buscar curso...")
+    await user.type(input, "intermedio")
+    expect(await screen.findByText(/Sin resultados para «intermedio»/)).toBeDefined()
   })
 })

@@ -10,6 +10,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { type CourseSummary } from "@/components/cursos/course-card"
+import { normalizeSearchText } from "@/lib/search-text"
 import { ResumeBand, type ResumeNextLesson } from "@/components/cursos/resume-band"
 import { FeaturedCourseCard } from "@/components/cursos/featured-course-card"
 import { CourseCatalogCard } from "@/components/cursos/course-catalog-card"
@@ -93,18 +94,6 @@ interface Resume {
   course: CourseSummary
   next: ResumeNextLesson | null
   pct: number
-}
-
-/**
- * F-E2: búsqueda insensible a mayúsculas y tildes ("maiz" encuentra
- * "Maíz"). NFD descompone los diacríticos combinados y \p{Diacritic}
- * los elimina; lowercase recién al final, sobre la forma desnuda.
- */
-function normalizeSearchText(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
 }
 
 /** Filtra por título Y descripción; la query llega ya normalizada. */

@@ -162,7 +162,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="flex-1 px-4 sm:px-6 py-6 lg:py-8"><div className="mx-auto w-full max-w-6xl">{children}</div></main>
+        <main className="flex-1 px-4 sm:px-6 py-6 lg:py-8"><div className={`mx-auto w-full ${pathname === "/admin/cursos" ? "max-w-7xl" : "max-w-6xl"}`}>{children}</div></main>
         <footer className="bg-surface-container-high/60 px-4 sm:px-6 py-4">
           <p className="text-xs text-muted-foreground">Panel de administración — Piiyaak</p>
         </footer>
