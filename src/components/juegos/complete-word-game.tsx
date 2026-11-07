@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
+import Link from "next/link"
 import { RefreshCw, CheckCircle2, XCircle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,15 +13,15 @@ import {
   reportGameResult,
   type GameWord,
 } from "@/lib/game-words"
-
-function shuffle<T>(arr: T[]): T[] {
-  const copy = [...arr]
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
-  }
-  return copy
-}
+import { shuffle } from "@/lib/game-utils"
+import { useGameFeedback } from "./game-feedback"
+import { Confetti } from "./confetti"
+import {
+  useGsapGame,
+  slideReveal,
+  stampIn,
+  countUp,
+} from "@/lib/game-motion"
 
 const NUM_QUESTIONS = 5
 // Rango de huecos por nivel (CA-51): fácil 1-2, medio 3-4, difícil 5+
@@ -68,6 +69,7 @@ export function CompleteWordGame({
 }) {
   const [nivelState, setNivelState] = useState<Nivel>(nivel)
   const [roundKey, setRoundKey] = useState(0)
+  const [retryKey, setRetryKey] = useState(0)
   const [pool, setPool] = useState<GameWord[] | null>(
     providedWords && providedWords.length >= 1 ? providedWords : null
   )
@@ -81,7 +83,7 @@ export function CompleteWordGame({
     return () => {
       alive = false
     }
-  }, [providedWords])
+  }, [providedWords, retryKey])
 
   const questions = useMemo(() => {
     if (!pool) return null
@@ -100,13 +102,62 @@ export function CompleteWordGame({
   const [correctCount, setCorrectCount] = useState(0)
   const [finished, setFinished] = useState(false)
   const [reported, setReported] = useState(false)
+  const { playCorrect, playWrong, playWin } = useGameFeedback()
+  const rowRef = useRef<HTMLDivElement>(null)
+
+  // Fase 2.5 — motion GSAP. Hero del juego: selo "¡correcto!" (stamp) que
+  // cae en su lugar al acertar; micros: entrada suave de la palabra nueva y
+  // countUp del resultado final. El shake de error es
+  // `anim-complete-wrong` (keyframe del juice kit CSS), queda intacto; el
+  // foco automático y el avance por acierto tampoco se tocan.
+  const prevStatusRef = useRef<string>("playing")
+
+  // Entrada suave de la palabra (cuando cambia de pregunta / nivel / ronda).
+  const wordRoot = useGsapGame((api) => {
+    slideReveal(api.gsap, api.root.querySelector("[data-word-q]"))
+  }, [questionIndex, nivelState, roundKey])
+
+  // Stamp solo en la transición playing → correct (el re-render de la fila
+  // de estado no re-anima).
+  const stampRoot = useGsapGame((api) => {
+    if (status === "correct" && prevStatusRef.current !== "correct") {
+      stampIn(api.gsap, api.root.querySelector("[data-stamp]"))
+    }
+    prevStatusRef.current = status
+  }, [status])
+
+  // Resultado final: countUp de la cifra de aciertos.
+  const resultRoot = useGsapGame((api) => {
+    if (!finished) return
+    countUp(
+      api.gsap,
+      api.root.querySelector<HTMLElement>("[data-countup]"),
+      correctCount
+    )
+  }, [finished])
+
+  function focusHueco(idx: number) {
+    rowRef.current
+      ?.querySelector<HTMLInputElement>(`input[data-hueco="${idx}"]`)
+      ?.focus({ preventScroll: true })
+  }
 
   function handleInputChange(huecoIdx: number, value: string) {
     if (status !== "playing") return
     // Solo permitir 1 carácter
     const char = value.slice(-1).toLowerCase()
     if (char && !/[a-záéíóúñü']/i.test(char)) return
-    setInputs((prev) => ({ ...prev, [huecoIdx]: char }))
+    const current = questions?.[questionIndex]
+    const next = { ...inputs, [huecoIdx]: char }
+    setInputs(next)
+    // Mover el foco al siguiente hueco vacío (progreso sin fricción)
+    const order = current?.hiddenIndices ?? []
+    const after = order
+      .slice(order.indexOf(huecoIdx) + 1)
+      .find((i) => !next[i])
+    if (char && after !== undefined) {
+      window.setTimeout(() => focusHueco(after), 0)
+    }
   }
 
   function handleCheck() {
@@ -122,9 +173,11 @@ export function CompleteWordGame({
     }
 
     if (allCorrect) {
+      playCorrect()
       setStatus("correct")
       setCorrectCount((c) => c + 1)
     } else {
+      playWrong()
       const newAttempts = attempts + 1
       setAttempts(newAttempts)
       if (newAttempts >= 3) {
@@ -158,18 +211,76 @@ export function CompleteWordGame({
     setRoundKey((k) => k + 1)
   }
 
+  function handleRetry() {
+    setPool(null)
+    setRetryKey((k) => k + 1)
+  }
+
+  // Avance automático tras el acierto (el botón Siguiente queda como fallback manual)
+  useEffect(() => {
+    if (status !== "correct") return
+    const t = window.setTimeout(() => {
+      handleNext()
+    }, 1200)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, questionIndex])
+
+  // Foco en el primer hueco de cada palabra nueva
+  useEffect(() => {
+    if (status !== "playing" || finished) return
+    const first = questions?.[questionIndex]?.hiddenIndices[0]
+    if (first === undefined) return
+    const t = window.setTimeout(() => focusHueco(first), 0)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionIndex, finished, questions])
+
   // Persiste el resultado al terminar
   useEffect(() => {
     if (!finished || reported || !questions || questions.length === 0) return
     setReported(true)
     onFinish?.({ correct: correctCount, total: questions.length })
+    if (correctCount >= questions.length * 0.5) playWin()
     void reportGameResult({
       game: "complete",
       won: correctCount >= questions.length * 0.5,
       score: correctCount * 10,
       streak: 0,
     })
-  }, [finished, reported, questions, correctCount, onFinish])
+  }, [finished, reported, questions, correctCount, onFinish, playWin])
+
+  if (pool && pool.length === 0) {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4 text-center">
+          <XCircle className="h-12 w-12 text-destructive" aria-hidden="true" />
+          <h3 className="text-xl font-serif font-bold text-foreground">
+            No se pudieron cargar las palabras
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Revisa tu conexión e inténtalo de nuevo.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3 mt-2">
+            <Button
+              onClick={handleRetry}
+              className="gap-2 game-press focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              Reintentar
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="gap-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+            >
+              <Link href="/juegos">Volver a juegos</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (!questions) {
     return (
@@ -181,21 +292,26 @@ export function CompleteWordGame({
   }
 
   if (finished) {
+    const won = correctCount >= questions.length * 0.5
     return (
-      <Card className="max-w-2xl mx-auto">
-        <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
-          <CheckCircle2 className="h-16 w-16 text-secondary" />
-          <h3 className="text-2xl font-serif text-foreground">¡Completado!</h3>
-          <p className="text-muted-foreground">
-            Completaste <strong className="text-montana">{correctCount}</strong> de{" "}
-            <strong>{questions.length}</strong> palabras
-          </p>
-          <Button onClick={handleRestart} variant="outline" className="gap-2 mt-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
-            <RefreshCw className="h-4 w-4" />
-            Jugar de nuevo
-          </Button>
-        </CardContent>
-      </Card>
+      <div ref={resultRoot} className="relative max-w-2xl mx-auto">
+        {won && <Confetti />}
+        <Card>
+          <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
+            <CheckCircle2 className="h-16 w-16 text-secondary" />
+            <h3 className="text-2xl font-serif text-foreground">¡Completado!</h3>
+            <p className="text-muted-foreground">
+              Completaste{" "}
+              <strong data-countup className="text-montana">{correctCount}</strong> de{" "}
+              <strong>{questions.length}</strong> palabras
+            </p>
+            <Button onClick={handleRestart} variant="outline" className="game-press gap-2 mt-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
+              <RefreshCw className="h-4 w-4" />
+              Jugar de nuevo
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
@@ -203,7 +319,7 @@ export function CompleteWordGame({
   const maxAttempts = 3
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div ref={wordRoot} className="max-w-2xl mx-auto space-y-6">
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-montana">
@@ -242,7 +358,7 @@ export function CompleteWordGame({
         </div>
         <Progress
           value={((questionIndex + 1) / questions.length) * 100}
-          className="h-2 bg-surface-container-high [&_[data-slot=progress-indicator]]:bg-secondary"
+          className="h-2 game-progress bg-surface-container-high [&_[data-slot=progress-indicator]]:bg-secondary"
         />
       </div>
 
@@ -257,11 +373,12 @@ export function CompleteWordGame({
                 : "border-primary/20"
         }`}
       >
-        <CardContent className="pt-8 pb-6 flex flex-col items-center gap-6">
+        <CardContent data-word-q className="pt-8 pb-6 flex flex-col items-center gap-6">
           <p className="text-sm text-muted-foreground">
             Escribe las letras que faltan:
           </p>
           <div
+            ref={rowRef}
             className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2"
             data-testid="letter-row"
           >
@@ -276,6 +393,7 @@ export function CompleteWordGame({
                 return (
                   <Input
                     key={idx}
+                    data-hueco={idx}
                     value={inputs[idx] || ""}
                     onChange={(e) => handleInputChange(idx, e.target.value)}
                     disabled={status === "correct" || status === "failed"}
@@ -316,7 +434,11 @@ export function CompleteWordGame({
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between">
+      {/* Fila de acción con altura reservada (min-h del botón): los
+          cuatro estados (verificar/sello/error/fallo) comparten el mismo
+          alto y nunca desmontan la fila, solo su contenido visible
+          (regla reserve-then-fill). Los intentos (pills) siempre montados. */}
+      <div ref={stampRoot} data-testid="complete-action" className="flex min-h-10 items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="sr-only">Intentos fallidos: {attempts} de {maxAttempts}</span>
           <span role="img" aria-label={`${maxAttempts - attempts} intentos restantes de ${maxAttempts}`} className="flex items-center gap-2">
@@ -336,15 +458,15 @@ export function CompleteWordGame({
         </div>
 
         {status === "playing" && (
-          <Button onClick={handleCheck} className="gap-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
+          <Button onClick={handleCheck} className="game-press gap-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
             Verificar
           </Button>
         )}
         {status === "correct" && (
-          <div className="flex items-center gap-2 text-montana" role="status">
+          <div data-stamp className="flex items-center gap-2 text-montana" role="status">
             <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
             <span className="font-medium">¡Correcto!</span>
-            <Button onClick={handleNext} variant="outline" className="gap-2 ml-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
+            <Button onClick={handleNext} variant="outline" className="game-press gap-2 ml-2 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
               Siguiente
             </Button>
           </div>
@@ -366,7 +488,7 @@ export function CompleteWordGame({
                 </strong>
               </span>
             </div>
-            <Button onClick={handleNext} variant="outline" className="gap-2">
+            <Button onClick={handleNext} variant="outline" className="game-press gap-2">
               Siguiente
             </Button>
           </div>

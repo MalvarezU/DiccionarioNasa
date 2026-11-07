@@ -3,13 +3,10 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { db } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
+import { GAME_IDS, isGameId, type GameId } from "@/lib/game-ids"
 
-export const GAMES = ["flashcards", "memory", "complete"] as const
-export type GameId = (typeof GAMES)[number]
-
-function isGameId(value: unknown): value is GameId {
-  return typeof value === "string" && (GAMES as readonly string[]).includes(value)
-}
+/** Re-exported from the single source so existing imports keep working. */
+export { GAME_IDS, isGameId, type GameId }
 
 /**
  * POST /api/games/result

@@ -112,6 +112,25 @@ describe("POST /api/games/result [B2.1]", () => {
       })
     )
   })
+
+  it("acepta el juego ordena (whitelist extendida)", async () => {
+    authed()
+    vi.mocked(db.userGameSession.findUnique).mockResolvedValue(null)
+    vi.mocked(db.userGameSession.create).mockResolvedValue({} as never)
+    const res = await resultPOST(
+      req({ game: "ordena", won: true, score: 80, streak: 4 }) as never
+    )
+    expect((await res.json()).saved).toBe(true)
+    expect(db.userGameSession.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: "u1",
+          game: "ordena",
+          bestScore: 80,
+        }),
+      })
+    )
+  })
 })
 
 describe("GET /api/games/stats [B2.1]", () => {

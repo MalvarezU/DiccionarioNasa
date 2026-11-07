@@ -6,15 +6,18 @@
  * - reportGameResult: persiste en backend cuando hay con qué (best-effort).
  */
 import { DEMO_WORDS, type DemoWord } from "@/lib/demo-content"
+import { shuffle } from "@/lib/game-utils"
+import type { GameId } from "@/lib/game-ids"
+
+export type { GameId } from "@/lib/game-ids"
 
 export interface GameWord {
   id: string
   spanish: string
   nasaYuwe: string
   pronunciation: string | null
+  illustrationUrl: string | null
 }
-
-export type GameId = "flashcards" | "memory" | "complete"
 
 const LS_PREFIX = "piiyaak:game:v1"
 
@@ -31,15 +34,6 @@ export interface FlashcardBuilt {
   correctIndex: number
 }
 
-function shuffleLocal<T>(arr: T[]): T[] {
-  const copy = [...arr]
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
-  }
-  return copy
-}
-
 /**
  * Arma preguntas de opción múltiple para palabras dadas (lecciones),
  * con distractores del pool. Dirección es-nasa o nasa-es.
@@ -51,10 +45,10 @@ export function buildFlashcardQuestions(
 ): FlashcardBuilt[] {
   const answer = (w: GameWord) => (direction === "es-nasa" ? w.nasaYuwe : w.spanish)
   return askWords.map((word) => {
-    const distractors = shuffleLocal(pool.filter((w) => w.id !== word.id))
+    const distractors = shuffle(pool.filter((w) => w.id !== word.id))
       .slice(0, 3)
       .map(answer)
-    const options = shuffleLocal([answer(word), ...distractors])
+    const options = shuffle([answer(word), ...distractors])
     return {
       prompt:
         direction === "es-nasa" ? "¿Cómo se dice en Nasa Yuwe?" : "¿Qué significa en español?",
@@ -71,9 +65,17 @@ export async function fetchGameWords(count: number): Promise<GameWord[]> {
     if (!res.ok) return []
     const data = await res.json()
     if (!Array.isArray(data.words)) return []
-    return data.words.filter(
-      (w: Partial<GameWord>) => w?.id && w?.spanish && w?.nasaYuwe
-    )
+    return data.words
+      .filter(
+        (w: Partial<GameWord>) => w?.id && w?.spanish && w?.nasaYuwe
+      )
+      .map((w: Partial<GameWord>) => ({
+        id: w.id!,
+        spanish: w.spanish!,
+        nasaYuwe: w.nasaYuwe!,
+        pronunciation: w.pronunciation ?? null,
+        illustrationUrl: w.illustrationUrl ?? null,
+      }))
   } catch {
     return []
   }
@@ -88,6 +90,7 @@ export async function gameWordsOrDemo(count: number): Promise<GameWord[]> {
     spanish: w.spanish,
     nasaYuwe: w.nasaYuwe,
     pronunciation: w.pronunciation ?? null,
+    illustrationUrl: null,
   }))
 }
 

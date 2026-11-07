@@ -3,6 +3,7 @@ import { NavBar } from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { CompleteWordGame } from "@/components/juegos/complete-word-game"
+import { SoundToggle } from "@/components/juegos/sound-toggle"
 
 export default function CompletarPage() {
   return (
@@ -21,6 +22,9 @@ export default function CompletarPage() {
           <h1 className="text-3xl font-serif font-bold text-primary">
             Completar la palabra
           </h1>
+          <div className="ml-auto">
+            <SoundToggle />
+          </div>
         </div>
         <p className="text-muted-foreground mb-8">
           Escribe las letras que faltan. Tienes 3 intentos por palabra.

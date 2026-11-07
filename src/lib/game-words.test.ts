@@ -26,7 +26,9 @@ describe("game-words [B2.1]", () => {
       }) as never
     )
     const words = await fetchGameWords(12)
-    expect(words).toEqual([{ id: "w1", spanish: "Casa", nasaYuwe: "Yat" }])
+    expect(words).toEqual([
+      { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null, illustrationUrl: null },
+    ])
     expect(fetch).toHaveBeenCalledWith("/api/games/words?count=12")
   })
 
@@ -60,10 +62,10 @@ describe("game-words [B2.1]", () => {
 
   it("arma preguntas para palabras dadas con distractores", () => {
     const pool = [
-      { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null },
-      { id: "w2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null },
-      { id: "w3", spanish: "Sol", nasaYuwe: "Ate", pronunciation: null },
-      { id: "w4", spanish: "Luna", nasaYuwe: "Ate2", pronunciation: null },
+      { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null, illustrationUrl: null },
+      { id: "w2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null, illustrationUrl: null },
+      { id: "w3", spanish: "Sol", nasaYuwe: "Ate", pronunciation: null, illustrationUrl: null },
+      { id: "w4", spanish: "Luna", nasaYuwe: "Ate2", pronunciation: null, illustrationUrl: null },
     ]
     const qs = buildFlashcardQuestions([pool[0]!], pool)
     expect(qs).toHaveLength(1)

@@ -13,7 +13,7 @@ vi.mock("next/link", () => ({
   }) => <a href={href}>{children}</a>,
 }))
 
-const MOTIVOS: GameMotif[] = ["flash", "memory", "gaps"]
+const MOTIVOS: GameMotif[] = ["flash", "memory", "gaps", "ordena"]
 
 describe("GameTile [WU-L6]", () => {
   it.each(MOTIVOS)("renderiza el motivo %s con titulo y enlace intactos", (motivo) => {
@@ -53,5 +53,12 @@ describe("GameTile [WU-L6]", () => {
     expect(
       container.querySelectorAll(".border-b-2.border-secondary").length
     ).toBe(2)
+  })
+
+  it("motivo ordena muestra 4 mini-tiles desordenados con letras", () => {
+    const { container } = render(<GameMotifArt motivo="ordena" />)
+    expect(screen.getByText("tx")).toBeDefined()
+    expect(screen.getByText("sx")).toBeDefined()
+    expect(container.querySelectorAll(".bg-secondary-container").length).toBe(4)
   })
 })

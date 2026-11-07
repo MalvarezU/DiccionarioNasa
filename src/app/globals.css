@@ -324,6 +324,81 @@
   }
 }
 
+/* Fase 1.5 — juice kit (0 deps): press en botones de juego, caída de
+   confetti y avance suave de la barra de progreso. El keyframe de confetti
+   vive tras `no-preference` como el resto del motion de juegos; el bloque
+   global de reduce de abajo neutraliza duraciones de todos modos. */
+.game-press {
+  transition: transform 150ms ease-out;
+}
+.game-press:active {
+  transform: scale(0.97);
+}
+
+.game-progress [data-slot="progress-indicator"] {
+  transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes confetti-fall {
+    0% {
+      transform: translateY(-12px) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(340px) rotate(540deg);
+      opacity: 0;
+    }
+  }
+
+  .game-confetti-piece {
+    animation-name: confetti-fall;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: forwards;
+  }
+}
+
+/* Fase 2.5 — flip 3D de Memoria (GSAP en composición con el juice kit).
+   Reglas de composición: el dueño del TRANSFORM de reposo es el CSS
+   declarativo (`[data-flip]`, sin transitions de transform para no
+   competir con el tween); GSAP solo anima la transición y al completar
+   libera el inline (`clearProps`), así el reposo es imposible de perder
+   aunque el contexto se pierda entre la pantalla de carga y el tablero.
+   El bloque de reduce de abajo queda intacto (mismo estado final, sin
+   animación). La única `transition` del botón es de colores, no
+   transform. El bloque global de reduce de abajo queda de red de
+   seguridad para todo lo demás. */
+.memory-flip-card {
+  perspective: 700px;
+}
+.memory-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.memory-flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.memory-flip-back {
+  transform: rotateY(180deg);
+}
+/* Estado de reposo en modo normal: declarativo, imposible de perder.
+   GSAP solo anima la transición (fromTo desde el reposo opuesto) y al
+   completar libera el inline para que este CSS tome el mando sin flash. */
+.memory-flip-card[data-flip="1"] .memory-flip-inner {
+  transform: rotateY(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .memory-flip-card[data-flip="1"] .memory-flip-inner {
+    transform: rotateY(180deg);
+  }
+}
+
 /* F4 — motion del player master-detail (/cursos/[id]). CSS-only, 0 deps.
    Reveal del canvas al cambiar de lección + stagger de bloques (máx 5,
    +60ms) + pop del check del outline. Todo vive tras un

@@ -3,8 +3,10 @@ import { ArrowRight, Lock } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import type { GameId } from "@/lib/game-words"
+import { GameBestBadge } from "./game-best-badge"
 
-export type GameMotif = "flash" | "memory" | "gaps"
+export type GameMotif = "flash" | "memory" | "gaps" | "ordena"
 
 /** Decorative mini illustration for a game tile. Pure CSS/divs, no assets. */
 export function GameMotifArt({ motivo }: { motivo: GameMotif }) {
@@ -62,6 +64,28 @@ export function GameMotifArt({ motivo }: { motivo: GameMotif }) {
     )
   }
 
+  if (motivo === "ordena") {
+    // 4 mini-tiles desordenados (fichas de palabra por armar), CSS-only
+    const tiles = [
+      { text: "tx", tilt: "-rotate-6" },
+      { text: "a", tilt: "rotate-3" },
+      { text: "u'", tilt: "-rotate-3" },
+      { text: "sx", tilt: "rotate-6" },
+    ]
+    return (
+      <div aria-hidden="true" className="flex items-end gap-1.5">
+        {tiles.map((tile) => (
+          <span
+            key={tile.text}
+            className={`flex h-9 w-8 items-center justify-center rounded-md border border-secondary/40 bg-secondary-container font-serif text-sm font-bold leading-none text-montana shadow-sm ${tile.tilt}`}
+          >
+            {tile.text}
+          </span>
+        ))}
+      </div>
+    )
+  }
+
   // gaps: `c _ s _` with blanks as olive-underlined cells
   return (
     <div
@@ -82,6 +106,8 @@ interface GameTileProps {
   title: string
   description: string
   locked?: boolean
+  /** Game id for the best score/streak line (omitted = no line). */
+  gameId?: GameId
 }
 
 /** Hub tile: 96px motif preview + title + description + play link. */
@@ -91,6 +117,7 @@ export function GameTile({
   title,
   description,
   locked = false,
+  gameId,
 }: GameTileProps) {
   const card = (
     <Card
@@ -118,6 +145,7 @@ export function GameTile({
         <p className="text-sm text-muted-foreground leading-relaxed">
           {description}
         </p>
+        {!locked && gameId && <GameBestBadge game={gameId} />}
         {locked ? (
           <p className="mt-3 text-sm text-muted-foreground">
             Este juego aún no está disponible.

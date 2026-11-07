@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       .slice(0, MAX_COUNT)
 
     const words = (await db.$queryRawUnsafe(
-      `SELECT id, spanish, \`nasaYuwe\`, pronunciation
+      `SELECT id, spanish, \`nasaYuwe\`, pronunciation, illustrationUrl
        FROM DictionaryWord
        WHERE status = 'PUBLISHED'
        ${exclude.length > 0 ? `AND id NOT IN (${exclude.map(() => "?").join(",")})` : ""}
@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       spanish: string
       nasaYuwe: string
       pronunciation: string | null
+      illustrationUrl: string | null
     }>
 
     return NextResponse.json({ words, total: words.length })
