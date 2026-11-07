@@ -72,18 +72,16 @@ export function WordDetailCard({
       {/* ─── Desktop: Centered Dialog (Modal) ──────────────────────────────── */}
       {!isMobile && (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
-            <div className="p-6">
-              <DialogHeader className="pb-0 text-left space-y-0">
-                <DialogTitle className="sr-only">
-                  {word ? word.spanish : "Detalle de palabra"}
-                </DialogTitle>
-                <DialogDescription className="sr-only">
-                  Detalle completo de la palabra seleccionada
-                </DialogDescription>
-                <WordContent {...contentProps} />
-              </DialogHeader>
-            </div>
+          <DialogContent className="max-h-[88dvh] gap-0 overflow-hidden p-0 md:max-w-4xl lg:max-w-5xl">
+            <DialogHeader className="contents">
+              <DialogTitle className="sr-only">
+                {word ? word.spanish : "Detalle de palabra"}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Detalle completo de la palabra seleccionada
+              </DialogDescription>
+            </DialogHeader>
+            <WordContent {...contentProps} />
           </DialogContent>
         </Dialog>
       )}

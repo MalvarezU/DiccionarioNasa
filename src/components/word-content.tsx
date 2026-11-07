@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { WordDetailSkeleton } from "@/components/skeletons"
 import { WordIllustration } from "@/components/dictionary/word-illustration"
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ export function WordContent({
   onLoginClick,
 }: WordContentProps) {
   if (isLoading) {
-    return <WordDetailSkeleton />;
+    return <WordDetailSkeleton layout="wide" />;
   }
 
   if (!word) {
@@ -66,17 +67,33 @@ export function WordContent({
     );
   }
 
-  return (
-    <>
-      {/* Ilustración de la palabra: un solo componente reutilizable
-          (dictionary/word-illustration.tsx). El ancho máximo es el único
-          knob de tamaño; hoy la ficha es la única que la muestra. */}
-      <WordIllustration
-        url={word.illustrationUrl}
-        alt={word.spanish}
-        className="mx-auto mb-4 w-full max-w-[16rem]"
-      />
+  // Sin ilustración la grilla colapsa a una sola columna: WordIllustration
+  // retorna null y no se reserva su hueco (misma regla que el skeleton).
+  const hasIllustration = Boolean(word.illustrationUrl);
 
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-1 md:max-h-[88dvh]",
+        hasIllustration && "md:grid-cols-[5fr_7fr]"
+      )}
+    >
+      {/* Columna izquierda (desktop): ilustración grande y fija. En móvil
+          sigue apilada arriba con el mismo tamaño de antes. */}
+      {hasIllustration && (
+        <div className="md:sticky md:top-0 md:self-start md:p-8 md:pr-4">
+          <WordIllustration
+            url={word.illustrationUrl}
+            alt={word.spanish}
+            sizes="(max-width: 768px) 100vw, 480px"
+            className="mx-auto mb-4 w-full max-w-[16rem] md:mb-0 md:max-w-none"
+          />
+        </div>
+      )}
+
+      {/* Columna derecha: la ficha. Solo scrollea como red de seguridad
+          (contexto largo, muchos ejemplos); la ficha típica entra sin scroll. */}
+      <div className="md:min-h-0 md:overflow-y-auto md:p-8 md:pl-4">
       {/* Category badges */}
       {categories.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 mb-2">
@@ -114,7 +131,7 @@ export function WordContent({
         </span>
       </div>
 
-      <div className="mt-6 flex flex-col gap-8">
+      <div className="mt-4 flex flex-col gap-5">
         {/* Phonetic pronunciation */}
         {word.pronunciation ? (
           <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
@@ -267,6 +284,7 @@ export function WordContent({
           )}
         </div>
       </div>
-    </>
+      </div>
+    </div>
   );
 }
