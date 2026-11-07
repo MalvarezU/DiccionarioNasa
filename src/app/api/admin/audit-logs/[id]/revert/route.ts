@@ -215,6 +215,43 @@ export async function POST(
     return NextResponse.json({ ok: true, message: "Cambio revertido" })
   }
 
+  // ---------------- Module / Lesson ----------------
+  // Fase A T07: revert de un borrado lógico (DELETE → deletedAt) =
+  // deletedAt = null + bump (+1, regla 2.2.3). Si ya está restaurado
+  // (deletedAt null) o la entidad no existe → 409/404 sin bump ni mutación.
+  if ((original.entity === "Module" || original.entity === "Lesson") && original.action === "DELETE") {
+    const entityId = original.entityId
+    if (!entityId) {
+      return NextResponse.json({ message: "No se puede revertir: falta el id de la entidad" }, { status: 409 })
+    }
+    const delegate =
+      original.entity === "Module" ? db.module : db.lesson
+    const current = await delegate.findUnique({ where: { id: entityId } })
+    if (!current) {
+      return NextResponse.json({ message: "La entidad ya no existe" }, { status: 409 })
+    }
+    if (current.deletedAt === null) {
+      return NextResponse.json({ message: "El borrado ya fue revertido" }, { status: 409 })
+    }
+
+    await db.$transaction(async (tx) => {
+      const txDelegate = original.entity === "Module" ? tx.module : tx.lesson
+      await txDelegate.update({ where: { id: entityId }, data: { deletedAt: null } })
+      await tx.auditLog.create({
+        data: {
+          action: "REVERT",
+          entity: original.entity,
+          entityId,
+          changes: JSON.stringify({ originalLogId: id, restored: "undeleted", responsable: adminUser.name || adminUser.email }),
+          userId: adminUser.id,
+        },
+      })
+      await bumpContentVersion(tx)
+    })
+
+    return NextResponse.json({ ok: true, message: "Borrado revertido" })
+  }
+
   // ---------------- User ----------------
   if (original.entity === "User") {
     if (original.action !== "UPDATE") {

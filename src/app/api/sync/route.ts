@@ -93,14 +93,16 @@ export async function GET(request: NextRequest) {
     })
 
     const removedIds = [
-      ...page.filter((w) => w.status === "ARCHIVED").map((w) => w.id),
+      // T07: comparación normalizada — sana "archived" minúscula histórica.
+      ...page.filter((w) => String(w.status).toUpperCase() === "ARCHIVED").map((w) => w.id),
       ...tombstones
         .map((t) => t.entityId)
         .filter((id): id is string => !!id),
     ]
     const removedSet = new Set(removedIds)
+    // T07: comparación normalizada (misma regresión R-ARCHIVED).
     const words = page
-      .filter((w) => w.status !== "ARCHIVED")
+      .filter((w) => String(w.status).toUpperCase() !== "ARCHIVED")
       .map((w) => ({
         id: w.id,
         spanish: w.spanish,
