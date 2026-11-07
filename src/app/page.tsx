@@ -167,10 +167,10 @@ function HomeContent() {
                 id="seguir-titulo"
                 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-primary"
               >
-                Seguí explorando
+                Sigue explorando
               </h2>
               <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-xl">
-                Recorré el índice de la A a la Z o practicá lo aprendido jugando.
+                Recorre el índice de la A a la Z o practica lo aprendido jugando.
               </p>
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Link

@@ -97,7 +97,7 @@ describe("InstallSection", () => {
     render(<InstallSection />)
     fireEvent.click(screen.getByRole("button", { name: "Instalar ahora" }))
     const dialogo = await screen.findByRole("dialog")
-    expect(dialogo.textContent ?? "").toContain("Abrí esta página en Chrome de Android")
+    expect(dialogo.textContent ?? "").toContain("Abre esta página en Chrome de Android")
     expect(dialogo.textContent ?? "").toContain("Instalar aplicación")
   })
 
@@ -127,7 +127,7 @@ describe("InstallSection", () => {
     // El trigger solo abre el modal: el prompt nativo no dispara directo.
     expect(prompt).not.toHaveBeenCalled()
     const dialogo = await screen.findByRole("dialog")
-    expect(dialogo.textContent ?? "").toContain("Abrí esta página en Chrome de Android")
+    expect(dialogo.textContent ?? "").toContain("Abre esta página en Chrome de Android")
     fireEvent.click(screen.getByRole("button", { name: "Instalar ahora" }))
     await waitFor(() => {
       expect(prompt).toHaveBeenCalled()

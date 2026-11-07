@@ -130,7 +130,7 @@ export function EscuchaInteractivo({
             </Button>
             {elegida === null ? (
               <p id={ayudaRevisarId} className="text-xs text-muted-foreground">
-                Elegí una opción para revisar
+                Elige una opción para revisar
               </p>
             ) : null}
           </>

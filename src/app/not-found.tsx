@@ -20,7 +20,7 @@ export default function NotFound() {
         <p className="text-sm font-medium text-muted-foreground">Error 404</p>
         <h1 className="text-2xl font-serif font-bold">Recurso no encontrado</h1>
         <p className="text-muted-foreground max-w-md">
-          El enlace pudo vencer o la página se movió. Probá con las secciones
+          El enlace pudo vencer o la página se movió. Prueba con las secciones
           de la plataforma.
         </p>
         <div className="flex flex-wrap justify-center gap-2 mt-2">

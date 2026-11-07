@@ -145,10 +145,10 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isRegister ? "Creá tu cuenta" : "Iniciar sesión"}</DialogTitle>
+          <DialogTitle>{isRegister ? "Crea tu cuenta" : "Iniciar sesión"}</DialogTitle>
           <DialogDescription>
             {isRegister
-              ? "Entrá con Google y tu cuenta se crea al instante, sin formulario ni correo de verificación."
+              ? "Entra con Google y tu cuenta se crea al instante, sin formulario ni correo de verificación."
               : "Entra con tu cuenta de Google para guardar palabras favoritas y acceder a ellas desde cualquier dispositivo."}
           </DialogDescription>
         </DialogHeader>
@@ -167,7 +167,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
           </Button>
           {!isRegister && (
             <p className="text-center text-xs text-muted-foreground -mt-2">
-              También sirve si ya tenés cuenta.
+              También sirve si ya tienes cuenta.
             </p>
           )}
 
@@ -266,7 +266,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
           <p className="border-t pt-3 text-center text-sm text-foreground">
             {isRegister ? (
               <>
-                ¿Ya tenés contraseña?{" "}
+                ¿Ya tienes contraseña?{" "}
                 <button
                   type="button"
                   onClick={() => setMode("login")}
@@ -277,7 +277,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
               </>
             ) : (
               <>
-                ¿No tenés cuenta?{" "}
+                ¿No tienes cuenta?{" "}
                 <button
                   type="button"
                   onClick={() => setMode("register")}

@@ -19,7 +19,7 @@ describe("InstallDialog", () => {
       />
     )
     expect(screen.getByText("Instalar en Android")).toBeDefined()
-    expect(screen.getByText("Abrí esta página en Chrome de Android.")).toBeDefined()
+    expect(screen.getByText("Abre esta página en Chrome de Android.")).toBeDefined()
   })
 
   it("muestra los pasos de la variante escritorio", () => {
@@ -35,7 +35,7 @@ describe("InstallDialog", () => {
     )
     expect(screen.getByText("Instalar en tu equipo")).toBeDefined()
     expect(
-      screen.getByText("Buscá el icono de instalación en la barra de direcciones (monitor con flecha).")
+      screen.getByText("Busca el icono de instalación en la barra de direcciones (monitor con flecha).")
     ).toBeDefined()
   })
 
@@ -51,7 +51,7 @@ describe("InstallDialog", () => {
       />
     )
     expect(screen.getByText("Instalar en iPhone / iPad")).toBeDefined()
-    expect(screen.getByText("Elegí “Añadir a pantalla de inicio”.")).toBeDefined()
+    expect(screen.getByText("Elige “Añadir a pantalla de inicio”.")).toBeDefined()
   })
 
   it("con prompt: el botón primario llama a onInstalar", () => {

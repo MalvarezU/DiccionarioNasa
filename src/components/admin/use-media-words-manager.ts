@@ -225,7 +225,7 @@ export function useMediaWordsManager<F extends MediaField>(
     } catch (err) {
       toast({
         title: "No se pudo guardar",
-        description: err instanceof Error ? err.message : "Intentá de nuevo",
+        description: err instanceof Error ? err.message : "Intenta de nuevo",
         variant: "destructive",
       })
     } finally {

@@ -319,7 +319,7 @@ export function FormVocabulary({
         </ul>
       ) : (
         <p className="rounded-lg border border-dashed border-outline-variant/40 px-4 py-3 text-center text-sm text-muted-foreground">
-          Todavía no hay palabras. Buscá una abajo para agregarla.
+          Todavía no hay palabras. Busca una abajo para agregarla.
         </p>
       )}
 

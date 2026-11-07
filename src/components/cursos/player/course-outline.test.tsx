@@ -94,7 +94,7 @@ describe("CourseOutline", () => {
     expect(locked).not.toBeDisabled()
     expect(locked).toHaveAttribute("aria-disabled", "true")
     expect(
-      screen.getByText("Completá el Módulo 1 para desbloquear este módulo")
+      screen.getByText("Completa el Módulo 1 para desbloquear este módulo")
     ).toBeDefined()
     await user.click(locked)
     expect(onSelect).toHaveBeenCalledWith("l21")
@@ -264,7 +264,7 @@ describe("CourseOutline", () => {
       expect(madre).not.toBeDisabled()
       expect(madre).toHaveAttribute("aria-disabled", "true")
       expect(
-        screen.getByText("Iniciá sesión para acceder a partir del módulo 2")
+        screen.getByText("Inicia sesión para acceder a partir del módulo 2")
       ).toBeDefined()
       // El hint secuencial queda para quien sí tiene sesión
       expect(screen.queryByText(/para desbloquear este módulo/)).toBeNull()
@@ -310,8 +310,8 @@ describe("CourseOutline", () => {
       const madre = lessonButton(/Madre/)
       const hintId = madre.getAttribute("aria-describedby")
       expect(hintId).not.toBeNull()
-      expect(document.getElementById(hintId!)?.textContent).toContain("iniciá sesión")
-      expect(document.getElementById(hintId!)?.textContent).not.toContain("completá el Módulo")
+      expect(document.getElementById(hintId!)?.textContent).toContain("inicia sesión")
+      expect(document.getElementById(hintId!)?.textContent).not.toContain("completa el Módulo")
     })
 
     it("autenticado: módulo 2 navega según secuencial (regresión)", async () => {
@@ -327,7 +327,7 @@ describe("CourseOutline", () => {
 
     it("sin isAuthed explícito (default true): ningún gate de sesión — previews/reuso seguro", () => {
       render(<CourseOutline {...props()} />)
-      expect(screen.queryByText(/Iniciá sesión para acceder/)).toBeNull()
+      expect(screen.queryByText(/Inicia sesión para acceder/)).toBeNull()
       expect(lessonButton(/Madre/).getAttribute("data-lesson-state")).toBe("locked")
     })
   })

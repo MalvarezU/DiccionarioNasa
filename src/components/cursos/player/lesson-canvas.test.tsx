@@ -81,7 +81,7 @@ describe("LessonCanvas", () => {
   it("badge Completada y badge anónimo cuando corresponde", () => {
     render(<LessonCanvas {...props({ completed: true, anonymous: true })} />)
     expect(screen.getByText("Completada")).toBeDefined()
-    expect(screen.getByText("Iniciá sesión para guardar tu avance")).toBeDefined()
+    expect(screen.getByText("Inicia sesión para guardar tu avance")).toBeDefined()
   })
 
   it("delega el completar al child: lección sin interactivos ofrece marcar completa", async () => {
@@ -139,7 +139,7 @@ describe("LessonCanvas", () => {
       />
     )
     const banner = screen.getByRole("status")
-    expect(banner.textContent).toContain("Completá el Módulo 1")
+    expect(banner.textContent).toContain("Completa el Módulo 1")
     await user.click(screen.getByRole("button", { name: /Ir a la lección requerida/ }))
     expect(onGoRequired).toHaveBeenCalledWith("l12")
     // El contenido no se monta en estado bloqueado
@@ -315,7 +315,7 @@ describe("LessonCanvas", () => {
       const banner = screen.getByRole("status")
       expect(banner.textContent).toContain("requiere sesión")
       expect(banner.textContent).toContain("módulo 2")
-      expect(banner.textContent).not.toContain("Completá el Módulo")
+      expect(banner.textContent).not.toContain("Completa el Módulo")
       // Sin CTA de secuencial: para anónimo no hay lección requerida a la que ir
       expect(screen.queryByRole("button", { name: /Ir a la lección requerida/ })).toBeNull()
       await user.click(screen.getByRole("button", { name: "Iniciar sesión" }))
@@ -332,7 +332,7 @@ describe("LessonCanvas", () => {
           })}
         />
       )
-      expect(screen.getByRole("status").textContent).toContain("Completá el Módulo 1")
+      expect(screen.getByRole("status").textContent).toContain("Completa el Módulo 1")
       expect(screen.queryByRole("button", { name: "Iniciar sesión" })).toBeNull()
     })
   })
