@@ -78,8 +78,9 @@ export async function POST(request: Request) {
       return { created, skipped, total: rows.length, report };
     });
 
-    // Nota spec §2.3.6: `POST /api/admin/import` directo (staging) no hace
-    // bump; el único bump del flujo vive acá.
+    // Nota spec §2.3.6 (C1): el legacy `POST /api/admin/import` también
+    // bumpea (+1 por request aplicada); cada flujo bumpea lo suyo, sin
+    // doble conteo entre legacy y `confirm`.
     return NextResponse.json(result);
   } catch (error) {
     console.error("Import confirm error:", error);

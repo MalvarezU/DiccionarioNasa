@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireRole } from "@/lib/auth"
+import { bumpContentVersion } from "@/lib/content-version"
 import { validateRow, type ValidWord } from "@/lib/import-helpers"
 
 /**
@@ -10,6 +11,9 @@ import { validateRow, type ValidWord } from "@/lib/import-helpers"
  * clásico; para archivos .xlsx/.csv usar preview+confirm).
  * Usa la misma validación: default BORRADOR (CA-32), duplicados por
  * «español» insensible a mayúsculas (CA-33) y bitácora por ficha (B1.8).
+ *
+ * Escribe filas reales: +1 por request con ≥1 fila aplicada, misma
+ * transacción (espejo de `confirm`, spec §2.3.6). 0 filas o 4xx → sin bump.
  */
 export async function POST(request: Request) {
   const { session, error } = await requireRole("editor")
@@ -34,7 +38,6 @@ export async function POST(request: Request) {
       )
     }
 
-    let created = 0
     let skipped = 0
     let errors = 0
     const errorRows: Array<{ row: number; reason: string }> = []
@@ -49,76 +52,86 @@ export async function POST(request: Request) {
       }
     }
 
-    // Duplicados por «español» (una sola consulta)
-    const taken = new Set<string>()
-    if (valid.length > 0) {
-      const names = [...new Set(valid.map((w) => w.data.spanish))]
-      const existing = await db.dictionaryWord.findMany({
-        where: { spanish: { in: names } },
-        select: { spanish: true },
-      })
-      for (const w of existing) taken.add(w.spanish.trim().toLowerCase())
-    }
-
-    const seen = new Set<string>()
+    // Fase A C1: mutación + bump en la misma transacción (espejo de
+    // `confirm`, spec §2.2/§2.3.6). +1 por request con ≥1 fila aplicada;
+    // 0 filas efectivas → sin bump.
     const userId = (session!.user as { id: string }).id
-    for (const { index, data } of valid) {
-      const key = data.spanish.trim().toLowerCase()
-      if (taken.has(key) || seen.has(key)) {
-        skipped++
-        continue
+    const applied = await db.$transaction(async (tx) => {
+      let created = 0
+      // Duplicados por «español» (una sola consulta)
+      const taken = new Set<string>()
+      if (valid.length > 0) {
+        const names = [...new Set(valid.map((w) => w.data.spanish))]
+        const existing = await tx.dictionaryWord.findMany({
+          where: { spanish: { in: names } },
+          select: { spanish: true },
+        })
+        for (const w of existing) taken.add(w.spanish.trim().toLowerCase())
       }
-      seen.add(key)
 
-      // Create the word
-      try {
-        const createdWord = await db.dictionaryWord.create({ data: { ...data } })
-        // B1.8: una entrada por ficha (trazabilidad individual)
-        await db.auditLog.create({
+      const seen = new Set<string>()
+      for (const { index, data } of valid) {
+        const key = data.spanish.trim().toLowerCase()
+        if (taken.has(key) || seen.has(key)) {
+          skipped++
+          continue
+        }
+        seen.add(key)
+
+        // Create the word
+        try {
+          const createdWord = await tx.dictionaryWord.create({ data: { ...data } })
+          // B1.8: una entrada por ficha (trazabilidad individual)
+          await tx.auditLog.create({
+            data: {
+              action: "IMPORT",
+              entity: "DictionaryWord",
+              entityId: createdWord.id,
+              changes: JSON.stringify({
+                spanish: data.spanish,
+                nasaYuwe: data.nasaYuwe,
+                status: data.status,
+                row: index + 1,
+              }),
+              userId,
+              wordId: createdWord.id,
+            },
+          })
+          created++
+        } catch {
+          errors++
+          errorRows.push({ row: index + 1, reason: "Error al crear la ficha" })
+        }
+      }
+
+      // Log the import action
+      if (created > 0) {
+        await tx.auditLog.create({
           data: {
             action: "IMPORT",
             entity: "DictionaryWord",
-            entityId: createdWord.id,
             changes: JSON.stringify({
-              spanish: data.spanish,
-              nasaYuwe: data.nasaYuwe,
-              status: data.status,
-              row: index + 1,
+              total: words.length,
+              created,
+              skipped,
+              errors,
             }),
             userId,
-            wordId: createdWord.id,
           },
         })
-        created++
-      } catch {
-        errors++
-        errorRows.push({ row: index + 1, reason: "Error al crear la ficha" })
+        await bumpContentVersion(tx)
       }
-    }
 
-    // Log the import action
-    if (created > 0) {
-      await db.auditLog.create({
-        data: {
-          action: "IMPORT",
-          entity: "DictionaryWord",
-          changes: JSON.stringify({
-            total: words.length,
-            created,
-            skipped,
-            errors,
-          }),
-          userId,
-        },
-      })
-    }
+      return { created, skipped, errors, errorRows }
+    })
+    const { created } = applied
 
     return NextResponse.json({
       total: words.length,
       created,
-      skipped,
-      errors,
-      errorRows: errorRows.slice(0, 10), // Return first 10 errors
+      skipped: applied.skipped,
+      errors: applied.errors,
+      errorRows: applied.errorRows.slice(0, 10), // Return first 10 errors
     })
   } catch (error) {
     console.error("Import error:", error)

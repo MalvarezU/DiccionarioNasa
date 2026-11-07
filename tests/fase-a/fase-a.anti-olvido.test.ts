@@ -36,16 +36,10 @@ const MUTATION_RES: RegExp[] = [
 const HANDLER_RE = /export\s+async\s+function\s+(POST|PUT|PATCH|DELETE)\b/g;
 
 // Allowlist explícita con motivo (spec T11): muta contenido publicable sin
-// bump por decisión documentada. Vacía por defecto salvo las entradas
-// declaradas abajo.
-const ALLOWLIST: Array<{ file: string; reason: string }> = [
-  {
-    // Punto 6 spec §2.3: staging clásico — sin bump por decisión T04 (el bump
-    // del flujo vive en import/confirm). Cambiar esto exige spec-review.
-    file: "src/app/api/admin/import/route.ts",
-    reason: "staging clásico T04: muta DictionaryWord sin bump; bump en import/confirm",
-  },
-];
+// bump por decisión documentada. Vacía desde C1 (el legacy `admin/import`
+// bumpea como `confirm`): ninguna ruta mutante publicable queda exenta.
+// Agregar una entrada exige spec-review.
+const ALLOWLIST: Array<{ file: string; reason: string }> = [];
 
 function stripComments(src: string): string {
   const noBlocks = src.replace(/\/\*[\s\S]*?\*\//g, "");
