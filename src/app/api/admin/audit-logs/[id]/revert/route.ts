@@ -224,9 +224,10 @@ export async function POST(
     if (!entityId) {
       return NextResponse.json({ message: "No se puede revertir: falta el id de la entidad" }, { status: 409 })
     }
-    const delegate =
-      original.entity === "Module" ? db.module : db.lesson
-    const current = await delegate.findUnique({ where: { id: entityId } })
+    const current =
+      original.entity === "Module"
+        ? await db.module.findUnique({ where: { id: entityId } })
+        : await db.lesson.findUnique({ where: { id: entityId } })
     if (!current) {
       return NextResponse.json({ message: "La entidad ya no existe" }, { status: 409 })
     }
@@ -235,8 +236,11 @@ export async function POST(
     }
 
     await db.$transaction(async (tx) => {
-      const txDelegate = original.entity === "Module" ? tx.module : tx.lesson
-      await txDelegate.update({ where: { id: entityId }, data: { deletedAt: null } })
+      if (original.entity === "Module") {
+        await tx.module.update({ where: { id: entityId }, data: { deletedAt: null } })
+      } else {
+        await tx.lesson.update({ where: { id: entityId }, data: { deletedAt: null } })
+      }
       await tx.auditLog.create({
         data: {
           action: "REVERT",
