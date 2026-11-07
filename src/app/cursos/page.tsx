@@ -14,6 +14,7 @@ import { normalizeSearchText } from "@/lib/search-text"
 import { ResumeBand, type ResumeNextLesson } from "@/components/cursos/resume-band"
 import { FeaturedCourseCard } from "@/components/cursos/featured-course-card"
 import { CourseCatalogCard } from "@/components/cursos/course-catalog-card"
+import { Reveal } from "@/components/reveal"
 import { CourseListBandsSkeleton } from "@/components/skeletons"
 
 const ANON_KEY = "piiyaak:course:anon:v1"
@@ -247,8 +248,8 @@ export default function CursosPage() {
           </div>
           <div className="space-y-3">
             <p className="max-w-2xl text-muted-foreground">
-              Seguí una ruta estructurada para aprender Nasa Yuwe paso a paso. Cada curso
-              está organizado en módulos y lecciones que podés completar a tu ritmo.
+              Sigue una ruta estructurada para aprender Nasa Yuwe paso a paso. Cada curso
+              está organizado en módulos y lecciones que puedes completar a tu ritmo.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               {resume ? (
@@ -284,7 +285,7 @@ export default function CursosPage() {
               No pudimos cargar los cursos.
             </h2>
             <p className="max-w-md text-sm text-muted-foreground">
-              Revisá tu conexión e intentá de nuevo. El diccionario sigue disponible.
+              Revisa tu conexión e intenta de nuevo. El diccionario sigue disponible.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <Button onClick={() => window.location.reload()}>Reintentar</Button>
@@ -299,7 +300,7 @@ export default function CursosPage() {
               Aún no hay cursos publicados.
             </h2>
             <p className="max-w-md text-sm text-muted-foreground">
-              Estamos preparando la ruta de aprendizaje. Mientras tanto, podés
+              Estamos preparando la ruta de aprendizaje. Mientras tanto, puedes
               seguir explorando palabras en el diccionario.
             </p>
             <Button asChild variant="outline">
@@ -392,7 +393,8 @@ export default function CursosPage() {
                 </Button>
               </div>
             ) : catalogRows.length > 0 ? (
-              <section
+              <Reveal
+                as="section"
                 aria-label={
                   isSearching ? "Resultados de búsqueda" : "Todos los cursos"
                 }
@@ -402,7 +404,7 @@ export default function CursosPage() {
                     <CourseCatalogCard key={course.id} course={course} />
                   ))}
                 </div>
-              </section>
+              </Reveal>
             ) : null}
 
             {isEditor && managedRows.length > 0 ? (

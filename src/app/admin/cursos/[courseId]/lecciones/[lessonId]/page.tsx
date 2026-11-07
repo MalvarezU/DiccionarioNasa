@@ -75,7 +75,7 @@ export default function LessonEditorPage() {
           setBlocks(data.lesson.content?.blocks ?? [])
         }
       } catch {
-        if (!cancelado) setError("Error de red. Intentá de nuevo.")
+        if (!cancelado) setError("Error de red. Intenta de nuevo.")
       }
     })()
     return () => {

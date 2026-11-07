@@ -155,12 +155,12 @@ export function CourseOutline({
               {sessionLocked ? (
                 <p className="mb-2 flex items-center gap-1.5 text-xs text-primary-foreground/70">
                   <Lock className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  Iniciá sesión para acceder a partir del módulo 2
+                  Inicia sesión para acceder a partir del módulo 2
                 </p>
               ) : !seqUnlocked ? (
                 <p className="mb-2 flex items-center gap-1.5 text-xs text-primary-foreground/70">
                   <Lock className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  Completá el Módulo {moduleIndex - 1} para desbloquear este módulo
+                  Completa el Módulo {moduleIndex - 1} para desbloquear este módulo
                 </p>
               ) : null}
               <ol className="space-y-1">
@@ -259,8 +259,8 @@ export function CourseOutline({
                       {locked && (
                         <span id={lockHintId} className="sr-only">
                           {sessionLocked
-                            ? "Sin acceso — iniciá sesión para acceder a partir del módulo 2"
-                            : `Sin acceso — completá el Módulo ${moduleIndex - 1} para desbloquear esta lección`}
+                            ? "Sin acceso — inicia sesión para acceder a partir del módulo 2"
+                            : `Sin acceso — completa el Módulo ${moduleIndex - 1} para desbloquear esta lección`}
                         </span>
                       )}
                     </li>

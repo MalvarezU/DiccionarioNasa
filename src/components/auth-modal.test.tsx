@@ -40,7 +40,7 @@ describe("AuthModal (Google-first)", () => {
 
   it("renders register mode when initialMode is register", () => {
     render(<AuthModal open={true} onOpenChange={onOpenChange} initialMode="register" />)
-    expect(screen.getByRole("heading", { name: /creá tu cuenta/i })).toBeDefined()
+    expect(screen.getByRole("heading", { name: /crea tu cuenta/i })).toBeDefined()
     expect(
       screen.getByText(/tu cuenta se crea al instante, sin formulario ni correo de verificación/i)
     ).toBeDefined()
@@ -58,7 +58,7 @@ describe("AuthModal (Google-first)", () => {
     render(<AuthModal open={true} onOpenChange={onOpenChange} />)
 
     await user.click(screen.getByRole("button", { name: /crear una/i }))
-    expect(screen.getByRole("heading", { name: /creá tu cuenta/i })).toBeDefined()
+    expect(screen.getByRole("heading", { name: /crea tu cuenta/i })).toBeDefined()
 
     await user.click(screen.getByRole("button", { name: /entrar/i }))
     expect(screen.getByRole("heading", { name: /iniciar sesión/i })).toBeDefined()
@@ -82,7 +82,7 @@ describe("AuthModal (Google-first)", () => {
     )
 
     await user.click(screen.getByRole("button", { name: /crear una/i }))
-    expect(screen.getByRole("heading", { name: /creá tu cuenta/i })).toBeDefined()
+    expect(screen.getByRole("heading", { name: /crea tu cuenta/i })).toBeDefined()
 
     rerender(<AuthModal open={false} onOpenChange={onOpenChange} initialMode="login" />)
     rerender(<AuthModal open={true} onOpenChange={onOpenChange} initialMode="login" />)

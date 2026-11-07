@@ -39,25 +39,25 @@ export function SiteFooter() {
             <nav className="flex flex-col items-center gap-2">
               <Link
                 href="/diccionario"
-                className="rounded-sm text-xs text-crema/80 hover:text-crema transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
+                className="link-underline-terracota rounded-sm text-xs text-crema/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
               >
                 Diccionario
               </Link>
               <Link
                 href="/juegos"
-                className="rounded-sm text-xs text-crema/80 hover:text-crema transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
+                className="link-underline-terracota rounded-sm text-xs text-crema/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
               >
                 Juegos
               </Link>
               <Link
                 href="/cursos"
-                className="rounded-sm text-xs text-crema/80 hover:text-crema transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
+                className="link-underline-terracota rounded-sm text-xs text-crema/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
               >
                 Cursos
               </Link>
               <Link
                 href="/#instalar"
-                className="rounded-sm text-xs text-crema/80 hover:text-crema transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
+                className="link-underline-terracota rounded-sm text-xs text-crema/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema"
               >
                 Descargar app
               </Link>
@@ -78,10 +78,10 @@ export function SiteFooter() {
         {/* Bottom bar */}
         <div className="mt-8 pt-6 border-t border-crema/15">
           <nav className="mb-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-2xs text-crema/70">
-            <Link href="/terminos" className="rounded-sm hover:text-crema transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema">
+            <Link href="/terminos" className="link-underline-terracota rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema">
               Términos y Condiciones
             </Link>
-            <Link href="/privacidad" className="rounded-sm hover:text-crema transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema">
+            <Link href="/privacidad" className="link-underline-terracota rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema">
               Política de Privacidad
             </Link>
           </nav>

@@ -108,7 +108,7 @@ export function FeaturedCourseCard({ course }: FeaturedCourseCardProps) {
                 <ArrowRight className="h-4 w-4" />
               </span>
             ) : (
-              <Badge variant="outline">Sin contenido</Badge>
+              <Badge variant="outline" className="border-tertiary/30 bg-tertiary-container text-tertiary">Sin contenido</Badge>
             )}
           </div>
         </div>

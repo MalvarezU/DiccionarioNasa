@@ -170,7 +170,7 @@ export function LessonEditor({
       if (!res.ok) {
         toast({
           title: "No se pudo guardar",
-          description: body.message ?? "Revisá los errores en los bloques",
+          description: body.message ?? "Revisa los errores en los bloques",
           variant: "destructive",
         })
         return
@@ -183,7 +183,7 @@ export function LessonEditor({
     } catch {
       toast({
         title: "No se pudo guardar",
-        description: "Error de red. Intentá de nuevo.",
+        description: "Error de red. Intenta de nuevo.",
         variant: "destructive",
       })
     } finally {

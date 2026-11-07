@@ -1006,7 +1006,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
                         aria-label={`${openMods.includes(mod.id) ? "Colapsar" : "Expandir"} módulo ${mod.title}`}
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted [&[data-state=open]>svg]:rotate-180"
                       >
-                        <ChevronDown className="h-3.5 w-3.5 transition-transform" aria-hidden="true" />
+                        <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]" aria-hidden="true" />
                       </Accordion.Trigger>
                       {/* Acciones en reveal en lg */}
                       <span className="flex items-center gap-1 lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">

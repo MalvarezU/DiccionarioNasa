@@ -104,10 +104,10 @@ export function useWordList({ open, onBulkActionDone }: UseWordListArgs) {
         setTotal(data.total)
         setError(null)
       } else {
-        setError("No se pudieron cargar las fichas. Intentá de nuevo.")
+        setError("No se pudieron cargar las fichas. Intenta de nuevo.")
       }
     } catch {
-      setError("No se pudieron cargar las fichas. Revisá tu conexión.")
+      setError("No se pudieron cargar las fichas. Revisa tu conexión.")
     } finally {
       setIsLoading(false)
     }
@@ -239,10 +239,10 @@ export function useWordList({ open, onBulkActionDone }: UseWordListArgs) {
       } else {
         const body = (await res.json().catch(() => null)) as { message?: string } | null
         // La selección se conserva para reintentar.
-        setError(body?.message ?? "No se pudo actualizar la selección. Intentá de nuevo.")
+        setError(body?.message ?? "No se pudo actualizar la selección. Intenta de nuevo.")
       }
     } catch {
-      setError("No se pudo actualizar la selección. Revisá tu conexión.")
+      setError("No se pudo actualizar la selección. Revisa tu conexión.")
     } finally {
       setIsBulkAction(false)
     }

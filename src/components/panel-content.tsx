@@ -90,7 +90,7 @@ export function PanelContent({
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "favorites"
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              : "text-muted-foreground hover:text-montana hover:bg-secondary-container"
           }`}
           aria-pressed={activeTab === "favorites"}
         >
@@ -103,7 +103,7 @@ export function PanelContent({
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "history"
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              : "text-muted-foreground hover:text-montana hover:bg-secondary-container"
           }`}
           aria-pressed={activeTab === "history"}
         >
@@ -124,7 +124,7 @@ export function PanelContent({
               {favorites.map((fav) => (
                 <Card
                   key={fav.id}
-                  className="group cursor-pointer transition-all duration-200 bg-surface-container-low border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
+                  className="group cursor-pointer transition-all duration-200 bg-surface-container-low border border-outline-variant/30 shadow-sm hover:shadow-lg hover:border-primary/40"
                   onClick={() => handleWordClick(fav.word.id)}
                 >
                   <CardHeader className="pb-2">
@@ -135,7 +135,7 @@ export function PanelContent({
                       {fav.word.category && (
                         <Badge
                           variant="secondary"
-                          className="text-2xs shrink-0 px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
+                          className="text-2xs shrink-0 px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30"
                         >
                           {fav.word.category}
                         </Badge>
@@ -209,7 +209,7 @@ export function PanelContent({
                     {items.map((item) => (
                       <Card
                         key={item.id}
-                        className="group cursor-pointer transition-all duration-200 bg-surface-container-low border border-outline-variant/30 shadow-sm hover:shadow-md hover:border-primary/40"
+                        className="group cursor-pointer transition-all duration-200 bg-surface-container-low border border-outline-variant/30 shadow-sm hover:shadow-lg hover:border-primary/40"
                         onClick={() => handleWordClick(item.word.id)}
                       >
                         <CardHeader className="pb-2">
@@ -220,7 +220,7 @@ export function PanelContent({
                             {item.word.category && (
                               <Badge
                                 variant="secondary"
-                                className="text-2xs shrink-0 px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
+                                className="text-2xs shrink-0 px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30"
                               >
                                 {item.word.category}
                               </Badge>

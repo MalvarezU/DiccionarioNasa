@@ -101,7 +101,7 @@ function ContactLink() {
   return (
     <a
       href={`mailto:${CONTACT_EMAIL}`}
-      className="text-primary underline"
+      className="link-underline-terracota rounded-sm text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       {CONTACT_EMAIL}
     </a>

@@ -84,7 +84,7 @@ export function WordContent({
             <Badge
               key={cat}
               variant="secondary"
-              className="text-xs gap-1 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors cursor-pointer"
+              className="text-xs gap-1 bg-surface-container-highest text-foreground hover:bg-secondary-container transition-colors cursor-pointer"
             >
               <Tag className="h-3 w-3" />
               {getCategoryDisplay(cat)}
@@ -194,7 +194,7 @@ export function WordContent({
             Contexto cultural
           </h3>
           {word.culturalContext ? (
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed border-l-2 border-terracota pl-3">
               {word.culturalContext}
             </p>
           ) : (
@@ -215,7 +215,7 @@ export function WordContent({
               {word.examples.map((ex, i) => (
                 <div
                   key={i}
-                  className="p-3 rounded-lg bg-surface-container-high"
+                  className="p-3 rounded-lg bg-surface-container-high border-l-2 border-terracota"
                 >
                   <p className="text-sm text-foreground font-medium">
                     {ex.spanish}
@@ -236,8 +236,9 @@ export function WordContent({
         {/* Favorite button */}
         <div className="flex flex-col gap-2 pb-2">
           <Button
+            key={isFavorite ? "favorito" : "no-favorito"}
             variant={isFavorite ? "default" : "outline"}
-            className={`w-full gap-2 ${isFavorite ? "bg-secondary hover:bg-secondary/90 transition-colors" : ""}`}
+            className={`w-full gap-2 transition-colors ${isFavorite ? "bg-secondary hover:bg-secondary/90 anim-match-pop" : "hover:border-tertiary/50 hover:text-tertiary"}`}
             onClick={onToggleFavorite}
             disabled={isTogglingFav || isDownloading}
           >
@@ -245,7 +246,7 @@ export function WordContent({
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Heart
-                className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`}
+                className={`h-4 w-4 ${isFavorite ? "fill-terracota text-terracota" : ""}`}
               />
             )}
             {isFavorite

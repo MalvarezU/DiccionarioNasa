@@ -124,13 +124,13 @@ export function GameTile({
       className={`h-full transition-all ${
         locked
           ? "opacity-60"
-          : "group cursor-pointer motion-safe:hover:shadow-md motion-safe:hover:-translate-y-0.5 hover:border-primary/40"
+          : "group cursor-pointer motion-safe:hover:shadow-lg motion-safe:hover:-translate-y-0.5 hover:border-primary/40"
       }`}
     >
       <CardHeader className="pb-3">
         {locked && (
           <div className="flex justify-end">
-            <Badge variant="outline" className="shrink-0 text-2xs">
+            <Badge variant="outline" className="shrink-0 text-2xs border-tertiary/30 bg-tertiary-container text-tertiary">
               <Lock className="h-3 w-3 mr-1" />
               Sin contenido
             </Badge>

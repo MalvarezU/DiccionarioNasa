@@ -91,7 +91,7 @@ export function InstallSection() {
             <CardContent>
               <Button
                 variant="outline"
-                className="gap-2 w-full"
+                className="gap-2 w-full hover:bg-amarillo/20 hover:text-montana hover:border-amarillo/60"
                 disabled={instalada}
                 aria-haspopup="dialog"
                 onClick={() => accionar("desktop")}

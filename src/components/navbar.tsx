@@ -142,18 +142,20 @@ export function NavBar() {
                 : "focus-visible:outline-primary"
             } group`}
           >
-            <Image
-              src="/logoPiiyaakblanco.png"
-              alt="Piiyaak"
-              width={25}
-              height={28}
-              priority
-              className={
-                isHeroTop
-                  ? "h-7 w-auto rounded-md ring-1 ring-crema/25"
-                  : "h-7 w-auto rounded-md ring-1 ring-black/10"
-              }
-            />
+            {/* Placa verde permanente: el isotipo PNG transparente vive
+                siempre sobre montana sólido, en los dos estados del
+                header (hero-top frosted y sólido). El wordmark serif
+                al lado queda como está. */}
+            <span className="flex items-center justify-center rounded-lg bg-montana p-1">
+              <Image
+                src="/logoPiiyaakblanco.png"
+                alt="Piiyaak"
+                width={38}
+                height={42}
+                priority
+                className="h-[42px] w-[38px]"
+              />
+            </span>
             <span
               className={
                 isHeroTop
@@ -165,62 +167,63 @@ export function NavBar() {
             </span>
           </Link>
 
-          {/* Center nav links — en la portada la elección de módulo se hace
-              desde el hero, así que acá no se duplican */}
+          {/* Center nav links — solo fuera de la portada: en el home la
+              elección de módulo se hace desde el hero. El underline
+              terracota (hover + aria-current) es su único feedback. */}
           {pathname !== "/" && (
             <>
-              <nav className="hidden md:flex items-center gap-1 ml-6">
-                {NAV_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={isActive(item.href) ? "page" : undefined}
-                    className={`link-underline-terracota flex items-center gap-1.5 px-1 py-1.5 rounded-sm text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                      isHeroTop
-                        ? "focus-visible:outline-crema"
-                        : "focus-visible:outline-primary"
-                    } ${
-                      isActive(item.href)
-                        ? isHeroTop
-                          ? "text-crema"
-                          : "text-primary"
-                        : isHeroTop
-                          ? "text-crema/85 hover:text-crema"
-                          : "text-foreground/80 hover:text-primary"
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+              <nav className="hidden md:flex items-center gap-1 ml-6" aria-label="Secciones">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                className={`link-underline-terracota flex items-center gap-1.5 px-1 py-1.5 rounded-sm text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  isHeroTop
+                    ? "focus-visible:outline-crema"
+                    : "focus-visible:outline-primary"
+                } ${
+                  isActive(item.href)
+                    ? isHeroTop
+                      ? "text-crema"
+                      : "text-primary"
+                    : isHeroTop
+                      ? "text-crema/85"
+                      : "text-foreground/80"
+                }`}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
-              <nav className="flex md:hidden items-center gap-0.5" aria-label="Secciones">
-                {NAV_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-label={item.label}
-                    aria-current={isActive(item.href) ? "page" : undefined}
-                    className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[56px] px-2 rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                      isHeroTop
-                        ? "focus-visible:outline-crema"
-                        : "focus-visible:outline-primary"
-                    } ${
-                      isActive(item.href)
-                        ? isHeroTop
-                          ? "text-crema bg-crema/15"
-                          : "text-primary bg-primary/10"
-                        : isHeroTop
-                          ? "text-crema/85 hover:text-crema hover:bg-crema/10"
-                          : "text-foreground/80 bg-card hover:text-primary hover:bg-surface-container-high"
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4" aria-hidden="true" />
-                    <span className="text-xs leading-none font-medium">{item.label}</span>
-                  </Link>
-                ))}
-              </nav>
+          <nav className="flex md:hidden items-center gap-0.5" aria-label="Secciones">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-label={item.label}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] min-w-[56px] px-2 rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  isHeroTop
+                    ? "focus-visible:outline-crema"
+                    : "focus-visible:outline-primary"
+                } ${
+                  isActive(item.href)
+                    ? isHeroTop
+                      ? "text-crema bg-crema/15"
+                      : "bg-secondary-container text-montana"
+                    : isHeroTop
+                      ? "text-crema/85 hover:text-crema hover:bg-crema/10"
+                      : "text-foreground/80 bg-card hover:text-montana hover:bg-secondary-container"
+                }`}
+              >
+                <item.icon className="h-4 w-4" aria-hidden="true" />
+                <span className="text-xs leading-none font-medium">{item.label}</span>
+              </Link>
+            ))}
+          </nav>
             </>
           )}
 

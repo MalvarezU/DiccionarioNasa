@@ -173,7 +173,7 @@ describe("/cursos/[id] player", () => {
     expect(await screen.findByRole("heading", { name: "Básico" })).toBeDefined()
     // El outline marca L3 como bloqueada sin deshabilitarla
     const outline = screen.getByRole("navigation", { name: /Contenido de/ })
-    expect(outline.textContent).toContain("Completá el Módulo 1")
+    expect(outline.textContent).toContain("Completa el Módulo 1")
     const l3 = outline.querySelector('[data-lesson-state="locked"]')
     expect(l3).not.toBeNull()
     expect(l3).not.toBeDisabled()
@@ -191,7 +191,7 @@ describe("/cursos/[id] player", () => {
     render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
     expect(await screen.findByRole("heading", { level: 2, name: "L3" })).toBeDefined()
     const banner = await screen.findByRole("status")
-    expect(banner.textContent).toContain("Completá el Módulo 1")
+    expect(banner.textContent).toContain("Completa el Módulo 1")
     expect(
       screen.getByRole("button", { name: /Ir a la lección requerida/ })
     ).toBeDefined()
@@ -209,7 +209,7 @@ describe("/cursos/[id] player", () => {
       expect(dialog).toBeDefined()
       expect(screen.getByRole("heading", { name: /Iniciar sesión/ })).toBeDefined()
       expect(toastMocks.toast).toHaveBeenCalledWith({
-        title: "Iniciá sesión para interactuar con los cursos",
+        title: "Inicia sesión para interactuar con los cursos",
       })
       // El click no alcanzó al radio del quiz
       expect(radio).toHaveAttribute("aria-checked", "false")
@@ -224,7 +224,7 @@ describe("/cursos/[id] player", () => {
       await user.click(await screen.findByRole("button", { name: /Marcar como completada/ }))
       expect(await screen.findByRole("dialog")).toBeDefined()
       expect(toastMocks.toast).toHaveBeenCalledWith({
-        title: "Iniciá sesión para interactuar con los cursos",
+        title: "Inicia sesión para interactuar con los cursos",
       })
       expect(localStorage.getItem("piiyaak:course:anon:v1:c1")).toBeNull()
       const progressPosts = vi
@@ -251,7 +251,7 @@ describe("/cursos/[id] player", () => {
       const banner = await screen.findByRole("status")
       expect(banner.textContent).toContain("requiere sesión")
       expect(banner.textContent).toContain("módulo 2")
-      expect(banner.textContent).not.toContain("Completá el Módulo")
+      expect(banner.textContent).not.toContain("Completa el Módulo")
       // Sin contenido y sin CTA secuencial para anónimo
       expect(screen.queryByRole("button", { name: /Marcar como completada/ })).toBeNull()
       expect(screen.queryByRole("button", { name: /Ir a la lección requerida/ })).toBeNull()
@@ -267,7 +267,7 @@ describe("/cursos/[id] player", () => {
       await screen.findByRole("heading", { level: 2, name: "L1" })
       const outline = screen.getByRole("navigation", { name: /Contenido de/ })
       expect(outline.textContent).toContain(
-        "Iniciá sesión para acceder a partir del módulo 2"
+        "Inicia sesión para acceder a partir del módulo 2"
       )
       const l3 = outline.querySelector('[data-lesson-state="locked"]')
       expect(l3).not.toBeNull()
@@ -316,13 +316,13 @@ describe("/cursos/[id] player", () => {
       render(<CursoDetailPage params={Promise.resolve({ id: "c1" })} />)
       const outline = await screen.findByRole("navigation", { name: /Contenido de/ })
       // Sin sesiones-gates: el cerrojo del módulo 2 es secuencial solamente
-      expect(outline.textContent).toContain("Completá el Módulo 1")
+      expect(outline.textContent).toContain("Completa el Módulo 1")
       expect(
-        screen.queryByText("Iniciá sesión para acceder a partir del módulo 2")
+        screen.queryByText("Inicia sesión para acceder a partir del módulo 2")
       ).toBeNull()
       await user.click(outline.querySelector('[data-lesson-state="locked"]') as HTMLElement)
       expect(await screen.findByRole("heading", { level: 2, name: "L3" })).toBeDefined()
-      expect(screen.getByRole("status").textContent).toContain("Completá el Módulo 1")
+      expect(screen.getByRole("status").textContent).toContain("Completa el Módulo 1")
     })
 
     it("anónimo: el modal se auto-cierra cuando aparece la sesión", async () => {
@@ -404,7 +404,7 @@ describe("/cursos/[id] player", () => {
     await waitFor(() => {
       expect(outline.querySelector('[data-lesson-state="todo"]')).not.toBeNull()
     })
-    expect(outline.textContent).not.toMatch(/Completá el Módulo/)
+    expect(outline.textContent).not.toMatch(/Completa el Módulo/)
     expect(await screen.findAllByText("1/2 lecciones")).toHaveLength(1)
   })
 

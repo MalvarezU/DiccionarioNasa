@@ -56,7 +56,7 @@ export function WordPicker({
         setResultados(Array.isArray(body.results) ? body.results : [])
         setError(null)
       } catch {
-        setError("No se pudo buscar. Intentá de nuevo.")
+        setError("No se pudo buscar. Intenta de nuevo.")
       } finally {
         setBuscando(false)
         ultimoQuery.current = q

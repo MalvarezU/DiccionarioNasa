@@ -100,7 +100,7 @@ export function HistoryTab({
         )}
       </section>
 
-      <Separator />
+      <Separator className="bg-terracota/25" />
 
       <section aria-labelledby="perfil-busquedas">
         <div className="mb-3 flex items-center justify-between gap-2">

@@ -134,7 +134,7 @@ export function AccountCard({ profile, onProfileChange }: AccountCardProps) {
           Cuenta y seguridad
         </span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "rotate-180" : ""}`}
           aria-hidden="true"
         />
       </Button>

@@ -19,7 +19,7 @@ interface WordCardProps {
 
 const CARD_FOCUS =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
-const CARD_HOVER = "motion-safe:hover:shadow-md motion-safe:hover:-translate-y-0.5 hover:border-secondary/40"
+const CARD_HOVER = "motion-safe:hover:shadow-lg motion-safe:hover:-translate-y-0.5 hover:border-secondary/40"
 const CARD_TRANSITION = "transition-[transform,box-shadow,border-color]"
 
 /**
@@ -118,7 +118,7 @@ export function WordCard({ word, variant, onOpen, onPlayState }: WordCardProps) 
             onClick={togglePlay}
             aria-label={playLabel}
             aria-pressed={isPlaying}
-            className={`flex min-h-8 min-w-8 items-center justify-center rounded-full bg-secondary/10 transition-colors hover:bg-secondary/20 ${CARD_FOCUS}`}
+            className={`flex min-h-8 min-w-8 items-center justify-center rounded-full bg-secondary/10 transition-colors hover:bg-secondary/20 ${isPlaying ? "anim-audio-pulse" : ""} ${CARD_FOCUS}`}
           >
             {isPlaying ? (
               <Pause className="h-4 w-4 text-secondary" aria-hidden="true" />
@@ -139,7 +139,7 @@ export function WordCard({ word, variant, onOpen, onPlayState }: WordCardProps) 
           </span>
         </p>
         {word.category && (
-          <span className="inline-flex shrink-0 items-center rounded-full border border-tertiary/20 bg-tertiary-container px-1.5 py-px text-2xs font-medium text-tertiary">
+          <span className="inline-flex shrink-0 items-center rounded-full border border-secondary/30 bg-secondary-container px-1.5 py-px text-2xs font-medium text-montana">
             {word.category}
           </span>
         )}
@@ -160,7 +160,7 @@ export function WordCard({ word, variant, onOpen, onPlayState }: WordCardProps) 
       {(word.category || hasAudio) && (
         <div className="flex items-start justify-between gap-2">
           {word.category ? (
-            <span className="inline-flex items-center rounded-full border border-tertiary/20 bg-tertiary-container px-2 py-0.5 text-2xs font-medium text-tertiary">
+            <span className="inline-flex items-center rounded-full border border-secondary/30 bg-secondary-container px-2 py-0.5 text-2xs font-medium text-montana">
               {word.category}
             </span>
           ) : (
@@ -172,7 +172,7 @@ export function WordCard({ word, variant, onOpen, onPlayState }: WordCardProps) 
               onClick={togglePlay}
               aria-label={playLabel}
               aria-pressed={isPlaying}
-              className={`flex min-h-11 min-w-11 items-center justify-center rounded-full bg-secondary/10 transition-colors hover:bg-secondary/20 ${CARD_FOCUS}`}
+              className={`flex min-h-11 min-w-11 items-center justify-center rounded-full bg-secondary/10 transition-colors hover:bg-secondary/20 ${isPlaying ? "anim-audio-pulse" : ""} ${CARD_FOCUS}`}
             >
               {isPlaying ? (
                 <Pause className="h-5 w-5 text-secondary" aria-hidden="true" />

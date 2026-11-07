@@ -188,7 +188,7 @@ function SearchResultRow({
           {result.category && (
             <Badge
               variant="secondary"
-              className="text-2xs px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
+              className="text-2xs px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30"
             >
               {result.category}
             </Badge>
@@ -469,9 +469,9 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
               }
             }}
             onKeyDown={handleKeyDown}
-            className={`pl-10 w-full transition-colors ${
+            className={`pl-10 w-full transition-[color,box-shadow,border-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] ${
               sobreOscuro
-                ? "h-14 text-base sm:text-lg rounded-xl pr-10 shadow-lg bg-black/45 backdrop-blur-md text-crema placeholder:text-crema/70 border-crema/30 hover:border-crema/60 focus-visible:border-crema focus-visible:ring-crema/30"
+                ? "h-14 text-base sm:text-lg rounded-xl pr-10 shadow-lg bg-montana-deep/45 backdrop-blur-md text-crema placeholder:text-crema/70 border-crema/30 hover:border-crema/60 focus-visible:border-crema focus-visible:ring-crema/30"
                 : esGrande
                   ? "h-14 text-lg rounded-xl pr-10 bg-surface-container-low border shadow-md focus-visible:border-secondary/60 focus-visible:ring-secondary/25 text-foreground placeholder:text-muted-foreground focus-visible:shadow-lg"
                   : "h-10 pr-9 bg-surface-container-low border-border focus-visible:border-secondary/60 focus-visible:ring-secondary/25 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:shadow-md"
@@ -642,7 +642,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                         </span>
                         <a
                           href="/diccionario?tab=explore"
-                          className={`font-medium text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
+                          className={`link-underline-terracota font-medium text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
                         >
                           Ver todas en Explorar A-Z →
                         </a>
@@ -774,7 +774,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                         </span>
                         <a
                           href="/diccionario?tab=explore"
-                          className={`font-medium text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
+                          className={`link-underline-terracota font-medium text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
                         >
                           Ver todas en Explorar A-Z →
                         </a>

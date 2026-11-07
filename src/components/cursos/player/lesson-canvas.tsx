@@ -141,7 +141,7 @@ export function LessonCanvas({
           )}
           {anonymous && (
             <Badge variant="outline" className="text-2xs">
-              Iniciá sesión para guardar tu avance
+              Inicia sesión para guardar tu avance
             </Badge>
           )}
         </div>
@@ -157,7 +157,7 @@ export function LessonCanvas({
               >
                 <p className="flex items-start gap-2 text-sm font-medium">
                   <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  Esta lección requiere sesión. Iniciá sesión para acceder a
+                  Esta lección requiere sesión. Inicia sesión para acceder a
                   partir del módulo 2.
                 </p>
                 <Button
@@ -175,7 +175,7 @@ export function LessonCanvas({
               >
                 <p className="flex items-start gap-2 text-sm font-medium">
                   <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  Esta lección está bloqueada. Completá el Módulo {moduleIndex - 1} para
+                  Esta lección está bloqueada. Completa el Módulo {moduleIndex - 1} para
                   desbloquearla.
                 </p>
                 {requiredLesson && (

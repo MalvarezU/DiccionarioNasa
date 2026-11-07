@@ -42,7 +42,7 @@ export default function OfflinePage() {
         </div>
         <h1 className="mt-4 text-2xl font-serif font-bold">Sin conexión</h1>
         <p className="mt-2 text-muted-foreground max-w-md">
-          Esto sí podés usar sin internet:
+          Esto sí puedes usar sin internet:
         </p>
         <ul className="mt-6 w-full max-w-md space-y-2 text-left">
           {DISPONIBLE.map((item) => (

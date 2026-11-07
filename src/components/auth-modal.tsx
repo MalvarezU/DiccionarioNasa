@@ -145,10 +145,10 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isRegister ? "Creá tu cuenta" : "Iniciar sesión"}</DialogTitle>
+          <DialogTitle>{isRegister ? "Crea tu cuenta" : "Iniciar sesión"}</DialogTitle>
           <DialogDescription>
             {isRegister
-              ? "Entrá con Google y tu cuenta se crea al instante, sin formulario ni correo de verificación."
+              ? "Entra con Google y tu cuenta se crea al instante, sin formulario ni correo de verificación."
               : "Entra con tu cuenta de Google para guardar palabras favoritas y acceder a ellas desde cualquier dispositivo."}
           </DialogDescription>
         </DialogHeader>
@@ -167,7 +167,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
           </Button>
           {!isRegister && (
             <p className="text-center text-xs text-muted-foreground -mt-2">
-              También sirve si ya tenés cuenta.
+              También sirve si ya tienes cuenta.
             </p>
           )}
 
@@ -185,7 +185,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
               <button
                 type="button"
                 onClick={() => openLegal("terms")}
-                className="text-primary underline"
+                className="link-underline-terracota rounded-sm text-primary"
               >
                 Términos y Condiciones
               </button>{" "}
@@ -193,7 +193,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
               <button
                 type="button"
                 onClick={() => openLegal("privacy")}
-                className="text-primary underline"
+                className="link-underline-terracota rounded-sm text-primary"
               >
                 Política de Privacidad
               </button>
@@ -209,11 +209,11 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
                 aria-expanded={showCredentials}
                 aria-controls="auth-credentials"
                 onClick={() => setShowCredentials((v) => !v)}
-                className="flex min-h-[44px] w-full items-center justify-center gap-1 text-sm font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="link-underline-terracota flex min-h-[44px] w-full items-center justify-center gap-1 text-sm font-medium text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 Usar correo y contraseña
                 <ChevronDown
-                  className={`h-4 w-4 transition-transform ${showCredentials ? "rotate-180" : ""}`}
+                  className={`h-4 w-4 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${showCredentials ? "rotate-180" : ""}`}
                   aria-hidden="true"
                 />
               </button>
@@ -266,22 +266,22 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
           <p className="border-t pt-3 text-center text-sm text-foreground">
             {isRegister ? (
               <>
-                ¿Ya tenés contraseña?{" "}
+                ¿Ya tienes contraseña?{" "}
                 <button
                   type="button"
                   onClick={() => setMode("login")}
-                  className="min-h-[44px] px-1 font-medium text-primary underline underline-offset-4 hover:text-primary/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="link-underline-terracota min-h-[44px] px-1 font-medium text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   Entrar
                 </button>
               </>
             ) : (
               <>
-                ¿No tenés cuenta?{" "}
+                ¿No tienes cuenta?{" "}
                 <button
                   type="button"
                   onClick={() => setMode("register")}
-                  className="min-h-[44px] px-1 font-medium text-primary underline underline-offset-4 hover:text-primary/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="link-underline-terracota min-h-[44px] px-1 font-medium text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   Crear una
                 </button>

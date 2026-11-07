@@ -204,7 +204,7 @@ export default function CursoDetailPage({
   // donde canvas y outline delegan el gate (H1/H2).
   const requireAuth = useCallback(() => {
     setAuthOpen(true)
-    toast({ title: "Iniciá sesión para interactuar con los cursos" })
+    toast({ title: "Inicia sesión para interactuar con los cursos" })
   }, [toast])
 
   // Auto-cierre: si la sesión aparece (login dentro del modal), caerlo sin
@@ -368,7 +368,7 @@ export default function CursoDetailPage({
             </h1>
             <span className="text-xs text-muted-foreground">
               {course.modules.length} módulos · {totalLessons} lecciones
-              {!isAuthed && " · iniciá sesión para guardar tu avance"}
+              {!isAuthed && " · inicia sesión para guardar tu avance"}
             </span>
           </div>
         </div>
@@ -395,7 +395,7 @@ export default function CursoDetailPage({
               <div className="mx-auto max-w-md space-y-3 rounded-xl border border-outline-variant/30 bg-card p-6 text-center">
                 <p className="font-medium">No se pudo cargar el curso.</p>
                 <p className="text-sm text-muted-foreground">
-                  Revisá tu conexión e intentá de nuevo.
+                  Revisa tu conexión e intenta de nuevo.
                 </p>
                 <Button
                   type="button"
@@ -452,7 +452,7 @@ export default function CursoDetailPage({
                   <div className="mx-auto max-w-md space-y-3 rounded-xl border border-outline-variant/30 bg-card p-6 text-center">
                     <p className="font-medium">No se pudo cargar la lección.</p>
                     <p className="text-sm text-muted-foreground">
-                      Revisá tu conexión e intentá de nuevo.
+                      Revisa tu conexión e intenta de nuevo.
                     </p>
                     <Button
                       type="button"
@@ -541,7 +541,7 @@ export default function CursoDetailPage({
             {!isAuthed && (
               <p className="mt-4 text-center text-xs text-muted-foreground">
                 <Badge variant="outline" className="text-2xs">
-                  Iniciá sesión para sincronizar tu avance entre dispositivos
+                  Inicia sesión para sincronizar tu avance entre dispositivos
                 </Badge>
               </p>
             )}

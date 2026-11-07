@@ -12,6 +12,10 @@
 @theme {
   --text-2xs: 0.75rem;
 
+  /* Suavizado global: toda transición sin easing explícito hereda la
+     curva de la casa en vez del ease brusco por defecto de Tailwind. */
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+
   /* Paleta territorio Piiyaak (guía de cliente): nombres fijos para clases
      con nombre (bg-montana, text-terracota, ...) en vez de hex sueltos. */
   --color-montana: #173f35;
@@ -89,9 +93,9 @@
 
   /* Surface hierarchy (hojas crema): tres pasos con salto visible para que
      las cards se despeguen sin depender de bordes ni sombras. */
-  --surface-container-low: #ece4d0;
-  --surface-container-high: #e3d6b8;
-  --surface-container-highest: #d9c8a4;
+  --surface-container-low: #e8e2c9;
+  --surface-container-high: #ded2b0;
+  --surface-container-highest: #d3c199;
 
   /* Cards & Popovers */
   --card: var(--surface-container-low);
@@ -102,7 +106,7 @@
   /* Primary: verde montaña (#173f35) */
   --primary: #173f35;
   --primary-foreground: #f5f0e6;
-  --primary-container: #0e2a22;
+  --primary-container: #0c261f;
 
   /* Secondary: verde territorio (#496b55) */
   --secondary: #496b55;
@@ -136,7 +140,7 @@
   /* Borders — WCAG 1.4.11 pide 3:1 en controles (input, checkbox, select).
      Medido contra la superficie MÁS CLARA sobre la que pueden descansar.
      --outline-variant queda decorativo (separadores, bordes de card). */
-  --border: #5f6f63;
+  --border: #556f60;
   --outline-variant: #d8c9a8;
   --input: var(--border);
   --ring: var(--primary);
@@ -159,6 +163,13 @@
   --sidebar-ring: var(--ring);
 }
 
+/* Selección de texto: amarillo tierra con tinta montaña (5.6 AA).
+   Un solo sitio, sin tocar tokens de texto. */
+::selection {
+  background: #d7ae55;
+  color: #173f35;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -173,6 +184,7 @@
   html {
     background-color: var(--background);
     scrollbar-gutter: stable;
+    scroll-behavior: smooth;
   }
   /* Radix (react-remove-scroll-bar) compensates the disappearing classic
      scrollbar by injecting `margin-right: {gap}px !important` on <body>
@@ -486,11 +498,11 @@
    razón que F4: la variante motion-safe no genera nada para clases custom; con
    preferencia reducida rige el bloque global de abajo que neutraliza
    duraciones). Easing único: cubic-bezier(0.22, 1, 0.36, 1).
-   - .anim-page-reveal: fade + translateY 8px→0, 200ms. La usa
+   - .anim-page-reveal: fade + translateY 12px→0, 300ms. La usa
      `src/app/template.tsx` (solo opacity/transform: sin layout shift).
-   - .anim-stagger-children: reveal escalonado genérico para los 5 primeros
-     hijos (+60ms cada uno), mismo patrón y mismos keyframes (`player-reveal`)
-     que el stagger del player F4. Del 6.º en adelante entran sin delay.
+   - .anim-stagger-children: reveal escalonado genérico para los 6 primeros
+     hijos (+80ms cada uno), mismo patrón y mismos keyframes (`player-reveal`)
+     que el stagger del player F4. Del 7.º en adelante entran sin delay.
      `backwards` aplica el estado `from` durante el delay (sin flash).
    - .link-underline-terracota: subrayado terracota (var(--color-terracota))
      que crece 0→100% en 200ms. `[aria-current="page"]` lo deja completo. */
@@ -498,7 +510,7 @@
   @keyframes page-reveal {
     from {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(12px);
     }
     to {
       opacity: 1;
@@ -507,23 +519,26 @@
   }
 
   .anim-page-reveal {
-    animation: page-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    animation: page-reveal 300ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .anim-stagger-children > *:nth-child(-n + 5) {
+  .anim-stagger-children > *:nth-child(-n + 6) {
     animation: player-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
   .anim-stagger-children > *:nth-child(2) {
-    animation-delay: 60ms;
+    animation-delay: 80ms;
   }
   .anim-stagger-children > *:nth-child(3) {
-    animation-delay: 120ms;
+    animation-delay: 160ms;
   }
   .anim-stagger-children > *:nth-child(4) {
-    animation-delay: 180ms;
+    animation-delay: 240ms;
   }
   .anim-stagger-children > *:nth-child(5) {
-    animation-delay: 240ms;
+    animation-delay: 320ms;
+  }
+  .anim-stagger-children > *:nth-child(6) {
+    animation-delay: 400ms;
   }
 
   .link-underline-terracota {
@@ -535,14 +550,90 @@
     background-repeat: no-repeat;
     background-position: left calc(100% - 1px);
     background-size: 0% 2px;
-    padding-bottom: 2px;
+    padding-bottom: 3px;
     transition: background-size 200ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .link-underline-terracota:hover {
-    background-size: 100% 2px;
+    background-size: 100% 3px;
   }
   .link-underline-terracota[aria-current="page"] {
-    background-size: 100% 2px;
+    background-size: 100% 3px;
+  }
+}
+
+/* G — hover de tabs inactivos: underline terracota al 50% de opacidad.
+   Único CSS nuevo de la tarea: mismo inset 2px del tab activo pero al 50%,
+   tras `no-preference` como el resto del motion propio; el
+   `transition-[...box-shadow]` ya presente en TabsTrigger lo funde. */
+@media (prefers-reduced-motion: no-preference) {
+  .tabs-underline-hover[data-state="inactive"]:hover {
+    box-shadow: inset 0 -2px 0 0 color-mix(in srgb, var(--color-terracota) 50%, transparent);
+  }
+}
+
+/* F6 — micro-interacciones del Bloque D (botones, tabs, inputs, Radix,
+   favorito, audio). CSS-only, 0 deps. La única clase de movimiento propia
+   nueva (`anim-audio-pulse`) vive tras un `@media
+   (prefers-reduced-motion: no-preference)` explícito: la variante motion-safe
+   de Tailwind no genera nada para clases custom (mismo contrato que F4/F5),
+   y con preferencia reducida rige el bloque global de abajo que neutraliza
+   duraciones e iteraciones. Easing único: cubic-bezier(0.22, 1, 0.36, 1).
+   Sin delays nuevos: el slice F4 del test de motion espera exactamente
+   [60,120,180,240] y este bloque no aporta ninguno. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes audio-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-terracota) 55%, transparent);
+    }
+    50% {
+      opacity: 0.72;
+      transform: scale(1.07);
+      box-shadow: 0 0 0 7px color-mix(in srgb, var(--color-terracota) 0%, transparent);
+    }
+  }
+
+  .anim-audio-pulse {
+    animation: audio-pulse 1200ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+}
+
+/* B2 — Reveal on scroll (elegante, no efectista). Wrapper con
+   IntersectionObserver (`src/components/reveal.tsx`): la sección entra con
+   fade + translateY 12px→0 en 300ms, una sola vez. Solo opacity/transform:
+   sin layout shift. Delays discretos por data-delay (0/80/160).
+   - Todo vive tras un `@media (prefers-reduced-motion: no-preference)`
+     explícito (misma razón que F4/F5/F6: la variante motion-safe no genera
+     nada para clases custom). Con preferencia reducida el componente muestra
+     directo sin observar, y el bloque global de abajo neutraliza el resto.
+   - Gating del stagger: un `.anim-stagger-children` dentro de un Reveal aún
+     oculto espera al `.is-visible` (la animación arranca al aplicarse la
+     propiedad, así el escalonado se dispara al entrar al viewport en vez de
+     perderse durante el oculto). Fuera de un Reveal el stagger corre al
+     montar, como antes.
+   Easing único: cubic-bezier(0.22, 1, 0.36, 1). */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity 300ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal[data-delay="80"] {
+    transition-delay: 80ms;
+  }
+  .reveal[data-delay="160"] {
+    transition-delay: 160ms;
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal:not(.is-visible) .anim-stagger-children > * {
+    animation: none;
   }
 }
 

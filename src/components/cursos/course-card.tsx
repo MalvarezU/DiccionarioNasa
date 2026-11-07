@@ -43,7 +43,7 @@ export function CourseCard({ course, navEnabled, statusBadge }: CourseCardProps)
     <Card
       className={`relative flex flex-col overflow-hidden rounded-xl border-outline-variant py-0 shadow-none md:min-h-[13rem] transition-[transform,box-shadow,border-color] motion-reduce:transform-none ${
         navEnabled
-          ? "group cursor-pointer hover:border-primary/40 motion-safe:hover:shadow-md motion-safe:hover:-translate-y-0.5"
+          ? "group cursor-pointer hover:border-primary/40 motion-safe:hover:shadow-lg motion-safe:hover:-translate-y-0.5"
           : "opacity-70"
       }`}
     >
@@ -146,7 +146,7 @@ export function CourseCard({ course, navEnabled, statusBadge }: CourseCardProps)
           ) : (
             <>
               {statusBadge == null ? (
-                <Badge variant="outline" className="mt-1 w-fit text-2xs">
+                <Badge variant="outline" className="mt-1 w-fit text-2xs border-tertiary/30 bg-tertiary-container text-tertiary">
                   Sin contenido
                 </Badge>
               ) : null}

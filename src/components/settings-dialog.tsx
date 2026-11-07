@@ -237,7 +237,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   Sincronizando... {downloadProgress}%
                 </span>
               </div>
-              <Progress value={downloadProgress} className="h-2" />
+              <Progress value={downloadProgress} className="h-2 bg-surface-container-high [&_[data-slot=progress-indicator]]:bg-secondary" />
             </div>
           )}
 

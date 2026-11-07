@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(
     {
       message:
-        'El registro con correo está deshabilitado. Registrate con Google.',
+        'El registro con correo está deshabilitado. Regístrate con Google.',
     },
     { status: 410 }
   )

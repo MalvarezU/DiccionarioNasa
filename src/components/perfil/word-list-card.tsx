@@ -24,13 +24,13 @@ interface WordListCardProps {
  */
 export function WordListCard({ word, meta, action }: WordListCardProps) {
   return (
-    <Card className="group bg-surface-container-low border border-outline-variant/30 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/40">
+    <Card className="group bg-surface-container-low border border-outline-variant/30 shadow-sm transition-all duration-200 hover:shadow-lg hover:border-primary/40">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="font-serif text-lg text-primary">
             <Link
               href={`/diccionario?palabra=${word.id}`}
-              className="rounded-sm hover:text-primary/80 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="link-underline-terracota rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               {word.nasaYuwe}
             </Link>
@@ -39,7 +39,7 @@ export function WordListCard({ word, meta, action }: WordListCardProps) {
             {word.category && (
               <Badge
                 variant="secondary"
-                className="text-2xs shrink-0 px-2 py-0.5 h-5 bg-tertiary-container text-tertiary border border-tertiary/20"
+                className="text-2xs shrink-0 px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30"
               >
                 {word.category}
               </Badge>

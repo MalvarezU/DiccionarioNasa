@@ -31,7 +31,7 @@ export function Breadcrumbs({ items, className = "mb-4" }: { items: Crumb[]; cla
               ) : (
                 <Link
                   href={item.href}
-                  className="text-secondary underline-offset-4 hover:underline"
+                  className="link-underline-terracota rounded-sm text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
                 >
                   {item.label}
                 </Link>

@@ -19,26 +19,26 @@ export const MANUAL_CONTENT: Record<
 > = {
   android: {
     title: "Instalar en Android",
-    description: "Seguí estos pasos en Chrome de Android.",
+    description: "Sigue estos pasos en Chrome de Android.",
     steps: [
-      "Abrí esta página en Chrome de Android.",
-      "Tocá ⋮ → “Instalar aplicación”.",
+      "Abre esta página en Chrome de Android.",
+      "Toca ⋮ → “Instalar aplicación”.",
     ],
   },
   desktop: {
     title: "Instalar en tu equipo",
     description: "Chrome o Edge en Windows, Mac o Linux.",
     steps: [
-      "Buscá el icono de instalación en la barra de direcciones (monitor con flecha).",
-      "Confirmá la instalación.",
+      "Busca el icono de instalación en la barra de direcciones (monitor con flecha).",
+      "Confirma la instalación.",
     ],
   },
   ios: {
     title: "Instalar en iPhone / iPad",
     description: "Safari no ofrece botón directo; son 2 toques.",
     steps: [
-      "Tocá Compartir (el cuadrado con flecha).",
-      "Elegí “Añadir a pantalla de inicio”.",
+      "Toca Compartir (el cuadrado con flecha).",
+      "Elige “Añadir a pantalla de inicio”.",
     ],
   },
 }

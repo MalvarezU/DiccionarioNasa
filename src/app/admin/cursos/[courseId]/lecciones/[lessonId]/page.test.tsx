@@ -102,7 +102,7 @@ describe("LessonEditorPage — autosave edge", () => {
   it("muestra error de carga de red", async () => {
     vi.mocked(fetch).mockRejectedValue(new Error("net"))
     render(<LessonEditorPage />)
-    expect(await screen.findByText("Error de red. Intentá de nuevo.")).toBeDefined()
+    expect(await screen.findByText("Error de red. Intenta de nuevo.")).toBeDefined()
   })
 
   it("autosave no dispara con lección sin bloques (blocks vacío)", async () => {

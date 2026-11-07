@@ -302,7 +302,7 @@ export function UserManagementSection() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="min-h-8 gap-1 text-xs"
+                                    className="min-h-8 gap-1 text-xs group"
                                     disabled={pendingUserId === user.id}
                                     aria-label={"Cambiar rol de " + (user.name || user.email)}
                                   >
@@ -312,7 +312,7 @@ export function UserManagementSection() {
                                       <RoleIcon role={user.role} className="h-3 w-3" />
                                     )}
                                     {ROLE_LABELS[user.role as Role] ?? user.role}
-                                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                    <ChevronDown className="h-3 w-3 text-muted-foreground transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-[state=open]:rotate-180" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
