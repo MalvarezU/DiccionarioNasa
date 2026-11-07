@@ -116,8 +116,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   const active = isActive(item.href)
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={active} tooltip={item.title} className="px-2.5 gap-2.5 text-sm rounded-md [&>svg]:size-4.5 data-[active=true]:bg-primary-container data-[active=true]:text-primary-foreground data-[active=true]:font-medium data-[active=true]:hover:bg-primary-container data-[active=true]:hover:text-primary-foreground hover:bg-surface-container-highest/60">
-                        <Link href={item.href} aria-current={active ? "page" : undefined}>
+                      <SidebarMenuButton asChild isActive={active} tooltip={item.title} className="px-2.5 gap-2.5 text-sm rounded-md hover:bg-transparent [&>svg]:size-4.5 data-[active=true]:bg-primary-container data-[active=true]:text-primary-foreground data-[active=true]:font-medium">
+                        <Link href={item.href} aria-current={active ? "page" : undefined} className="link-underline-terracota">
                           <Icon />
                           <span>{item.title}</span>
                         </Link>

@@ -243,7 +243,7 @@ export function WelcomeModal({
               <button
                 type="button"
                 onClick={() => openLegal("terms")}
-                className="text-primary underline"
+                className="link-underline-terracota rounded-sm text-primary"
               >
                 Términos y Condiciones
               </button>{" "}
@@ -251,7 +251,7 @@ export function WelcomeModal({
               <button
                 type="button"
                 onClick={() => openLegal("privacy")}
-                className="text-primary underline"
+                className="link-underline-terracota rounded-sm text-primary"
               >
                 Política de Privacidad
               </button>
@@ -273,7 +273,7 @@ export function WelcomeModal({
               type="button"
               onClick={handleSkip}
               disabled={isLoading}
-              className="flex min-h-[44px] w-full items-center justify-center text-sm font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
+              className="link-underline-terracota flex min-h-[44px] w-full items-center justify-center text-sm font-medium text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
             >
               Por ahora no
             </button>

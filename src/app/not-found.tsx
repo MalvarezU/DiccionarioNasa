@@ -30,18 +30,20 @@ export default function NotFound() {
               Volver al diccionario
             </Link>
           </Button>
-          <Button asChild variant="outline" className="gap-2">
-            <Link href="/juegos">
-              <Gamepad2 className="h-4 w-4" />
-              Juegos
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="gap-2">
-            <Link href="/cursos">
-              <GraduationCap className="h-4 w-4" />
-              Cursos
-            </Link>
-          </Button>
+          <Link
+            href="/juegos"
+            className="link-underline-terracota inline-flex min-h-[44px] items-center gap-1.5 rounded-sm px-1 py-2 text-sm font-medium text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+          >
+            <Gamepad2 className="h-4 w-4" aria-hidden="true" />
+            Juegos
+          </Link>
+          <Link
+            href="/cursos"
+            className="link-underline-terracota inline-flex min-h-[44px] items-center gap-1.5 rounded-sm px-1 py-2 text-sm font-medium text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+          >
+            <GraduationCap className="h-4 w-4" aria-hidden="true" />
+            Cursos
+          </Link>
         </div>
       </main>
 
