@@ -22,6 +22,7 @@ import { requireRole, requireAdmin } from "@/lib/auth";
 import { POST as POST_UPLOAD_AUDIO } from "@/app/api/admin/upload-audio/route";
 import { POST as POST_UPLOAD_IMAGE } from "@/app/api/admin/upload-image/route";
 import { POST as POST_UPDATE_AUDIO } from "@/app/api/dictionary/update-audio/route";
+import { backfillMediaSha256 } from "@/lib/media/backfill-sha256";
 import { getContentVersion } from "@/lib/content-version";
 import { testDb, ensureSeedRow, disconnectTestDb } from "./test-db";
 import { acquireBumpLock, releaseBumpLock } from "./lock";
@@ -130,6 +131,59 @@ describe("T08 HASH-01 — POST /api/admin/upload-image persiste sha256", () => {
     expect(row?.sha256).toBe(sha256Of(PNG_BYTES));
     expect(row?.sha256).toMatch(/^[0-9a-f]{64}$/);
     await expect(getContentVersion()).resolves.toBe(before + 1);
+  });
+});
+
+describe("T09 HASH-02 — backfill idempotente + reporte de huérfanos", () => {
+  const A_BYTES = Buffer.from(MP3_BYTES);
+  const L_BYTES = Buffer.from([...PNG_BYTES, 9, 9, 9]);
+
+  function fakeFetch(store: Map<string, Buffer>) {
+    return async (objectKey: string): Promise<Buffer | null> => store.get(objectKey) ?? null;
+  }
+
+  it("primera corrida completa sha256, crea legacy existente y reporta faltantes; segunda corrida = 0 writes", async () => {
+    await testDb().mediaAsset.create({
+      data: { objectKey: "audios/t08-bf/a.mp3", filename: "a.mp3", mimeType: "audio/mpeg", size: A_BYTES.length },
+    });
+    await testDb().mediaAsset.create({
+      data: { objectKey: "audios/t08-bf/missing.mp3", filename: "missing.mp3", mimeType: "audio/mpeg", size: 10 },
+    });
+    await testDb().dictionaryWord.create({
+      data: { spanish: "t08-bf-legacy", nasaYuwe: "ny", status: "DRAFT", audioUrl: "https://cdn.test/audios/t08-bf/legacy.mp3" },
+    });
+    await testDb().dictionaryWord.create({
+      data: { spanish: "t08-bf-ghost", nasaYuwe: "ny", status: "DRAFT", audioUrl: "https://cdn.test/audios/t08-bf/ghost.mp3" },
+    });
+    const store = new Map<string, Buffer>([
+      ["audios/t08-bf/a.mp3", A_BYTES],
+      ["audios/t08-bf/legacy.mp3", L_BYTES],
+    ]);
+
+    const first = await backfillMediaSha256({ db: testDb(), fetchBytes: fakeFetch(store) });
+
+    // Fila sin hash completada con el hash de los bytes de R2.
+    expect(first.updated).toBe(1);
+    await expect(
+      testDb().mediaAsset.findUnique({ where: { objectKey: "audios/t08-bf/a.mp3" } })
+    ).resolves.toMatchObject({ sha256: sha256Of(MP3_BYTES) });
+    // Legacy con objeto existente → fila creada con hash + MIME por firma.
+    expect(first.legacyCreated).toEqual(["audios/t08-bf/legacy.mp3"]);
+    await expect(
+      testDb().mediaAsset.findUnique({ where: { objectKey: "audios/t08-bf/legacy.mp3" } })
+    ).resolves.toMatchObject({ sha256: sha256Of(L_BYTES), filename: "legacy.mp3" });
+    // Faltantes reportados sin fallar ni borrar.
+    expect(first.missingInR2).toContainEqual(
+      expect.objectContaining({ objectKey: "audios/t08-bf/missing.mp3" })
+    );
+    expect(first.legacyMissing).toContain("https://cdn.test/audios/t08-bf/ghost.mp3");
+    await expect(
+      testDb().mediaAsset.findUnique({ where: { objectKey: "audios/t08-bf/missing.mp3" } })
+    ).resolves.not.toBeNull();
+
+    const second = await backfillMediaSha256({ db: testDb(), fetchBytes: fakeFetch(store) });
+    expect(second.updated).toBe(0);
+    expect(second.legacyCreated).toEqual([]);
   });
 });
 
