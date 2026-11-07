@@ -140,7 +140,7 @@ test.describe("Piiyaak público (Screenplay)", () => {
     await visitante.intenta(AbrirCursoPublico.titulado("Nasa Yuwe Básico"));
     expect(await visitante.pregunta(ModuloVisible.conPatron(/Módulo 1:/))).toBe(true);
     // Numeración persistida "1.1" visible en la primera lección
-    expect(await visitante.pregunta(LeccionNumerada.conPatron(/1\.1 · Lección/))).toBe(true);
+    expect(await visitante.pregunta(LeccionNumerada.conPatron(/Lección 1\.1/))).toBe(true);
   });
 
   test("admin sin sesión redirige (no expone panel)", async ({ page }) => {

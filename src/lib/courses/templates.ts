@@ -20,7 +20,11 @@ export const PLANTILLAS_LECCION: PlantillaLeccion[] = [
     nombre: "Texto simple",
     descripcion: "Un bloque de texto para empezar a escribir.",
     bloques: [
-      { id: newBlockId(), type: "text", html: "" },
+      // Contenido inicial real: el contrato (parseLessonContent) rechaza
+      // html vacío a propósito, así que la plantilla trae una oración
+      // válida que el docente reemplaza (un "<p></p>" pasaría la
+      // validación pero violaría su intención: no guardar bloques vacíos).
+      { id: newBlockId(), type: "text", html: "<p>Escribí acá el contenido de la lección.</p>" },
     ],
   },
   {
