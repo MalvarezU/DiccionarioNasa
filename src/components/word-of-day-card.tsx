@@ -211,7 +211,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
             )}
 
             {/* "Ver más" link */}
-            <div className="flex items-center gap-1 mt-3 text-primary text-xs font-medium group-hover:underline">
+            <div className="link-underline-terracota flex items-center gap-1 mt-3 text-primary text-xs font-medium w-fit">
               <BookOpen className="h-3 w-3" />
               Ver ficha completa
               <ChevronRight className="h-3 w-3" />

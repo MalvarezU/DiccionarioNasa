@@ -30,7 +30,7 @@ export function WordListCard({ word, meta, action }: WordListCardProps) {
           <CardTitle className="font-serif text-lg text-primary">
             <Link
               href={`/diccionario?palabra=${word.id}`}
-              className="rounded-sm hover:text-primary/80 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="link-underline-terracota rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               {word.nasaYuwe}
             </Link>

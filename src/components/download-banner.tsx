@@ -191,7 +191,7 @@ export function DownloadBanner() {
               <Button
                 variant="link"
                 onClick={handleRetry}
-                className="h-auto p-0 text-xs font-semibold text-destructive underline underline-offset-2"
+                className="link-underline-terracota h-auto p-0 text-xs font-semibold text-destructive hover:no-underline"
               >
                 Reintentar
               </Button>

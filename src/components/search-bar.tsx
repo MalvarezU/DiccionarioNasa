@@ -642,7 +642,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                         </span>
                         <a
                           href="/diccionario?tab=explore"
-                          className={`font-medium text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
+                          className={`link-underline-terracota font-medium text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
                         >
                           Ver todas en Explorar A-Z →
                         </a>
@@ -774,7 +774,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
                         </span>
                         <a
                           href="/diccionario?tab=explore"
-                          className={`font-medium text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
+                          className={`link-underline-terracota font-medium text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary${panelMode ? " ml-auto" : ""}`}
                         >
                           Ver todas en Explorar A-Z →
                         </a>

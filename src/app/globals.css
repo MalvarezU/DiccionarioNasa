@@ -486,6 +486,16 @@
   }
 }
 
+/* G — hover de tabs inactivos: underline terracota al 50% de opacidad.
+   Único CSS nuevo de la tarea: mismo inset 2px del tab activo pero al 50%,
+   tras `no-preference` como el resto del motion propio; el
+   `transition-[...box-shadow]` ya presente en TabsTrigger lo funde. */
+@media (prefers-reduced-motion: no-preference) {
+  .tabs-underline-hover[data-state="inactive"]:hover {
+    box-shadow: inset 0 -2px 0 0 color-mix(in srgb, var(--color-terracota) 50%, transparent);
+  }
+}
+
 /* F6 — micro-interacciones del Bloque D (botones, tabs, inputs, Radix,
    favorito, audio). CSS-only, 0 deps. La única clase de movimiento propia
    nueva (`anim-audio-pulse`) vive tras un `@media
