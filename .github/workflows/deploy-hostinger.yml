@@ -1,0 +1,93 @@
+name: Deploy to Hostinger
+
+# Disparo manual hasta validar el primer deploy end-to-end.
+# Después de la Fase 3 (deploy manual OK), cambiar a:
+#   on:
+#     push:
+#       branches: [main]
+on:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npm run test:run
+
+  deploy:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build en el runner (evita límites de RAM/CPU del hosting compartido).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Build (con env de build)
+        env:
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: npm run build
+      - name: Empaquetar standalone + estáticos
+        run: |
+          cp -r .next/static .next/standalone/.next/
+          cp -r public .next/standalone/
+          tar -czf deploy.tar.gz -C .next/standalone .
+
+      # Deploy por SSH: subir artefacto y reiniciar Passenger.
+      - uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          source: "deploy.tar.gz"
+          target: "~/"
+
+      - uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          script: |
+            set -e
+            APP_DIR="$HOME/piiyaak"
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
+            # Backup del release anterior (rollback rápido)
+            if [ -d current ]; then
+              rm -rf previous && mv current previous
+            fi
+            mkdir -p current && cd current
+            tar -xzf "$HOME/deploy.tar.gz"
+            # Env de runtime (lo escribe el panel de Hostinger; acá solo verificamos)
+            test -f .env || echo "WARN: falta .env en el servidor"
+            mkdir -p tmp && touch tmp/restart.txt
+
+      - name: Health check post-deploy
+        run: |
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.NEXTAUTH_URL }}/api" || echo "000")
+            echo "intento $i -> $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "Health check falló" && exit 1
