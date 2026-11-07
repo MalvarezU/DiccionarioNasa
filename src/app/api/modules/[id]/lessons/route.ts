@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireRole } from "@/lib/auth"
+import { bumpContentVersion } from "@/lib/content-version"
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -42,14 +43,19 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     })
     const lessonNumber = (last?.lessonNumber ?? 0) + 1
     const order = await db.lesson.count({ where: { moduleId: id } })
-    const lesson = await db.lesson.create({
-      data: {
-        moduleId: id,
-        title,
-        order,
-        lessonNumber,
-        content: { version: 2, blocks: [] },
-      },
+    // Fase A T05: mutación + bump en la misma transacción (una operación = +1).
+    const lesson = await db.$transaction(async (tx) => {
+      const created = await tx.lesson.create({
+        data: {
+          moduleId: id,
+          title,
+          order,
+          lessonNumber,
+          content: { version: 2, blocks: [] },
+        },
+      })
+      await bumpContentVersion(tx)
+      return created
     })
     return NextResponse.json({ lesson }, { status: 201 })
   } catch (err) {

@@ -34,11 +34,14 @@ export async function GET(_request: Request, { params }: Ctx) {
         id: true,
         status: true,
         modules: {
+          // Fase A T07: el árbol excluye borrados lógicos.
+          where: { deletedAt: null },
           select: {
             id: true,
             title: true,
             order: true,
             lessons: {
+              where: { deletedAt: null },
               select: {
                 id: true,
                 title: true,
