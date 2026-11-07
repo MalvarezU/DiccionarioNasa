@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth"
 import { audioRefToKey } from "@/lib/media/storage"
 import { deleteObject } from "@/lib/r2"
 import { deleteMediaAssetByUrl } from "@/lib/media/delete-asset"
+import { bumpContentVersion } from "@/lib/content-version"
 
 /**
  * POST /api/admin/audit-logs/[id]/revert
@@ -78,9 +79,10 @@ export async function POST(
         try { await deleteMediaAssetByUrl(word.illustrationUrl) } catch { /* best-effort */ }
       }
 
-      await db.$transaction([
-        db.dictionaryWord.delete({ where: { id: wordId } }),
-        db.auditLog.create({
+      // Fase A T04: revert aplicado = +1 (misma transacción que la mutación).
+      await db.$transaction(async (tx) => {
+        await tx.dictionaryWord.delete({ where: { id: wordId } });
+        await tx.auditLog.create({
           data: {
             action: "REVERT",
             entity: "DictionaryWord",
@@ -89,19 +91,22 @@ export async function POST(
             userId: adminUser.id,
             wordId: null,
           },
-        }),
-      ])
+        });
+        await bumpContentVersion(tx);
+      })
 
       return NextResponse.json({ ok: true, message: "Ficha eliminada (revertido)" })
     }
 
-    // DELETE → recrear si hay snapshot completo
+    // DELETE → recrear si hay snapshot completo. Sin snapshot (logs
+    // históricos anteriores a la versión con snapshot) → 422 documentado
+    // (spec E2), sin bump y sin mutación.
     if (original.action === "DELETE") {
       const snapshot = (changes.deleted ?? null) as Record<string, unknown> | null
       if (!snapshot || typeof snapshot.spanish !== "string" || typeof snapshot.nasaYuwe !== "string") {
         return NextResponse.json(
           { message: "No se puede revertir: el log no tiene datos suficientes (anterior a la versión con snapshot completo)" },
-          { status: 409 }
+          { status: 422 }
         )
       }
       // Si la palabra ya existe de nuevo, no recrear
@@ -123,24 +128,29 @@ export async function POST(
       }
       if (!data.status) data.status = "DRAFT"
 
-      const created = await db.dictionaryWord.create({ data: data as never })
+      const created = await db.$transaction(async (tx) => {
+        const row = await tx.dictionaryWord.create({ data: data as never });
 
-      await db.auditLog.create({
-        data: {
-          action: "REVERT",
-          entity: "DictionaryWord",
-          entityId: created.id,
-          changes: JSON.stringify({
-            originalLogId: id,
-            originalEntityId: original.entityId,
-            restored: "recreated",
-            newId: created.id,
-            responsable: adminUser.name || adminUser.email,
-          }),
-          userId: adminUser.id,
-          wordId: created.id,
-        },
-      })
+        await tx.auditLog.create({
+          data: {
+            action: "REVERT",
+            entity: "DictionaryWord",
+            entityId: row.id,
+            changes: JSON.stringify({
+              originalLogId: id,
+              originalEntityId: original.entityId,
+              restored: "recreated",
+              newId: row.id,
+              responsable: adminUser.name || adminUser.email,
+            }),
+            userId: adminUser.id,
+            wordId: row.id,
+          },
+        });
+
+        await bumpContentVersion(tx);
+        return row;
+      });
 
       return NextResponse.json({ ok: true, message: "Ficha recreada (revertido)", newId: created.id })
     }
@@ -182,9 +192,10 @@ export async function POST(
       updateData[field] = before
     }
 
-    await db.$transaction([
-      db.dictionaryWord.update({ where: { id: wordId }, data: updateData }),
-      db.auditLog.create({
+    // Fase A T04: revert aplicado = +1 (misma transacción que la mutación).
+    await db.$transaction(async (tx) => {
+      await tx.dictionaryWord.update({ where: { id: wordId }, data: updateData });
+      await tx.auditLog.create({
         data: {
           action: "REVERT",
           entity: "DictionaryWord",
@@ -197,8 +208,9 @@ export async function POST(
           userId: adminUser.id,
           wordId,
         },
-      }),
-    ])
+      });
+      await bumpContentVersion(tx);
+    })
 
     return NextResponse.json({ ok: true, message: "Cambio revertido" })
   }
