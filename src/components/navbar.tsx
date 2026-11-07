@@ -167,10 +167,12 @@ export function NavBar() {
             </span>
           </Link>
 
-          {/* Center nav links — siempre visibles en desktop y mobile,
-              también en la portada: el underline terracota (hover +
-              aria-current) es su único feedback, sin cambios de color. */}
-          <nav className="hidden md:flex items-center gap-1 ml-6" aria-label="Secciones">
+          {/* Center nav links — solo fuera de la portada: en el home la
+              elección de módulo se hace desde el hero. El underline
+              terracota (hover + aria-current) es su único feedback. */}
+          {pathname !== "/" && (
+            <>
+              <nav className="hidden md:flex items-center gap-1 ml-6" aria-label="Secciones">
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
@@ -222,6 +224,8 @@ export function NavBar() {
               </Link>
             ))}
           </nav>
+            </>
+          )}
 
           {/* Right side: connection + auth + settings */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
