@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { bumpContentVersion } from "@/lib/content-version"
 import { audioKey } from "@/lib/media/storage"
+import { sha256Hex } from "@/lib/media/hash"
 import { detectAudioMime, expectedExtensions } from "@/lib/media/audio"
 import { putObject, deleteObject, publicUrl } from "@/lib/r2"
 
@@ -44,11 +45,12 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const key = audioKey("temp", file.name)
     const contentType = MIME_BY_EXTENSION[extensionOf(file.name)] ?? "audio/mpeg"
+    // Fase A T08: hash sobre los bytes originales ANTES del putObject.
+    const sha256 = sha256Hex(buffer)
 
     try {
       await putObject(key, buffer, contentType)
-    } catch (uploadError) {
-      console.error("R2 upload error:", uploadError)
+    } catch (uploadError) {      console.error("R2 upload error:", uploadError)
       return NextResponse.json(
         { message: "Error al subir el audio al servidor" },
         { status: 500 }
@@ -71,6 +73,8 @@ export async function POST(request: Request) {
             filename: file.name,
             mimeType: contentType,
             size: file.size,
+            // Fase A T08: registro de medios (spec §4.1, HASH-01).
+            sha256,
             uploadedBy: (session?.user as { id?: string } | undefined)?.id ?? null,
           },
         })
@@ -88,6 +92,7 @@ export async function POST(request: Request) {
       objectKey: key,
       fileName: file.name,
       size: file.size,
+      sha256,
       message: "Audio subido correctamente",
     })
   } catch (error) {
