@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
+import { getContentVersion } from "@/lib/content-version"
 
 /**
  * GET /api/sync/seed?page=&pageSize= — snapshot completo para la primera
@@ -48,6 +49,8 @@ export async function GET(request: NextRequest) {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
+      // Fase A T10: marcador aditivo de publicación (spec §5.1).
+      contentVersion: await getContentVersion(),
       serverTime: new Date().toISOString(),
     })
   } catch (err) {

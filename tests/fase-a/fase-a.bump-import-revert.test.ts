@@ -25,7 +25,10 @@ import { acquireBumpLock, releaseBumpLock } from "./lock";
 /**
  * T04 — Bumps grupo import (dos pasos) + revert (spec §2.3 puntos 6–9).
  *
- * - Staging (`POST /api/admin/import`) y preview: SIN bump (spec §2.3.6/8).
+ * - Legacy (`POST /api/admin/import`): +1 por request con ≥1 fila aplicada
+ *   (escribe filas reales — espejo de `confirm`, spec §2.3.6); 0 filas
+ *   efectivas o 4xx → sin bump.
+ * - Preview: SIN bump (spec §2.3.8, solo lectura).
  * - Confirm: +1 por confirmación aplicada con ≥1 fila (N filas = +1, no +N);
  *   0 filas efectivas → sin bump.
  * - Revert: +1 solo si aplica (2xx); 404/409/410/422 → sin bump.
@@ -103,8 +106,8 @@ afterEach(async () => {
   await testDb().dictionaryWord.deleteMany({ where: { spanish: { startsWith: "t04-" } } });
 });
 
-describe("T04 staging y preview no publican (sin bump)", () => {
-  it("POST /api/admin/import crea fichas pero deja la versión intacta", async () => {
+describe("T04 punto 6 — POST /api/admin/import (legacy, escribe filas reales)", () => {
+  it("N filas aplicadas producen exactamente +1 (no +N)", async () => {
     const before = await getContentVersion();
     const res = await POST_STAGING(
       jsonReq("http://x/api/admin/import", {
@@ -117,9 +120,25 @@ describe("T04 staging y preview no publican (sin bump)", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.created).toBe(2);
-    await expect(getContentVersion()).resolves.toBe(before);
+    await expect(getContentVersion()).resolves.toBe(before + 1);
   });
 
+  it("0 filas efectivas (todo duplicado) deja la versión intacta", async () => {
+    const dup = await seedWord();
+    const before = await getContentVersion();
+    const res = await POST_STAGING(
+      jsonReq("http://x/api/admin/import", {
+        words: [{ spanish: dup.spanish, nasaYuwe: "ny" }],
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.created).toBe(0);
+    await expect(getContentVersion()).resolves.toBe(before);
+  });
+});
+
+describe("T04 punto 8 — POST /api/admin/import/preview no publica (sin bump)", () => {
   it("POST /api/admin/import/preview solo valida y deja la versión intacta", async () => {
     const before = await getContentVersion();
     const csv = `spanish,nasaYuwe\n${tag()},ny`;

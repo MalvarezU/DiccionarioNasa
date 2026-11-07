@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
+import { getContentVersion } from "@/lib/content-version"
 
 /**
  * GET /api/sync?since=&cursor=&limit= — sincronización incremental (B3.1).
@@ -81,23 +82,47 @@ export async function GET(request: NextRequest) {
     const page = hasMore ? rows.slice(0, limit) : rows
     const last = page[page.length - 1]
 
-    // Borrados duros: tombstones por bitácora DELETE en la misma ventana
-    const tombstones = await db.auditLog.findMany({
-      where: {
-        action: "DELETE",
-        entity: "DictionaryWord",
-        createdAt: { gt: sinceValid },
-      },
-      select: { entityId: true },
-      take: 5000,
-    })
+    // Borrados duros: tombstones por bitácora DELETE en la misma ventana.
+    // C2: paginado keyset por (createdAt, id) con páginas de 1000 hasta página
+    // corta — sin tope duro (el viejo `take: 5000` truncaba en silencio).
+    // Mismo patrón keyset del loop de words de arriba.
+    const TOMBSTONE_PAGE = 1000;
+    const tombstoneIds: string[] = [];
+    let tombCursor: { createdAt: Date; id: string } | null = null;
+    for (;;) {
+      const tombFilter = tombCursor
+        ? {
+            OR: [
+              { createdAt: { gt: tombCursor.createdAt } },
+              {
+                createdAt: { equals: tombCursor.createdAt },
+                id: { gt: tombCursor.id },
+              },
+            ],
+          }
+        : { createdAt: { gt: sinceValid } };
+      const batch = await db.auditLog.findMany({
+        where: {
+          action: "DELETE",
+          entity: "DictionaryWord",
+          ...tombFilter,
+        },
+        select: { entityId: true, createdAt: true, id: true },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take: TOMBSTONE_PAGE,
+      });
+      for (const t of batch) {
+        if (t.entityId) tombstoneIds.push(t.entityId);
+      }
+      if (batch.length < TOMBSTONE_PAGE) break;
+      const lastTomb = batch[batch.length - 1]!;
+      tombCursor = { createdAt: lastTomb.createdAt, id: lastTomb.id };
+    }
 
     const removedIds = [
       // T07: comparación normalizada — sana "archived" minúscula histórica.
       ...page.filter((w) => String(w.status).toUpperCase() === "ARCHIVED").map((w) => w.id),
-      ...tombstones
-        .map((t) => t.entityId)
-        .filter((id): id is string => !!id),
+      ...tombstoneIds,
     ]
     const removedSet = new Set(removedIds)
     // T07: comparación normalizada (misma regresión R-ARCHIVED).
@@ -120,6 +145,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       words,
       removedIds: [...removedSet],
+      // Fase A T10: marcador aditivo de publicación (spec §5.1). Ningún campo
+      // existente cambia: la APK compara contra su versión cacheada.
+      contentVersion: await getContentVersion(),
       serverTime: serverTime.toISOString(),
       nextCursor:
         hasMore && last
