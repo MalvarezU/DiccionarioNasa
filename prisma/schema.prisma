@@ -85,14 +85,17 @@ model Course {
 }
 
 model Module {
-  id       String   @id @default(cuid())
-  courseId String
-  title    String
-  order    Int      @default(0)
-  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lessons  Lesson[]
+  id        String    @id @default(cuid())
+  courseId  String
+  title     String
+  order     Int       @default(0)
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
 
   @@index([courseId, order])
+  @@index([updatedAt])
 }
 
 model Lesson {
@@ -106,11 +109,14 @@ model Lesson {
   /// Documento de bloques de la lección: { version, blocks[] }.
   /// Ver src/lib/courses/blocks.ts para el contrato y la validación.
   content  Json
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
   module   Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   progress UserLessonProgress[]
 
   @@index([moduleId, order])
   @@index([moduleId, lessonNumber])
+  @@index([updatedAt])
 }
 
 model UserLessonProgress {
@@ -138,10 +144,26 @@ model MediaAsset {
   /// MIME detectado por firma binaria, no el que declara el cliente.
   mimeType   String
   size       Int
+  /// Hash SHA-256 hex (64 chars) sobre los bytes originales. Nullable hasta
+  /// completar el backfill (Fase A, T09); el paso a NOT NULL pertenece a Fase B.
+  sha256     String?
   uploadedBy String?
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([createdAt])
+  @@index([updatedAt])
+}
+
+/// Marcador global de publicación (Fase A, decisión D2): una sola fila
+/// `id = 1`. Cada mutación de contenido publicable ejecuta un `UPDATE`
+/// atómico `version = version + 1`. El delta-sync real sigue por `updatedAt`
+/// + keyset; la versión solo responde si la APK está atrasada.
+/// `updatedAt` existe solo para auditoría, nunca como marcador.
+model ContentVersion {
+  id        Int      @id @default(1) // una sola fila, id = 1
+  version   Int      @default(0)
+  updatedAt DateTime @updatedAt
 }
 
 model DictionaryWord {
