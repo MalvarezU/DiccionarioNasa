@@ -448,15 +448,52 @@ function GameCardSkeleton() {
   )
 }
 
-/** Portada de /juegos con sus tres juegos. */
+/**
+ * Réplica de un `GameTile` de /juegos: arte del motivo (bloque h-24),
+ * título serif, descripción, badge de récord y CTA. Mismo Card/padding
+ * que el tile real para que el swap no mueva layout.
+ */
+function GameTileSkeleton() {
+  return (
+    <div
+      data-slot="skeleton-game-tile"
+      className="rounded-xl border border-outline-variant/20 bg-card p-6"
+    >
+      <Skeleton className="mb-3 h-24 rounded-lg" />
+      <Skeleton className="h-6 w-32" />
+      <div className="mt-2 space-y-2">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-5/6" />
+      </div>
+      <Skeleton className="mt-2 h-4 w-24" />
+      <Skeleton className="mt-4 h-9 w-28 rounded-md" />
+    </div>
+  )
+}
+
+/**
+ * Réplica de la portada de /juegos: breadcrumbs, hero (título +
+ * descripción, mb-8) y los 5 tiles en el mismo grid real
+ * (`sm:2 cols, xl:4 cols, gap-6`). El swap al dato real no mueve layout.
+ */
 function GamesHomeSkeleton() {
   return (
-    <div data-slot="skeleton-games-home" className="space-y-6">
-      <SectionHeadingSkeleton />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <GameCardSkeleton />
-        <GameCardSkeleton />
-        <GameCardSkeleton />
+    <div data-slot="skeleton-games-home" className="space-y-0" aria-hidden="true">
+      <div className="flex items-center gap-1.5">
+        <Skeleton className="h-4 w-12" />
+        <Skeleton className="h-4 w-4" />
+        <Skeleton className="h-4 w-14" />
+      </div>
+      <div className="mb-8 mt-4 space-y-2">
+        <Skeleton className="h-9 w-64 max-w-full" />
+        <Skeleton className="h-4 w-full max-w-2xl" />
+      </div>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <GameTileSkeleton />
+        <GameTileSkeleton />
+        <GameTileSkeleton />
+        <GameTileSkeleton />
+        <GameTileSkeleton />
       </div>
     </div>
   )
