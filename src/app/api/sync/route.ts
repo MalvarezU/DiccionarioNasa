@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
+import { getContentVersion } from "@/lib/content-version"
 
 /**
  * GET /api/sync?since=&cursor=&limit= — sincronización incremental (B3.1).
@@ -120,6 +121,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       words,
       removedIds: [...removedSet],
+      // Fase A T10: marcador aditivo de publicación (spec §5.1). Ningún campo
+      // existente cambia: la APK compara contra su versión cacheada.
+      contentVersion: await getContentVersion(),
       serverTime: serverTime.toISOString(),
       nextCursor:
         hasMore && last

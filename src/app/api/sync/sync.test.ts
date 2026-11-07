@@ -10,6 +10,9 @@ vi.mock("@/lib/db", () => ({
   db: {
     dictionaryWord: { findMany: vi.fn(), count: vi.fn() },
     auditLog: { findMany: vi.fn() },
+    // Fase A T10 (fix necesario): getContentVersion() lee db.contentVersion;
+    // el mock devuelve undefined → versión 1, sin alterar las aserciones.
+    contentVersion: { findUnique: vi.fn() },
   },
 }))
 
