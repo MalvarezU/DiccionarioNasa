@@ -467,7 +467,8 @@ export default function CursoDetailPage({
                     aria-label="Cargando lección"
                     className="anim-player-reveal min-h-[max(420px,60dvh)] min-w-0"
                   >
-                    <div className="animate-pulse">
+                    {/* Skeleton estático: la política de skeletons exige gris (--muted) sin animación. */}
+                    <div>
                       <div className="h-4 w-40 rounded bg-muted" />
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <div className="h-6 w-14 rounded bg-muted" />
