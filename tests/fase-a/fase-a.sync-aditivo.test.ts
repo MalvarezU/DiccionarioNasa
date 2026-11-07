@@ -34,8 +34,10 @@ import { acquireBumpLock, releaseBumpLock } from "./lock";
  * - Ambas respuestas incluyen `contentVersion` coincidente con
  *   `getContentVersion()`, sin renombrar ni eliminar claves preexistentes
  *   (patrón aditivo de `api-design-patterns`).
- * - Regresión R-ARCHIVED: `status` histórico en minúsculas sigue en
- *   `removedIds` y fuera de `words`.
+ * - Regresión R-ARCHIVED bajo F1 (Fase B W2): `status` histórico en
+ *   minúsculas fuera de `words` y —por filtro PUBLISHED en consulta— también
+ *   fuera de `removedIds` (vacío por construcción; la derivación queda como
+ *   defensa cubierta a nivel unitario).
  * - Secuencia mixta N=5 (words + media + courses) desde v0 deja v0+5 exacto.
  */
 
@@ -106,7 +108,7 @@ describe("T10 SYNC-01 — GET /api/sync expone contentVersion sin romper el cont
     }
   });
 
-  it("R-ARCHIVED: status historico en minusculas sigue en removedIds y fuera de words", async () => {
+  it("R-ARCHIVED bajo F1: status historico en minusculas fuera de words y de removedIds", async () => {
     const name = tag("arch");
     await testDb().dictionaryWord.create({
       data: { spanish: name, nasaYuwe: "ny", status: "archived" },
@@ -115,7 +117,9 @@ describe("T10 SYNC-01 — GET /api/sync expone contentVersion sin romper el cont
     const body = await res.json();
     const ids: string[] = body.words.map((w: { id: string }) => w.id);
     const row = await testDb().dictionaryWord.findFirst({ where: { spanish: name } });
-    expect(body.removedIds).toContain(row!.id);
+    // F1: el filtro PUBLISHED-only vive en la consulta; la fila nunca llega a
+    // `page` y por construcción no aparece ni en words ni en removedIds.
+    expect(body.removedIds).not.toContain(row!.id);
     expect(ids).not.toContain(row!.id);
   });
 });

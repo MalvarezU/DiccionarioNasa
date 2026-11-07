@@ -48,8 +48,9 @@ import { acquireBumpLock, releaseBumpLock } from "./lock";
  *   árbol público; revert del borrado deja deletedAt = null + bump.
  * - DEL-03: media DELETE y delete-audio eliminan la fila (sin deletedAt;
  *   reconciliación por diff de manifiesto).
- * - R-ARCHIVED: palabra histórica con status "archived" (minúsculas) aparece
- *   en removedIds de GET /api/sync y no en words.
+ * - R-ARCHIVED bajo F1 (Fase B W2): palabra histórica con status "archived"
+ *   (minúsculas) fuera de words de GET /api/sync y —por filtro PUBLISHED en
+ *   consulta— también fuera de removedIds (vacío por construcción).
  */
 
 process.env.R2_PUBLIC_BASE_URL = "https://cdn.test";
@@ -251,8 +252,8 @@ describe("T07 DEL-03 — MediaAsset por diff de manifiesto (sin deletedAt)", () 
   });
 });
 
-describe("T07 R-ARCHIVED — regresión de case en sync", () => {
-  it("palabra histórica 'archived' en minúsculas va a removedIds y no a words", async () => {
+describe("T07 R-ARCHIVED bajo F1 — regresión de case en sync", () => {
+  it("palabra histórica 'archived' en minúsculas fuera de words y de removedIds", async () => {
     const legacy = await testDb().dictionaryWord.create({
       data: { spanish: tag(), nasaYuwe: "ny", status: "archived" },
     });
@@ -261,7 +262,9 @@ describe("T07 R-ARCHIVED — regresión de case en sync", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.removedIds).toContain(legacy.id);
+    // F1: el filtro PUBLISHED-only vive en la consulta; la fila nunca llega a
+    // `page` y por construcción no aparece ni en words ni en removedIds.
+    expect(body.removedIds).not.toContain(legacy.id);
     expect((body.words as Array<{ id: string }>).some((w) => w.id === legacy.id)).toBe(false);
   });
 });
