@@ -36,26 +36,27 @@ export function Reveal({ as, delay = 0, className, children, ...rest }: RevealPr
   // respeta el `as` recibido.
   const Tag = (as ?? "div") as "div"
   const targetRef = useRef<HTMLElement | null>(null)
-  // Sin animación no hay nada que esperar: con reducción activa o sin
-  // IntersectionObserver se arranca visible (lazy init, sin setState en
-  // el efecto). El observer solo existe en el camino animado.
-  const [visible, setVisible] = useState(() => {
-    if (typeof window === "undefined") return false
-    if (
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      return true
-    }
-    return typeof IntersectionObserver === "undefined"
-  })
+  // Hidratación: el primer render del cliente debe ser idéntico al HTML del
+  // servidor (oculto). La vía rápida reduced-motion/sin-IO vive en el efecto,
+  // que corre después de hidratar: nunca hay mismatch de atributos.
+  const [visible, setVisible] = useState(false)
 
   const setTarget = useCallback((node: HTMLElement | null) => {
     targetRef.current = node
   }, [])
 
   useEffect(() => {
-    if (visible) return
+    if (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setVisible(true)
+      return
+    }
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true)
+      return
+    }
     const node = targetRef.current
     if (!node) return
     const observer = new IntersectionObserver(
