@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
+import { bumpContentVersion } from '@/lib/content-version'
 
 /**
  * POST /api/admin/words/bulk-status
@@ -27,7 +28,9 @@ export async function POST(request: Request) {
     }
 
     const validStatuses = ['PUBLISHED', 'ARCHIVED']
-    if (!status || !validStatuses.includes(status)) {
+    // T07: normalizar a mayúsculas antes de validar (minúsculas se aceptan).
+    const normalizedStatus = typeof status === 'string' ? status.toUpperCase().trim() : status
+    if (!normalizedStatus || !validStatuses.includes(normalizedStatus)) {
       return NextResponse.json(
         { error: `Estado inválido. Valores permitidos: ${validStatuses.join(', ')}` },
         { status: 400 }
@@ -42,56 +45,65 @@ export async function POST(request: Request) {
     }
 
     // Determine audit action
-    const auditAction = status === 'PUBLISHED' ? 'BATCH_PUBLISH' : 'BATCH_ARCHIVE'
+    const auditAction = normalizedStatus === 'PUBLISHED' ? 'BATCH_PUBLISH' : 'BATCH_ARCHIVE'
 
+    // Fase A T03: N filas en una sola transacción = exactamente +1 (BUMP-02).
+    // 0 filas efectivas → sin bump (BUMP-03).
     let updated = 0
     let skipped = 0
 
-    // Process each word
-    for (const wordId of wordIds) {
-      // Find the word
-      const existingWord = await db.dictionaryWord.findUnique({
-        where: { id: wordId },
-      })
+    await db.$transaction(async (tx) => {
+      // Process each word
+      for (const wordId of wordIds) {
+        // Find the word
+        const existingWord = await tx.dictionaryWord.findUnique({
+          where: { id: wordId },
+        })
 
-      if (!existingWord) {
-        skipped++
-        continue
+        if (!existingWord) {
+          skipped++
+          continue
+        }
+
+        // Skip if already has the target status (comparación case-insensitive:
+        // sana filas históricas en minúsculas sin reescribirlas)
+        if (String(existingWord.status).toUpperCase() === normalizedStatus) {
+          skipped++
+          continue
+        }
+
+        // For publishing: only DRAFT and ARCHIVED words can be published
+        // For archiving: only PUBLISHED and DRAFT words can be archived
+        const previousStatus = existingWord.status
+
+        // Update the word status
+        await tx.dictionaryWord.update({
+          where: { id: wordId },
+          data: { status: normalizedStatus },
+        })
+
+        // Create audit log entry per word
+        await tx.auditLog.create({
+          data: {
+            action: auditAction,
+            entity: 'DictionaryWord',
+            entityId: wordId,
+            changes: JSON.stringify({
+              status: { before: previousStatus, after: normalizedStatus },
+              responsable: session!.user.name || session!.user.email,
+            }),
+            userId: (session!.user as { id: string }).id,
+            wordId,
+          },
+        })
+
+        updated++
       }
 
-      // Skip if already has the target status
-      if (existingWord.status === status) {
-        skipped++
-        continue
+      if (updated > 0) {
+        await bumpContentVersion(tx)
       }
-
-      // For publishing: only DRAFT and ARCHIVED words can be published
-      // For archiving: only PUBLISHED and DRAFT words can be archived
-      const previousStatus = existingWord.status
-
-      // Update the word status
-      await db.dictionaryWord.update({
-        where: { id: wordId },
-        data: { status },
-      })
-
-      // Create audit log entry per word
-      await db.auditLog.create({
-        data: {
-          action: auditAction,
-          entity: 'DictionaryWord',
-          entityId: wordId,
-          changes: JSON.stringify({
-            status: { before: previousStatus, after: status },
-            responsable: session!.user.name || session!.user.email,
-          }),
-          userId: (session!.user as { id: string }).id,
-          wordId,
-        },
-      })
-
-      updated++
-    }
+    })
 
     return NextResponse.json({
       updated,

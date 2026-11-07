@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { db } from "@/lib/db"
 import { requireAdmin, requireRole } from "@/lib/auth"
 import { isAllowedCoverImageUrl } from "@/lib/media/storage"
+import { bumpContentVersion } from "@/lib/content-version"
 
 const VALID_STATUS = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const
 
@@ -26,9 +27,12 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
       where: { id },
       include: {
         modules: {
+          // Fase A T07: el árbol público excluye borrados lógicos.
+          where: { deletedAt: null },
           orderBy: { order: "asc" },
           include: {
             lessons: {
+              where: { deletedAt: null },
               orderBy: [{ lessonNumber: "asc" }, { id: "asc" }],
             },
           },
@@ -131,7 +135,12 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
       return NextResponse.json({ message: "Nada que actualizar" }, { status: 400 })
     }
 
-    const course = await db.course.update({ where: { id }, data })
+    // Fase A T05: mutación + bump en la misma transacción (una operación = +1).
+    const course = await db.$transaction(async (tx) => {
+      const updated = await tx.course.update({ where: { id }, data })
+      await bumpContentVersion(tx)
+      return updated
+    })
     return NextResponse.json({ course })
   } catch (error) {
     console.error("Course update error:", error)
@@ -140,7 +149,12 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
 }
 
 /**
- * DELETE /api/courses/[id] — solo admin (cascada a módulos/lecciones/progreso).
+ * DELETE /api/courses/[id] — borrado LÓGICO (Fase A T07, decisión D3).
+ *
+ * Reemplazo lateral: en vez de borrar el curso (y su cascada), se archiva
+ * (`status = "ARCHIVED"`) + bump en la misma transacción, con `AuditLog`
+ * DELETE para que los tombstones sigan funcionando (spec §3.4).
+ * Solo admin. Respuesta sin cambios ({ success: true }).
  */
 export async function DELETE(_request: NextRequest, { params }: Ctx) {
   const { error } = await requireAdmin()
@@ -148,7 +162,17 @@ export async function DELETE(_request: NextRequest, { params }: Ctx) {
 
   try {
     const { id } = await params
-    await db.course.delete({ where: { id } })
+    await db.$transaction(async (tx) => {
+      await tx.course.update({ where: { id }, data: { status: "ARCHIVED" } })
+      await tx.auditLog.create({
+        data: {
+          action: "DELETE",
+          entity: "Course",
+          entityId: id,
+        },
+      })
+      await bumpContentVersion(tx)
+    })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Course delete error:", error)

@@ -5,6 +5,23 @@ vi.mock("@/lib/auth", () => ({
   requireRole: vi.fn(),
 }))
 
+vi.mock("@/lib/db", () => {
+  const db: Record<string, unknown> = {
+    mediaAsset: { findUnique: vi.fn(), findFirst: vi.fn(), delete: vi.fn() },
+  }
+  // La ruta usa `db.$transaction(async (tx) => ...)`: el mock ejecuta el
+  // callback con el propio db mockeado como `tx`.
+  db.$transaction = vi.fn(async (fn: unknown) =>
+    typeof fn === "function" ? (fn as (tx: unknown) => unknown)(db) : fn
+  )
+  return { db }
+})
+
+vi.mock("@/lib/content-version", () => ({
+  bumpContentVersion: vi.fn(),
+  getContentVersion: vi.fn(),
+}))
+
 const mockDeleteObject = vi.fn()
 
 vi.mock("@/lib/r2", () => ({
@@ -14,6 +31,8 @@ vi.mock("@/lib/r2", () => ({
 }))
 
 import { requireAdmin, requireRole } from "@/lib/auth"
+import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { POST } from "./route"
 
 const R2_URL = "https://cdn.test/audios/temp/file.mp3"
@@ -60,6 +79,7 @@ describe("POST /api/admin/delete-audio", () => {
   })
 
   it("deletes audio from R2 by public URL", async () => {
+    vi.mocked(db.mediaAsset.findFirst).mockResolvedValue(null as never)
     const res = await POST(makeReq({ audioUrl: R2_URL }))
     const body = await res.json()
 
@@ -67,6 +87,8 @@ describe("POST /api/admin/delete-audio", () => {
     expect(body.message).toContain("eliminado")
     expect(body.objectKey).toBe("audios/temp/file.mp3")
     expect(mockDeleteObject).toHaveBeenCalledWith("audios/temp/file.mp3")
+    // Sin fila: compatibilidad + bump igual (inventario efectivo cambió).
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
   it("accepts legacy Supabase public URL", async () => {
@@ -114,9 +136,35 @@ describe("POST /api/admin/delete-audio", () => {
     expect(mockDeleteObject).not.toHaveBeenCalled()
   })
 
-  it("returns 500 when R2 delete fails", async () => {
+  it("deletes the resolved MediaAsset row first with bump", async () => {
+    vi.mocked(db.mediaAsset.findFirst).mockResolvedValue({ id: "a1" } as never)
+    vi.mocked(db.mediaAsset.delete).mockResolvedValue({ id: "a1" } as never)
+    const res = await POST(makeReq({ audioUrl: R2_URL }))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(vi.mocked(db.mediaAsset.delete)).toHaveBeenCalledWith({ where: { id: "a1" } })
+    expect(body.mediaAssetDeleted).toBe(true)
+    expect(mockDeleteObject).toHaveBeenCalledWith("audios/temp/file.mp3")
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns 500 when R2 delete fails and there is no row (nothing changed, no bump)", async () => {
+    vi.mocked(db.mediaAsset.findFirst).mockResolvedValue(null as never)
     mockDeleteObject.mockRejectedValue(new Error("R2 caído"))
     expect((await POST(makeReq({ audioUrl: R2_URL }))).status).toBe(500)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
+  })
+
+  it("with a row, R2 failure is best-effort: 200 with bump and storageDeleted false", async () => {
+    vi.mocked(db.mediaAsset.findFirst).mockResolvedValue({ id: "a1" } as never)
+    vi.mocked(db.mediaAsset.delete).mockResolvedValue({ id: "a1" } as never)
+    mockDeleteObject.mockRejectedValue(new Error("R2 caído"))
+    const res = await POST(makeReq({ audioUrl: R2_URL }))
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.storageDeleted).toBe(false)
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
   it("returns 401 when not editor", async () => {

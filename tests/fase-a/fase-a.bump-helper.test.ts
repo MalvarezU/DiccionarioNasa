@@ -1,8 +1,9 @@
 import "./test-db";
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { bumpContentVersion, getContentVersion } from "@/lib/content-version";
 import { testDb, ensureSeedRow, disconnectTestDb, resolveTestDatabaseUrl } from "./test-db";
+import { acquireBumpLock, releaseBumpLock } from "./lock";
 
 /**
  * T02 — Helper `bumpContentVersion` + `getContentVersion` (BUMP-01).
@@ -21,6 +22,10 @@ function freshClient(): PrismaClient {
   return new PrismaClient({ datasources: { db: { url: resolveTestDatabaseUrl() } } });
 }
 
+beforeAll(async () => {
+  await acquireBumpLock("bump-helper");
+});
+
 async function currentVersion(): Promise<number> {
   const rows = await testDb().$queryRaw<Array<{ version: number }>>`
     SELECT version FROM ContentVersion WHERE id = 1
@@ -34,6 +39,7 @@ async function clearRows(): Promise<void> {
 }
 
 afterAll(async () => {
+  await releaseBumpLock();
   await ensureSeedRow();
   await disconnectTestDb();
 });
