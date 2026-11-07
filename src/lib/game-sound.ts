@@ -110,6 +110,26 @@ export function playWin(): void {
   }
 }
 
+/**
+ * Streak-tier shimmer: 1 soft note (tier 1) or 2-note sparkle (tier 2).
+ * Total ≤350ms (tier 2 ends at ~0.25s). Call it only when the tier RISES
+ * (`streakTier(next) > streakTier(prev)`), not on every correct answer.
+ */
+export function playStreakTier(tier: 1 | 2): void {
+  const ctx = getContext()
+  if (!ctx) return
+  try {
+    if (tier === 1) {
+      tone(ctx, { freq: 880, at: 0, dur: 0.14, type: "sine", volume: 0.14 })
+    } else {
+      tone(ctx, { freq: 784, at: 0, dur: 0.13, type: "sine", volume: 0.14 })
+      tone(ctx, { freq: 1174.66, at: 0.09, dur: 0.16, type: "sine", volume: 0.14 })
+    }
+  } catch {
+    // audio failed: game still works
+  }
+}
+
 /** Convenience dispatcher for the feedback hook. */
 export function playGameSound(kind: GameSoundKind): void {
   if (kind === "correct") playCorrect()

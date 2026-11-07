@@ -13,7 +13,7 @@ vi.mock("next/link", () => ({
   }) => <a href={href}>{children}</a>,
 }))
 
-const MOTIVOS: GameMotif[] = ["flash", "memory", "gaps", "ordena"]
+const MOTIVOS: GameMotif[] = ["flash", "memory", "gaps", "ordena", "relacionar", "escucha"]
 
 describe("GameTile [WU-L6]", () => {
   it.each(MOTIVOS)("renderiza el motivo %s con titulo y enlace intactos", (motivo) => {
@@ -60,5 +60,55 @@ describe("GameTile [WU-L6]", () => {
     expect(screen.getByText("tx")).toBeDefined()
     expect(screen.getByText("sx")).toBeDefined()
     expect(container.querySelectorAll(".bg-secondary-container").length).toBe(4)
+  })
+
+  it("motivo relacionar muestra dos columnas ES ↔ NY unidas", () => {
+    const { container } = render(<GameMotifArt motivo="relacionar" />)
+    expect(screen.getByText("casa")).toBeDefined()
+    expect(screen.getByText("yat")).toBeDefined()
+    expect(screen.getByText("sol")).toBeDefined()
+    expect(screen.getByText("sek")).toBeDefined()
+    expect(container.querySelectorAll(".bg-secondary-container").length).toBe(2)
+  })
+
+  it("motivo escucha muestra anillos de onda + barras de ecualizador", () => {
+    const { container } = render(<GameMotifArt motivo="escucha" />)
+    // 2 anillos concéntricos + 5 barras de ecualizador
+    expect(container.querySelectorAll(".rounded-full.border").length).toBe(2)
+    expect(container.querySelectorAll(".bg-secondary").length).toBe(5)
+  })
+
+  it("locked usa 'Sin contenido' y nota por defecto", () => {
+    render(
+      <GameTile
+        motivo="flash"
+        href="/juegos/flashcards"
+        title="Flashcards"
+        description="Descripcion de prueba"
+        locked
+      />
+    )
+    expect(screen.getByText("Sin contenido")).toBeDefined()
+    expect(screen.getByText("Este juego aún no está disponible.")).toBeDefined()
+    expect(screen.queryByRole("link")).toBeNull()
+  })
+
+  it("locked acepta badge y nota personalizados (gate de audios)", () => {
+    render(
+      <GameTile
+        motivo="escucha"
+        href="/juegos/escucha"
+        title="Escucha"
+        description="Descripcion de prueba"
+        locked
+        lockedBadge="Requiere audios"
+        lockedNote="Necesita al menos 8 palabras con audio publicado."
+      />
+    )
+    expect(screen.getByText("Requiere audios")).toBeDefined()
+    expect(
+      screen.getByText("Necesita al menos 8 palabras con audio publicado.")
+    ).toBeDefined()
+    expect(screen.queryByRole("link")).toBeNull()
   })
 })

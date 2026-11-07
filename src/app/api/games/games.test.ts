@@ -46,6 +46,7 @@ describe("GET /api/games/words [B2.1]", () => {
     expect(count).toBe(8)
     expect(sql).toContain("PUBLISHED")
     expect(sql).toContain("RAND()")
+    expect(sql).toContain("audioUrl")
   })
 
   it("limita count a 1..24 y excluye ids", async () => {
@@ -57,6 +58,33 @@ describe("GET /api/games/words [B2.1]", () => {
     ]
     // MySQL enlaza parámetros por posición: los `?` de NOT IN van antes que el `?` de LIMIT
     expect(args).toEqual(["a", "b", 24])
+  })
+
+  it("withAudio=1 filtra audioUrl IS NOT NULL", async () => {
+    vi.mocked(db.$queryRawUnsafe).mockResolvedValue([])
+    await wordsGET(new Request("http://x/api/games/words?count=12&withAudio=1") as never)
+    const [sql, count] = vi.mocked(db.$queryRawUnsafe).mock.calls[0] as unknown as [string, number]
+    expect(sql).toContain("audioUrl IS NOT NULL")
+    expect(count).toBe(12)
+  })
+
+  it("sin withAudio no filtra por audio", async () => {
+    vi.mocked(db.$queryRawUnsafe).mockResolvedValue([])
+    await wordsGET(new Request("http://x/api/games/words?count=8") as never)
+    const [sql] = vi.mocked(db.$queryRawUnsafe).mock.calls[0] as unknown as [string]
+    expect(sql).not.toContain("audioUrl IS NOT NULL")
+  })
+
+  it("combina withAudio + exclude", async () => {
+    vi.mocked(db.$queryRawUnsafe).mockResolvedValue([])
+    await wordsGET(new Request("http://x/api/games/words?count=8&exclude=a,b&withAudio=1") as never)
+    const [sql, ...args] = vi.mocked(db.$queryRawUnsafe).mock.calls[0] as unknown as [
+      string,
+      ...Array<string | number>,
+    ]
+    expect(sql).toContain("audioUrl IS NOT NULL")
+    expect(sql).toContain("NOT IN")
+    expect(args).toEqual(["a", "b", 8])
   })
 })
 
@@ -126,6 +154,44 @@ describe("POST /api/games/result [B2.1]", () => {
         data: expect.objectContaining({
           userId: "u1",
           game: "ordena",
+          bestScore: 80,
+        }),
+      })
+    )
+  })
+
+  it("acepta el juego relacionar (whitelist extendida)", async () => {
+    authed()
+    vi.mocked(db.userGameSession.findUnique).mockResolvedValue(null)
+    vi.mocked(db.userGameSession.create).mockResolvedValue({} as never)
+    const res = await resultPOST(
+      req({ game: "relacionar", won: true, score: 50, streak: 3 }) as never
+    )
+    expect((await res.json()).saved).toBe(true)
+    expect(db.userGameSession.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: "u1",
+          game: "relacionar",
+          bestScore: 50,
+        }),
+      })
+    )
+  })
+
+  it("acepta el juego escucha (whitelist extendida)", async () => {
+    authed()
+    vi.mocked(db.userGameSession.findUnique).mockResolvedValue(null)
+    vi.mocked(db.userGameSession.create).mockResolvedValue({} as never)
+    const res = await resultPOST(
+      req({ game: "escucha", won: true, score: 80, streak: 4 }) as never
+    )
+    expect((await res.json()).saved).toBe(true)
+    expect(db.userGameSession.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: "u1",
+          game: "escucha",
           bestScore: 80,
         }),
       })

@@ -3,6 +3,7 @@ import {
   buildFlashcardQuestions,
   fetchGameWords,
   gameWordsOrDemo,
+  gameWordsWithAudio,
   getSessionKey,
   loadGameBest,
   reportGameResult,
@@ -27,9 +28,25 @@ describe("game-words [B2.1]", () => {
     )
     const words = await fetchGameWords(12)
     expect(words).toEqual([
-      { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null, illustrationUrl: null },
+      { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null, illustrationUrl: null, audioUrl: null },
     ])
     expect(fetch).toHaveBeenCalledWith("/api/games/words?count=12")
+  })
+
+  it("propaga audioUrl cuando la palabra trae audio y null cuando no", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({
+        words: [
+          { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: "yat", illustrationUrl: null, audioUrl: "https://audio.test/yat.mp3" },
+          { id: "w2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null, illustrationUrl: null },
+        ],
+      }) as never
+    )
+    const words = await fetchGameWords(12)
+    expect(words).toEqual([
+      { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: "yat", illustrationUrl: null, audioUrl: "https://audio.test/yat.mp3" },
+      { id: "w2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null, illustrationUrl: null, audioUrl: null },
+    ])
   })
 
   it("fallback a demo si la API falla o trae pocas", async () => {
@@ -37,6 +54,8 @@ describe("game-words [B2.1]", () => {
     const words = await gameWordsOrDemo(8)
     expect(words.length).toBeGreaterThanOrEqual(8)
     expect(words[0]).toMatchObject({ id: expect.any(String), spanish: expect.any(String) })
+    // Sin columna de audio en demo: el contrato la tolera como null
+    for (const w of words) expect(w.audioUrl).toBeNull()
   })
 
   it("guarda mejores locales y usa sessionKey estable", () => {
@@ -62,10 +81,10 @@ describe("game-words [B2.1]", () => {
 
   it("arma preguntas para palabras dadas con distractores", () => {
     const pool = [
-      { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null, illustrationUrl: null },
-      { id: "w2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null, illustrationUrl: null },
-      { id: "w3", spanish: "Sol", nasaYuwe: "Ate", pronunciation: null, illustrationUrl: null },
-      { id: "w4", spanish: "Luna", nasaYuwe: "Ate2", pronunciation: null, illustrationUrl: null },
+      { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null, illustrationUrl: null, audioUrl: null },
+      { id: "w2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null, illustrationUrl: null, audioUrl: null },
+      { id: "w3", spanish: "Sol", nasaYuwe: "Ate", pronunciation: null, illustrationUrl: null, audioUrl: null },
+      { id: "w4", spanish: "Luna", nasaYuwe: "Ate2", pronunciation: null, illustrationUrl: null, audioUrl: null },
     ]
     const qs = buildFlashcardQuestions([pool[0]!], pool)
     expect(qs).toHaveLength(1)
@@ -76,5 +95,51 @@ describe("game-words [B2.1]", () => {
     const inv = buildFlashcardQuestions([pool[0]!], pool, "nasa-es")
     expect(inv[0]).toMatchObject({ title: "Yat" })
     expect(inv[0]!.options[inv[0]!.correctIndex]).toBe("Casa")
+  })
+})
+
+describe("gameWordsWithAudio [Fase 4]", () => {
+  const WITH_AUDIO = [
+    { id: "a1", spanish: "Casa", nasaYuwe: "Yat", audioUrl: "https://audio.test/yat.mp3" },
+    { id: "a2", spanish: "Agua", nasaYuwe: "Yu", audioUrl: "https://audio.test/yu.mp3" },
+    { id: "a3", spanish: "Sol", nasaYuwe: "Sek", audioUrl: "https://audio.test/sek.mp3" },
+    { id: "a4", spanish: "Luna", nasaYuwe: "Ate", audioUrl: "https://audio.test/ate.mp3" },
+  ]
+
+  it("pide palabras con withAudio=1 y conserva el audio", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ words: WITH_AUDIO }) as never
+    )
+    const words = await gameWordsWithAudio(12)
+    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=12&withAudio=1")
+    expect(words).toHaveLength(4)
+    expect(words[0]).toMatchObject({ id: "a1", audioUrl: "https://audio.test/yat.mp3" })
+  })
+
+  it("filtra las palabras sin audio", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({
+        words: [
+          ...WITH_AUDIO,
+          { id: "s1", spanish: "Perro", nasaYuwe: "Alku", audioUrl: null },
+          { id: "s2", spanish: "Fuego", nasaYuwe: "Tek" },
+        ],
+      }) as never
+    )
+    const words = await gameWordsWithAudio(12)
+    expect(words).toHaveLength(4)
+    for (const w of words) expect(w.audioUrl).toBeTruthy()
+  })
+
+  it("devuelve [] si hay menos de 4 con audio (error real, no demo)", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ words: WITH_AUDIO.slice(0, 3) }) as never
+    )
+    await expect(gameWordsWithAudio(12)).resolves.toEqual([])
+  })
+
+  it("devuelve [] si la red falla", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("red"))
+    await expect(gameWordsWithAudio(12)).resolves.toEqual([])
   })
 })

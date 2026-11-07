@@ -80,6 +80,9 @@ racha vía `streakClass`); nunca decoración ambiente.
     micro = settle corto al deshacer (`tileSettleBack`, 180ms).
   - *Hub*: CSS cubre todo (stagger de tiles, hover/press) — sin GSAP, por
     composición.
+  - *Memoria (retirada del hub, Fase 3)*: la ruta `/juegos/memoria` sigue
+    operativa pero ya no se publicita; su flip 3D queda congelado por un bug
+    visual y *Relaciona* ocupa su lugar en el hub (4 tiles intactos).
 - **No-duplicación**: donde un keyframe del juice kit ya cubre el momento
   (`game-press`, `anim-flash-*`, `anim-match-pop`, `anim-complete-wrong`,
   `game-progress`, `confetti-fall`, stagger del hub) no entra GSAP.

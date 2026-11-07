@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import type { GameId } from "@/lib/game-words"
 import { GameBestBadge } from "./game-best-badge"
 
-export type GameMotif = "flash" | "memory" | "gaps" | "ordena"
+export type GameMotif = "flash" | "memory" | "gaps" | "ordena" | "relacionar" | "escucha"
 
 /** Decorative mini illustration for a game tile. Pure CSS/divs, no assets. */
 export function GameMotifArt({ motivo }: { motivo: GameMotif }) {
@@ -64,6 +64,59 @@ export function GameMotifArt({ motivo }: { motivo: GameMotif }) {
     )
   }
 
+  if (motivo === "relacionar") {
+    // Dos columnas ES ↔ NY unidas por líneas de pareja, CSS-only
+    const pairs = [
+      { es: "casa", ny: "yat" },
+      { es: "sol", ny: "sek" },
+    ]
+    return (
+      <div aria-hidden="true" className="flex items-center gap-2">
+        <div className="flex flex-col gap-1.5">
+          {pairs.map((p) => (
+            <span
+              key={p.es}
+              className="flex h-6 w-12 items-center justify-center rounded-md border border-primary/40 bg-background font-sans text-[10px] font-semibold leading-none text-primary shadow-sm"
+            >
+              {p.es}
+            </span>
+          ))}
+        </div>
+        <div aria-hidden="true" className="flex flex-col items-center gap-1.5">
+          <span className="h-px w-4 bg-secondary" />
+          <span className="h-px w-4 bg-secondary" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          {pairs.map((p) => (
+            <span
+              key={p.ny}
+              className="flex h-6 w-12 items-center justify-center rounded-md border border-secondary/40 bg-secondary-container font-serif text-[11px] font-bold leading-none text-montana shadow-sm"
+            >
+              {p.ny}
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (motivo === "escucha") {
+    // Onda de audio: anillos concéntricos + barras de ecualizador, CSS-only
+    return (
+      <div aria-hidden="true" className="relative flex items-center justify-center">
+        <span className="absolute h-16 w-16 rounded-full border border-primary/20" />
+        <span className="absolute h-12 w-12 rounded-full border border-primary/25" />
+        <span className="flex h-10 items-end justify-center gap-1 rounded-full bg-secondary-container px-3 py-2">
+          <span className="w-1 rounded-full bg-secondary" style={{ height: "40%" }} />
+          <span className="w-1 rounded-full bg-secondary" style={{ height: "90%" }} />
+          <span className="w-1 rounded-full bg-secondary" style={{ height: "60%" }} />
+          <span className="w-1 rounded-full bg-secondary" style={{ height: "100%" }} />
+          <span className="w-1 rounded-full bg-secondary" style={{ height: "50%" }} />
+        </span>
+      </div>
+    )
+  }
+
   if (motivo === "ordena") {
     // 4 mini-tiles desordenados (fichas de palabra por armar), CSS-only
     const tiles = [
@@ -106,6 +159,10 @@ interface GameTileProps {
   title: string
   description: string
   locked?: boolean
+  /** Texto del badge cuando está bloqueado (default "Sin contenido"). */
+  lockedBadge?: string
+  /** Nota bajo la descripción cuando está bloqueado. */
+  lockedNote?: string
   /** Game id for the best score/streak line (omitted = no line). */
   gameId?: GameId
 }
@@ -117,6 +174,8 @@ export function GameTile({
   title,
   description,
   locked = false,
+  lockedBadge = "Sin contenido",
+  lockedNote = "Este juego aún no está disponible.",
   gameId,
 }: GameTileProps) {
   const card = (
@@ -132,7 +191,7 @@ export function GameTile({
           <div className="flex justify-end">
             <Badge variant="outline" className="shrink-0 text-2xs border-tertiary/30 bg-tertiary-container text-tertiary">
               <Lock className="h-3 w-3 mr-1" />
-              Sin contenido
+              {lockedBadge}
             </Badge>
           </div>
         )}
@@ -148,7 +207,7 @@ export function GameTile({
         {!locked && gameId && <GameBestBadge game={gameId} />}
         {locked ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            Este juego aún no está disponible.
+            {lockedNote}
           </p>
         ) : null}
         {locked ? (

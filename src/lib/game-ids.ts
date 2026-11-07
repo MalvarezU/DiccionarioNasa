@@ -5,7 +5,7 @@
  * migración, solo extender esta lista. Tanto `game-words.ts` como la
  * route `/api/games/result` importan de aquí.
  */
-export const GAME_IDS = ["flashcards", "memory", "complete", "ordena"] as const
+export const GAME_IDS = ["flashcards", "memory", "complete", "ordena", "relacionar", "escucha"] as const
 
 export type GameId = (typeof GAME_IDS)[number]
 

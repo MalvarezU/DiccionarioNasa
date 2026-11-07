@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, within } from "@testing-library/react"
+import { render, screen, within, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { FlashcardGame } from "./flashcard-game"
 import { MemoryGame } from "./memory-game"
 import { CompleteWordGame } from "./complete-word-game"
 import { OrdenaGame } from "./ordena-game"
+import { RelacionarGame } from "./relacionar-game"
 import { tokenizeOrdena } from "@/lib/ordena-tokenizer"
 import type { GameWord } from "@/lib/game-words"
 
@@ -14,14 +15,23 @@ const WORDS: GameWord[] = Array.from({ length: 12 }, (_, i) => ({
   nasaYuwe: `Nasa${i}`,
   pronunciation: null,
   illustrationUrl: null,
+  audioUrl: null,
 }))
 
 const ORDENA_WORDS: GameWord[] = [
-  { id: "o1", spanish: "Casa", nasaYuwe: "Açxa", pronunciation: null, illustrationUrl: null },
-  { id: "o2", spanish: "Rana", nasaYuwe: "Sxib", pronunciation: null, illustrationUrl: null },
-  { id: "o3", spanish: "Perro", nasaYuwe: "Alku", pronunciation: null, illustrationUrl: null },
-  { id: "o4", spanish: "Rojo", nasaYuwe: "Beh", pronunciation: null, illustrationUrl: null },
-  { id: "o5", spanish: "Fuego", nasaYuwe: "Tek", pronunciation: null, illustrationUrl: null },
+  { id: "o1", spanish: "Casa", nasaYuwe: "Açxa", pronunciation: null, illustrationUrl: null, audioUrl: null },
+  { id: "o2", spanish: "Rana", nasaYuwe: "Sxib", pronunciation: null, illustrationUrl: null, audioUrl: null },
+  { id: "o3", spanish: "Perro", nasaYuwe: "Alku", pronunciation: null, illustrationUrl: null, audioUrl: null },
+  { id: "o4", spanish: "Rojo", nasaYuwe: "Beh", pronunciation: null, illustrationUrl: null, audioUrl: null },
+  { id: "o5", spanish: "Fuego", nasaYuwe: "Tek", pronunciation: null, illustrationUrl: null, audioUrl: null },
+]
+
+const REL_WORDS: GameWord[] = [
+  { id: "r1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null, illustrationUrl: null, audioUrl: "https://audio.test/yat.mp3" },
+  { id: "r2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null, illustrationUrl: null, audioUrl: null },
+  { id: "r3", spanish: "Sol", nasaYuwe: "Ate", pronunciation: null, illustrationUrl: null, audioUrl: null },
+  { id: "r4", spanish: "Perro", nasaYuwe: "Alku", pronunciation: null, illustrationUrl: null, audioUrl: null },
+  { id: "r5", spanish: "Fuego", nasaYuwe: "Tek", pronunciation: null, illustrationUrl: null, audioUrl: null },
 ]
 
 describe("juegos con palabras reales [B2.1]", () => {
@@ -105,7 +115,7 @@ describe("juegos con palabras reales [B2.1]", () => {
     render(
       <OrdenaGame
         words={[
-          { id: "x1", spanish: "Sol", nasaYuwe: "Ah", pronunciation: null, illustrationUrl: null },
+          { id: "x1", spanish: "Sol", nasaYuwe: "Ah", pronunciation: null, illustrationUrl: null, audioUrl: null },
         ]}
       />
     )
@@ -184,10 +194,10 @@ describe("anti-brinco reserve-then-fill + memoria con ilustración", () => {
 
   it("memoria: carta con ilustración muestra imagen + palabra debajo", async () => {
     const illustrated: GameWord[] = [
-      { id: "m1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null, illustrationUrl: "https://ejemplo.test/casa.jpg" },
-      { id: "m2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null, illustrationUrl: null },
-      { id: "m3", spanish: "Sol", nasaYuwe: "Sek", pronunciation: null, illustrationUrl: null },
-      { id: "m4", spanish: "Luna", nasaYuwe: "Ate", pronunciation: null, illustrationUrl: null },
+      { id: "m1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null, illustrationUrl: "https://ejemplo.test/casa.jpg", audioUrl: null },
+      { id: "m2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null, illustrationUrl: null, audioUrl: null },
+      { id: "m3", spanish: "Sol", nasaYuwe: "Sek", pronunciation: null, illustrationUrl: null, audioUrl: null },
+      { id: "m4", spanish: "Luna", nasaYuwe: "Ate", pronunciation: null, illustrationUrl: null, audioUrl: null },
     ]
     render(<MemoryGame words={illustrated} />)
     const img = await screen.findByAltText("Casa")
@@ -203,5 +213,111 @@ describe("anti-brinco reserve-then-fill + memoria con ilustración", () => {
     expect((await screen.findAllByLabelText(/Carta tapada/)).length).toBeGreaterThan(0)
     expect(container.querySelector("img")).toBeNull()
     expect(screen.getByText("Palabra0")).toBeDefined()
+  })
+})
+
+describe("relacionar: unir parejas ES ↔ NY [Fase 1+2]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    sessionStorage.clear()
+  })
+
+  it("emparejar una pareja suma un acierto y la deja fija", async () => {
+    const user = userEvent.setup()
+    render(<RelacionarGame words={REL_WORDS} />)
+    expect(await screen.findByText("Ronda 1 de 1", {}, { timeout: 3000 })).toBeDefined()
+    expect(screen.getByRole("group", { name: "Español: elige una palabra" })).toBeDefined()
+    expect(screen.getByRole("group", { name: "Nasa Yuwe: elige su pareja" })).toBeDefined()
+
+    await user.click(screen.getByRole("button", { name: "Casa" }))
+    await user.click(screen.getByRole("button", { name: "Yat" }))
+
+    expect(await screen.findByText(/¡Correcto! Casa es Yat/)).toBeDefined()
+    expect(screen.getByLabelText("1 aciertos")).toBeDefined()
+    // Pareja fija: ambos botones quedan deshabilitados
+    expect(screen.getByRole("button", { name: "Casa" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Yat" })).toBeDisabled()
+  })
+
+  it("el error no suma, avisa y permite reintentar", async () => {
+    const user = userEvent.setup()
+    render(<RelacionarGame words={REL_WORDS} />)
+    expect(await screen.findByText("Ronda 1 de 1", {}, { timeout: 3000 })).toBeDefined()
+
+    await user.click(screen.getByRole("button", { name: "Casa" }))
+    await user.click(screen.getByRole("button", { name: "Yu" }))
+
+    expect(await screen.findByText("No son pareja, intenta de nuevo")).toBeDefined()
+    expect(screen.getByLabelText("0 aciertos")).toBeDefined()
+
+    // Tras el shake se puede reintentar y acertar
+    await waitFor(
+      () => expect(screen.getByRole("button", { name: "Casa" })).toBeEnabled(),
+      { timeout: 2000 }
+    )
+    await user.click(screen.getByRole("button", { name: "Casa" }))
+    await user.click(screen.getByRole("button", { name: "Yat" }))
+    expect(await screen.findByText(/¡Correcto! Casa es Yat/)).toBeDefined()
+    expect(screen.getByLabelText("1 aciertos")).toBeDefined()
+  })
+
+  it("completar la ronda reporta el resultado y ofrece jugar de nuevo", async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetch).mockResolvedValue(Response.json({ saved: true }) as never)
+    const onFinish = vi.fn()
+    render(<RelacionarGame words={REL_WORDS} onFinish={onFinish} />)
+    expect(await screen.findByText("Ronda 1 de 1", {}, { timeout: 3000 })).toBeDefined()
+
+    for (const [es, ny] of [["Casa", "Yat"], ["Agua", "Yu"], ["Sol", "Ate"], ["Perro", "Alku"], ["Fuego", "Tek"]]) {
+      await user.click(screen.getByRole("button", { name: es }))
+      await user.click(screen.getByRole("button", { name: ny }))
+    }
+
+    await user.click(await screen.findByRole("button", { name: "Ver resultados" }))
+    expect(await screen.findByText("Jugar de nuevo", {}, { timeout: 3000 })).toBeDefined()
+    expect(onFinish).toHaveBeenCalledWith({ correct: 5, total: 5 })
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/games/result",
+      expect.objectContaining({ method: "POST" })
+    )
+    const [, opts] = vi.mocked(fetch).mock.calls[0] as unknown as [string, { body: string }]
+    expect(JSON.parse(opts.body)).toMatchObject({ game: "relacionar", won: true })
+  })
+
+  it("dificultades: Fácil es el default y Medio/Difícil cambian el tablero", async () => {
+    const user = userEvent.setup()
+    const MANY: GameWord[] = Array.from({ length: 32 }, (_, i) => ({
+      id: `d${i}`,
+      spanish: `Esp${i}`,
+      nasaYuwe: `Nasa${i}`,
+      pronunciation: null,
+      illustrationUrl: null,
+      audioUrl: null,
+    }))
+    render(<RelacionarGame words={MANY} />)
+    // Default Fácil: 3 rondas × 5 parejas
+    expect(await screen.findByText("Ronda 1 de 3", {}, { timeout: 3000 })).toBeDefined()
+    expect(screen.getByRole("group", { name: "Dificultad" })).toBeDefined()
+    expect(screen.getByRole("button", { name: /Fácil/ })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
+
+    // Medio: 4 rondas × 6 parejas
+    await user.click(screen.getByRole("button", { name: /Medio/ }))
+    expect(await screen.findByText("Ronda 1 de 4", {}, { timeout: 3000 })).toBeDefined()
+    expect(screen.getByRole("button", { name: /Medio/ })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
+
+    // Difícil: 4 rondas × 8 parejas
+    await user.click(screen.getByRole("button", { name: /Difícil/ }))
+    expect(await screen.findByText("Ronda 1 de 4", {}, { timeout: 3000 })).toBeDefined()
+    expect(screen.getByRole("button", { name: /Difícil/ })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
   })
 })

@@ -201,7 +201,7 @@ function HomeContent() {
                       Juegos
                     </span>
                     <span className="block text-sm text-muted-foreground">
-                      Flashcards, memoria y completar palabras.
+                      Flashcards, relaciona, completar palabras y ordena.
                     </span>
                   </span>
                 </Link>

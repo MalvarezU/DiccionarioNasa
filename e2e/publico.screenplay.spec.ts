@@ -79,7 +79,7 @@ test.describe("Piiyaak público (Screenplay)", () => {
     const visitante = actorVisitante(page);
     await visitante.intenta(IrA.a("/juegos"));
     expect(await visitante.pregunta(HubMuestra.juego(/Flashcards/))).toBe(true);
-    expect(await visitante.pregunta(HubMuestra.juego(/Memoria/))).toBe(true);
+    expect(await visitante.pregunta(HubMuestra.juego(/Relaciona/))).toBe(true);
     expect(await visitante.pregunta(HubMuestra.juego(/Completar/))).toBe(true);
     expect(await visitante.pregunta(HubMuestra.juego(/Ordena/))).toBe(true);
     expect(await visitante.pregunta(BloqueosEnHub.cantidad())).toBe(0);

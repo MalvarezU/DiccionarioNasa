@@ -17,6 +17,7 @@ export interface GameWord {
   nasaYuwe: string
   pronunciation: string | null
   illustrationUrl: string | null
+  audioUrl: string | null
 }
 
 const LS_PREFIX = "piiyaak:game:v1"
@@ -75,6 +76,7 @@ export async function fetchGameWords(count: number): Promise<GameWord[]> {
         nasaYuwe: w.nasaYuwe!,
         pronunciation: w.pronunciation ?? null,
         illustrationUrl: w.illustrationUrl ?? null,
+        audioUrl: w.audioUrl ?? null,
       }))
   } catch {
     return []
@@ -82,8 +84,8 @@ export async function fetchGameWords(count: number): Promise<GameWord[]> {
 }
 
 /** Palabras reales o demo (el juego nunca queda vacío). */
-export async function gameWordsOrDemo(count: number): Promise<GameWord[]> {
-  const real = await fetchGameWords(count)
+
+export async function gameWordsOrDemo(count: number): Promise<GameWord[]> {  const real = await fetchGameWords(count)
   if (real.length >= 4) return real
   return DEMO_WORDS.slice(0, Math.max(count, 4)).map((w: DemoWord) => ({
     id: w.id,
@@ -91,7 +93,38 @@ export async function gameWordsOrDemo(count: number): Promise<GameWord[]> {
     nasaYuwe: w.nasaYuwe,
     pronunciation: w.pronunciation ?? null,
     illustrationUrl: null,
+    audioUrl: null,
   }))
+}
+
+/**
+ * Palabras reales CON audio (juego Escucha). Sin fallback a demo: la
+ * pronunciación nativa no se sintetiza, así que si hay menos de 4
+ * devuelve `[]` para que el juego caiga a su estado de error real.
+ */
+export async function gameWordsWithAudio(count: number): Promise<GameWord[]> {
+  try {
+    const res = await fetch(`/api/games/words?count=${count}&withAudio=1`)
+    if (!res.ok) return []
+    const data = await res.json()
+    if (!Array.isArray(data.words)) return []
+    const words = data.words
+      .filter(
+        (w: Partial<GameWord>) => w?.id && w?.spanish && w?.nasaYuwe && w?.audioUrl
+      )
+      .map((w: Partial<GameWord>) => ({
+        id: w.id!,
+        spanish: w.spanish!,
+        nasaYuwe: w.nasaYuwe!,
+        pronunciation: w.pronunciation ?? null,
+        illustrationUrl: w.illustrationUrl ?? null,
+        audioUrl: w.audioUrl ?? null,
+      }))
+    if (words.length < 4) return []
+    return words
+  } catch {
+    return []
+  }
 }
 
 export function loadGameBest(game: GameId): GameBest {
