@@ -41,7 +41,7 @@ export function testDb(): PrismaClient {
 
 /** Reasegura la fila semilla (1,1) sin alterar una versión ya bump-eada. */
 export async function ensureSeedRow(): Promise<void> {
-  await testDb().$executeRaw`INSERT IGNORE INTO ContentVersion (id, version) VALUES (1, 1)`;
+  await testDb().$executeRaw`INSERT IGNORE INTO ContentVersion (id, version, updatedAt) VALUES (1, 1, CURRENT_TIMESTAMP(3))`;
 }
 
 export async function disconnectTestDb(): Promise<void> {
