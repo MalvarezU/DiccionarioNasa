@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { randomUUID } from "crypto"
 import { requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { validateImageUpload } from "@/lib/media/image"
 import { putObject, deleteObject, publicUrl } from "@/lib/r2"
 
@@ -52,15 +53,20 @@ export async function POST(request: Request) {
 
     let asset
     try {
-      asset = await db.mediaAsset.create({
-        data: {
-          objectKey: key,
-          filename: file.name,
-          mimeType: check.mimeType,
-          size: bytes.byteLength,
-          uploadedBy: userId,
-        },
-        select: { id: true, objectKey: true, filename: true, mimeType: true, size: true },
+      // Fase A T06: fila + bump en la misma transacción (una operación = +1).
+      asset = await db.$transaction(async (tx) => {
+        const created = await tx.mediaAsset.create({
+          data: {
+            objectKey: key,
+            filename: file.name,
+            mimeType: check.mimeType,
+            size: bytes.byteLength,
+            uploadedBy: userId,
+          },
+          select: { id: true, objectKey: true, filename: true, mimeType: true, size: true },
+        })
+        await bumpContentVersion(tx)
+        return created
       })
     } catch (dbError) {
       // Compensación: el binario ya está en R2 pero sin fila que lo

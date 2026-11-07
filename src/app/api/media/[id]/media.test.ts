@@ -6,6 +6,11 @@ vi.mock("@/lib/db", () => ({
   db: { mediaAsset: { findUnique: vi.fn(), findFirst: vi.fn(), delete: vi.fn() } },
 }))
 
+vi.mock("@/lib/content-version", () => ({
+  bumpContentVersion: vi.fn(),
+  getContentVersion: vi.fn(),
+}))
+
 const mockDeleteObject = vi.fn()
 
 vi.mock("@/lib/r2", () => ({
@@ -16,6 +21,7 @@ vi.mock("@/lib/r2", () => ({
 
 import { requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { GET, DELETE } from "./route"
 
 const params = (id: string) => ({ params: Promise.resolve({ id }) })
@@ -81,13 +87,14 @@ describe("DELETE /api/media/[id]", () => {
     expect(db.mediaAsset.delete).not.toHaveBeenCalled()
   })
 
-  it("404 si no existe", async () => {
+  it("404 si no existe sin bump", async () => {
     vi.mocked(db.mediaAsset.findUnique).mockResolvedValue(null as never)
     const res = await DELETE({} as never, params("nope"))
     expect(res.status).toBe(404)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 
-  it("borra fila y objeto, reporta storageDeleted", async () => {
+  it("borra fila y objeto con bump, reporta storageDeleted", async () => {
     vi.mocked(db.mediaAsset.findUnique).mockResolvedValue({
       id: "m1",
       objectKey: "images/a.png",
@@ -100,6 +107,7 @@ describe("DELETE /api/media/[id]", () => {
     expect(res.status).toBe(200)
     expect(body).toMatchObject({ id: "m1", storageDeleted: true })
     expect(mockDeleteObject).toHaveBeenCalledWith("images/a.png")
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
   it("si R2 falla igual responde 200 con storageDeleted false", async () => {

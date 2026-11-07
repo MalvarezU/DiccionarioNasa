@@ -1,8 +1,21 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
 
 vi.mock("@/lib/auth", () => ({ requireRole: vi.fn() }))
-vi.mock("@/lib/db", () => ({
-  db: { mediaAsset: { create: vi.fn(), findUnique: vi.fn() } },
+vi.mock("@/lib/db", () => {
+  const db: Record<string, unknown> = {
+    mediaAsset: { create: vi.fn(), findUnique: vi.fn() },
+  }
+  // La ruta usa `db.$transaction(async (tx) => ...)`: el mock ejecuta el
+  // callback con el propio db mockeado como `tx`.
+  db.$transaction = vi.fn(async (fn: unknown) =>
+    typeof fn === "function" ? (fn as (tx: unknown) => unknown)(db) : fn
+  )
+  return { db }
+})
+
+vi.mock("@/lib/content-version", () => ({
+  bumpContentVersion: vi.fn(),
+  getContentVersion: vi.fn(),
 }))
 
 const mockPutObject = vi.fn()
@@ -16,6 +29,7 @@ vi.mock("@/lib/r2", () => ({
 
 import { requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { POST } from "./route"
 
 const pngBytes = () =>
@@ -105,6 +119,8 @@ describe("POST /api/admin/upload-image", () => {
       })
     )
     expect(body.url).toBe(`https://cdn.test/${key}`)
+    // T06: fila + bump en la misma transacción.
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
   it("no confía en el MIME declarado: guarda el detectado", async () => {
@@ -126,7 +142,7 @@ describe("POST /api/admin/upload-image", () => {
     expect(db.mediaAsset.create).not.toHaveBeenCalled()
   })
 
-  it("si la base falla borra el objeto de R2 y devuelve 500", async () => {
+  it("si la base falla borra el objeto de R2, devuelve 500 y no hace bump", async () => {
     vi.mocked(db.mediaAsset.create).mockRejectedValue(new Error("boom"))
     const res = await POST(peticion(archivo("foto.png", pngBytes())))
 
@@ -134,5 +150,6 @@ describe("POST /api/admin/upload-image", () => {
     expect(mockDeleteObject).toHaveBeenCalledTimes(1)
     const [key] = mockDeleteObject.mock.calls[0] as [string]
     expect(key).toMatch(/^images\//)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 })
