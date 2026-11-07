@@ -195,8 +195,47 @@ function SearchResultsSkeleton({ count = 5 }: { count?: number }) {
 /**
  * Réplica de la ficha de palabra: título grande, pronunciación, botones de
  * audio y una grilla de atributos.
+ *
+ * `layout="wide"` espeja la ficha desktop en 2 columnas (ilustración a la
+ * izquierda, contenido a la derecha) desde md+. El default `stacked` queda
+ * intacto para la palabra del día y el loading de /diccionario.
  */
-function WordDetailSkeleton() {
+function WordDetailSkeleton({ layout = "stacked" }: { layout?: "stacked" | "wide" } = {}) {
+  if (layout === "wide") {
+    return (
+      <div
+        data-slot="skeleton-word-detail"
+        data-testid="skeleton-word-detail"
+        className="grid grid-cols-1 rounded-xl border border-outline-variant/20 p-6 md:grid-cols-[5fr_7fr] md:gap-8 md:p-8"
+      >
+        {/* Columna izquierda: la ilustración grande de la ficha desktop. */}
+        <Skeleton className="mx-auto aspect-square w-full rounded-xl md:mx-0" />
+        {/* Columna derecha: título, traducción y bloques de la ficha. */}
+        <div className="mt-6 space-y-5 md:mt-0">
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-28" />
+            <Skeleton className="h-9 w-9 rounded-md" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-11/12" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       data-slot="skeleton-word-detail"

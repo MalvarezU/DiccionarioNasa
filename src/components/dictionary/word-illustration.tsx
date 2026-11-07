@@ -22,10 +22,16 @@ export function WordIllustration({
   url,
   alt,
   className,
+  sizes = "(max-width: 640px) 100vw, 16rem",
 }: {
   url?: string | null
   alt: string
   className?: string
+  /**
+   * Tamaños de entrega de la imagen. El default conserva a los consumidores
+   * actuales (la ficha en móvil); la ficha desktop pasa su propio valor.
+   */
+  sizes?: string
 }) {
   const [fallo, setFallo] = useState(false)
 
@@ -45,7 +51,7 @@ export function WordIllustration({
             alt={`Ilustración de ${alt}`}
             width={512}
             height={512}
-            sizes="(max-width: 640px) 100vw, 16rem"
+            sizes={sizes}
             className="h-full w-full object-cover"
             onError={() => setFallo(true)}
           />
