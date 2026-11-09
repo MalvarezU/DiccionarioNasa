@@ -5,15 +5,27 @@ vi.mock("@/lib/auth", () => ({
   requireRole: vi.fn(),
 }))
 
-vi.mock("@/lib/db", () => ({
-  db: {
+vi.mock("@/lib/db", () => {
+  const db: Record<string, unknown> = {
     dictionaryWord: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn() },
     auditLog: { create: vi.fn() },
-  },
+  }
+  // La ruta usa `db.$transaction(async (tx) => ...)`: el mock ejecuta el
+  // callback con el propio db mockeado como `tx`.
+  db.$transaction = vi.fn(async (fn: unknown) =>
+    typeof fn === "function" ? (fn as (tx: unknown) => unknown)(db) : fn
+  )
+  return { db }
+})
+
+vi.mock("@/lib/content-version", () => ({
+  bumpContentVersion: vi.fn(),
+  getContentVersion: vi.fn(),
 }))
 
 import { requireAdmin, requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { POST } from "./route"
 
 const adminSession = { user: { id: "admin1", name: "Admin", role: "admin" } } as never
@@ -58,6 +70,8 @@ describe("POST /api/admin/import", () => {
     expect(body.created).toBe(1)
     expect(body.skipped).toBe(0)
     expect(body.errors).toBe(0)
+    // C1: mutación + bump en la misma transacción
+    expect(vi.mocked(bumpContentVersion)).toHaveBeenCalledTimes(1)
   })
 
   it("returns 400 when words is not an array", async () => {
@@ -97,6 +111,8 @@ describe("POST /api/admin/import", () => {
 
     expect(body.skipped).toBe(1)
     expect(body.created).toBe(0)
+    // 0 filas efectivas → sin bump
+    expect(vi.mocked(bumpContentVersion)).not.toHaveBeenCalled()
   })
 
   it("entra en BORRADOR por defecto y detecta duplicado insensible a mayúsculas [B1.10]", async () => {
@@ -118,6 +134,7 @@ describe("POST /api/admin/import", () => {
     expect(vi.mocked(db.dictionaryWord.create)).toHaveBeenCalledWith({
       data: expect.objectContaining({ spanish: "sol", status: "DRAFT" }),
     })
+    expect(vi.mocked(bumpContentVersion)).toHaveBeenCalledTimes(1)
   })
 
   it("counts rows with missing required fields as errors", async () => {
@@ -132,6 +149,8 @@ describe("POST /api/admin/import", () => {
 
     expect(body.errors).toBe(2)
     expect(body.created).toBe(0)
+    // 0 filas efectivas → sin bump
+    expect(vi.mocked(bumpContentVersion)).not.toHaveBeenCalled()
   })
 
   it("handles nasa_yuwe (underscore variant)", async () => {
@@ -144,6 +163,7 @@ describe("POST /api/admin/import", () => {
     const body = await res.json()
 
     expect(body.created).toBe(1)
+    expect(vi.mocked(bumpContentVersion)).toHaveBeenCalledTimes(1)
   })
 
   it("normalizes status values", async () => {
@@ -159,6 +179,7 @@ describe("POST /api/admin/import", () => {
         data: expect.objectContaining({ status: "DRAFT" }),
       })
     )
+    expect(vi.mocked(bumpContentVersion)).toHaveBeenCalledTimes(1)
   })
 
   it("creates audit log when at least one word is created", async () => {
@@ -172,6 +193,7 @@ describe("POST /api/admin/import", () => {
     expect(vi.mocked(db.auditLog.create)).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ action: "IMPORT" }) })
     )
+    expect(vi.mocked(bumpContentVersion)).toHaveBeenCalledTimes(1)
   })
 
   it("registra una entrada por ficha con su entityId [B1.8]", async () => {
@@ -190,6 +212,7 @@ describe("POST /api/admin/import", () => {
     )
     const body = await res.json()
     expect(body.created).toBe(2)
+    expect(vi.mocked(bumpContentVersion)).toHaveBeenCalledTimes(1)
 
     const fichaCalls = vi
       .mocked(db.auditLog.create)
