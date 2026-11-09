@@ -2,11 +2,12 @@
 
 import { Suspense, useState } from "react"
 import { useSession } from "next-auth/react"
-import { Plus, Upload } from "lucide-react"
+import { PackagePlus, Plus, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AdminPageHeader } from "@/components/admin/admin-page-header"
 import { CreateWordModal } from "@/components/admin/CreateWordModal"
 import { ImportCorpusModal } from "@/components/admin/ImportCorpusModal"
+import { SeedDispatchModal } from "@/components/admin/SeedDispatchModal"
 import { EditWordModal } from "@/components/admin/EditWordModal"
 import { WordListContent } from "@/components/admin/word-list-content"
 import { WordTableSkeleton } from "@/components/skeletons"
@@ -25,6 +26,7 @@ export default function AdminPalabrasPage() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [seedOpen, setSeedOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingWord, setEditingWord] = useState<WordForEdit | null>(null)
   const [listKey, setListKey] = useState(0)
@@ -44,6 +46,10 @@ export default function AdminPalabrasPage() {
             <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-2">
               <Upload className="h-4 w-4" />
               Importar corpus
+            </Button>
+            <Button variant="outline" onClick={() => setSeedOpen(true)} className="gap-2">
+              <PackagePlus className="h-4 w-4" />
+              Generar contenido offline
             </Button>
           </>
         }
@@ -70,6 +76,7 @@ export default function AdminPalabrasPage() {
 
       <CreateWordModal open={createOpen} onOpenChange={setCreateOpen} onCreated={refreshList} />
       <ImportCorpusModal open={importOpen} onOpenChange={setImportOpen} onImported={refreshList} />
+      <SeedDispatchModal open={seedOpen} onOpenChange={setSeedOpen} />
       <EditWordModal
         key={editingWord?.id ?? "new"}
         open={editOpen}
