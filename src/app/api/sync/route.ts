@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
 import { getContentVersion } from "@/lib/content-version"
+import { resolveWordMediaSha256 } from "@/lib/media/word-sha256"
 
 /**
  * GET /api/sync?since=&cursor=&limit= — sincronización incremental (B3.1).
@@ -126,8 +127,10 @@ export async function GET(request: NextRequest) {
     ]
     const removedSet = new Set(removedIds)
     // T07: comparación normalizada (misma regresión R-ARCHIVED).
-    const words = page
-      .filter((w) => String(w.status).toUpperCase() !== "ARCHIVED")
+    // F1-a: sha256 de medios por palabra (aditivo, una query por página).
+    const visible = page.filter((w) => String(w.status).toUpperCase() !== "ARCHIVED")
+    const hashes = await resolveWordMediaSha256(visible)
+    const words = visible
       .map((w) => ({
         id: w.id,
         spanish: w.spanish,
@@ -140,6 +143,8 @@ export async function GET(request: NextRequest) {
         examples: w.examples,
         status: w.status,
         updatedAt: w.updatedAt instanceof Date ? w.updatedAt.toISOString() : String(w.updatedAt),
+        audioSha256: hashes.get(w.id)?.audioSha256 ?? null,
+        illustrationSha256: hashes.get(w.id)?.illustrationSha256 ?? null,
       }))
 
     return NextResponse.json({

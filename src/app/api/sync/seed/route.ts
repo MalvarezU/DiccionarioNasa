@@ -2,11 +2,45 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
 import { getContentVersion } from "@/lib/content-version"
+import { resolveWordMediaSha256 } from "@/lib/media/word-sha256"
 
 /**
  * GET /api/sync/seed?page=&pageSize= — snapshot completo para la primera
  * instalación de la app (B3.1). Solo PUBLISHED, orden estable por id.
  */
+async function withMediaSha256(
+  rows: Array<{
+    id: string
+    spanish: string
+    nasaYuwe: string
+    pronunciation: string | null
+    audioUrl: string | null
+    illustrationUrl: string | null
+    culturalContext: string | null
+    category: string | null
+    examples: string | null
+    status: string
+    updatedAt: Date
+  }>
+) {
+  const hashes = await resolveWordMediaSha256(rows)
+  return rows.map((w) => ({
+    id: w.id,
+    spanish: w.spanish,
+    nasaYuwe: w.nasaYuwe,
+    pronunciation: w.pronunciation,
+    audioUrl: w.audioUrl,
+    illustrationUrl: w.illustrationUrl,
+    culturalContext: w.culturalContext,
+    category: w.category,
+    examples: w.examples,
+    status: w.status,
+    updatedAt: w.updatedAt instanceof Date ? w.updatedAt.toISOString() : String(w.updatedAt),
+    audioSha256: hashes.get(w.id)?.audioSha256 ?? null,
+    illustrationSha256: hashes.get(w.id)?.illustrationSha256 ?? null,
+  }))
+}
+
 export async function GET(request: NextRequest) {
   const { error } = await requireAuth()
   if (error) return error
@@ -32,19 +66,8 @@ export async function GET(request: NextRequest) {
     ])
 
     return NextResponse.json({
-      words: rows.map((w) => ({
-        id: w.id,
-        spanish: w.spanish,
-        nasaYuwe: w.nasaYuwe,
-        pronunciation: w.pronunciation,
-        audioUrl: w.audioUrl,
-        illustrationUrl: w.illustrationUrl,
-        culturalContext: w.culturalContext,
-        category: w.category,
-        examples: w.examples,
-        status: w.status,
-        updatedAt: w.updatedAt instanceof Date ? w.updatedAt.toISOString() : String(w.updatedAt),
-      })),
+      // F1-a: sha256 de medios por palabra (aditivo, una query por página).
+      words: await withMediaSha256(rows),
       total,
       page,
       pageSize,
