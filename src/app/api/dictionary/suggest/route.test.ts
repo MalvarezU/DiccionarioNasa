@@ -191,4 +191,42 @@ describe("POST /api/dictionary/suggest", () => {
     expect(res.status).toBe(200)
     expect(vi.mocked(db.auditLog.create)).toHaveBeenCalledTimes(1)
   })
+
+  it("logs viejos sin status bloquean como PENDING", async () => {
+    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.auditLog.findMany).mockResolvedValue([
+      { changes: JSON.stringify({ term: "YAT", source: "community" }) },
+    ] as never)
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await POST(makeRequest({ term: "yat" }))
+    const body = await res.json()
+    expect(body.alreadySuggested).toBe(true)
+    expect(vi.mocked(db.auditLog.create)).not.toHaveBeenCalled()
+  })
+
+  it("DONE/ARCHIVED permiten volver a sugerir", async () => {
+    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.auditLog.findMany).mockResolvedValue([
+      { changes: JSON.stringify({ term: "yat", status: "DONE", decidedAt: "x", decidedBy: "y" }) },
+      { changes: JSON.stringify({ term: "yat", status: "ARCHIVED" }) },
+    ] as never)
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await POST(makeRequest({ term: "yat" }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.alreadySuggested).toBeUndefined()
+    expect(vi.mocked(db.auditLog.create)).toHaveBeenCalledTimes(1)
+  })
+
+  it("el create incluye status PENDING", async () => {
+    mockEmptyReads()
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    await POST(makeRequest({ term: "nueva" }))
+    const written = JSON.parse(vi.mocked(db.auditLog.create).mock.calls[0][0].data.changes as string)
+    expect(written.status).toBe("PENDING")
+    expect(written.term).toBe("nueva")
+  })
 })

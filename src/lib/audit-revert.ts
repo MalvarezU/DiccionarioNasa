@@ -82,6 +82,47 @@ export function parseAuditChanges(changes: string | null): ParsedAuditChanges {
   return { rows, summary, responsable }
 }
 
+/** Estado de una sugerencia. Vive en el JSON de `changes` (sin schema). */
+export type SuggestionStatus = "PENDING" | "DONE" | "ARCHIVED"
+
+export interface ParsedSuggestion {
+  term: string
+  comment: string | null
+  status: SuggestionStatus
+  decidedAt: string | null
+  decidedBy: string | null
+}
+
+/**
+ * Lee una sugerencia desde el `changes` de un log SUGGEST.
+ * Logs viejos sin `status` se tratan como PENDING (compatibilidad).
+ * Devuelve null si el JSON no es una sugerencia válida.
+ */
+export function parseSuggestion(changes: string | null): ParsedSuggestion | null {
+  if (!changes) return null
+  let obj: Record<string, unknown>
+  try {
+    const parsed: unknown = JSON.parse(changes)
+    if (!parsed || typeof parsed !== "object") return null
+    obj = parsed as Record<string, unknown>
+  } catch {
+    return null
+  }
+  if (typeof obj.term !== "string" || obj.term.trim().length === 0) return null
+  const rawStatus = typeof obj.status === "string" ? obj.status : "PENDING"
+  const status: SuggestionStatus =
+    rawStatus === "DONE" || rawStatus === "ARCHIVED" ? rawStatus : "PENDING"
+  const comment =
+    typeof obj.comment === "string" && obj.comment.trim() ? obj.comment.trim() : null
+  return {
+    term: obj.term.trim(),
+    comment,
+    status,
+    decidedAt: typeof obj.decidedAt === "string" ? obj.decidedAt : null,
+    decidedBy: typeof obj.decidedBy === "string" ? obj.decidedBy : null,
+  }
+}
+
 export function isRevertible(log: { action: string; entity: string; changes: string | null }): boolean {
   if (log.entity === "DictionaryWord") {
     if (log.action === "CREATE" || log.action === "IMPORT") return true

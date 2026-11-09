@@ -81,7 +81,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 2. Si ya fue sugerida (normalizada), no se duplica en la bitácora.
+    // 2. Si ya fue sugerida y sigue PENDIENTE (normalizada), no se duplica.
+    //    Las ATENDIDA/ARCHIVADA sí permiten volver a sugerir (se reabre el ciclo).
+    //    Logs viejos sin `status` se tratan como PENDING (compatibilidad).
     const normalized = normalizeTerm(cleanTerm)
     const prior = await db.auditLog.findMany({
       where: { action: "SUGGEST", entity: "DictionaryWord" },
@@ -91,8 +93,10 @@ export async function POST(request: NextRequest) {
     })
     const alreadySuggested = prior.some((l) => {
       try {
-        const c = JSON.parse(l.changes ?? "") as { term?: unknown }
-        return typeof c.term === "string" && normalizeTerm(c.term) === normalized
+        const c = JSON.parse(l.changes ?? "") as { term?: unknown; status?: unknown }
+        if (typeof c.term !== "string" || normalizeTerm(c.term) !== normalized) return false
+        const st = typeof c.status === "string" ? c.status : "PENDING"
+        return st === "PENDING"
       } catch {
         return false
       }
@@ -105,8 +109,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Store as an AuditLog entry with action "SUGGEST" for admin review
-    // This reuses the existing model until a dedicated Suggestion model is added
+    // Store as an AuditLog entry with action "SUGGEST" for admin review.
+    // El estado vive en el JSON (PENDING/DONE/ARCHIVED): sin tabla ni
+    // migración. Logs viejos sin `status` se leen como PENDING.
     await db.auditLog.create({
       data: {
         action: 'SUGGEST',
@@ -116,6 +121,7 @@ export async function POST(request: NextRequest) {
           term: term.trim(),
           comment: cleanComment,
           source: 'community',
+          status: 'PENDING',
         }),
       },
     })
