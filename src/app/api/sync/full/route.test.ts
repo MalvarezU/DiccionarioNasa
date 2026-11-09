@@ -201,4 +201,102 @@ describe("GET /api/sync/full [Fase B W3b]", () => {
     const res = await GET(authed("http://x/api/sync/full?foo=bar&limit=1") as never)
     expect(res.status).toBe(200)
   })
+
+  it("W-2: fixture con curso ARCHIVED y módulo con deletedAt → excluidos del bundle", async () => {
+    const deletedAt = new Date("2026-09-15T00:00:00Z")
+    const allWords = [
+      { ...word("w-pub"), audioUrl: `${CDN}/audios/w-pub.mp3` },
+      { ...word("w-draft"), status: "DRAFT" },
+      { ...word("w-arch"), status: "ARCHIVED" },
+    ]
+    const allCourses = [
+      {
+        id: "c-arch", title: "Archivado", description: null, coverImage: null,
+        status: "ARCHIVED", sequential: true,
+        createdAt: new Date("2026-09-01T00:00:00Z"),
+        updatedAt: new Date("2026-10-01T00:00:00Z"),
+        modules: [
+          {
+            id: "m-arch", courseId: "c-arch", title: "M", order: 0,
+            updatedAt: new Date("2026-10-01T00:00:00Z"),
+            deletedAt: null,
+            lessons: [lesson("l-arch", { moduleId: "m-arch" })],
+          },
+        ],
+      },
+      {
+        id: "c1", title: "Curso", description: null, coverImage: null,
+        status: "PUBLISHED", sequential: true,
+        createdAt: new Date("2026-09-01T00:00:00Z"),
+        updatedAt: new Date("2026-10-01T00:00:00Z"),
+        modules: [
+          {
+            id: "m1", courseId: "c1", title: "M1", order: 0,
+            updatedAt: new Date("2026-10-01T00:00:00Z"),
+            deletedAt: null,
+            lessons: [lesson("l1"), lesson("l-del", { deletedAt })],
+          },
+          {
+            id: "m-del", courseId: "c1", title: "Borrado", order: 1,
+            updatedAt: new Date("2026-10-01T00:00:00Z"),
+            deletedAt,
+            lessons: [lesson("l2", { moduleId: "m-del" })],
+          },
+        ],
+      },
+    ]
+
+    // Fake que honra el `where` como lo haría Prisma: si la ruta debilita
+    // el filtro (status PUBLISHED / deletedAt null), las filas excluidas
+    // reaparecen en el bundle y este test falla. Es la prueba a nivel ruta
+    // que exige W-2 (no solo aserción del objeto `where`).
+    vi.mocked(db.dictionaryWord.findMany).mockImplementation((async (args) => {
+      const status = (args as { where?: { status?: string } } | undefined)?.where?.status
+      return allWords.filter((w) => !status || w.status === status) as never
+    }) as never)
+    vi.mocked(db.course.findMany).mockImplementation((async (args) => {
+      const a = (args ?? {}) as {
+        where?: { status?: string }
+        include?: {
+          modules?: {
+            where?: { deletedAt?: null }
+            include?: { lessons?: { where?: { deletedAt?: null } } }
+          }
+        }
+      }
+      const onlyLiveModules = a.include?.modules?.where?.deletedAt === null
+      const onlyLiveLessons = a.include?.modules?.include?.lessons?.where?.deletedAt === null
+      return allCourses
+        .filter((c) => !a.where?.status || c.status === a.where.status)
+        .map((c) => ({
+          ...c,
+          modules: c.modules
+            .filter((m) => !onlyLiveModules || m.deletedAt === null)
+            .map((m) => ({
+              ...m,
+              lessons: m.lessons.filter(
+                (l) => !onlyLiveLessons || (l as { deletedAt?: Date | null }).deletedAt == null
+              ),
+            })),
+        })) as never
+    }) as never)
+
+    const res = await GET(authed() as never)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+
+    expect(body.courses.map((c: { id: string }) => c.id)).toEqual(["c1"])
+    expect(body.courses[0].modules.map((m: { id: string }) => m.id)).toEqual(["m1"])
+    expect(
+      body.courses[0].modules[0].lessons.map((l: { id: string }) => l.id)
+    ).toEqual(["l1"])
+    expect(body.words.map((w: { id: string }) => w.id)).toEqual(["w-pub"])
+
+    const raw = JSON.stringify(body)
+    expect(raw).not.toContain("c-arch")
+    expect(raw).not.toContain("m-del")
+    expect(raw).not.toContain("l-del")
+    expect(raw).not.toContain("ARCHIVED")
+    expect(raw).not.toContain("DRAFT")
+  })
 })
