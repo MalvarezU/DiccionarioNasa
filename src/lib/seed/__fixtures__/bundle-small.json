@@ -1,0 +1,91 @@
+{
+  "contentVersion": "41",
+  "words": [
+    {
+      "id": "w1",
+      "spanish": "Niño",
+      "nasaYuwe": "luucx",
+      "pronunciation": "LOO-ch",
+      "audioUrl": "https://cdn.test/audios/w1/clip.mp3",
+      "illustrationUrl": "https://cdn.test/images/w1.png",
+      "culturalContext": "Uso ritual",
+      "category": "sustantivo",
+      "examples": { "forma": "nasa", "oracion": "Niño corre" },
+      "status": "PUBLISHED",
+      "updatedAt": "2026-10-01T00:00:00.000Z"
+    },
+    {
+      "id": "w2",
+      "spanish": "casa",
+      "nasaYuwe": "yat",
+      "pronunciation": null,
+      "audioUrl": null,
+      "illustrationUrl": null,
+      "culturalContext": null,
+      "category": null,
+      "examples": null,
+      "status": "PUBLISHED",
+      "updatedAt": "2026-10-02T00:00:00.000Z"
+    }
+  ],
+  "courses": [
+    {
+      "id": "c1",
+      "title": "Curso base",
+      "description": "Intro",
+      "coverImage": null,
+      "status": "PUBLISHED",
+      "sequential": true,
+      "createdAt": "2026-09-01T00:00:00.000Z",
+      "updatedAt": "2026-10-01T00:00:00.000Z",
+      "modules": [
+        {
+          "id": "m1",
+          "courseId": "c1",
+          "title": "Módulo 1",
+          "order": 0,
+          "updatedAt": "2026-10-01T00:00:00.000Z",
+          "lessons": [
+            {
+              "id": "l1",
+              "moduleId": "m1",
+              "title": "Lección 1",
+              "order": 0,
+              "lessonNumber": 1,
+              "content": {
+                "version": 2,
+                "blocks": [{ "id": "b1", "type": "text", "html": "<p>Hola</p>" }]
+              },
+              "updatedAt": "2026-10-01T00:00:00.000Z"
+            },
+            {
+              "id": "l2",
+              "moduleId": "m1",
+              "title": "Lección 2",
+              "order": 1,
+              "lessonNumber": 2,
+              "content": { "blocks": "roto" },
+              "updatedAt": "2026-10-02T00:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "media": [
+    {
+      "objectKey": "audios/w1/clip.mp3",
+      "url": "https://cdn.test/audios/w1/clip.mp3",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size": 3,
+      "mimeType": "audio/mpeg"
+    },
+    {
+      "objectKey": "images/w1.png",
+      "url": "https://cdn.test/images/w1.png",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "size": 4,
+      "mimeType": "image/png"
+    }
+  ]
+}
