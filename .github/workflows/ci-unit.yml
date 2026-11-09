@@ -26,6 +26,7 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: mysql://test:test@127.0.0.1:3307/piiyaak_test
+      NEXTAUTH_SECRET: dummy-ci-secret-para-tests
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
