@@ -3,7 +3,12 @@ import { db } from "@/lib/db"
 import { getContentVersion } from "@/lib/content-version"
 import { isValidCiSecret, ciUnauthorized } from "@/lib/ci-auth"
 import { publicUrl } from "@/lib/r2"
-import { isAllowedCoverImageUrl, r2PublicBase } from "@/lib/media/storage"
+import { r2PublicBase } from "@/lib/media/storage"
+import { parseLessonContent } from "@/lib/courses/blocks"
+import {
+  collectMediaRefs,
+  refsToKeys,
+} from "@/lib/sync/full-bundle"
 
 /**
  * GET /api/sync/full — semilla completa para CI (Fase B W3b, Fase C la consume).
@@ -24,37 +29,6 @@ import { isAllowedCoverImageUrl, r2PublicBase } from "@/lib/media/storage"
  */
 
 const PRIVATE_NO_STORE = "private, no-store"
-
-/** URLs R2 candidatas de una lección (T04 mínimo; T05 lo extrae a lib). */
-function blockUrls(content: unknown): string[] {
-  const out: string[] = []
-  if (typeof content !== "object" || content === null) return out
-  const blocks = (content as { blocks?: unknown }).blocks
-  if (!Array.isArray(blocks)) return out
-  for (const b of blocks) {
-    if (typeof b !== "object" || b === null) continue
-    const block = b as Record<string, unknown>
-    if (block.type === "image" && typeof block.url === "string") {
-      out.push(block.url)
-    } else if (
-      (block.type === "audio" || block.type === "listening") &&
-      typeof (block.media as Record<string, unknown> | undefined)?.url === "string"
-    ) {
-      out.push((block.media as { url: string }).url)
-    }
-    // video.youtubeId excluido por diseño (no es R2). text.html con <img>
-    // NO se parsea: el sanitizador elimina <img> antes de guardar (§3.4.4).
-  }
-  return out
-}
-
-/** Clave R2 por strip de la base pública; null si no deriva (T04 mínimo). */
-function keyOf(url: string, base: string): string | null {
-  if (!url.startsWith(`${base}/`)) return null
-  const key = url.slice(base.length + 1).split("?")[0] ?? ""
-  if (!key || key.includes("..") || !/^[\w.\-/]+$/.test(key)) return null
-  return key
-}
 
 export async function GET(request: NextRequest): Promise<Response> {
   if (!isValidCiSecret(request.headers.get("x-ci-secret"))) {
@@ -132,29 +106,27 @@ export async function GET(request: NextRequest): Promise<Response> {
       })),
     }))
 
-    // Manifiesto mínimo T04: candidatos → claves bajo la base → filas con
-    // hash (nunca tabla completa). T05 extrae y generaliza a lib pura.
-    const candidates: string[] = []
-    for (const w of wordRows) {
-      if (w.audioUrl) candidates.push(w.audioUrl)
-      if (w.illustrationUrl) candidates.push(w.illustrationUrl)
-    }
-    for (const c of courseRows) {
-      if (
-        c.coverImage &&
-        isAllowedCoverImageUrl(c.coverImage) &&
-        c.coverImage.startsWith(`${base}/`)
-      ) {
-        candidates.push(c.coverImage)
-      }
-      for (const m of c.modules) {
-        for (const l of m.lessons) candidates.push(...blockUrls(l.content))
-      }
-    }
-    const keys = [...new Set(candidates.flatMap((u) => {
-      const k = keyOf(u, base)
-      return k ? [k] : []
-    }))]
+    // Manifiesto por referencias (spec §3.4): candidatos del bundle →
+    // claves R2 válidas → filas con hash (nunca tabla completa, R4).
+    // Documento corrupto: parseLessonContent falla → cero bloques para esa
+    // lección, la lección igual se incluye (E5, precedente on-demand).
+    const lessonBlocks = courseRows.flatMap((c) =>
+      c.modules.flatMap((m) =>
+        m.lessons.map((l) => {
+          const parsed = parseLessonContent(l.content)
+          return parsed.ok ? parsed.content.blocks : []
+        })
+      )
+    )
+    const candidates = collectMediaRefs({
+      words: wordRows.map((w) => ({
+        audioUrl: w.audioUrl,
+        illustrationUrl: w.illustrationUrl,
+      })),
+      courses: courseRows.map((c) => ({ coverImage: c.coverImage })),
+      lessonBlocks,
+    })
+    const keys = refsToKeys(candidates)
     const assets =
       keys.length > 0
         ? await db.mediaAsset.findMany({
