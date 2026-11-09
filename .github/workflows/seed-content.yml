@@ -238,6 +238,12 @@ jobs:
       # Paso 9 — actualizar seed/latest.json con un único putObject (el PUT
       # es atómico; nunca hay latest.json parcial) y verificar con
       # objectExists. Omitido en dry_run.
+      # Definición canónica de bytesTotal (Fase D W4.2 E2): bytesTotal =
+      # dbBytes + Σ files[].size, calculada por emitManifest
+      # (src/lib/seed/bundle-builder.ts:537) sobre el manifest.json generado.
+      # Este paso REPLICA ese valor con `jq -r '.bytesTotal'`; nunca lo
+      # recalcula por otra vía. Si un lector necesita el total, lo lee del
+      # manifiesto.
       - name: Actualizar latest.json
         if: ${{ !inputs.dry_run && steps.skip.outputs.skip != 'true' }}
         env:
