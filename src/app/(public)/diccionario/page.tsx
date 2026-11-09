@@ -227,8 +227,10 @@ function DiccionarioContent() {
           <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 z-20 sm:my-auto">
             <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-start lg:gap-12">
               {/* Panel de búsqueda PRIMERO en el DOM: en móvil aparece junto
-                  al navbar; en lg se reordena a la derecha (order). */}
-              <div className="order-1 mx-auto w-full max-w-xl rounded-2xl border border-crema/25 bg-territorio/50 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
+                  al navbar; en lg se reordena a la derecha (order).
+                  relative z-30: el dropdown de resultados (z-50 interno, confinado
+                  por el backdrop-blur) pinta sobre el copy de bienvenida. */}
+              <div className="relative z-30 order-1 mx-auto w-full max-w-xl rounded-2xl border border-crema/25 bg-territorio/50 p-4 sm:p-5 backdrop-blur-md shadow-2xl lg:order-2">
                 <SearchBar variant="hero-panel" onWordSelect={handleWordSelect} />
               </div>
               {/* Copy de bienvenida: segundo en el DOM, a la izquierda en lg */}
