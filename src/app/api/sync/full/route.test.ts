@@ -299,4 +299,29 @@ describe("GET /api/sync/full [Fase B W3b]", () => {
     expect(raw).not.toContain("ARCHIVED")
     expect(raw).not.toContain("DRAFT")
   })
+
+  it("W-3: fija el where del manifiesto (sha256 NOT NULL + in: keys referenciadas)", async () => {
+    const res = await GET(authed() as never)
+    expect(res.status).toBe(200)
+
+    // Claves esperadas derivadas a mano de la fixture (no del código):
+    // audio de w1 + portada del curso; ningún bloque aporta refs.
+    expect(db.mediaAsset.findMany).toHaveBeenCalledTimes(1)
+    expect(db.mediaAsset.findMany).toHaveBeenCalledWith({
+      where: {
+        objectKey: { in: ["audios/w1.mp3", "images/cover.png"] },
+        sha256: { not: null },
+      },
+    })
+  })
+
+  it("W-3: sin refs → mediaAsset.findMany no se llama (nunca tabla completa)", async () => {
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
+    vi.mocked(db.course.findMany).mockResolvedValue([])
+
+    const res = await GET(authed() as never)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ media: [] })
+    expect(db.mediaAsset.findMany).not.toHaveBeenCalled()
+  })
 })
