@@ -2,8 +2,12 @@ import { vi, describe, it, expect, beforeEach } from "vitest"
 
 vi.mock("@/lib/db", () => ({
   db: {
+    dictionaryWord: {
+      findFirst: vi.fn(),
+    },
     auditLog: {
       create: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }))
@@ -18,6 +22,11 @@ function makeRequest(body: unknown) {
   } as never
 }
 
+function mockEmptyReads() {
+  vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+  vi.mocked(db.auditLog.findMany).mockResolvedValue([])
+}
+
 describe("POST /api/dictionary/suggest", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -25,6 +34,7 @@ describe("POST /api/dictionary/suggest", () => {
   })
 
   it("accepts a valid suggestion", async () => {
+    mockEmptyReads()
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
     const res = await POST(
@@ -38,6 +48,7 @@ describe("POST /api/dictionary/suggest", () => {
   })
 
   it("stores suggestion with action SUGGEST", async () => {
+    mockEmptyReads()
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
     await POST(makeRequest({ term: "agua" }))
@@ -53,6 +64,7 @@ describe("POST /api/dictionary/suggest", () => {
   })
 
   it("serializes term and comment as JSON changes", async () => {
+    mockEmptyReads()
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
     await POST(makeRequest({ term: "sol", comment: " Astro del dia " }))
@@ -82,6 +94,7 @@ describe("POST /api/dictionary/suggest", () => {
   })
 
   it("trims the term before storing", async () => {
+    mockEmptyReads()
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
     await POST(makeRequest({ term: "  casa  " }))
@@ -92,6 +105,7 @@ describe("POST /api/dictionary/suggest", () => {
   })
 
   it("stores null comment when not provided", async () => {
+    mockEmptyReads()
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
     await POST(makeRequest({ term: "casa" }))
@@ -102,6 +116,7 @@ describe("POST /api/dictionary/suggest", () => {
   })
 
   it("stores empty comment as null", async () => {
+    mockEmptyReads()
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
     await POST(makeRequest({ term: "casa", comment: "   " }))
@@ -131,6 +146,7 @@ describe("POST /api/dictionary/suggest", () => {
   })
 
   it("returns 429 after exceeding 5 requests per minute", async () => {
+    mockEmptyReads()
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
     for (let i = 0; i < 5; i++) {
@@ -141,5 +157,38 @@ describe("POST /api/dictionary/suggest", () => {
     const limited = await POST(makeRequest({ term: "casa5" }))
     expect(limited.status).toBe(429)
     expect(limited.headers.get("Retry-After")).toBeDefined()
+  })
+
+  it("no guarda nada si el término ya existe publicado", async () => {
+    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue({ id: "w1" } as never)
+    vi.mocked(db.auditLog.findMany).mockResolvedValue([])
+
+    const res = await POST(makeRequest({ term: "Casa" }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.alreadyExists).toBe(true)
+    expect(vi.mocked(db.auditLog.create)).not.toHaveBeenCalled()
+  })
+
+  it("no duplica si el término ya fue sugerido (normalizado)", async () => {
+    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.auditLog.findMany).mockResolvedValue([
+      { changes: JSON.stringify({ term: "CÁSA", comment: null, source: "community" }) },
+    ] as never)
+
+    const res = await POST(makeRequest({ term: "casa" }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.alreadySuggested).toBe(true)
+    expect(vi.mocked(db.auditLog.create)).not.toHaveBeenCalled()
+  })
+
+  it("guarda cuando el término es nuevo en ambas fuentes", async () => {
+    mockEmptyReads()
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await POST(makeRequest({ term: "yatata", comment: "nueva" }))
+    expect(res.status).toBe(200)
+    expect(vi.mocked(db.auditLog.create)).toHaveBeenCalledTimes(1)
   })
 })

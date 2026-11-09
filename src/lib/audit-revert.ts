@@ -52,6 +52,22 @@ export function parseAuditChanges(changes: string | null): ParsedAuditChanges {
 
   // Shape 3: bulk-status anidado { status: {before, after} } ya cubierto por Shape 1.
 
+  // Shape 4: sugerencia de palabra { term, comment?, source? }.
+  // No es un diff (no hay before/after): se presenta como fila única
+  // "Palabra sugerida → comentario" para que el detalle no quede vacío.
+  if (typeof obj.term === "string" && obj.term.trim().length > 0) {
+    const term = obj.term.trim()
+    const comment = typeof obj.comment === "string" && obj.comment.trim()
+      ? obj.comment.trim()
+      : null
+    rows.push({
+      label: "Palabra sugerida",
+      before: term,
+      after: comment ?? "(sin comentario)",
+    })
+    return { rows, summary: null, responsable }
+  }
+
   // Summary para CREATE/IMPORT/DELETE/snapshot
   let summary: string | null = null
   if (obj.deleted && typeof obj.deleted === "object") {

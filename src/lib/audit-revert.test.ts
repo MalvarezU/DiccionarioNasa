@@ -47,6 +47,23 @@ describe("audit-revert helpers", () => {
     expect(r.summary).toBe("Cambio revertido")
   })
 
+  it("shape sugerencia {term, comment} devuelve fila Palabra sugerida", () => {
+    const c = JSON.stringify({ term: "yat", comment: "la escuché en clase", source: "community" })
+    const r = parseAuditChanges(c)
+    expect(r.rows).toHaveLength(1)
+    expect(r.rows[0].label).toBe("Palabra sugerida")
+    expect(r.rows[0].before).toBe("yat")
+    expect(r.rows[0].after).toBe("la escuché en clase")
+  })
+
+  it("shape sugerencia sin comentario usa placeholder", () => {
+    const c = JSON.stringify({ term: "yat", comment: null, source: "community" })
+    const r = parseAuditChanges(c)
+    expect(r.rows).toHaveLength(1)
+    expect(r.rows[0].before).toBe("yat")
+    expect(r.rows[0].after).toBe("(sin comentario)")
+  })
+
   it("JSON malformado devuelve el texto crudo como summary", () => {
     const r = parseAuditChanges("{bad")
     expect(r.rows).toEqual([])

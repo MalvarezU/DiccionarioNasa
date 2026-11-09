@@ -15,6 +15,8 @@ import {
 interface UseCreateWordArgs {
   onOpenChange: (open: boolean) => void
   onCreated: () => void
+  /** Término precargado (p. ej. desde una sugerencia). Solo semilla inicial. */
+  initialSpanish?: string
 }
 
 /**
@@ -22,8 +24,8 @@ interface UseCreateWordArgs {
  * borrador o publicada, y vista previa. Reusa use-word-audio y word-form
  * (mismo dominio que el editor; la UI difiere y vive en cada modal).
  */
-export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
-  const [form, setForm] = useState<WordForm>({ ...EMPTY_WORD_FORM })
+export function useCreateWord({ onOpenChange, onCreated, initialSpanish }: UseCreateWordArgs) {
+  const [form, setForm] = useState<WordForm>({ ...EMPTY_WORD_FORM, spanish: initialSpanish ?? "" })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)

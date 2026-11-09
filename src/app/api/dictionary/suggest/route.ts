@@ -11,6 +11,15 @@ const MAX_COMMENT_LENGTH = 500
 const SUGGEST_LIMIT = 5
 const SUGGEST_WINDOW_MS = 60_000
 
+/** Normalización para dedup: minúsculas + sin tildes + trim (igual que search). */
+function normalizeTerm(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim()
+}
+
 /**
  * POST /api/dictionary/suggest
  * Accept a word suggestion from a user.
@@ -51,6 +60,49 @@ export async function POST(request: NextRequest) {
         { message: `El comentario no puede superar los ${MAX_COMMENT_LENGTH} caracteres` },
         { status: 400 }
       )
+    }
+
+    // Doble chequeo de solo lectura (sin schema nuevo):
+    // 1. Si el término ya existe publicado, no se guarda nada.
+    //    La collation utf8mb4_unicode_ci hace el equals case- y accent-insensitive.
+    const cleanTerm = term.trim()
+    const existing = await db.dictionaryWord.findFirst({
+      where: {
+        status: "PUBLISHED",
+        OR: [{ spanish: { equals: cleanTerm } }, { nasaYuwe: { equals: cleanTerm } }],
+      },
+      select: { id: true },
+    })
+    if (existing) {
+      return NextResponse.json({
+        success: true,
+        message: "Esa palabra ya está en el diccionario",
+        alreadyExists: true,
+      })
+    }
+
+    // 2. Si ya fue sugerida (normalizada), no se duplica en la bitácora.
+    const normalized = normalizeTerm(cleanTerm)
+    const prior = await db.auditLog.findMany({
+      where: { action: "SUGGEST", entity: "DictionaryWord" },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      select: { changes: true },
+    })
+    const alreadySuggested = prior.some((l) => {
+      try {
+        const c = JSON.parse(l.changes ?? "") as { term?: unknown }
+        return typeof c.term === "string" && normalizeTerm(c.term) === normalized
+      } catch {
+        return false
+      }
+    })
+    if (alreadySuggested) {
+      return NextResponse.json({
+        success: true,
+        message: "Esa palabra ya está en revisión",
+        alreadySuggested: true,
+      })
     }
 
     // Store as an AuditLog entry with action "SUGGEST" for admin review
