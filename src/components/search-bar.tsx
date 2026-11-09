@@ -306,7 +306,21 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           if (response.ok) {
             const data = await response.json();
             if (signal?.aborted) return;
-            setResults(data.results ?? []);          } else {
+            setResults(data.results ?? []);
+          } else {
+            // Respuesta no-OK (p. ej. 503 del Service Worker offline):
+            // intentar IndexedDB antes de entregar vacío.
+            try {
+              const localReady = await isLocalDBReady();
+              if (localReady) {
+                const localResults = await searchLocalWords(term, 50);
+                if (signal?.aborted) return;
+                setResults(localResults);
+                return;
+              }
+            } catch {
+              // fall through
+            }
             setResults([]);
           }
         }

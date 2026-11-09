@@ -29,7 +29,7 @@ interface UseLocalDBReturn {
   /** Start or resume the download */
   startDownload: () => Promise<void>
   /** Force a full re-sync: clear local DB and re-download everything */
-  forceResync: () => Promise<void>
+  forceResync: () => Promise<boolean>
   /** Refresh stats (word count + lastSync) from IndexedDB */
   refreshStats: () => Promise<void>
   /** Check and resume download if it was interrupted (call on mount) */
@@ -182,37 +182,76 @@ export function useLocalDB(): UseLocalDBReturn {
    * Force a full re-sync: clear the local DB and re-download everything.
    * Used by the "Sincronizar ahora" button in settings.
    */
-  const forceResync = useCallback(async () => {
+  const forceResync = useCallback(async (): Promise<boolean> => {
     // Prevent concurrent downloads
-    if (downloadInProgressRef.current) return
+    if (downloadInProgressRef.current) return false
     downloadInProgressRef.current = true
 
     setIsDownloading(true)
     setError(null)
     setDownloadProgress(0)
-    setLocalWordCount(0)
     setLastSyncState(null)
-    setIsReady(false)
+    // NO borramos todavía: si la descarga falla, el IndexedDB previo queda
+    // intacto y el usuario no se queda sin diccionario por un intento fallido.
 
     try {
-      // Clear existing local data
+      // 1) Descargar todo a memoria primero (sin tocar IndexedDB).
+      const firstRes = await fetch(
+        `/api/dictionary/export?page=1&pageSize=${PAGE_SIZE}`
+      )
+      if (!firstRes.ok) {
+        throw new Error("Error al conectar con el servidor (status " + firstRes.status + ")")
+      }
+      const firstData = await firstRes.json()
+      const totalWords: number = firstData.total ?? 0
+
+      if (totalWords === 0) {
+        throw new Error("El servidor no devolvió palabras")
+      }
+
+      const totalPages = Math.ceil(totalWords / PAGE_SIZE)
+      const collected: unknown[] = []
+      if (firstData.words && firstData.words.length > 0) {
+        collected.push(...firstData.words)
+      }
+      setDownloadProgress(Math.round((1 / totalPages) * 100))
+
+      let currentPage = 2
+      let hasMore = firstData.hasMore
+      while (hasMore && currentPage <= totalPages) {
+        const res = await fetch(
+          `/api/dictionary/export?page=${currentPage}&pageSize=${PAGE_SIZE}`
+        )
+        if (!res.ok) {
+          throw new Error(`Error al descargar página ${currentPage}`)
+        }
+        const data = await res.json()
+        if (data.words && data.words.length > 0) {
+          collected.push(...data.words)
+        }
+        setDownloadProgress(Math.round((currentPage / totalPages) * 100))
+        hasMore = data.hasMore
+        currentPage++
+      }
+
+      // 2) Solo si todo se descargó OK: reemplazar IndexedDB.
       await clearLocalDB()
-
-      // Re-download everything from scratch
-      await downloadAllPages(1)
-
-      // Mark as ready
+      await storeWords(collected as never)
+      const syncTimestamp = new Date().toISOString()
+      await setLastSync(syncTimestamp)
+      setLastSyncState(syncTimestamp)
       setIsReady(true)
       setDownloadProgress(100)
-
-      // Update final word count from DB
       const finalStats = await getLocalDBStats()
       setLocalWordCount(finalStats.wordCount)
+      return true
     } catch (err) {
       console.error("Force resync error:", err)
       setError(
         err instanceof Error ? err.message : "Error desconocido al sincronizar"
       )
+      // El IndexedDB previo queda intacto (no se limpió).
+      return false
     } finally {
       setIsDownloading(false)
       downloadInProgressRef.current = false
