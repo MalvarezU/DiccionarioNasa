@@ -413,4 +413,4 @@ describe("bundle-builder [W1]", () => {
       expect(rebuilt.map((e) => e.name)).toEqual(names)
     })
   })
-}
+})
