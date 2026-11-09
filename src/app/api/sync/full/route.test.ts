@@ -324,4 +324,30 @@ describe("GET /api/sync/full [Fase B W3b]", () => {
     expect(await res.json()).toMatchObject({ media: [] })
     expect(db.mediaAsset.findMany).not.toHaveBeenCalled()
   })
+
+  it("E1: secreto rotado → viejo 401 genérico, nuevo 200 (rotación sin downtime)", async () => {
+    // Misma longitud que el vigente: ejercita timingSafeEqual, no el
+    // resguardo de longitud (ese camino ya lo cubre "secreto inválido").
+    const OLD_ROTATED = "viejo-secreto-fase-0" // 20 chars
+    const NEW_CURRENT = "nuevo-secreto-fase-c" // 20 chars
+    expect(OLD_ROTATED).toHaveLength(NEW_CURRENT.length)
+    process.env.CI_SYNC_SECRET = NEW_CURRENT
+
+    const stale = await GET(
+      new Request("http://x/api/sync/full", {
+        headers: { "X-CI-Secret": OLD_ROTATED },
+      }) as never
+    )
+    expect(stale.status).toBe(401)
+    expect(await stale.json()).toEqual({ message: "No autorizado" })
+    expect(stale.headers.get("Cache-Control")).toBe(PRIVATE_NO_STORE)
+
+    const current = await GET(
+      new Request("http://x/api/sync/full", {
+        headers: { "X-CI-Secret": NEW_CURRENT },
+      }) as never
+    )
+    expect(current.status).toBe(200)
+    expect((await current.json()).contentVersion).toBe(41)
+  })
 })
