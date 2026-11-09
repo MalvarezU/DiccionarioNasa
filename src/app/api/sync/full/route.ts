@@ -142,7 +142,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     }))
 
     return NextResponse.json(
-      { contentVersion: await getContentVersion(), words, courses, media },
+      { contentVersion: String(await getContentVersion()), words, courses, media },
       { headers: { "Cache-Control": PRIVATE_NO_STORE } }
     )
   } catch (err) {

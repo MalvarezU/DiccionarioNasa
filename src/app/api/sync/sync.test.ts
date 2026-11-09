@@ -127,8 +127,10 @@ describe("sync API pública [Fase B W2]", () => {
     const syncBody = await (await syncGET(new Request("http://x/api/sync") as never)).json()
     const seedBody = await (await seedGET(new Request("http://x/api/sync/seed") as never)).json()
 
-    expect(syncBody.contentVersion).toBe(41)
-    expect(seedBody.contentVersion).toBe(41)
+    expect(syncBody.contentVersion).toBe("41")
+    expect(seedBody.contentVersion).toBe("41")
+    expect(typeof syncBody.contentVersion).toBe("string")
+    expect(typeof seedBody.contentVersion).toBe("string")
   })
 
   it("pagina con cursor opaco y filtra updatedAt inválido", async () => {

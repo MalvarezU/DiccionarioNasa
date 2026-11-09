@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         pageSize,
         totalPages: Math.ceil(total / pageSize),
         // Fase A T10: marcador aditivo de publicación (spec §5.1).
-        contentVersion: await getContentVersion(),
+        contentVersion: String(await getContentVersion()),
         serverTime: new Date().toISOString(),
       },
       { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }

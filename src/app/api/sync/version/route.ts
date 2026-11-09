@@ -12,7 +12,7 @@ import { getContentVersion } from "@/lib/content-version"
 export async function GET(_request: NextRequest): Promise<NextResponse> {
   try {
     return NextResponse.json(
-      { contentVersion: await getContentVersion() },
+      { contentVersion: String(await getContentVersion()) },
       { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
     )
   } catch (err) {

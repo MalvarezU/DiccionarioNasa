@@ -21,8 +21,8 @@ describe("GET /api/sync/version [Fase B W1]", () => {
     const body = await res.json()
 
     expect(res.status).toBe(200)
-    expect(body).toEqual({ contentVersion: 41 })
-    expect(typeof body.contentVersion).toBe("number")
+    expect(body).toEqual({ contentVersion: "41" })
+    expect(typeof body.contentVersion).toBe("string")
     expect(res.headers.get("Cache-Control")).toBe(CACHE_CONTROL)
   })
 
@@ -34,8 +34,8 @@ describe("GET /api/sync/version [Fase B W1]", () => {
     const first = await GET(new Request("http://x/api/sync/version") as never)
     const second = await GET(new Request("http://x/api/sync/version") as never)
 
-    expect((await first.json()).contentVersion).toBe(41)
-    expect((await second.json()).contentVersion).toBe(42)
+    expect((await first.json()).contentVersion).toBe("41")
+    expect((await second.json()).contentVersion).toBe("42")
     expect(db.contentVersion.findUnique).toHaveBeenCalledTimes(2)
   })
 

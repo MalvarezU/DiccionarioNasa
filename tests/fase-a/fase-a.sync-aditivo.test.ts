@@ -100,8 +100,8 @@ describe("T10 SYNC-01 — GET /api/sync expone contentVersion sin romper el cont
     const res = await GET_SYNC(new Request("http://x/api/sync") as never);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.contentVersion).toBe(await getContentVersion());
-    expect(typeof body.contentVersion).toBe("number");
+    expect(body.contentVersion).toBe(String(await getContentVersion()));
+    expect(typeof body.contentVersion).toBe("string");
     // Snapshot aditivo: ninguna clave preexistente se renombra ni se elimina.
     for (const key of ["words", "removedIds", "serverTime", "nextCursor"]) {
       expect(body, `clave preexistente ausente: ${key}`).toHaveProperty(key);
@@ -129,8 +129,8 @@ describe("T10 SYNC-01 — GET /api/sync/seed expone contentVersion sin romper el
     const res = await GET_SEED(new Request("http://x/api/sync/seed") as never);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.contentVersion).toBe(await getContentVersion());
-    expect(typeof body.contentVersion).toBe("number");
+    expect(body.contentVersion).toBe(String(await getContentVersion()));
+    expect(typeof body.contentVersion).toBe("string");
     for (const key of ["words", "total", "page", "pageSize", "totalPages", "serverTime"]) {
       expect(body, `clave preexistente ausente: ${key}`).toHaveProperty(key);
     }
@@ -173,6 +173,6 @@ describe("T10 BUMP-04 — secuencia mixta N=5 deja v0+5 exacto", () => {
 
     // El sync refleja la versión final.
     const sync = await GET_SYNC(new Request("http://x/api/sync") as never);
-    expect((await sync.json()).contentVersion).toBe(v0 + 5);
+    expect((await sync.json()).contentVersion).toBe(String(v0 + 5));
   });
 });

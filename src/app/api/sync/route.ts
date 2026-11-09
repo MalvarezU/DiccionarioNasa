@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
         removedIds: [...removedSet],
         // Fase A T10: marcador aditivo de publicación (spec §5.1). Ningún campo
         // existente cambia: la APK compara contra su versión cacheada.
-        contentVersion: await getContentVersion(),
+        contentVersion: String(await getContentVersion()),
         serverTime: serverTime.toISOString(),
         nextCursor:
           hasMore && last
