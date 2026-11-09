@@ -16,6 +16,7 @@ import {
   runBuild,
   type FullBundle,
   type SeedDb,
+  type SeedParam,
 } from "./bundle-builder"
 import { createStoredZip, readStoredZip } from "./seed-zip"
 import fixture from "./__fixtures__/bundle-small.json"
@@ -23,7 +24,7 @@ import fixture from "./__fixtures__/bundle-small.json"
 const CDN = "https://cdn.test"
 const OLD_BASE = process.env.R2_PUBLIC_BASE_URL
 
-const sha = (s: string): string => createHash("sha256").update(s).digest("hex")
+const sha = (s: string | Uint8Array): string => createHash("sha256").update(s).digest("hex")
 
 function wrapMemory(): SeedDb {
   const db = new DatabaseSync(":memory:")
@@ -32,7 +33,7 @@ function wrapMemory(): SeedDb {
     run: (sql, params = []) => {
       db.prepare(sql).run(...params)
     },
-    all: <T,>(sql: string, params: ReadonlyArray<unknown> = []) =>
+    all: <T,>(sql: string, params: ReadonlyArray<SeedParam> = []) =>
       db.prepare(sql).all(...params) as T[],
     close: () => db.close(),
   }
@@ -96,7 +97,7 @@ function stubNetwork(opts: {
         run: (sql, params = []) => {
           db.prepare(sql).run(...params)
         },
-        all: <T,>(sql: string, params: ReadonlyArray<unknown> = []) =>
+        all: <T,>(sql: string, params: ReadonlyArray<SeedParam> = []) =>
           db.prepare(sql).all(...params) as T[],
         close: () => db.close(),
       }

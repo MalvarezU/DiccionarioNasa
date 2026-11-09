@@ -11,6 +11,7 @@ import {
   resolveConfig,
   type CliDeps,
   type SeedDb,
+  type SeedParam,
 } from "./build-content-bundle"
 import type { FullBundle } from "../src/lib/seed/bundle-builder"
 import fixture from "../src/lib/seed/__fixtures__/bundle-small.json"
@@ -18,7 +19,7 @@ import fixture from "../src/lib/seed/__fixtures__/bundle-small.json"
 const CDN = "https://cdn.test"
 const OLD_BASE = process.env.R2_PUBLIC_BASE_URL
 
-const sha = (s: string): string => createHash("sha256").update(s).digest("hex")
+const sha = (s: string | Uint8Array): string => createHash("sha256").update(s).digest("hex")
 
 function bundleWithRealBytes(): { bundle: FullBundle; bytes: Map<string, Buffer> } {
   const audio = Buffer.from([0x49, 0x44, 0x33])
@@ -42,7 +43,7 @@ function openDb(path: string): SeedDb {
     run: (sql, params = []) => {
       db.prepare(sql).run(...params)
     },
-    all: <T,>(sql: string, params: ReadonlyArray<unknown> = []) =>
+    all: <T,>(sql: string, params: ReadonlyArray<SeedParam> = []) =>
       db.prepare(sql).all(...params) as T[],
     close: () => db.close(),
   }
@@ -165,7 +166,7 @@ describe("scripts/build-content-bundle [W1-04]", () => {
     })
 
     it("--expect-version divergente → 2 antes de descargar", async () => {
-      const { out, deps } = collector()
+      const { out, err, deps } = collector()
       let fullCalls = 0
       deps.fetchJson = async (url: string) => {
         if (url.endsWith("/api/sync/version")) return { status: 200, body: { contentVersion: "41" } }
@@ -176,7 +177,8 @@ describe("scripts/build-content-bundle [W1-04]", () => {
       const code = await main(["--out", outDir, "--expect-version", "40"], { CI_SYNC_SECRET: "s" }, deps)
       expect(code).toBe(2)
       expect(fullCalls).toBe(0)
-      expect(out.join("\n")).toContain("código 2")
+      expect(err.join("\n")).toContain("código 2")
+      expect(out.join("\n")).not.toContain("METRIC")
     })
 
     it("sin --out → 4 de uso; sin secreto → 4 sin exponer nada", async () => {
@@ -185,4 +187,4 @@ describe("scripts/build-content-bundle [W1-04]", () => {
       expect(await main(["--out", "d"], {}, deps)).toBe(4)
     })
   })
-}
+})

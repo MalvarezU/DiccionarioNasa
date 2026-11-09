@@ -45,10 +45,12 @@ export class SeedBuildError extends Error {
 }
 
 /** Adaptador mínimo de SQLite: el CLI inyecta `bun:sqlite`, los tests `node:sqlite`. */
+export type SeedParam = string | number | bigint | null | Uint8Array
+
 export interface SeedDb {
   exec(sql: string): void
-  run(sql: string, params?: ReadonlyArray<unknown>): void
-  all<T>(sql: string, params?: ReadonlyArray<unknown>): T[]
+  run(sql: string, params?: ReadonlyArray<SeedParam>): void
+  all<T>(sql: string, params?: ReadonlyArray<SeedParam>): T[]
   close(): void
 }
 
@@ -147,6 +149,7 @@ export interface BundleCourse {
   coverImage: string | null
   status: string
   sequential: boolean
+  updatedAt: string
   modules: BundleModule[]
 }
 

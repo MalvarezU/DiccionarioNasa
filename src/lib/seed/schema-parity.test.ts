@@ -7,6 +7,7 @@ import {
   buildDatabase,
   createSeedSchema,
   type SeedDb,
+  type SeedParam,
 } from "./bundle-builder"
 import fixture from "./__fixtures__/bundle-small.json"
 import type { FullBundle } from "./bundle-builder"
@@ -18,7 +19,7 @@ function wrapMemory(): SeedDb {
     run: (sql, params = []) => {
       db.prepare(sql).run(...params)
     },
-    all: <T,>(sql: string, params: ReadonlyArray<unknown> = []) =>
+    all: <T,>(sql: string, params: ReadonlyArray<SeedParam> = []) =>
       db.prepare(sql).all(...params) as T[],
     close: () => db.close(),
   }
