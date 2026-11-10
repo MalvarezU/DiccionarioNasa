@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { requireAuth } from "@/lib/auth"
 import { getContentVersion } from "@/lib/content-version"
 
 /**
@@ -8,10 +7,10 @@ import { getContentVersion } from "@/lib/content-version"
  *
  * - `since`: ISO del último serverTime conocido (default: epoch = todo).
  * - Paginación keyset por (updatedAt, id); `cursor` opaco base64.
- * - Devuelve upserts (PUBLISHED + DRAFT actualizados) y `removedIds`:
- *   archivadas en ventana + borrados duros rastreados por bitácora DELETE.
- * - Requiere sesión (sincroniza favoritos/historial del usuario; el token
- *   de dispositivo queda para iteración posterior).
+ * - Ruta pública, sin sesión (Fase B W2): devuelve upserts PUBLISHED en
+ *   ventana y `removedIds` con los borrados duros rastreados por bitácora
+ *   DELETE (más la línea de defensa para filas ARCHIVED si el filtro de
+ *   consulta se alterara en el futuro).
  */
 
 const DEFAULT_LIMIT = 500
@@ -42,9 +41,6 @@ function decodeCursor(raw: string | null): Cursor | null {
 }
 
 export async function GET(request: NextRequest) {
-  const { error } = await requireAuth()
-  if (error) return error
-
   try {
     const params = new URL(request.url).searchParams
     const rawLimit = Number(params.get("limit") ?? DEFAULT_LIMIT)
@@ -72,8 +68,15 @@ export async function GET(request: NextRequest) {
         }
       : { updatedAt: { gt: sinceValid } }
 
+    // Fase B W2 (F1): PUBLISHED-only en consulta. El filtro de ventana
+    // (`since`/`cursor`) se conjuga como condición obligatoria.
     const rows = await db.dictionaryWord.findMany({
-      where: updatedFilter,
+      where: {
+        AND: [
+          { status: "PUBLISHED" },
+          updatedFilter,
+        ],
+      },
       orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
       take: limit + 1,
     })
@@ -121,13 +124,15 @@ export async function GET(request: NextRequest) {
 
     const removedIds = [
       // T07: comparación normalizada — sana "archived" minúscula histórica.
+      // Fase B W2: con el filtro en consulta queda vacío por construcción;
+      // se conserva como defensa (costo cero) si el `where` se altera.
       ...page.filter((w) => String(w.status).toUpperCase() === "ARCHIVED").map((w) => w.id),
       ...tombstoneIds,
     ]
     const removedSet = new Set(removedIds)
-    // T07: comparación normalizada (misma regresión R-ARCHIVED).
+    // Fase B W2: `page` ya contiene solo PUBLISHED por el filtro en consulta;
+    // el mapeo a la forma pública se aplica directo, sin post-filtro JS.
     const words = page
-      .filter((w) => String(w.status).toUpperCase() !== "ARCHIVED")
       .map((w) => ({
         id: w.id,
         spanish: w.spanish,
@@ -142,24 +147,27 @@ export async function GET(request: NextRequest) {
         updatedAt: w.updatedAt instanceof Date ? w.updatedAt.toISOString() : String(w.updatedAt),
       }))
 
-    return NextResponse.json({
-      words,
-      removedIds: [...removedSet],
-      // Fase A T10: marcador aditivo de publicación (spec §5.1). Ningún campo
-      // existente cambia: la APK compara contra su versión cacheada.
-      contentVersion: await getContentVersion(),
-      serverTime: serverTime.toISOString(),
-      nextCursor:
-        hasMore && last
-          ? encodeCursor({
-              updatedAt:
-                last.updatedAt instanceof Date
-                  ? last.updatedAt.toISOString()
-                  : String(last.updatedAt),
-              id: last.id,
-            })
-          : null,
-    })
+    return NextResponse.json(
+      {
+        words,
+        removedIds: [...removedSet],
+        // Fase A T10: marcador aditivo de publicación (spec §5.1). Ningún campo
+        // existente cambia: la APK compara contra su versión cacheada.
+        contentVersion: await getContentVersion(),
+        serverTime: serverTime.toISOString(),
+        nextCursor:
+          hasMore && last
+            ? encodeCursor({
+                updatedAt:
+                  last.updatedAt instanceof Date
+                    ? last.updatedAt.toISOString()
+                    : String(last.updatedAt),
+                id: last.id,
+              })
+            : null,
+      },
+      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
+    )
   } catch (err) {
     console.error("Sync error:", err)
     return NextResponse.json({ message: "Error interno del servidor" }, { status: 500 })

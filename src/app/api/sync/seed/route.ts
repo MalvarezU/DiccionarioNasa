@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { requireAuth } from "@/lib/auth"
 import { getContentVersion } from "@/lib/content-version"
 
 /**
  * GET /api/sync/seed?page=&pageSize= — snapshot completo para la primera
  * instalación de la app (B3.1). Solo PUBLISHED, orden estable por id.
+ * Ruta pública, sin sesión (Fase B W2).
  */
 export async function GET(request: NextRequest) {
-  const { error } = await requireAuth()
-  if (error) return error
-
   try {
     const params = new URL(request.url).searchParams
     const rawPage = Number(params.get("page") ?? "1")
@@ -31,28 +28,31 @@ export async function GET(request: NextRequest) {
       }),
     ])
 
-    return NextResponse.json({
-      words: rows.map((w) => ({
-        id: w.id,
-        spanish: w.spanish,
-        nasaYuwe: w.nasaYuwe,
-        pronunciation: w.pronunciation,
-        audioUrl: w.audioUrl,
-        illustrationUrl: w.illustrationUrl,
-        culturalContext: w.culturalContext,
-        category: w.category,
-        examples: w.examples,
-        status: w.status,
-        updatedAt: w.updatedAt instanceof Date ? w.updatedAt.toISOString() : String(w.updatedAt),
-      })),
-      total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
-      // Fase A T10: marcador aditivo de publicación (spec §5.1).
-      contentVersion: await getContentVersion(),
-      serverTime: new Date().toISOString(),
-    })
+    return NextResponse.json(
+      {
+        words: rows.map((w) => ({
+          id: w.id,
+          spanish: w.spanish,
+          nasaYuwe: w.nasaYuwe,
+          pronunciation: w.pronunciation,
+          audioUrl: w.audioUrl,
+          illustrationUrl: w.illustrationUrl,
+          culturalContext: w.culturalContext,
+          category: w.category,
+          examples: w.examples,
+          status: w.status,
+          updatedAt: w.updatedAt instanceof Date ? w.updatedAt.toISOString() : String(w.updatedAt),
+        })),
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+        // Fase A T10: marcador aditivo de publicación (spec §5.1).
+        contentVersion: await getContentVersion(),
+        serverTime: new Date().toISOString(),
+      },
+      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
+    )
   } catch (err) {
     console.error("Sync seed error:", err)
     return NextResponse.json({ message: "Error interno del servidor" }, { status: 500 })
