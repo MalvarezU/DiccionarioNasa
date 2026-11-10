@@ -75,12 +75,13 @@ test.describe("Piiyaak público (Screenplay)", () => {
     expect(await visitante.pregunta(OpcionDeBusqueda.conPatron(/Casa/))).toBe(true);
   });
 
-  test("juegos: hub con 3 juegos desbloqueados", async ({ page }) => {
+  test("juegos: hub con 4 juegos desbloqueados", async ({ page }) => {
     const visitante = actorVisitante(page);
     await visitante.intenta(IrA.a("/juegos"));
     expect(await visitante.pregunta(HubMuestra.juego(/Flashcards/))).toBe(true);
-    expect(await visitante.pregunta(HubMuestra.juego(/Memoria/))).toBe(true);
+    expect(await visitante.pregunta(HubMuestra.juego(/Relaciona/))).toBe(true);
     expect(await visitante.pregunta(HubMuestra.juego(/Completar/))).toBe(true);
+    expect(await visitante.pregunta(HubMuestra.juego(/Ordena/))).toBe(true);
     expect(await visitante.pregunta(BloqueosEnHub.cantidad())).toBe(0);
   });
 
@@ -137,9 +138,9 @@ test.describe("Piiyaak público (Screenplay)", () => {
     await visitante.intenta(IrA.a("/cursos"));
     expect(await visitante.pregunta(CursoListado.titulado("Nasa Yuwe Básico"))).toBe(true);
     await visitante.intenta(AbrirCursoPublico.titulado("Nasa Yuwe Básico"));
-    expect(await visitante.pregunta(ModuloVisible.conPatron(/Módulo 1/))).toBe(true);
+    expect(await visitante.pregunta(ModuloVisible.conPatron(/Módulo 1:/))).toBe(true);
     // Numeración persistida "1.1" visible en la primera lección
-    expect(await visitante.pregunta(LeccionNumerada.conPatron(/1\.1 · Lección/))).toBe(true);
+    expect(await visitante.pregunta(LeccionNumerada.conPatron(/Lección 1\.1/))).toBe(true);
   });
 
   test("admin sin sesión redirige (no expone panel)", async ({ page }) => {

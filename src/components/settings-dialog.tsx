@@ -98,27 +98,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       return
     }
 
-    // Reset feedback before starting
     setSyncFeedback("none")
 
     try {
-      await forceResync()
-      // forceResync resolves only after completion (success or error is in useLocalDB.error)
-      // We check the error state after the promise resolves
-      // But since forceResync catches internally and sets error in the hook,
-      // we need a small delay for the state to update.
-      // Instead, let's check for errors directly:
-      // Actually, forceResync sets error in useLocalDB. After it resolves,
-      // React will re-render with the new error state. But we're still in the
-      // event handler callback, so state updates are batched.
-      // We'll use a microtask to check the result after React processes:
-      setTimeout(() => {
-        // The error and lastSync will have been updated by now
-        // We'll derive feedback from the current hook state
-        // Since we can't read future state here, we set "success"
-        // and rely on the error check below
+      const ok = await forceResync()
+      if (ok) {
         setSyncFeedback("success")
-      }, 100)
+      } else {
+        setSyncFeedback("error")
+      }
     } catch {
       setSyncFeedback("error")
     }
@@ -152,21 +140,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <div
             className={`flex items-center gap-3 p-3 rounded-lg border ${
               isOnline
-                ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900"
-                : "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900"
+                ? "bg-secondary-container border-secondary/30"
+                : "bg-tertiary-container border-tertiary/30"
             }`}
           >
             {isOnline ? (
-              <Wifi className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <Wifi className="h-5 w-5 text-secondary shrink-0" />
             ) : (
-              <WifiOff className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <WifiOff className="h-5 w-5 text-tertiary shrink-0" />
             )}
             <div className="min-w-0">
               <p
                 className={`text-sm font-medium ${
                   isOnline
-                    ? "text-emerald-700 dark:text-emerald-400"
-                    : "text-amber-700 dark:text-amber-400"
+                    ? "text-montana"
+                    : "text-tertiary"
                 }`}
               >
                 {isOnline ? "Conectado a internet" : "Sin conexión a internet"}
@@ -192,7 +180,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <span className="text-muted-foreground">Estado</span>
                 <p className="font-medium text-foreground">
                   {isReady ? (
-                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <span className="flex items-center gap-1 text-montana">
                       <CheckCircle2 className="h-3 w-3" />
                       Descargada
                     </span>
@@ -202,7 +190,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       Descargando...
                     </span>
                   ) : (
-                    <span className="text-amber-600 dark:text-amber-400">
+                    <span className="text-tertiary">
                       No descargada
                     </span>
                   )}
@@ -237,19 +225,19 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   Sincronizando... {downloadProgress}%
                 </span>
               </div>
-              <Progress value={downloadProgress} className="h-2" />
+              <Progress value={downloadProgress} className="h-2 bg-surface-container-high [&_[data-slot=progress-indicator]]:bg-secondary" />
             </div>
           )}
 
           {/* ─── Success message after sync completes ───────────── */}
           {effectiveFeedback === "success" && !isDownloading && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary-container border border-secondary/30">
+              <CheckCircle2 className="h-5 w-5 text-secondary shrink-0" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                <p className="text-sm font-medium text-montana">
                   Sincronización completada
                 </p>
-                <p className="text-xs text-emerald-600 dark:text-emerald-500">
+                <p className="text-xs text-muted-foreground">
                   Última actualización: {formattedLastSync ?? "ahora"}
                 </p>
               </div>
@@ -258,9 +246,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
           {/* ─── Offline message when user tries to sync ────────── */}
           {effectiveFeedback === "offline" && !isDownloading && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900">
-              <CloudOff className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-tertiary-container border border-tertiary/30">
+              <CloudOff className="h-5 w-5 text-tertiary shrink-0" />
+              <p className="text-sm font-medium text-tertiary">
                 Sin conexión a internet. Conéctate para sincronizar.
               </p>
             </div>

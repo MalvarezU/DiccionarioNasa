@@ -7,8 +7,17 @@ vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
 }))
 
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(),
+  useRouter: vi.fn(),
+}))
+
 vi.mock("@/hooks/use-online-status", () => ({
   useOnlineStatus: vi.fn(),
+}))
+
+vi.mock("@/hooks/use-pwa-mode", () => ({
+  usePwaMode: vi.fn(),
 }))
 
 vi.mock("@/hooks/use-toast", () => ({
@@ -16,8 +25,8 @@ vi.mock("@/hooks/use-toast", () => ({
 }))
 
 vi.mock("./auth-modal", () => ({
-  AuthModal: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="auth-modal" /> : null,
+  AuthModal: ({ open, initialMode }: { open: boolean; initialMode?: string }) =>
+    open ? <div data-testid="auth-modal" data-mode={initialMode ?? "login"} /> : null,
 }))
 
 vi.mock("./settings-dialog", () => ({
@@ -25,8 +34,14 @@ vi.mock("./settings-dialog", () => ({
     open ? <div data-testid="settings-dialog" /> : null,
 }))
 
+vi.mock("./welcome-gate", () => ({
+  WelcomeGate: () => null,
+}))
+
 import { useSession, signOut } from "next-auth/react"
+import { usePathname, useRouter } from "next/navigation"
 import { useOnlineStatus } from "@/hooks/use-online-status"
+import { usePwaMode } from "@/hooks/use-pwa-mode"
 import { NavBar } from "./navbar"
 
 function mockSession(session: { user?: { name?: string; email?: string; role?: string } } | null) {
@@ -45,11 +60,18 @@ function mockOnline(online: boolean) {
   vi.mocked(useOnlineStatus).mockReturnValue(online)
 }
 
+function mockPwaMode(isPwa: boolean, ready = true) {
+  vi.mocked(usePwaMode).mockReturnValue({ isPwa, ready })
+}
+
 describe("NavBar", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockOnline(true)
+    mockPwaMode(true, true)
     mockSession(null)
+    vi.mocked(usePathname).mockReturnValue("/")
+    vi.mocked(useRouter).mockReturnValue({ push: vi.fn() } as any)
   })
 
   it("renders the app name as a link", () => {
@@ -85,9 +107,23 @@ describe("NavBar", () => {
     render(<NavBar />)
 
     await user.click(screen.getByText("M"))
-    expect(screen.getByText("Mis favoritos")).toBeDefined()
+    expect(screen.getByText("Mis favoritas")).toBeDefined()
     expect(screen.getByText("Mi historial")).toBeDefined()
     expect(screen.getByText("Cerrar sesión")).toBeDefined()
+  })
+
+  it("links favorites and history to /perfil tabs [fase2]", async () => {
+    mockSession({ user: { name: "Mario", email: "mario@test.com", role: "user" } })
+    const user = userEvent.setup()
+    render(<NavBar />)
+
+    await user.click(screen.getByText("M"))
+    expect(screen.getByText("Mis favoritas").closest("a")?.getAttribute("href")).toBe(
+      "/perfil?tab=favorites"
+    )
+    expect(screen.getByText("Mi historial").closest("a")?.getAttribute("href")).toBe(
+      "/perfil?tab=history"
+    )
   })
 
   it("shows admin link for admin users", async () => {
@@ -116,12 +152,24 @@ describe("NavBar", () => {
     expect(screen.queryByText("Panel de administración")).toBeNull()
   })
 
-  it("opens auth modal when login button is clicked", async () => {
+  it("opens auth modal in login mode when login button is clicked", async () => {
     const user = userEvent.setup()
     render(<NavBar />)
 
     await user.click(screen.getByRole("button", { name: /iniciar sesión/i }))
-    expect(screen.getByTestId("auth-modal")).toBeDefined()
+    const modal = screen.getByTestId("auth-modal")
+    expect(modal).toBeDefined()
+    expect(modal.getAttribute("data-mode")).toBe("login")
+  })
+
+  it("shows a Registrarme CTA that opens the modal in register mode", async () => {
+    const user = userEvent.setup()
+    render(<NavBar />)
+
+    await user.click(screen.getByRole("button", { name: /registrarme/i }))
+    const modal = screen.getByTestId("auth-modal")
+    expect(modal).toBeDefined()
+    expect(modal.getAttribute("data-mode")).toBe("register")
   })
 
   it("opens settings when gear icon is clicked", async () => {
@@ -140,5 +188,68 @@ describe("NavBar", () => {
     await user.click(screen.getByText("M"))
     await user.click(screen.getByText("Cerrar sesión"))
     expect(signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
+  })
+})
+
+describe("NavBar — aviso ?auth=required del middleware", () => {
+  it("abre el login solo y limpia la URL", async () => {
+    window.history.replaceState(null, "", "/?auth=required")
+    try {
+      render(<NavBar />)
+      expect(await screen.findByTestId("auth-modal")).toBeDefined()
+      expect(window.location.search).toBe("")
+    } finally {
+      window.history.replaceState(null, "", "/")
+    }
+  })
+
+  it("también abre con sesión expirada", async () => {
+    window.history.replaceState(null, "", "/?auth=expired")
+    try {
+      render(<NavBar />)
+      expect(await screen.findByTestId("auth-modal")).toBeDefined()
+      expect(window.location.search).toBe("")
+    } finally {
+      window.history.replaceState(null, "", "/")
+    }
+  })
+
+  it("sin el aviso no abre nada", () => {
+    window.history.replaceState(null, "", "/")
+    render(<NavBar />)
+    expect(screen.queryByTestId("auth-modal")).toBeNull()
+  })
+})
+
+describe("NavBar — PWA-only gating (badge + settings)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockOnline(true)
+    mockSession(null)
+    vi.mocked(usePathname).mockReturnValue("/")
+    vi.mocked(useRouter).mockReturnValue({ push: vi.fn() } as any)
+  })
+
+  it("hides the connection badge outside the installed PWA", () => {
+    mockPwaMode(false, true)
+    render(<NavBar />)
+    expect(screen.queryByText("En línea")).toBeNull()
+    expect(screen.queryByText("Sin conexión")).toBeNull()
+  })
+
+  it("hides badge and settings while not ready (pre-hydration)", () => {
+    mockPwaMode(false, false)
+    render(<NavBar />)
+    expect(screen.queryByText("En línea")).toBeNull()
+    expect(screen.queryByLabelText("Configuración")).toBeNull()
+    // The rest of the cluster stays: login is still reachable.
+    expect(screen.getByRole("button", { name: /iniciar sesión/i })).toBeDefined()
+  })
+
+  it("hides the settings button outside the installed PWA but keeps login", () => {
+    mockPwaMode(false, true)
+    render(<NavBar />)
+    expect(screen.queryByLabelText("Configuración")).toBeNull()
+    expect(screen.getByRole("button", { name: /iniciar sesión/i })).toBeDefined()
   })
 })

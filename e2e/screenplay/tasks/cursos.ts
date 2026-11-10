@@ -2,7 +2,7 @@ import { expect } from "@playwright/test";
 import type { Actor, Task } from "../actor";
 import { NavegarLaWeb } from "../habilidades";
 
-/** Ir a /admin/courses y esperar el panel. */
+/** Ir a /admin/cursos y esperar el panel. */
 export class IrAGestionDeCursos implements Task {
   descripcion = "ir a gestión de cursos";
   static ahora(): IrAGestionDeCursos {
@@ -10,8 +10,8 @@ export class IrAGestionDeCursos implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.goto("/admin/courses");
-    await expect(page.getByText("Gestión de cursos")).toBeVisible({ timeout: 30000 });
+    await page.goto("/admin/cursos");
+    await expect(page.getByRole("heading", { name: "Gestión de cursos" })).toBeVisible({ timeout: 30000 });
   }
 }
 
@@ -45,7 +45,9 @@ export class AbrirCurso implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.getByText(this.titulo).click();
+    // Preciso por rol: el título también aparece en el card de detalle y
+    // getByText rompe en strict mode cuando ambos están visibles.
+    await page.getByRole("button", { name: this.titulo }).click();
     await expect(page.getByLabel("Título del nuevo módulo")).toBeVisible({ timeout: 15000 });
   }
 }
@@ -100,9 +102,11 @@ export class AnadirLeccion implements Task {
     const { page } = actor.usa(NavegarLaWeb);
     let boton;
     if (this.modulo) {
-      // El label ya viene aislado por módulo; el botón se busca en su bloque
+      // El label ya viene aislado por módulo; el botón se busca en su bloque.
+      // El bloque es el Accordion.Item del módulo (div[data-module-id]);
+      // el viejo div.rounded-lg dejó de matchear con el restyle de las cards.
       const campo = page.getByLabel(`Título de nueva lección en ${this.modulo}`);
-      const bloque = page.locator("div.rounded-lg", { has: campo });
+      const bloque = page.locator("div[data-module-id]", { has: campo });
       await campo.fill(this.titulo);
       boton = bloque.getByRole("button", { name: "Añadir lección" });
     } else {
@@ -118,62 +122,39 @@ export class AnadirLeccion implements Task {
   }
 }
 
-/** Abrir el editor de una lección (pre-rellena título y palabra). */
-export class AbrirEditorDeLeccion implements Task {
-  descripcion: string;
-  private constructor(private titulo: string) {
-    this.descripcion = `abrir editor de "${titulo}"`;
-  }
-  static titulada(titulo: string): AbrirEditorDeLeccion {
-    return new AbrirEditorDeLeccion(titulo);
-  }
-  async ejecutar(actor: Actor): Promise<void> {
-    const { page } = actor.usa(NavegarLaWeb);
-    await page.getByRole("button", { name: `Editar lección ${this.titulo}` }).click();
-    await expect(page.getByText("Editar lección")).toBeVisible({ timeout: 15000 });
-    await expect(page.locator("#edit-lesson-title")).toBeVisible({ timeout: 15000 });
-  }
-}
-
 /**
- * Mover la lección del editor abierto una posición (arriba o abajo).
- * Espera a que el botón se rehabilite (señal de envío terminado);
- * el número resultante se verifica con NumeroEnModal.
+ * Mover una lección una posición con los botones ↑/↓ de su fila.
+ * Termina cuando la insignia de la fila cambia (señal de re-render
+ * tras el POST + loadDetail).
  */
 export class MoverLeccion {
-  static abajo(): Task {
-    return moverLeccion("Bajar lección", "hacia abajo");
+  static abajo(titulo: string): Task {
+    return moverLeccion("Bajar lección", titulo, "hacia abajo");
   }
-  static arriba(): Task {
-    return moverLeccion("Subir lección", "hacia arriba");
+  static arriba(titulo: string): Task {
+    return moverLeccion("Subir lección", titulo, "hacia arriba");
   }
 }
 
-function moverLeccion(boton: string, direccion: string): Task {
+function moverLeccion(boton: string, titulo: string, direccion: string): Task {
   return {
-    descripcion: `mover lección del editor ${direccion}`,
+    descripcion: `mover lección "${titulo}" ${direccion}`,
     async ejecutar(actor: Actor): Promise<void> {
       const { page } = actor.usa(NavegarLaWeb);
-      const dialog = page.getByRole("dialog");
-      const mover = dialog.getByRole("button", { name: boton, exact: true });
-      await mover.click();
-      // El POST puede tardar con la BD lenta; el botón se bloquea mientras envía
-      await expect(mover).toBeEnabled({ timeout: 60000 });
+      const fila = page.locator(
+        `[data-testid="lesson-row"][data-lesson-title="${titulo}"]`
+      );
+      const insignia = fila.getByText(/^\d+\.\d+$/).first();
+      await insignia.waitFor({ timeout: 30000 });
+      const antes = ((await insignia.textContent()) ?? "").trim();
+      await page.getByRole("button", { name: `${boton} ${titulo}`, exact: true }).click();
+      await expect
+        .poll(async () => ((await insignia.textContent()) ?? "").trim(), {
+          timeout: 60000,
+        })
+        .not.toBe(antes);
     },
   };
-}
-
-/** Cerrar el editor con Escape. */
-export class CerrarEditor implements Task {
-  descripcion = "cerrar editor";
-  static ahora(): CerrarEditor {
-    return new CerrarEditor();
-  }
-  async ejecutar(actor: Actor): Promise<void> {
-    const { page } = actor.usa(NavegarLaWeb);
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15000 });
-  }
 }
 
 /**
@@ -191,6 +172,12 @@ export class EliminarCurso implements Task {
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
     await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+    // El panel usa ConfirmDialog (Radix AlertDialog), no window.confirm:
+    // AceptarConfirmaciones (page.on dialog) no lo captura. Confirmamos acá.
+    const confirmBtn = page.getByRole("button", { name: "Eliminar", exact: true }).last();
+    if (await confirmBtn.isVisible().catch(() => false)) {
+      await confirmBtn.click();
+    }
     await expect(page.getByText(this.titulo)).toHaveCount(0, { timeout: 30000 });
   }
 }
@@ -254,13 +241,14 @@ export class RenombrarLeccionEnEditor implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.locator("#edit-lesson-title").fill(this.titulo);
+    await page.locator("#lesson-title").fill(this.titulo);
   }
 }
 
 /**
- * Guardar el editor abierto. Termina cuando el modal cierra (éxito) o
- * muestra error (p.ej. 409 por duplicado); el resultado se lee con ErrorEnModal.
+ * Guardar el editor abierto. El modal de contenido NO cierra al guardar:
+ * termina cuando aparece el toast de éxito o el de error (p.ej. 409 por
+ * duplicado); el resultado se lee con ErrorEnModal o el toast.
  */
 export class GuardarLeccionEnEditor implements Task {
   descripcion = "guardar editor de lección";
@@ -269,13 +257,12 @@ export class GuardarLeccionEnEditor implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    const dialog = page.getByRole("dialog");
-    await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+    await page.getByRole("button", { name: "Guardar lección" }).click();
     await expect
       .poll(
         async () => {
-          if ((await dialog.count()) === 0) return "cerrado";
-          if ((await dialog.locator("p.text-destructive").count()) > 0) return "error";
+          if (await page.getByText("Lección guardada").first().isVisible().catch(() => false)) return "guardado";
+          if (await page.getByText("No se pudo guardar").first().isVisible().catch(() => false)) return "error";
           return "esperando";
         },
         { timeout: 30000 }
@@ -300,11 +287,9 @@ export class AbrirContenidoDeLeccion implements Task {
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
     await page.getByRole("button", { name: `Contenido de lección ${this.titulo}` }).click();
-    // El header del dialog: "Contenido · N. título". first(): el título
-    // también está en la fila de fondo.
-    await expect(page.getByText("Contenido ·").first()).toBeVisible({ timeout: 15000 });
-    // Señal de editor listo: vale para lección VACÍA (mostraría "Agregá el
-    // primer bloque") y para lección CON contenido (mostraría sus bloques).
+    // La edición vive en página propia: URL con el id + título prellenado.
+    await expect(page).toHaveURL(/\/lecciones\//, { timeout: 15000 });
+    await expect(page.locator("#lesson-title")).toHaveValue(this.titulo, { timeout: 15000 });
     await expect(
       page.getByRole("button", { name: "Guardar lección" })
     ).toBeVisible({ timeout: 15000 });
@@ -324,8 +309,9 @@ export class AgregarBloqueDeTexto implements Task {
     const { page } = actor.usa(NavegarLaWeb);
     // Botón del estante "Agregar bloque" (exact: los badges de tipo no son botones)
     await page.getByRole("button", { name: "Texto", exact: true }).click();
-    const area = page.getByLabel(/Texto de la lección/i).last();
+    const area = page.getByLabel(/Texto de la lección/i).last().locator(".tiptap, .ProseMirror").first();
     await expect(area).toBeVisible({ timeout: 10000 });
+    await area.click();
     await area.fill(this.markdown);
   }
 }
@@ -376,14 +362,9 @@ export class CerrarContenido {
       descripcion: "cerrar el editor de contenido",
       ejecutar: async (actor: Actor) => {
         const { page } = actor.usa(NavegarLaWeb);
-        // OJO: mientras el toast "Lección guardada" está visible, Escape no
-        // cierra el dialog (la capa del toast consume la tecla). Usamos el
-        // botón X (sr-only "Close" en el DialogContent del editor).
-        const dialogo = page
-          .locator(".bg-background[data-state='open'], [data-slot='dialog-content']")
-          .filter({ hasText: "Contenido ·" });
-        await dialogo.locator('[data-slot="dialog-close"]').click();
-        await expect(page.getByText("Contenido ·")).toHaveCount(0, { timeout: 15000 });
+        await page.getByRole("button", { name: "Volver a Gestión de cursos" }).click();
+        // Vuelve a la lista del gestor (ya guardó: el guard no frena).
+        await expect(page.getByTestId("cursos-lista")).toBeVisible({ timeout: 15000 });
       },
     };
     return tarea;

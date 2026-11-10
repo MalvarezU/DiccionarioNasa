@@ -1,25 +1,23 @@
 "use client"
 
+import { useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import type { LessonBlock, QuizOption } from "@/lib/courses/blocks"
 import type { PalabraEncontrada } from "./word-picker"
 import { WordPicker } from "./word-picker"
-import { MediaPicker } from "./media-picker"
+import { AudioPicker } from "@/components/media/audio-picker"
 import { ErroresBloque } from "./block-forms"
+import { EditorTextoRico } from "./text-editor"
+import { ChipOpcion } from "./chip-opcion"
+import { LIMITS } from "@/lib/courses/blocks"
+import { htmlToPlainText } from "@/lib/html-to-text"
 
 /**
- * Formularios de los bloques INTERACTIVOS: quiz, listening, game.
+ * Formularios de los bloques INTERACTIVOS: quiz, listening.
  * La versión que el ESTUDIANTE jugará llega en la fase 4; acá se CONFIGURAN.
  *
  * El editor de opciones es compartido entre quiz y listening: la única regla
@@ -33,72 +31,86 @@ export type BlockFormProps<B extends LessonBlock> = {
   errores: string[]
 }
 
-/** Editor de opciones compartido: radio para marcar la correcta, quitar, etc. */
-function EditorDeOpciones({
-  options,
-  onChange,
-  prefix,
-}: {
-  options: QuizOption[]
-  onChange: (next: QuizOption[]) => void
-  prefix: string
-}) {
-  const marcarCorrecta = (index: number) =>
-    onChange(options.map((o, i) => ({ ...o, correct: i === index })))
+/** Presets del umbral de aprobación (el número exacto admite 0-100). */
+const PRESETS_APROBACION = [50, 70, 80, 100]
+
+/**
+ * Umbral de aprobación: presets + número exacto.
+ * El número manda: si no coincide con ningún preset, ninguno queda activo.
+ * Solo lo usa FormQuiz (ListeningBlock no tiene passScore).
+ */
+function UmbralAprobacion({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  // Borrador local: permite vaciar el campo mientras se escribe sin romper
+  // el último valor válido; se confirma al escribir y se revierte en blur/Enter.
+  const [borrador, setBorrador] = useState<string | null>(null)
+  const texto = borrador ?? String(value)
+
+  const confirmar = (raw: string) => {
+    const n = Number.parseInt(raw, 10)
+    if (Number.isNaN(n)) return
+    onChange(Math.min(100, Math.max(0, n)))
+  }
 
   return (
-    <div className="space-y-1.5">
-      {options.map((op, i) => (
-        <div key={`${prefix}-opt-${i}`} className="flex items-center gap-2">
-          <input
-            type="radio"
-            name={`${prefix}-correcta`}
-            checked={op.correct}
-            onChange={() => marcarCorrecta(i)}
-            aria-label={`Marcar como correcta la opción ${i + 1}`}
-            className="accent-[var(--primary)]"
-          />
-          <Input
-            value={op.text}
-            onChange={(e) =>
-              onChange(options.map((o, j) => (j === i ? { ...o, text: e.target.value } : o)))
-            }
-            placeholder={`Opción ${i + 1}`}
-            aria-label={`Texto de la opción ${i + 1}`}
-            className="h-8"
-          />
+    <div className="flex items-center gap-3">
+      <Label className="shrink-0">Aprobado con</Label>
+      <div className="flex items-center gap-1.5" role="group" aria-label="Valores sugeridos de aprobación">
+        {PRESETS_APROBACION.map((p) => (
           <Button
+            key={p}
             type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 shrink-0"
-            onClick={() => onChange(options.filter((_, j) => j !== i))}
-            disabled={options.length <= 2}
-            aria-label={`Quitar opción ${i + 1}`}
+            size="sm"
+            variant={value === p ? "secondary" : "outline"}
+            aria-pressed={value === p}
+            aria-label={`Aprobar con ${p} por ciento`}
+            onClick={() => {
+              setBorrador(null)
+              onChange(p)
+            }}
           >
-            <Trash2 className="size-3.5" />
+            {p}%
           </Button>
-        </div>
-      ))}
-      {options.length < 6 ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => onChange([...options, { text: "", correct: false }])}
-        >
-          <Plus className="size-3.5" /> Opción
-        </Button>
-      ) : null}
+        ))}
+      </div>
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          inputMode="numeric"
+          aria-label="Porcentaje de aprobación exacto"
+          className="w-20 tabular-nums"
+          value={texto}
+          onChange={(e) => {
+            setBorrador(e.target.value)
+            confirmar(e.target.value)
+          }}
+          onBlur={() => {
+            // Vacío o inválido: se descarta el borrador y vuelve el último válido.
+            setBorrador(null)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+          }}
+        />
+        <span aria-hidden="true" className="text-sm text-muted-foreground">
+          %
+        </span>
+      </div>
     </div>
   )
 }
 
 export function FormQuiz({ block, onChange, errores }: BlockFormProps<Extract<LessonBlock, { type: "quiz" }>>) {
-  const cambiarPregunta = (i: number, prompt: string) =>
+  // El prompt se guarda en TEXTO PLANO: el estudiante lo renderiza como texto
+  // y el HTML del editor se vería literal (`<p>¿...?</p>`). Ver html-to-text.ts.
+  const cambiarPregunta = (i: number, md: string) =>
     onChange({
       ...block,
-      questions: block.questions.map((q, j) => (j === i ? { ...q, prompt } : q)),
+      questions: block.questions.map((q, j) =>
+        j === i ? { ...q, prompt: htmlToPlainText(md) } : q
+      ),
     })
 
   const cambiarOpciones = (i: number, options: QuizOption[]) =>
@@ -107,59 +119,121 @@ export function FormQuiz({ block, onChange, errores }: BlockFormProps<Extract<Le
       questions: block.questions.map((q, j) => (j === i ? { ...q, options } : q)),
     })
 
+  const cambiarExplicacion = (i: number, explanation: string) =>
+    onChange({
+      ...block,
+      questions: block.questions.map((q, j) =>
+        j === i ? { ...q, explanation: explanation || undefined } : q
+      ),
+    })
+
+  const moverOpcion = (qi: number, oi: number, dir: -1 | 1) => {
+    const q = block.questions[qi]!
+    const j = oi + dir
+    if (j < 0 || j >= q.options.length) return
+    const ops = [...q.options]
+    ;[ops[oi], ops[j]] = [ops[j]!, ops[oi]!]
+    cambiarOpciones(qi, ops)
+  }
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <Label htmlFor={`pass-${block.id}`} className="shrink-0">
-          Aprobado con (%)
-        </Label>
-        <Input
-          id={`pass-${block.id}`}
-          type="number"
-          min={0}
-          max={100}
-          value={block.passScore}
-          onChange={(e) => {
-            const v = Number(e.target.value)
-            if (Number.isInteger(v)) onChange({ ...block, passScore: Math.max(0, Math.min(100, v)) })
-          }}
-          className="h-8 w-20"
-        />
-      </div>
+    <div className="space-y-4">
+      <UmbralAprobacion value={block.passScore} onChange={(passScore) => onChange({ ...block, passScore })} />
 
       <ol className="space-y-4">
-        {block.questions.map((q, i) => (
-          <li key={`${block.id}-q${i}`} className="rounded-lg border border-outline-variant/30 bg-surface-container-low p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">Pregunta {i + 1}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="ml-auto size-7 text-destructive"
-                disabled={block.questions.length <= 1}
-                onClick={() => onChange({ ...block, questions: block.questions.filter((_, j) => j !== i) })}
-                aria-label={`Quitar pregunta ${i + 1}`}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
-            <Textarea
-              value={q.prompt}
-              onChange={(e) => cambiarPregunta(i, e.target.value)}
-              rows={2}
-              placeholder="¿Cómo se dice agua en Nasa Yuwe?"
-              aria-label={`Texto de la pregunta ${i + 1}`}
-            />
-            <div className="mt-2">
-              <EditorDeOpciones
-                options={q.options}
-                onChange={(ops) => cambiarOpciones(i, ops)}
-                prefix={`${block.id}-${i}`}
+        {block.questions.map((q, i) => {
+          const correctas = q.options.filter((o) => o.correct).length
+          const opcionesInvalidas = correctas !== 1
+          return (
+            <li key={`${block.id}-q${i}`} className="rounded-lg border border-outline-variant/30 bg-surface-container-low p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">Pregunta {i + 1}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="ml-auto size-7 text-destructive"
+                  disabled={block.questions.length <= 1}
+                  onClick={() => onChange({ ...block, questions: block.questions.filter((_, j) => j !== i) })}
+                  aria-label={`Quitar pregunta ${i + 1}`}
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </div>
+
+              <EditorTextoRico
+                value={q.prompt}
+                onChange={(md) => cambiarPregunta(i, md)}
+                mini
+                maxChars={LIMITS.maxPrompt}
+                ariaLabel={`Pregunta ${i + 1}`}
               />
-            </div>
-          </li>
-        ))}
+
+              <div className="mt-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Opciones (marcá la correcta)
+                  {opcionesInvalidas ? (
+                    <span className="ml-2 text-destructive">
+                      — marcá exactamente una correcta
+                    </span>
+                  ) : null}
+                </p>
+                {q.options.map((op, j) => (
+                  <ChipOpcion
+                    key={`${block.id}-q${i}-o${j}`}
+                    texto={op.text}
+                    correcta={op.correct}
+                    onChange={(t) =>
+                      cambiarOpciones(
+                        i,
+                        q.options.map((o, k) => (k === j ? { ...o, text: t } : o))
+                      )
+                    }
+                    onMarcarCorrecta={() =>
+                      cambiarOpciones(
+                        i,
+                        q.options.map((o, k) => ({ ...o, correct: k === j }))
+                      )
+                    }
+                    onQuitar={() =>
+                      cambiarOpciones(i, q.options.filter((_, k) => k !== j))
+                    }
+                    onMoverArriba={() => moverOpcion(i, j, -1)}
+                    onMoverAbajo={() => moverOpcion(i, j, 1)}
+                    puedeSubir={j > 0}
+                    puedeBajar={j < q.options.length - 1}
+                  />
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() =>
+                    cambiarOpciones(i, [...q.options, { text: "", correct: false }])
+                  }
+                  disabled={q.options.length >= LIMITS.maxOptions}
+                >
+                  <Plus className="size-3.5" /> Opción
+                </Button>
+              </div>
+
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs text-muted-foreground">
+                  Explicación (opcional)
+                </summary>
+                <Textarea
+                  value={q.explanation ?? ""}
+                  onChange={(e) => cambiarExplicacion(i, e.target.value)}
+                  rows={2}
+                  placeholder="Por qué es la respuesta correcta"
+                  className="mt-2"
+                  aria-label={`Explicación de la pregunta ${i + 1}`}
+                />
+              </details>
+            </li>
+          )
+        })}
       </ol>
 
       <Button
@@ -175,6 +249,7 @@ export function FormQuiz({ block, onChange, errores }: BlockFormProps<Extract<Le
             ],
           })
         }
+        disabled={block.questions.length >= LIMITS.maxQuestions}
       >
         <Plus className="size-3.5" /> Pregunta
       </Button>
@@ -189,140 +264,106 @@ export function FormListening({
   onChange,
   errores,
 }: BlockFormProps<Extract<LessonBlock, { type: "listening" }>>) {
-  const esYoutube = block.media.source === "youtube"
-
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 rounded-lg border border-outline-variant/40 p-1 w-fit">
-        <Button
-          type="button"
-          size="sm"
-          variant={!esYoutube ? "secondary" : "ghost"}
-          onClick={() => onChange({ ...block, media: { source: "upload" } })}
-        >
-          Audio subido
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={esYoutube ? "secondary" : "ghost"}
-          onClick={() => onChange({ ...block, media: { source: "youtube" } })}
-        >
-          YouTube
-        </Button>
-      </div>
-
-      {esYoutube ? (
-        <div>
-          <Label htmlFor={`listen-yt-${block.id}`}>ID de YouTube</Label>
-          <Input
-            id={`listen-yt-${block.id}`}
-            value={block.media.youtubeId ?? ""}
-            onChange={(e) => onChange({ ...block, media: { source: "youtube", youtubeId: e.target.value } })}
-            placeholder="dQw4w9WgXcQ"
+      <p className="text-sm text-muted-foreground">
+        El audio del ejercicio se sube como archivo (se comprime a Opus antes de enviar).
+      </p>
+      {block.media.url ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Audio listo</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onChange({ ...block, media: { source: "upload" } })}
+            >
+              Reemplazar
+            </Button>
+          </div>
+          <audio
+            controls
+            src={block.media.url}
+            className="w-full"
+            aria-label="Audio del ejercicio"
           />
         </div>
       ) : (
-        <MediaPicker
+        <AudioPicker
           etiqueta="Audio del ejercicio"
           onSubida={(url) => onChange({ ...block, media: { source: "upload", url } })}
         />
       )}
 
       <div>
-        <Label htmlFor={`listen-q-${block.id}`}>Pregunta</Label>
-        <Input
-          id={`listen-q-${block.id}`}
+        <Label>Pregunta</Label>
+        <EditorTextoRico
           value={block.question}
-          onChange={(e) => onChange({ ...block, question: e.target.value })}
-          placeholder="¿Qué palabra escuchaste?"
+          // Texto plano por el mismo motivo del prompt del quiz.
+          onChange={(md) => onChange({ ...block, question: htmlToPlainText(md) })}
+          mini
+          maxChars={LIMITS.maxPrompt}
+          ariaLabel={`Pregunta del bloque ${block.id}`}
         />
       </div>
 
       <div>
-        <p className="mb-1 text-sm font-medium">Opciones (marcá la correcta)</p>
-        <EditorDeOpciones
-          options={block.options}
-          onChange={(options) => onChange({ ...block, options })}
-          prefix={`listening-${block.id}`}
-        />
-      </div>
-
-      <ErroresBloque errores={errores} />
-    </div>
-  )
-}
-
-export function FormGame({
-  block,
-  onChange,
-  errores,
-}: BlockFormProps<Extract<LessonBlock, { type: "game" }>>) {
-  return (
-    <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <div>
-          <Label>Juego</Label>
-          <Select
-            value={block.game}
-            onValueChange={(v) => onChange({ ...block, game: v as "memory" | "flashcards" })}
-          >
-            <SelectTrigger className="mt-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="flashcards">Flashcards</SelectItem>
-              <SelectItem value="memory">Memoria</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Dificultad</Label>
-          <Select
-            value={block.difficulty}
-            onValueChange={(v) => onChange({ ...block, difficulty: v as "easy" | "medium" | "hard" })}
-          >
-            <SelectTrigger className="mt-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="easy">Fácil</SelectItem>
-              <SelectItem value="medium">Medio</SelectItem>
-              <SelectItem value="hard">Difícil</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <p className="text-sm text-muted-foreground">
-        Palabras que va a usar el juego ({block.wordIds.length} elegidas)
-      </p>
-
-      {block.wordIds.length > 0 ? (
-        <ul className="flex flex-wrap gap-1.5">
-          {block.wordIds.map((id) => (
-            <li key={`${block.id}-${id}`}>
-              <button
-                type="button"
-                onClick={() => onChange({ ...block, wordIds: block.wordIds.filter((w) => w !== id) })}
-                className="rounded-full bg-surface-container-high px-2.5 py-1 text-xs hover:bg-tertiary-fixed"
-                aria-label={`Quitar palabra ${id} del juego`}
-              >
-                {id} ✕
-              </button>
-            </li>
+        <p className="mb-1 text-sm font-medium">
+          Opciones (marcá la correcta)
+          {block.options.filter((o) => o.correct).length !== 1 ? (
+            <span className="ml-2 text-destructive">— marcá exactamente una correcta</span>
+          ) : null}
+        </p>
+        <div className="space-y-2">
+          {block.options.map((op, j) => (
+            <ChipOpcion
+              key={`${block.id}-o${j}`}
+              texto={op.text}
+              correcta={op.correct}
+              onChange={(t) =>
+                onChange({
+                  ...block,
+                  options: block.options.map((o, k) => (k === j ? { ...o, text: t } : o)),
+                })
+              }
+              onMarcarCorrecta={() =>
+                onChange({
+                  ...block,
+                  options: block.options.map((o, k) => ({ ...o, correct: k === j })),
+                })
+              }
+              onQuitar={() => onChange({ ...block, options: block.options.filter((_, k) => k !== j) })}
+              onMoverArriba={() => {
+                if (j === 0) return
+                const ops = [...block.options]
+                ;[ops[j - 1], ops[j]] = [ops[j]!, ops[j - 1]!]
+                onChange({ ...block, options: ops })
+              }}
+              onMoverAbajo={() => {
+                if (j === block.options.length - 1) return
+                const ops = [...block.options]
+                ;[ops[j], ops[j + 1]] = [ops[j + 1]!, ops[j]!]
+                onChange({ ...block, options: ops })
+              }}
+              puedeSubir={j > 0}
+              puedeBajar={j < block.options.length - 1}
+            />
           ))}
-        </ul>
-      ) : null}
-
-      <WordPicker
-        etiquetaTitulo="Agregar palabra al juego"
-        onElegir={(p: PalabraEncontrada) => {
-          if (!block.wordIds.includes(p.id)) {
-            onChange({ ...block, wordIds: [...block.wordIds, p.id] })
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-2 h-7 text-xs"
+          onClick={() =>
+            onChange({ ...block, options: [...block.options, { text: "", correct: false }] })
           }
-        }}
-      />
+          disabled={block.options.length >= LIMITS.maxOptions}
+        >
+          <Plus className="size-3.5" /> Opción
+        </Button>
+      </div>
 
       <ErroresBloque errores={errores} />
     </div>

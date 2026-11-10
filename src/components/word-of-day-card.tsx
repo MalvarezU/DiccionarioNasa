@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react"
+import { useCallback, useSyncExternalStore } from "react"
 import {
   Sparkles,
   Volume2,
@@ -14,15 +14,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { WordDetailSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
 import { useOnlineStatus } from "@/hooks/use-online-status"
-import {
-  getCachedWordOfDay,
-  setCachedWordOfDay,
-  type CachedWordOfDay,
-} from "@/lib/local-db"
+import { useWordOfDay } from "@/hooks/use-word-of-day"
 
 // ─── Hydration-safe mount guard ─────────────────────────────────────────────
 
@@ -32,17 +29,6 @@ function useMounted(): boolean {
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-
-interface WordOfDayData {
-  id: string
-  spanish: string
-  nasaYuwe: string
-  pronunciation: string | null
-  audioUrl: string | null
-  culturalContext: string | null
-  category: string | null
-  examples: Array<{ spanish: string; nasaYuwe: string }> | null
-}
 
 interface WordOfDayCardProps {
   /** Callback when the user clicks to see the full word detail */
@@ -54,104 +40,13 @@ interface WordOfDayCardProps {
 export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
   const mounted = useMounted()
   const isOnline = useOnlineStatus()
-
-  const [wordData, setWordData] = useState<WordOfDayData | null>(null)
-  const [wordDate, setWordDate] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isFromCache, setIsFromCache] = useState(false)
-  const [neverConnected, setNeverConnected] = useState(false)
-
-  // ─── Fetch word of the day ─────────────────────────────────────────────
-
-  useEffect(() => {
-    const fetchWordOfDay = async () => {
-      setIsLoading(true)
-
-      try {
-        // Get today's date string for cache comparison
-        const today = new Date().toISOString().slice(0, 10)
-
-        if (isOnline) {
-          // Try fetching from server first (HU1.4.6: server-selected)
-          try {
-            const res = await fetch("/api/dictionary/word-of-day")
-            if (res.ok) {
-              const data = await res.json()
-              if (data.word) {
-                setWordData(data.word)
-                setWordDate(data.date)
-                setIsFromCache(false)
-                setNeverConnected(false)
-
-                // Cache locally for offline use (HU1.4.7)
-                const cacheData: CachedWordOfDay = {
-                  word: data.word,
-                  date: data.date,
-                  cachedAt: new Date().toISOString(),
-                }
-                await setCachedWordOfDay(cacheData)
-
-                setIsLoading(false)
-                return
-              }
-            }
-          } catch {
-            // Server fetch failed — fall through to cache
-          }
-
-          // Server didn't return a word or fetch failed — try cache
-          const cached = await getCachedWordOfDay()
-          if (cached) {
-            setWordData(cached.word)
-            setWordDate(cached.date)
-            setIsFromCache(true)
-            setNeverConnected(false)
-            setIsLoading(false)
-            return
-          }
-
-          // No server data and no cache
-          setWordData(null)
-          setNeverConnected(false)
-          setIsLoading(false)
-        } else {
-          // Offline — use cached word of the day (HU1.4.7)
-          const cached = await getCachedWordOfDay()
-          if (cached) {
-            setWordData(cached.word)
-            setWordDate(cached.date)
-            setIsFromCache(true)
-            setNeverConnected(false)
-          } else {
-            // Never had connection — no cached data (HU1.4.7)
-            setWordData(null)
-            setNeverConnected(true)
-          }
-          setIsLoading(false)
-        }
-      } catch {
-        // Final fallback: try cache
-        try {
-          const cached = await getCachedWordOfDay()
-          if (cached) {
-            setWordData(cached.word)
-            setWordDate(cached.date)
-            setIsFromCache(true)
-            setNeverConnected(false)
-          } else {
-            setWordData(null)
-            setNeverConnected(true)
-          }
-        } catch {
-          setWordData(null)
-          setNeverConnected(true)
-        }
-        setIsLoading(false)
-      }
-    }
-
-    fetchWordOfDay()
-  }, [isOnline])
+  const {
+    word: wordData,
+    date: wordDate,
+    isLoading,
+    isFromCache,
+    neverConnected,
+  } = useWordOfDay()
 
   // ─── Handle click ────────────────────────────────────────────────────────
 
@@ -172,7 +67,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="h-5 w-5 text-secondary" />
             <CardTitle className="text-base font-semibold text-foreground">
               Palabra del Día
             </CardTitle>
@@ -192,7 +87,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="h-5 w-5 text-secondary" />
             <CardTitle className="text-base font-semibold text-foreground">
               Palabra del Día
             </CardTitle>
@@ -200,8 +95,8 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
         </CardHeader>
         <CardContent className="pt-0">
           <div className="flex flex-col items-center justify-center py-6 gap-3">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/30">
-              <WifiOff className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-tertiary-container">
+              <WifiOff className="h-6 w-6 text-tertiary" />
             </div>
             <p className="text-sm text-muted-foreground text-center">
               Conéctate para descubrir la palabra del día
@@ -212,10 +107,36 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
     )
   }
 
-  // ─── No word data available ─────────────────────────────────────────────
+  // ─── No word data available (online, server empty/failed, no cache) ─────
+  // Designed empty state — never a ghost gap. Fetch/cache logic above
+  // stays intact; only the fallthrough render changes.
 
   if (!wordData) {
-    return null
+    return (
+      <Card className="border-outline-variant/30 bg-surface-container-low">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-secondary" />
+            <CardTitle className="text-base font-semibold text-foreground">
+              Palabra del Día
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-container-highest">
+              <BookOpen className="h-6 w-6 text-primary/60" />
+            </span>
+            <p className="text-sm text-muted-foreground">
+              Hoy la palabra descansa — explorá el diccionario
+            </p>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/diccionario">Explorar el diccionario</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   // ─── Word of the Day Card ───────────────────────────────────────────────
@@ -228,7 +149,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="h-5 w-5 text-secondary" />
             <CardTitle className="font-serif text-base font-semibold text-primary">
               Palabra del Día
             </CardTitle>
@@ -244,7 +165,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
               </Badge>
             )}
             {wordDate && (
-              <span className="text-2xs text-muted-foreground">
+              <span className="text-2xs font-medium text-montana bg-amarillo/20 border border-amarillo/50 rounded-full px-2 py-0.5">
                 {new Date(wordDate + "T00:00:00").toLocaleDateString("es-CO", {
                   day: "numeric",
                   month: "short",
@@ -276,7 +197,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
                 </span>
               )}
               {wordData.category && (
-                <Badge variant="secondary" className="text-2xs px-1.5 py-0 h-4 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors">
+                <Badge variant="secondary" className="text-2xs px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30">
                   {wordData.category}
                 </Badge>
               )}
@@ -290,7 +211,7 @@ export function WordOfDayCard({ onWordSelect }: WordOfDayCardProps) {
             )}
 
             {/* "Ver más" link */}
-            <div className="flex items-center gap-1 mt-3 text-primary text-xs font-medium group-hover:underline">
+            <div className="link-underline-terracota flex items-center gap-1 mt-3 text-primary text-xs font-medium w-fit">
               <BookOpen className="h-3 w-3" />
               Ver ficha completa
               <ChevronRight className="h-3 w-3" />

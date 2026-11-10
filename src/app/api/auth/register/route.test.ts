@@ -9,42 +9,22 @@ vi.mock("@/lib/db", () => ({
   },
 }))
 
-vi.mock("bcryptjs", () => ({
-  default: {
-    hash: vi.fn(),
-  },
-}))
-
 import { db } from "@/lib/db"
-import bcrypt from "bcryptjs"
 import { __resetRateLimitStore } from "@/lib/rate-limit"
 import { POST } from "./route"
+import { jsonRequest } from "@/test/factories/request"
 
 function makeRequest(body: unknown) {
-  return {
-    json: async () => body,
-  } as never
+  return jsonRequest("http://localhost:3000/api/auth/register", body)
 }
 
-describe("POST /api/auth/register", () => {
+describe("POST /api/auth/register (Google-first: registro con correo deshabilitado)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     __resetRateLimitStore()
   })
 
-  it("registers a new user successfully", async () => {
-    vi.mocked(db.user.findUnique).mockResolvedValue(null)
-    vi.mocked(bcrypt.hash).mockResolvedValue("hashed-pw" as never)
-    vi.mocked(db.user.create).mockResolvedValue({
-      id: "u1",
-      email: "test@example.com",
-      name: "Test User",
-      password: "hashed-pw",
-      role: "user",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as never)
-
+  it("responde 410 con mensaje en español", async () => {
     const res = await POST(
       makeRequest({
         email: "test@example.com",
@@ -52,177 +32,31 @@ describe("POST /api/auth/register", () => {
         name: "Test User",
       })
     )
+    expect(res.status).toBe(410)
     const body = await res.json()
-
-    expect(res.status).toBe(200)
-    expect(body.success).toBe(true)
-    expect(body.user.email).toBe("test@example.com")
-    expect(bcrypt.hash).toHaveBeenCalledWith("password123", 12)
+    expect(body.message).toContain("deshabilitado")
+    expect(body.message).toContain("Google")
   })
 
-  it("marca pendiente de verificación cuando hay proveedor de correo [B1.2]", async () => {
-    vi.stubEnv("RESEND_API_KEY", "re_test")
-    global.fetch = vi.fn().mockResolvedValue(Response.json({ id: "m1" }) as never)
-    vi.mocked(db.user.findUnique).mockResolvedValue(null)
-    vi.mocked(bcrypt.hash).mockResolvedValue("hashed-pw" as never)
-    vi.mocked(db.user.create).mockResolvedValue({ id: "u1" } as never)
-
+  it("no crea usuarios (no toca la BD salvo rate-limit)", async () => {
     const res = await POST(
-      makeRequest({ email: "n@x.com", password: "password123" })
+      makeRequest({ email: "nuevo@example.com", password: "password123" })
     )
-    const body = await res.json()
-
-    expect(body.requiresVerification).toBe(true)
-    expect(vi.mocked(db.user.create)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          emailVerified: null,
-          verifyToken: expect.any(String),
-        }),
-      })
-    )
-    vi.unstubAllEnvs()
+    expect(res.status).toBe(410)
+    expect(db.user.findUnique).not.toHaveBeenCalled()
+    expect(db.user.create).not.toHaveBeenCalled()
   })
 
-  it("returns 400 when email is missing", async () => {
-    const res = await POST(makeRequest({ password: "password123" }))
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.message).toContain("Email")
+  it("responde 410 para cualquier cuerpo (sin email, sin password, vacío)", async () => {
+    for (const body of [{}, { password: "x" }, { email: "a@b.com" }]) {
+      __resetRateLimitStore()
+      const res = await POST(makeRequest(body))
+      expect(res.status).toBe(410)
+    }
+    expect(db.user.create).not.toHaveBeenCalled()
   })
 
-  it("returns 400 when password is missing", async () => {
-    const res = await POST(makeRequest({ email: "test@example.com" }))
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.message).toContain("contraseña")
-  })
-
-  it("returns 400 when password is too short (< 8 chars)", async () => {
-    const res = await POST(
-      makeRequest({ email: "test@example.com", password: "1234567" })
-    )
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.message).toContain("8 caracteres")
-  })
-
-  it("accepts a password with exactly 8 chars (boundary)", async () => {
-    vi.mocked(db.user.findUnique).mockResolvedValue(null)
-    vi.mocked(bcrypt.hash).mockResolvedValue("hashed-pw" as never)
-    vi.mocked(db.user.create).mockResolvedValue({
-      id: "u1",
-      email: "test@example.com",
-      name: null,
-      password: "hashed-pw",
-      role: "user",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as never)
-
-    const res = await POST(
-      makeRequest({ email: "test@example.com", password: "12345678" })
-    )
-    expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(body.success).toBe(true)
-    expect(bcrypt.hash).toHaveBeenCalledWith("12345678", 12)
-  })
-
-  it("returns 409 when email already exists", async () => {
-    vi.mocked(db.user.findUnique).mockResolvedValue({
-      id: "existing",
-      email: "test@example.com",
-    } as never)
-
-    const res = await POST(
-      makeRequest({ email: "test@example.com", password: "password123" })
-    )
-    expect(res.status).toBe(409)
-    const body = await res.json()
-    expect(body.message).toContain("existe")
-  })
-
-  it("sets name to null when not provided", async () => {
-    vi.mocked(db.user.findUnique).mockResolvedValue(null)
-    vi.mocked(bcrypt.hash).mockResolvedValue("hashed-pw" as never)
-    vi.mocked(db.user.create).mockResolvedValue({
-      id: "u1",
-      email: "test@example.com",
-      name: null,
-      password: "hashed-pw",
-      role: "user",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as never)
-
-    await POST(
-      makeRequest({ email: "test@example.com", password: "password123" })
-    )
-
-    expect(db.user.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ name: null }),
-      })
-    )
-  })
-
-  it("assigns role 'user' by default", async () => {
-    vi.mocked(db.user.findUnique).mockResolvedValue(null)
-    vi.mocked(bcrypt.hash).mockResolvedValue("hashed-pw" as never)
-    vi.mocked(db.user.create).mockResolvedValue({
-      id: "u1",
-      email: "test@example.com",
-      name: null,
-      password: "hashed-pw",
-      role: "user",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as never)
-
-    await POST(
-      makeRequest({
-        email: "test@example.com",
-        password: "password123",
-        name: "Test",
-      })
-    )
-
-    expect(db.user.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ role: "user" }),
-      })
-    )
-  })
-
-  it("returns 500 on database error", async () => {
-    vi.mocked(db.user.findUnique).mockRejectedValue(new Error("DB error"))
-
-    const res = await POST(
-      makeRequest({ email: "test@example.com", password: "password123" })
-    )
-    expect(res.status).toBe(500)
-  })
-
-  it("does not hash password when validation fails", async () => {
-    const res = await POST(makeRequest({ email: "", password: "" }))
-    expect(res.status).toBe(400)
-    expect(bcrypt.hash).not.toHaveBeenCalled()
-  })
-
-  it("returns 429 after exceeding 10 requests per minute", async () => {
-    vi.mocked(db.user.findUnique).mockResolvedValue(null)
-    vi.mocked(bcrypt.hash).mockResolvedValue("hashed-pw" as never)
-    vi.mocked(db.user.create).mockResolvedValue({
-      id: "u1",
-      email: "test@example.com",
-      name: null,
-      password: "hashed-pw",
-      role: "user",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as never)
-
+  it("mantiene el rate-limit: 429 tras 10 intentos por minuto", async () => {
     for (let i = 0; i < 10; i++) {
       await POST(
         makeRequest({ email: `u${i}@example.com`, password: "password123" })

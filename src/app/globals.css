@@ -10,15 +10,29 @@
    otros tokens) y declararse como rem para que Tailwind registre el nombre
    de la utilidad .text-2xs. */
 @theme {
-  --text-2xs: 0.6875rem;
+  --text-2xs: 0.75rem;
+
+  /* Suavizado global: toda transición sin easing explícito hereda la
+     curva de la casa en vez del ease brusco por defecto de Tailwind. */
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Paleta territorio Piiyaak (guía de cliente): nombres fijos para clases
+     con nombre (bg-montana, text-terracota, ...) en vez de hex sueltos. */
+  --color-montana: #173f35;
+  --color-montana-deep: #0e2a22;
+  --color-territorio: #496b55;
+  --color-amarillo-tierra: #d7ae55;
+  --color-amarillo-oscuro: #c39a45;
+  --color-terracota: #b96f4a;
+  --color-crema: #f5f0e6;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-public-sans);
-  --font-serif: var(--font-newsreader);
-  --font-mono: var(--font-public-sans);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-source-serif);
+  --font-mono: var(--font-inter);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -38,9 +52,12 @@
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
+  --color-amarillo: var(--amarillo);
+  --color-amarillo-foreground: var(--amarillo-foreground);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-container: var(--secondary-container);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
@@ -64,69 +81,76 @@
 
 :root {
   --radius: 0.375rem;
-  
-  /* Habano Background System - más saturación amarilla */
-  --background: oklch(0.97 0.012 40);
-  --foreground: oklch(0.20 0.02 30);
-  
-  /* Surface Hierarchy (vellum sheets) - rampa con escalón perceptible (0.03 L).
-     Antes los tres niveles vivían con 0.02 de diferencia: los cards no se
-     separaban del fondo y el relieve tenía que inventarlo el adorno
-     (border + shadow por todas partes). */
-  --surface-container-low: oklch(0.95 0.016 40);
-  --surface-container-high: oklch(0.92 0.02 40);
-  --surface-container-highest: oklch(0.89 0.024 40);
-  
+
+  /* Paleta territorio Piiyaak (guía de cliente):
+     Crema ~50% base · Verde montaña ~25% texto/marca ·
+     Verde territorio ~12% secciones · Amarillo tierra ~7% CTA ·
+     Terracota ~6% detalles. Sin blanco/negro puro.
+     Contrastes verificados: montaña/crema 10.3 AAA · crema/montaña 10.3 AAA ·
+     crema/territorio 5.3 AA · amarillo/montaña 5.6 AA · terracota-texto/crema ~5.9 AA. */
+  --background: #f5f0e6;
+  --foreground: #173f35;
+
+  /* Surface hierarchy (hojas crema): tres pasos con salto visible para que
+     las cards se despeguen sin depender de bordes ni sombras. */
+  --surface-container-low: #e8e2c9;
+  --surface-container-high: #ded2b0;
+  --surface-container-highest: #d3c199;
+
   /* Cards & Popovers */
   --card: var(--surface-container-low);
   --card-foreground: var(--foreground);
   --popover: var(--surface-container-low);
   --popover-foreground: var(--foreground);
-  
-  /* Primary: Ink Red (#8c0010) */
-  --primary: oklch(0.35 0.18 25);
-  --primary-foreground: oklch(0.97 0.012 40);
-  --primary-container: oklch(0.42 0.14 27);
-  
-  /* Secondary: Moss Green (#48654b) */
-  --secondary: oklch(0.45 0.08 155);
-  --secondary-foreground: oklch(0.97 0.012 40);
-  
-  /* Tertiary: Amber Highlight (#583f00) */
-  --tertiary: oklch(0.40 0.12 70);
-  --tertiary-foreground: oklch(0.97 0.012 40);
-  --tertiary-container: oklch(0.50 0.10 70);
-  --tertiary-fixed: oklch(0.85 0.05 40);
-  
+
+  /* Primary: verde montaña (#173f35) */
+  --primary: #173f35;
+  --primary-foreground: #f5f0e6;
+  --primary-container: #0c261f;
+
+  /* Secondary: verde territorio (#496b55) */
+  --secondary: #496b55;
+  --secondary-foreground: #f5f0e6;
+  --secondary-container: #d8e0d2;
+
+  /* Tertiary: terracota oscurecida para texto (#8c4a2a, ~5.9:1 en crema).
+     El terracota puro #b96f4a (3.4:1, solo texto grande/decoración) vive como
+     color con nombre --color-terracota, no como token de texto. */
+  --tertiary: #8c4a2a;
+  --tertiary-foreground: #f5f0e6;
+  --tertiary-container: #f2dfc9;
+  --tertiary-fixed: #e5c39e;
+
+  /* CTA: amarillo tierra (#d7ae55) con texto verde montaña (5.6 AA).
+     Nunca como texto ni sobre crema (1.8). */
+  --amarillo: #d7ae55;
+  --amarillo-foreground: #173f35;
+
   /* Muted */
   --muted: var(--surface-container-high);
-  --muted-foreground: oklch(0.45 0.02 35);
-  
+  --muted-foreground: #40584d;
+
   /* Accent */
   --accent: var(--secondary);
   --accent-foreground: var(--secondary-foreground);
-  
-  /* Destructive */
-  --destructive: oklch(0.55 0.2 25);
-  
-  /* Borders — WCAG 1.4.11 pide 3:1 para el contorno de un control (input,
-     checkbox, select). Medido contra la SUPERFICIE MÁS CLARA donde puede
-     apoyarse, no contra el fondo de la página: por eso L=0.56 y no 0.62.
-     L=0.62 daba 3.16:1 sobre surface-low pero caía a 2.63 sobre
-     surface-highest; 0.56 da 4.02 / 3.68 / 3.35 sobre las tres.
-     --outline-variant es decorativo (separadores, cantos de card) y se
-     mantiene claro a propósito. */
-  --border: oklch(0.56 0.018 40);
-  --outline-variant: oklch(0.82 0.028 40);
+
+  /* Destructive: ladrillo-terracota profundo (#8f3b28, ~6.5:1 en crema) */
+  --destructive: #8f3b28;
+
+  /* Borders — WCAG 1.4.11 pide 3:1 en controles (input, checkbox, select).
+     Medido contra la superficie MÁS CLARA sobre la que pueden descansar.
+     --outline-variant queda decorativo (separadores, bordes de card). */
+  --border: #556f60;
+  --outline-variant: #d8c9a8;
   --input: var(--border);
   --ring: var(--primary);
-  
-  /* Charts */
+
+  /* Charts: montaña, territorio, terracota, ladrillo, arena terracota */
   --chart-1: var(--primary);
   --chart-2: var(--secondary);
   --chart-3: var(--tertiary);
-  --chart-4: oklch(0.65 0.12 70);
-  --chart-5: oklch(0.40 0.08 35);
+  --chart-4: var(--destructive);
+  --chart-5: var(--tertiary-fixed);
   
   /* Sidebar */
   --sidebar: var(--surface-container-low);
@@ -139,12 +163,477 @@
   --sidebar-ring: var(--ring);
 }
 
+/* Selección de texto: amarillo tierra con tinta montaña (5.6 AA).
+   Un solo sitio, sin tocar tokens de texto. */
+::selection {
+  background: #d7ae55;
+  color: #173f35;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  /* Reserve the scrollbar gutter on the root element so opening a Radix
+     dialog (body scroll-lock removes the classic scrollbar) never widens
+     the viewport: no layout jump, and the fixed header stays aligned with
+     the page content. The ivory page background on <html> (instead of the
+     browser default white) keeps the gutter and overscroll areas on-system
+     for every dialog, not just settings. Scroll-lock itself is untouched —
+     the background stays non-scrollable while a modal is open. */
+  html {
+    background-color: var(--background);
+    scrollbar-gutter: stable;
+    scroll-behavior: smooth;
+  }
+  /* Radix (react-remove-scroll-bar) compensates the disappearing classic
+     scrollbar by injecting `margin-right: {gap}px !important` on <body>
+     (selector: body[data-scroll-locked]) when a dialog locks scroll. With
+     scrollbar-gutter: stable on <html> that space is already reserved, so
+     the compensation double-counts it: content squeezes 15px (layout
+     jump) and the reserved band doubles (30px) next to dark sections.
+     The gutter already guarantees a constant content width, so the
+     injected compensation is neutralized. The `html` qualifier raises
+     specificity above the runtime-injected `body[data-scroll-locked]`
+     rule, and !important inside @layer base wins by cascade order for
+     important author declarations. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
+  /* Paint the reserved 15px gutter as a custom scrollbar (Chromium/Safari):
+     crema track keeps the gutter on-system over dark side content (hero
+     photo, deep-montaña footer), and the softened-verde thumb reads as part
+     of the palette. Thumb #5a6e62 is a desaturated mix toward verde montaña
+     #173f35 with ~5:1 contrast on crema #f5f0e6 — passes 3:1 non-text.
+     No transitions by design, so there is nothing for
+     prefers-reduced-motion to neutralize. */
+  ::-webkit-scrollbar {
+    width: 15px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #5a6e62;
+    border-radius: 999px;
+    border: 3px solid var(--background);
+  }
+  /* Firefox fallback for the painted gutter: same thumb/track pair.
+     Kept out of Chromium's reach on purpose — when `scrollbar-width` is
+     anything but `auto`, Chromium drops `::-webkit-scrollbar` rendering
+     entirely, which would unpaint the 15px gutter. The `@supports not
+     selector(...)` gate is only true where the webkit pseudos don't exist. */
+  @supports not selector(::-webkit-scrollbar) {
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: #5a6e62 var(--background);
+    }
+  }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* F13b — colores de fuente del bloque de texto (mark TextoColoreado).
+   El HTML guardado trae el TOKEN en `data-color` (nunca style inline ni
+   hex); el color real vive acá, una sola vez para editor, vista previa y
+   curso. Fuente de tokens: TEXT_COLOR_TOKENS en lesson-html.ts. */
+[data-color="rojo"] {
+  color: #dc2626;
+}
+[data-color="naranja"] {
+  color: #ea580c;
+}
+[data-color="amarillo"] {
+  color: #ca8a04;
+}
+[data-color="verde"] {
+  color: #16a34a;
+}
+[data-color="azul"] {
+  color: #2563eb;
+}
+[data-color="violeta"] {
+  color: #7c3aed;
+}
+[data-color="slate"] {
+  color: var(--primary);
+}
+[data-color="oliva"] {
+  color: var(--secondary);
+}
+[data-color="tierra"] {
+  color: var(--tertiary);
+}
+[data-color="ladrillo"] {
+  color: var(--destructive);
+}
+
+/* Placeholder visual del editor rico (Tiptap): el texto guía no se guarda. */
+.tiptap p.is-editor-empty:first-child::before {
+  color: var(--muted-foreground, #6b7280);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Focus ring: 3px verde territorio with 2px crema offset for light surfaces.
+   On dark surfaces use a crema/amarillo ring instead (see F5 follow-ups). */
+@utility focus-oliva {
+  outline: 3px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+/* WU-L6: micro-interactions for games. Keyframes only run when the user
+   has no reduced-motion preference; the global reduce block below neutralizes
+   them otherwise. Uses `animation` (never ambient transitions) on purpose. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes flash-correct {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.02);
+    }
+  }
+  @keyframes flash-shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-4px);
+    }
+    75% {
+      transform: translateX(4px);
+    }
+  }
+  @keyframes match-pop {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.06);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .anim-flash-correct {
+    animation: flash-correct 150ms ease-out;
+  }
+  .anim-flash-wrong {
+    animation: flash-shake 200ms ease-in-out 2;
+  }
+  .anim-match-pop {
+    animation: match-pop 250ms ease-out;
+  }
+  .anim-complete-wrong {
+    animation: flash-shake 200ms ease-in-out 2;
+  }
+}
+
+/* Fase 1.5 — juice kit (0 deps): press en botones de juego, caída de
+   confetti y avance suave de la barra de progreso. El keyframe de confetti
+   vive tras `no-preference` como el resto del motion de juegos; el bloque
+   global de reduce de abajo neutraliza duraciones de todos modos. */
+.game-press {
+  transition: transform 150ms ease-out;
+}
+.game-press:active {
+  transform: scale(0.97);
+}
+
+.game-progress [data-slot="progress-indicator"] {
+  transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes confetti-fall {
+    0% {
+      transform: translateY(-12px) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(340px) rotate(540deg);
+      opacity: 0;
+    }
+  }
+
+  .game-confetti-piece {
+    animation-name: confetti-fall;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: forwards;
+  }
+}
+
+/* Fase 2.5 — flip 3D de Memoria (GSAP en composición con el juice kit).
+   Reglas de composición: el dueño del TRANSFORM de reposo es el CSS
+   declarativo (`[data-flip]`, sin transitions de transform para no
+   competir con el tween); GSAP solo anima la transición y al completar
+   libera el inline (`clearProps`), así el reposo es imposible de perder
+   aunque el contexto se pierda entre la pantalla de carga y el tablero.
+   El bloque de reduce de abajo queda intacto (mismo estado final, sin
+   animación). La única `transition` del botón es de colores, no
+   transform. El bloque global de reduce de abajo queda de red de
+   seguridad para todo lo demás. */
+.memory-flip-card {
+  perspective: 700px;
+}
+.memory-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.memory-flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.memory-flip-back {
+  transform: rotateY(180deg);
+}
+/* Estado de reposo en modo normal: declarativo, imposible de perder.
+   GSAP solo anima la transición (fromTo desde el reposo opuesto) y al
+   completar libera el inline para que este CSS tome el mando sin flash. */
+.memory-flip-card[data-flip="1"] .memory-flip-inner {
+  transform: rotateY(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .memory-flip-card[data-flip="1"] .memory-flip-inner {
+    transform: rotateY(180deg);
+  }
+}
+
+/* F4 — motion del player master-detail (/cursos/[id]). CSS-only, 0 deps.
+   Reveal del canvas al cambiar de lección + stagger de bloques (máx 5,
+   +60ms) + pop del check del outline. Todo vive tras un
+   `@media (prefers-reduced-motion: no-preference)` explícito: la variante
+   motion-safe de Tailwind no genera nada para estas clases custom, así que
+   no se usa. Con preferencia reducida rige el bloque global de abajo
+   ("nada": duraciones a 0.01ms), alternativa que el plan §H acepta frente
+   al crossfade de 120ms. Easing único en los tres momentos:
+   cubic-bezier(0.22, 1, 0.36, 1) —curva ease-out—; el fill del Progress de
+   Radix ya anima por translateX sin keyframes propios. */
+.lesson-canvas [data-testid="lesson-content"] > :not(figure):not(.aspect-video) {
+  max-width: 68ch;
+}
+
+.lesson-canvas [data-testid="lesson-content"] > figure,
+.lesson-canvas [data-testid="lesson-content"] > .aspect-video {
+  width: 100%;
+}
+
+/* Hit area mínima del botón "Marcar como completada": vive dentro del child
+   (LessonContentView, intacto por contrato F0.3), así que el canvas la
+   garantiza por CSS sin tocar el componente. */
+.lesson-canvas [data-testid="lesson-content"] > button {
+  min-height: 44px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes player-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes check-pop {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.12);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .anim-player-reveal {
+    animation: player-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .anim-check-pop {
+    animation: check-pop 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Stagger: solo los 5 primeros hijos; del 6.º en adelante entran con el
+     reveal del pane, sin delay (costo acotado, §H). `backwards` aplica el
+     estado `from` durante el delay: sin fill, los bloques 2–5 se verían un
+     frame antes de animar (flash).
+     Nota sobre nth-child y bloques vacíos: BlockView devuelve `null` y React
+     no crea ningún nodo DOM por un hijo null, así que los delays se asignan
+     a los bloques visibles en orden. Y aunque un tipo de bloque futuro altere
+     la cuenta de hijos, el reveal del pane domina y el stagger es mejora
+     progresiva: nunca rompe la lectura. */
+  .lesson-canvas [data-testid="lesson-content"] > *:nth-child(-n + 5) {
+    animation: player-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  .lesson-canvas [data-testid="lesson-content"] > *:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .lesson-canvas [data-testid="lesson-content"] > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .lesson-canvas [data-testid="lesson-content"] > *:nth-child(4) {
+    animation-delay: 180ms;
+  }
+  .lesson-canvas [data-testid="lesson-content"] > *:nth-child(5) {
+    animation-delay: 240ms;
+  }
+}
+
+/* F5 — motion global sutil, CSS-only, 0 deps. Tres utilidades nuevas, todas
+   tras `@media (prefers-reduced-motion: no-preference)` explícito (misma
+   razón que F4: la variante motion-safe no genera nada para clases custom; con
+   preferencia reducida rige el bloque global de abajo que neutraliza
+   duraciones). Easing único: cubic-bezier(0.22, 1, 0.36, 1).
+   - .anim-page-reveal: fade + translateY 12px→0, 300ms. La usa
+     `src/app/template.tsx` (solo opacity/transform: sin layout shift).
+   - .anim-stagger-children: reveal escalonado genérico para los 6 primeros
+     hijos (+80ms cada uno), mismo patrón y mismos keyframes (`player-reveal`)
+     que el stagger del player F4. Del 7.º en adelante entran sin delay.
+     `backwards` aplica el estado `from` durante el delay (sin flash).
+   - .link-underline-terracota: subrayado terracota (var(--color-terracota))
+     que crece 0→100% en 200ms. `[aria-current="page"]` lo deja completo. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes page-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .anim-page-reveal {
+    animation: page-reveal 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .anim-stagger-children > *:nth-child(-n + 6) {
+    animation: player-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  .anim-stagger-children > *:nth-child(2) {
+    animation-delay: 80ms;
+  }
+  .anim-stagger-children > *:nth-child(3) {
+    animation-delay: 160ms;
+  }
+  .anim-stagger-children > *:nth-child(4) {
+    animation-delay: 240ms;
+  }
+  .anim-stagger-children > *:nth-child(5) {
+    animation-delay: 320ms;
+  }
+  .anim-stagger-children > *:nth-child(6) {
+    animation-delay: 400ms;
+  }
+
+  .link-underline-terracota {
+    background-image: linear-gradient(
+      to right,
+      var(--color-terracota),
+      var(--color-terracota)
+    );
+    background-repeat: no-repeat;
+    background-position: left calc(100% - 1px);
+    background-size: 0% 2px;
+    padding-bottom: 3px;
+    transition: background-size 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .link-underline-terracota:hover {
+    background-size: 100% 3px;
+  }
+  .link-underline-terracota[aria-current="page"] {
+    background-size: 100% 3px;
+  }
+}
+
+/* G — hover de tabs inactivos: underline terracota al 50% de opacidad.
+   Único CSS nuevo de la tarea: mismo inset 2px del tab activo pero al 50%,
+   tras `no-preference` como el resto del motion propio; el
+   `transition-[...box-shadow]` ya presente en TabsTrigger lo funde. */
+@media (prefers-reduced-motion: no-preference) {
+  .tabs-underline-hover[data-state="inactive"]:hover {
+    box-shadow: inset 0 -2px 0 0 color-mix(in srgb, var(--color-terracota) 50%, transparent);
+  }
+}
+
+/* F6 — micro-interacciones del Bloque D (botones, tabs, inputs, Radix,
+   favorito, audio). CSS-only, 0 deps. La única clase de movimiento propia
+   nueva (`anim-audio-pulse`) vive tras un `@media
+   (prefers-reduced-motion: no-preference)` explícito: la variante motion-safe
+   de Tailwind no genera nada para clases custom (mismo contrato que F4/F5),
+   y con preferencia reducida rige el bloque global de abajo que neutraliza
+   duraciones e iteraciones. Easing único: cubic-bezier(0.22, 1, 0.36, 1).
+   Sin delays nuevos: el slice F4 del test de motion espera exactamente
+   [60,120,180,240] y este bloque no aporta ninguno. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes audio-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-terracota) 55%, transparent);
+    }
+    50% {
+      opacity: 0.72;
+      transform: scale(1.07);
+      box-shadow: 0 0 0 7px color-mix(in srgb, var(--color-terracota) 0%, transparent);
+    }
+  }
+
+  .anim-audio-pulse {
+    animation: audio-pulse 1200ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+}
+
+/* B2 — Reveal on scroll (elegante, no efectista). Wrapper con
+   IntersectionObserver (`src/components/reveal.tsx`): la sección entra con
+   fade + translateY 12px→0 en 300ms, una sola vez. Solo opacity/transform:
+   sin layout shift. Delays discretos por data-delay (0/80/160).
+   - Todo vive tras un `@media (prefers-reduced-motion: no-preference)`
+     explícito (misma razón que F4/F5/F6: la variante motion-safe no genera
+     nada para clases custom). Con preferencia reducida el componente muestra
+     directo sin observar, y el bloque global de abajo neutraliza el resto.
+   - Gating del stagger: un `.anim-stagger-children` dentro de un Reveal aún
+     oculto espera al `.is-visible` (la animación arranca al aplicarse la
+     propiedad, así el escalonado se dispara al entrar al viewport en vez de
+     perderse durante el oculto). Fuera de un Reveal el stagger corre al
+     montar, como antes.
+   Easing único: cubic-bezier(0.22, 1, 0.36, 1). */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity 300ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal[data-delay="80"] {
+    transition-delay: 80ms;
+  }
+  .reveal[data-delay="160"] {
+    transition-delay: 160ms;
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal:not(.is-visible) .anim-stagger-children > * {
+    animation: none;
   }
 }
 
@@ -159,3 +648,4 @@
     scroll-behavior: auto !important;
   }
 }
+

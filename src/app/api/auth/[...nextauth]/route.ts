@@ -17,6 +17,18 @@ if (!secret) {
   throw new Error("NEXTAUTH_SECRET no está definido");
 }
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const hasGoogle = !!googleClientId && !!googleClientSecret;
+
+if (process.env.NODE_ENV === "production" && !hasGoogle) {
+  // Login/registro online depende de Google (Fase 1 Google-first):
+  // fallar en voz alta en lugar de arrancar sin el proveedor.
+  throw new Error(
+    "GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET son obligatorios en producción"
+  );
+}
+
 /** Inactividad máxima por rol y frecuencia de re-sellado (5 min).
  *  Admin 30 min (CA-29: panel sensible); resto 30 días (UX web/móvil). */
 export const ADMIN_INACTIVITY_LIMIT_S = 30 * 60;
@@ -77,6 +89,37 @@ export async function authorizeCredentials(
   };
 }
 
+/**
+ * Upsert compartido para login Google (Fase Google-first).
+ * Busca por email normalizado (trim+lowercase); si existe y le falta
+ * `emailVerified` la marca; si no existe la crea verificada con rol user.
+ * Exportada para tests, igual que `authorizeCredentials`.
+ */
+export async function upsertGoogleUser(
+  email: string,
+  profileName?: string | null
+) {
+  const normalized = email.trim().toLowerCase();
+  const existing = await db.user.findUnique({ where: { email: normalized } });
+  if (existing) {
+    if (!existing.emailVerified) {
+      return await db.user.update({
+        where: { id: existing.id },
+        data: { emailVerified: new Date() },
+      });
+    }
+    return existing;
+  }
+  return await db.user.create({
+    data: {
+      email: normalized,
+      name: profileName ?? null,
+      role: "user",
+      emailVerified: new Date(),
+    },
+  });
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -90,12 +133,12 @@ export const authOptions: NextAuthOptions = {
       // testearla directo sin depender de ese merge interno.
       authorize: authorizeCredentials,
     }),
-    // B1.3: solo si hay credenciales (dev/prod sin Google sigue andando).
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    // Google-first (Fase 1): obligatorio en producción, opcional en dev.
+    ...(googleClientId && googleClientSecret
       ? [
           GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
           }),
         ]
       : []),
@@ -108,26 +151,16 @@ export const authOptions: NextAuthOptions = {
     // ya verificada al primer login (rol user, jamás admin).
     async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
-        const email = user?.email?.trim().toLowerCase();
-        if (!email) return false;
+        const rawEmail =
+          user?.email ??
+          (profile as { email?: string } | undefined)?.email;
+        if (!rawEmail?.trim()) return false;
+        const rawName =
+          user?.name ??
+          (profile as { name?: string } | undefined)?.name ??
+          null;
         try {
-          const existing = await db.user.findUnique({ where: { email } });
-          if (existing) {
-            if (!existing.emailVerified) {
-              await db.user.update({
-                where: { id: existing.id },
-                data: { emailVerified: new Date() },
-              });
-            }
-          } else {
-            const name =
-              user.name ??
-              (profile as { name?: string } | undefined)?.name ??
-              null;
-            await db.user.create({
-              data: { email, name, role: "user", emailVerified: new Date() },
-            });
-          }
+          await upsertGoogleUser(rawEmail, rawName);
           return true;
         } catch {
           return false;
@@ -145,8 +178,33 @@ export const authOptions: NextAuthOptions = {
         return false;
       }
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, profile }) {
       const now = Math.floor(Date.now() / 1000);
+
+      // Google-first: el `user.id` del primer login es el `sub` de Google,
+      // no el id de BD. Resolver el registro BD y sellar id/role reales.
+      // Sin email o si la BD falla: null destruye la sesión inválida.
+      if (account?.provider === "google") {
+        const rawEmail =
+          user?.email ??
+          (profile as { email?: string } | undefined)?.email;
+        if (!rawEmail?.trim()) {
+          return null as unknown as JWT;
+        }
+        try {
+          const rawName =
+            user?.name ??
+            (profile as { name?: string } | undefined)?.name ??
+            null;
+          const dbUser = await upsertGoogleUser(rawEmail, rawName);
+          token.id = dbUser.id;
+          token.role = dbUser.role;
+          (token as JWT & { lastActivity?: number }).lastActivity = now;
+          return token;
+        } catch {
+          return null as unknown as JWT;
+        }
+      }
 
       if (user) {
         token.id = user.id;

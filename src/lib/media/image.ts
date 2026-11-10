@@ -1,9 +1,9 @@
 /**
  * Validación de imágenes para el contenido de cursos.
  *
- * Las imágenes se guardan en Postgres (columna `bytea` de MediaAsset) y se
- * sirven por /api/media/[id]. Por eso el límite de tamaño importa: cada byte
- * queda en la base.
+ * Las imágenes se guardan en Cloudflare R2 y en MariaDB solo los metadatos
+ * (MediaAsset). El límite de tamaño sigue importando: cada byte viaja por la
+ * red en la subida y cuenta en el bucket.
  *
  * El tipo se detecta por FIRMA BINARIA, nunca por lo que declara el cliente:
  * el `Content-Type` de un multipart lo elige quien sube el archivo. Un SVG

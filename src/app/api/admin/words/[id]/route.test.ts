@@ -9,19 +9,16 @@ vi.mock("@/lib/db", () => ({
   db: {
     dictionaryWord: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     auditLog: { create: vi.fn() },
+    mediaAsset: { findUnique: vi.fn(), findFirst: vi.fn(), delete: vi.fn() },
   },
 }))
 
-const mockRemove = vi.fn()
+const mockDeleteObject = vi.fn()
 
-vi.mock("@/lib/supabase-server", () => ({
-  getSupabaseServer: vi.fn(() => ({
-    storage: { from: vi.fn(() => ({ remove: mockRemove })) },
-  })),
-  AUDIO_BUCKET: "audios",
-  audioUrlToObjectPath: vi.fn((url: string) =>
-    url.includes("supabase.co") ? "temp/audio.mp3" : null
-  ),
+vi.mock("@/lib/r2", () => ({
+  putObject: vi.fn(),
+  deleteObject: (...args: unknown[]) => mockDeleteObject(...args),
+  publicUrl: (key: string) => `https://cdn.test/${key}`,
 }))
 
 import { requireAdmin, requireRole } from "@/lib/auth"
@@ -53,6 +50,7 @@ const existingWord = {
   nasaYuwe: "ya:t",
   pronunciation: "yaat",
   audioUrl: null,
+  illustrationUrl: null,
   culturalContext: "Vivienda",
   category: "sustantivo",
   examples: null,
@@ -97,6 +95,116 @@ describe("PUT /api/admin/words/[id]", () => {
       params
     )
     expect(res.status).toBe(404)
+  })
+
+  it("reemplazar ilustración borra el asset anterior sin bloquear el PUT", async () => {
+    allow()
+    mockDeleteObject.mockResolvedValue(undefined)
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      illustrationUrl: "/api/media/vieja",
+    })
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({
+      ...existingWord,
+      illustrationUrl: "/api/media/nueva",
+    })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    vi.mocked(db.mediaAsset.findUnique).mockResolvedValue({
+      id: "vieja",
+      objectKey: "images/vieja.png",
+    } as never)
+    vi.mocked(db.mediaAsset.delete).mockResolvedValue({ id: "vieja" } as never)
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ illustrationUrl: "/api/media/nueva" }),
+      }),
+      params
+    )
+
+    expect(res.status).toBe(200)
+    expect(db.mediaAsset.delete).toHaveBeenCalledWith({ where: { id: "vieja" } })
+    expect(mockDeleteObject).toHaveBeenCalledWith("images/vieja.png")
+  })
+
+  it("si la limpieza de la ilustración falla, el PUT igual responde 200", async () => {
+    allow()
+    mockDeleteObject.mockRejectedValue(new Error("R2 caído"))
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      illustrationUrl: "/api/media/vieja",
+    })
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({
+      ...existingWord,
+      illustrationUrl: "/api/media/nueva",
+    })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    vi.mocked(db.mediaAsset.findUnique).mockResolvedValue({
+      id: "vieja",
+      objectKey: "images/vieja.png",
+    } as never)
+    vi.mocked(db.mediaAsset.delete).mockResolvedValue({ id: "vieja" } as never)
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ illustrationUrl: "/api/media/nueva" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(200)
+  })
+
+  it("reemplazar audio borra el objeto anterior de R2 sin bloquear el PUT", async () => {
+    allow()
+    mockDeleteObject.mockResolvedValue(undefined)
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      audioUrl: "https://xyz.supabase.co/storage/v1/object/public/audios/temp/viejo.mp3",
+    })
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({
+      ...existingWord,
+      audioUrl: "https://cdn.test/audios/temp/nuevo.mp3",
+    })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioUrl: "https://cdn.test/audios/temp/nuevo.mp3" }),
+      }),
+      params
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockDeleteObject).toHaveBeenCalledWith("audios/temp/viejo.mp3")
+  })
+
+  it("quitar audio (null) borra el objeto anterior de R2", async () => {
+    allow()
+    mockDeleteObject.mockResolvedValue(undefined)
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      audioUrl: "https://xyz.supabase.co/storage/v1/object/public/audios/temp/viejo.mp3",
+    })
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...existingWord, audioUrl: null })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioUrl: null }),
+      }),
+      params
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockDeleteObject).toHaveBeenCalledWith("audios/temp/viejo.mp3")
   })
 
   it("returns 400 for empty required fields", async () => {
@@ -285,7 +393,8 @@ describe("PATCH /api/admin/words/[id]", () => {
 describe("DELETE /api/admin/words/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockRemove.mockReset()
+    allow()
+    mockDeleteObject.mockReset()
   })
 
   it("deletes word without audio", async () => {
@@ -303,10 +412,10 @@ describe("DELETE /api/admin/words/[id]", () => {
     expect(res.status).toBe(200)
     expect(body.id).toBe("w1")
     expect(db.dictionaryWord.delete).toHaveBeenCalledWith({ where: { id: "w1" } })
-    expect(mockRemove).not.toHaveBeenCalled()
+    expect(mockDeleteObject).not.toHaveBeenCalled()
   })
 
-  it("deletes word and its audio from Storage", async () => {
+  it("deletes word and its audio from R2", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
       ...existingWord,
@@ -314,7 +423,7 @@ describe("DELETE /api/admin/words/[id]", () => {
     })
     vi.mocked(db.dictionaryWord.delete).mockResolvedValue(existingWord)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
-    mockRemove.mockResolvedValue({ error: null })
+    mockDeleteObject.mockResolvedValue(undefined)
 
     const res = await DELETE(
       new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),
@@ -322,10 +431,10 @@ describe("DELETE /api/admin/words/[id]", () => {
     )
 
     expect(res.status).toBe(200)
-    expect(mockRemove).toHaveBeenCalledWith(["temp/audio.mp3"])
+    expect(mockDeleteObject).toHaveBeenCalledWith("audios/temp/audio.mp3")
   })
 
-  it("deletes word even if Storage cleanup fails", async () => {
+  it("deletes word even if R2 cleanup fails", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
       ...existingWord,
@@ -333,7 +442,7 @@ describe("DELETE /api/admin/words/[id]", () => {
     })
     vi.mocked(db.dictionaryWord.delete).mockResolvedValue(existingWord)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
-    mockRemove.mockResolvedValue({ error: new Error("boom") })
+    mockDeleteObject.mockRejectedValue(new Error("boom"))
 
     const res = await DELETE(
       new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),

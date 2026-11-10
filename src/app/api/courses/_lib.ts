@@ -4,9 +4,10 @@ import { requireRole } from "@/lib/auth"
 
 /**
  * Módulos (editor+ crear/editar; borrar módulo: admin por cascada).
- * Las lecciones viven en sus propias rutas:
- * - POST   /api/modules/[id]/lessons    { title, type?, wordSpanish?, payload? }
- * - PATCH  /api/lessons/[id]            { title?, wordSpanish?, order? }
+ * Las lecciones viven en sus propias rutas (solo bloques, sin tipo ni palabra):
+ * - POST   /api/modules/[id]/lessons    { title }
+ * - PATCH  /api/lessons/[id]            { title?, order? }
+ * - PUT    /api/lessons/[id]            { title?, content? }
  * - DELETE /api/lessons/[id]            (editor+: lección suelta no borra fichas)
  * - POST   /api/courses/[id]/reorder    { modules: [ids], lessons: { [moduleId]: [ids] } }
  */
@@ -22,7 +23,7 @@ export async function createModule(request: NextRequest) {
       return NextResponse.json({ message: "courseId y título obligatorios" }, { status: 400 })
     }
     const count = await db.module.count({ where: { courseId } })
-    const mod = await db.module.create({ data: { courseId, title, order: count } })
+    const mod = await db.module.create({ data: { courseId, title, order: count, updatedAt: new Date() } })
     return NextResponse.json({ module: mod }, { status: 201 })
   } catch (err) {
     console.error("Module create error:", err)

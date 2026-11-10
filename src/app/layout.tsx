@@ -1,19 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Newsreader, Public_Sans } from "next/font/google";
+import { Inter, Source_Serif_4 } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { SessionProvider } from "@/components/session-provider";
 
-const newsreader = Newsreader({
-  variable: "--font-newsreader",
-  subsets: ["latin"],
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
+  subsets: ["latin", "latin-ext"],
   display: "swap",
 });
 
-const publicSans = Public_Sans({
-  variable: "--font-public-sans",
-  subsets: ["latin"],
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin", "latin-ext"],
   display: "swap",
 });
 
@@ -32,8 +32,9 @@ export const metadata: Metadata = {
     "indigenous language",
   ],
   icons: {
-    icon: "/libro-abierto.png",
-    apple: "/icon-192.png",
+    icon: "/icon-192.png?v=5",
+    shortcut: "/favicon.ico?v=5",
+    apple: "/apple-touch-icon-180.png?v=5",
   },
   manifest: "/manifest.webmanifest",
   openGraph: {
@@ -45,7 +46,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#7c2d12",
+  themeColor: "#173f35",
   width: "device-width",
   initialScale: 1,
 };
@@ -58,7 +59,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${newsreader.variable} ${publicSans.variable} antialiased min-h-screen flex flex-col bg-background text-foreground`}
+        className={`${sourceSerif.variable} ${inter.variable} font-sans antialiased min-h-screen flex flex-col bg-background text-foreground`}
       >
         <SessionProvider>
           {children}
@@ -67,11 +68,16 @@ export default function RootLayout({
         {/* Register service worker for offline app shell */}
         <Script id="sw-register" strategy="afterInteractive">{`
           if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
+            var reg = function() {
               navigator.serviceWorker.register('/sw.js').catch(function(err) {
                 console.warn('SW registration failed:', err);
               });
-            });
+            };
+            if (document.readyState === 'complete') {
+              reg();
+            } else {
+              window.addEventListener('load', reg, { once: true });
+            }
           }
         `}</Script>
       </body>

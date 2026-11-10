@@ -18,6 +18,18 @@ export default defineConfig({
   projects: [
     { name: "setup", testMatch: /setup\.ts/ },
     {
+      // Medios offline (Fase 5 R2): página pública, sin sesión ni datos.
+      // Requiere E2E_R2_IMAGE_URL (imagen real en el bucket de test).
+      name: "offline-media",
+      testMatch: /offline-media\.spec\.ts/,
+    },
+    {
+      // PWA offline sin R2: sync por UI + ficha + audio sin conexión, con
+      // palabra "E2E *" propia (la limpia el teardown global). Sin sesión.
+      name: "pwa-offline",
+      testMatch: /pwa-offline\.spec\.ts/,
+    },
+    {
       // Guardas de paleta: sin sesión ni datos. Corre primero para que una
       // regresión de color se reporte antes que la suite pesada.
       name: "paleta",
@@ -29,15 +41,32 @@ export default defineConfig({
     },
     {
       name: "screenplay-user",
-      testMatch: /usuario\.screenplay\.spec\.ts/,
+      testMatch: /usuario\.screenplay\.spec\.ts|celebracion\.screenplay\.spec\.ts/,
       dependencies: ["setup"],
       use: { storageState: "e2e/.auth/user.json" },
     },
     {
       name: "screenplay-admin",
-      testMatch: /admin\.screenplay\.spec\.ts/,
+      testMatch: /admin\.screenplay\.spec\.ts|logs\.screenplay\.spec\.ts/,
       dependencies: ["setup"],
       use: { storageState: "e2e/.auth/admin.json" },
+    },
+    {
+      name: "tiptap-font",
+      testMatch: /tiptap-font\.spec\.ts/,
+      dependencies: ["setup"],
+      use: { storageState: "e2e/.auth/admin.json" },
+    },
+    {
+      name: "editor-texto-edge",
+      testMatch: /editor-texto-edge\.spec\.ts/,
+      dependencies: ["setup"],
+      use: { storageState: "e2e/.auth/admin.json" },
+    },
+    {
+      // Blindaje /admin (middleware): sin sesión, sin storageState.
+      name: "guard",
+      testMatch: /admin-guard\.spec\.ts/,
     },
     {
       // Sin sesión global: cada test crea sus contextos (admin/user/visitante)

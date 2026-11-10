@@ -1,9 +1,11 @@
 "use client"
 
+import Image from "next/image"
 import {
   BookOpen,
   Archive,
   Eye,
+  ImageIcon,
   Volume2,
   Pencil,
   Tag,
@@ -29,6 +31,8 @@ export interface PreviewWordData {
   culturalContext: string | null
   category: string | null
   audioUrl: string | null
+  /** Opcional: la vista previa funciona igual sin ilustración. */
+  illustrationUrl?: string | null
   status: string
 }
 
@@ -51,7 +55,7 @@ export function WordPreviewModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 font-serif tracking-tight text-lg text-primary">
             <Eye className="h-5 w-5 text-primary" />
             Vista previa
           </DialogTitle>
@@ -123,6 +127,24 @@ export function WordPreviewModal({
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
               <Volume2 className="h-5 w-5 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Pronunciación no disponible</p>
+            </div>
+          )}
+
+          {word.illustrationUrl && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-sm font-semibold">
+                <ImageIcon className="h-4 w-4 text-primary" />
+                Ilustración
+              </Label>
+              <div className="relative aspect-square w-full max-w-[16rem] overflow-hidden rounded-lg border border-outline-variant/30 bg-muted">
+                <Image
+                  src={word.illustrationUrl}
+                  alt={`Ilustración de ${word.spanish}`}
+                  width={256}
+                  height={256}
+                  className="h-full w-full object-cover"
+                />
+              </div>
             </div>
           )}
 

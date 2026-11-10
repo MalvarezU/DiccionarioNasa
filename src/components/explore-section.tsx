@@ -59,7 +59,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
       <div>
         <div className="text-center mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
-            <List className="h-7 w-7 text-primary" />
+            <List className="h-7 w-7 text-secondary" />
             Índice Alfabético
           </h2>
           <p className="mt-2 text-sm sm:text-base text-muted-foreground">
@@ -78,7 +78,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
       <div>
         <div className="text-center mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
-            <List className="h-7 w-7 text-primary" />
+            <List className="h-7 w-7 text-secondary" />
             Índice Alfabético
           </h2>
           <p className="mt-2 text-sm sm:text-base text-muted-foreground">
@@ -86,8 +86,8 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
           </p>
         </div>
         <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-amber-50 dark:bg-amber-950/30">
-            <Download className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-tertiary-container">
+            <Download className="h-8 w-8 text-tertiary" />
           </div>
           <p className="text-sm font-medium text-foreground max-w-md text-center">
             El diccionario se está descargando.
@@ -107,7 +107,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
       <div>
         <div className="text-center mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
-            <List className="h-7 w-7 text-primary" />
+            <List className="h-7 w-7 text-secondary" />
             Índice Alfabético
           </h2>
         </div>
@@ -126,7 +126,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
       {/* Header */}
       <div className="text-center mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
-          <List className="h-7 w-7 text-primary" />
+          <List className="h-7 w-7 text-secondary" />
           Índice Alfabético
         </h2>
         <p className="mt-2 text-sm sm:text-base text-muted-foreground">
@@ -140,7 +140,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
             <> · <button
               type="button"
               onClick={() => handleCategorySelect(null)}
-              className="text-primary hover:underline"
+              className="link-underline-terracota rounded-sm text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               Mostrar todas
             </button></>
@@ -160,11 +160,11 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
             <Filter className="h-4 w-4" />
             Filtrar por categoría
             {selectedCategory && (
-              <Badge variant="secondary" className="text-2xs px-1.5 py-0 h-4">
+              <Badge variant="secondary" className="text-2xs px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30">
                 {getCategoryDisplay(selectedCategory)}
               </Badge>
             )}
-            <ChevronDown className={`h-3 w-3 transition-transform ${filterDropdownOpen ? "rotate-180" : ""}`} />
+            <ChevronDown className={`h-3 w-3 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${filterDropdownOpen ? "rotate-180" : ""}`} />
           </Button>
 
           {filterDropdownOpen && (
@@ -180,14 +180,14 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                     onClick={() => handleCategorySelect(null)}
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                       !selectedCategory
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "text-foreground hover:bg-muted/60"
+                        ? "bg-secondary-container text-montana font-medium"
+                        : "text-foreground hover:bg-secondary-container hover:text-montana"
                     }`}
                   >
                     Todas las categorías
                   </button>
 
-                  <Separator className="my-1" />
+                  <Separator className="my-1 bg-terracota/25" />
 
                   {categories.map((cat) => (
                     <button
@@ -196,8 +196,8 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                       onClick={() => handleCategorySelect(cat)}
                       className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                         selectedCategory === cat
-                          ? "bg-primary/10 text-primary font-medium"
-                          : "text-foreground hover:bg-muted/60"
+                          ? "bg-secondary-container text-montana font-medium"
+                          : "text-foreground hover:bg-secondary-container hover:text-montana"
                       }`}
                     >
                       {getCategoryDisplay(cat)}
@@ -211,8 +211,8 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
 
         {selectedCategory && (
           <Badge
-            variant="secondary"
-            className="gap-1.5 py-1 px-3 text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+            variant="outline"
+            className="gap-1.5 py-1 px-3 text-xs cursor-pointer border-terracota/40 bg-tertiary-container text-tertiary hover:bg-tertiary-fixed/60 transition-colors"
             onClick={() => handleCategorySelect(null)}
           >
             {getCategoryDisplay(selectedCategory)}
@@ -383,7 +383,7 @@ export function ExploreSection({ onWordSelect }: ExploreSectionProps) {
                                     <Badge
                                       key={cat}
                                       variant="secondary"
-                                      className="text-2xs px-1 py-0 h-3.5 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors"
+                                      className="text-2xs px-2 py-0.5 h-5 bg-secondary-container text-montana border border-secondary/30"
                                     >
                                       {getCategoryDisplay(cat)}
                                     </Badge>

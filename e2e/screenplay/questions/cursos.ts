@@ -24,22 +24,7 @@ export class TituloEnEditor {
       descripcion: "título pre-rellenado en el editor",
       async responder(actor: Actor): Promise<string> {
         const { page } = actor.usa(NavegarLaWeb);
-        return page.locator("#edit-lesson-title").inputValue({ timeout: 15000 });
-      },
-    };
-  }
-}
-
-/** Número jerárquico (badge) que muestra el editor abierto. */
-export class NumeroEnModal {
-  static mostrado(): Question<string> {
-    return {
-      descripcion: "número jerárquico en el editor",
-      async responder(actor: Actor): Promise<string> {
-        const { page } = actor.usa(NavegarLaWeb);
-        const badge = page.getByRole("dialog").getByText(NUMERO).first();
-        await badge.waitFor({ timeout: 60000 });
-        return (await badge.textContent())?.trim() ?? "";
+        return page.locator("#lesson-title").inputValue({ timeout: 15000 });
       },
     };
   }
@@ -63,16 +48,23 @@ export class NumeroEnFila {
   }
 }
 
-/** Mensaje de error mostrado en el editor abierto (p.ej. 409 por duplicado). */
+/** Mensaje de error al guardar (p.ej. 409 por duplicado).
+ * El modal viejo lo mostraba inline; el modal de contenido usa toast. */
 export class ErrorEnModal {
   static valor(): Question<string> {
     return {
-      descripcion: "error mostrado en el editor",
+      descripcion: "error mostrado al guardar",
       async responder(actor: Actor): Promise<string> {
         const { page } = actor.usa(NavegarLaWeb);
-        const msg = page.getByRole("dialog").locator("p.text-destructive").first();
-        await msg.waitFor({ timeout: 15000 });
-        return ((await msg.textContent()) ?? "").trim();
+        const enDialogo = page.getByRole("dialog").locator("p.text-destructive").first();
+        if (await enDialogo.isVisible().catch(() => false)) {
+          return ((await enDialogo.textContent()) ?? "").trim();
+        }
+        // El toast trae título ("No se pudo guardar") + descripción con el
+        // motivo: se lee la descripción, que es lo que afirma el spec.
+        const detalle = page.getByText(/Ya existe otra lección/).first();
+        await detalle.waitFor({ timeout: 15000 });
+        return ((await detalle.textContent()) ?? "").trim();
       },
     };
   }
@@ -105,7 +97,11 @@ export class PortadaEnCatalogo {
         const img = page.getByAltText(`Portada de ${titulo}`);
         await img.waitFor({ timeout: 30000 });
         const src = await img.getAttribute("src");
-        return Boolean(src && src.startsWith("/api/media/"));
+        if (!src) return false;
+        // Igual que la allowlist del servidor: legacy /api/media o base R2.
+        if (src.startsWith("/api/media/")) return true;
+        const base = (process.env.R2_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+        return !!base && src.startsWith(`${base}/`);
       },
     };
   }

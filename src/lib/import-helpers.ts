@@ -15,10 +15,8 @@ export interface ValidWord {
   spanish: string
   nasaYuwe: string
   pronunciation: string | null
-  audioUrl: string | null
   culturalContext: string | null
   category: string | null
-  examples: string | null
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
 }
 
@@ -58,9 +56,7 @@ export const KNOWN_COLUMNS = [
   "pronunciation",
   "culturalContext",
   "category",
-  "examples",
   "status",
-  "audioUrl",
 ] as const;
 
 export function normalizeStatus(raw: unknown): ValidWord["status"] {
@@ -69,35 +65,6 @@ export function normalizeStatus(raw: unknown): ValidWord["status"] {
   if (s === "ARCHIVED" || s === "ARCHIVADA" || s === "ARCHIVADO") return "ARCHIVED";
   if (s === "PUBLISHED" || s === "PUBLICADA" || s === "PUBLICADO") return "PUBLISHED";
   return "DRAFT";
-}
-
-function normalizeExamples(raw: unknown): string | null {
-  if (raw === undefined || raw === null || raw === "") return null;
-  if (typeof raw === "string") {
-    const t = raw.trim();
-    if (!t) return null;
-    try {
-      const parsed = JSON.parse(t);
-      if (Array.isArray(parsed)) {
-        const nonEmpty = parsed.filter(
-          (ex: { spanish?: string; nasaYuwe?: string }) =>
-            ex?.spanish?.trim() || ex?.nasaYuwe?.trim()
-        );
-        return nonEmpty.length > 0 ? JSON.stringify(nonEmpty) : null;
-      }
-    } catch {
-      // No es JSON: se guarda como texto plano en un ejemplo único
-      return JSON.stringify([{ spanish: t, nasaYuwe: "" }]);
-    }
-    return t;
-  }
-  if (Array.isArray(raw)) {
-    const nonEmpty = (raw as Array<{ spanish?: string; nasaYuwe?: string }>).filter(
-      (ex) => ex?.spanish?.trim() || ex?.nasaYuwe?.trim()
-    );
-    return nonEmpty.length > 0 ? JSON.stringify(nonEmpty) : null;
-  }
-  return null;
 }
 
 export function validateRow(values: Record<string, unknown>): RowResult {
@@ -116,12 +83,10 @@ export function validateRow(values: Record<string, unknown>): RowResult {
       spanish,
       nasaYuwe,
       pronunciation: str(pick(values, "pronunciation", "pronunciacion", "pronunciación")),
-      audioUrl: str(pick(values, "audioUrl", "audio_url", "audio")),
       culturalContext: str(
         pick(values, "culturalContext", "cultural_context", "contexto", "contexto cultural")
       ),
       category: str(pick(values, "category", "categoria", "categoría")),
-      examples: normalizeExamples(pick(values, "examples", "ejemplos", "ejemplo")),
       status: normalizeStatus(pick(values, "status", "estado")),
     },
   };
@@ -135,9 +100,7 @@ export function detectColumns(headers: string[]): Array<{ header: string; mapped
     { field: "pronunciation", names: ["pronunciation", "pronunciacion", "pronunciación"] },
     { field: "culturalContext", names: ["culturalContext", "cultural_context", "contexto", "contexto cultural"] },
     { field: "category", names: ["category", "categoria", "categoría"] },
-    { field: "examples", names: ["examples", "ejemplos", "ejemplo"] },
     { field: "status", names: ["status", "estado"] },
-    { field: "audioUrl", names: ["audioUrl", "audio_url", "audio"] },
   ];
   return headers.map((header) => {
     const found = probes.find((p) => p.names.some((n) => normKey(n) === normKey(header)));

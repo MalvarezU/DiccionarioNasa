@@ -16,14 +16,14 @@ export class HubMuestra {
   }
 }
 
-/** Cantidad de cards "Próximamente" en el hub (0 = todo desbloqueado). */
+/** Cantidad de cards "Sin contenido" en el hub (0 = todo desbloqueado). */
 export class BloqueosEnHub {
   static cantidad(): Question<number> {
     return {
-      descripcion: "cards Próximamente en el hub",
+      descripcion: "cards Sin contenido en el hub",
       async responder(actor: Actor): Promise<number> {
         const { page } = actor.usa(NavegarLaWeb);
-        return page.getByText("Próximamente").count();
+        return page.getByText("Sin contenido").count();
       },
     };
   }

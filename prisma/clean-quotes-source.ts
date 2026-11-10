@@ -2,7 +2,7 @@ import { unescapeCsvField } from './clean-quotes'
 import * as fs from 'fs'
 import * as path from 'path'
 
-const CSV_PATH = path.join(__dirname, 'seed-data.csv')
+const CSV_PATH = path.join(import.meta.dirname, 'seed-data.csv')
 
 function parseCSVLineRaw(line: string): string[] {
   const parts: string[] = []

@@ -17,6 +17,7 @@ export async function GET(
         nasaYuwe: true,
         pronunciation: true,
         audioUrl: true,
+        illustrationUrl: true,
         culturalContext: true,
         category: true,
         examples: true,

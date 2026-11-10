@@ -3,13 +3,10 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { db } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
+import { GAME_IDS, isGameId, type GameId } from "@/lib/game-ids"
 
-export const GAMES = ["flashcards", "memory", "complete"] as const
-export type GameId = (typeof GAMES)[number]
-
-function isGameId(value: unknown): value is GameId {
-  return typeof value === "string" && (GAMES as readonly string[]).includes(value)
-}
+/** Re-exported from the single source so existing imports keep working. */
+export { GAME_IDS, isGameId, type GameId }
 
 /**
  * POST /api/games/result
@@ -22,8 +19,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null)
     const game = body?.game
     const won = body?.won === true
-    const score = Number.isFinite(Number(body?.score)) ? Math.max(0, Math.floor(Number(body.score))) : 0
-    const streak = Number.isFinite(Number(body?.streak)) ? Math.max(0, Math.floor(Number(body.streak))) : 0
+    const score = Number.isFinite(Number(body?.score)) ? Math.max(0, Math.min(1_000_000, Math.floor(Number(body.score)))) : 0
+    const streak = Number.isFinite(Number(body?.streak)) ? Math.max(0, Math.min(1_000_000, Math.floor(Number(body.streak)))) : 0
     const sessionKey = typeof body?.sessionKey === "string" && body.sessionKey ? body.sessionKey.slice(0, 64) : null
 
     if (!isGameId(game)) {

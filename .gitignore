@@ -34,6 +34,7 @@ yarn-error.log*
 .env*
 !.env.example
 !.env.test.example
+!.env.test.mysql.example
 
 # vercel
 .vercel
@@ -69,9 +70,14 @@ server.log
 
 # Test audio files (real audio are .wav)
 public/audio/*.mp3
+# Excepcion: asset de la spec e2e/pwa-offline.spec.ts (debe existir en CI)
+!public/audio/e2e-test.mp3
 
 # Generated reports, agent context, and project docs (artifacts, not source)
-docs/
+docs/*
+!docs/database.md
+!docs/media.md
+!docs/cursos-rediseno.md
 worklog.md
 agent-ctx/
 

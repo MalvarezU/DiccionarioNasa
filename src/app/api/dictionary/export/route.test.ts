@@ -137,6 +137,19 @@ describe("GET /api/dictionary/export", () => {
     )
   })
 
+  it("incluye illustrationUrl para el sync offline/móvil", async () => {
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
+    vi.mocked(db.dictionaryWord.count).mockResolvedValue(0)
+
+    await GET(makeRequest("page=1"))
+
+    expect(db.dictionaryWord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({ illustrationUrl: true }),
+      })
+    )
+  })
+
   it("returns 400 for invalid since date", async () => {
     const res = await GET(makeRequest("since=not-a-date"))
     expect(res.status).toBe(400)

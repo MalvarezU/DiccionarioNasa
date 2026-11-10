@@ -26,7 +26,7 @@ import {
   AbrirCurso,
   CrearModulo,
   AnadirLeccion,
-  AbrirEditorDeLeccion,
+  AbrirContenidoDeLeccion,
   RenombrarLeccionEnEditor,
   GuardarLeccionEnEditor,
   PublicarCursoAbierto,
@@ -105,6 +105,9 @@ test.describe("multi-actor (Screenplay)", () => {
         IrADashboard.ahora(),
         AbrirNuevaFicha.ahora(),
         CrearYPublicarFicha.conPalabras(palabra, `E2ENyA ${stamp}`),
+        // La creación vive en /admin/palabras; el log completo ("Ver todo")
+        // solo existe en el dashboard: volver antes de abrirlo.
+        IrADashboard.ahora(),
         AbrirLogCompleto.ahora()
       );
       const { nombre, ruta, hayArchivo } = await descargarBitacora(admin);
@@ -190,7 +193,7 @@ test.describe("multi-actor (Screenplay)", () => {
       await editorA.intenta(
         IrAGestionDeCursos.ahora(),
         AbrirCurso.titulado(curso),
-        AbrirEditorDeLeccion.titulada(base1),
+        AbrirContenidoDeLeccion.titulada(base1),
         RenombrarLeccionEnEditor.a(duelo),
         GuardarLeccionEnEditor.ahora()
       );
@@ -199,7 +202,7 @@ test.describe("multi-actor (Screenplay)", () => {
       await editorB.intenta(
         IrAGestionDeCursos.ahora(),
         AbrirCurso.titulado(curso),
-        AbrirEditorDeLeccion.titulada(base2),
+        AbrirContenidoDeLeccion.titulada(base2),
         RenombrarLeccionEnEditor.a(duelo),
         GuardarLeccionEnEditor.ahora()
       );

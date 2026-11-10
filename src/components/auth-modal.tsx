@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import {
   Dialog,
@@ -12,29 +12,84 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, LogIn, UserPlus, Chrome } from "lucide-react";
+import { Loader2, LogIn, Chrome, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { LegalTermsModal, type LegalTab } from "@/components/legal-terms-modal";
+
+export type AuthModalMode = "register" | "login";
 
 interface AuthModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Modo inicial al abrirse. Default "login". */
+  initialMode?: AuthModalMode;
 }
 
-export function AuthModal({ open, onOpenChange }: AuthModalProps) {
-  const [mode, setMode] = useState<"login" | "register">("login");
+/**
+ * Acceso Google-first (Fase 2 + corrección UX registro):
+ * - Modo "register": crear cuenta solo con Google (una cuenta nueva se crea
+ *   al instante, sin formulario ni correo de verificación). Exige aceptar
+ *   Términos y Privacidad aquí, en el punto de creación de la cuenta.
+ * - Modo "login": entrar con Google o, colapsado por defecto, con correo +
+ *   contraseña (solo para quienes ya crearon una contraseña desde su perfil).
+ *   Iniciar sesión nunca exige términos: la aceptación ya ocurrió al crear
+ *   la cuenta (register) y el welcome-modal post-Google la refuerza.
+ * Sin registro por correo: ningún camino llama a /api/auth/register.
+ */
+export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthModalProps) {
+  const [mode, setMode] = useState<AuthModalMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showCredentials, setShowCredentials] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [legalOpen, setLegalOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<LegalTab>("terms");
   const { toast } = useToast();
+
+  // El Dialog persiste montado: sincroniza el modo pedido cada vez que se abre.
+  useEffect(() => {
+    if (open) {
+      setMode(initialMode);
+      setEmail("");
+      setPassword("");
+      setAcceptedTerms(false);
+      setShowCredentials(false);
+      setIsLoading(false);
+      setLegalOpen(false);
+    }
+  }, [open, initialMode]);
+
+  const openLegal = (tab: LegalTab) => {
+    setLegalTab(tab);
+    setLegalOpen(true);
+  };
 
   const resetForm = () => {
     setEmail("");
     setPassword("");
-    setConfirmPassword("");
-    setName("");
+    setAcceptedTerms(false);
+    setShowCredentials(false);
     setIsLoading(false);
+    setLegalOpen(false);
+  };
+
+  const requireTerms = () => {
+    if (!acceptedTerms) {
+      toast({
+        title: "Aceptación requerida",
+        description: "Debes aceptar los Términos y Condiciones y la Política de Privacidad",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const handleGoogle = () => {
+    // Los términos solo se exigen al crear cuenta. Iniciar sesión entra directo.
+    if (mode === "register" && !requireTerms()) return;
+    signIn("google", { callbackUrl: "/" });
   };
 
   const handleLogin = async () => {
@@ -42,6 +97,8 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       toast({ title: "Campos requeridos", description: "Ingresa email y contraseña", variant: "destructive" });
       return;
     }
+
+    // handleLogin solo existe en modo login: nunca exige términos.
 
     setIsLoading(true);
     try {
@@ -76,198 +133,170 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     }
   };
 
-  const handleRegister = async () => {
-    if (!email || !password) {
-      toast({ title: "Campos requeridos", description: "Ingresa email y contraseña", variant: "destructive" });
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast({ title: "Contraseñas no coinciden", description: "La contraseña y su confirmación deben ser iguales", variant: "destructive" });
-      return;
-    }
-
-    if (password.length < 8) {
-      toast({ title: "Contraseña muy corta", description: "La contraseña debe tener al menos 8 caracteres", variant: "destructive" });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name: name || undefined }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        if (data.requiresVerification) {
-          // B1.2: cuenta creada pendiente de verificación por correo
-          toast({
-            title: "¡Cuenta creada!",
-            description: "Revisa tu correo para verificarla antes de entrar",
-          });
-          resetForm();
-          setMode("login");
-          return;
-        }
-        // Auto-login after register (solo sin verificación, ej. desarrollo)
-        const result = await signIn("credentials", {
-          email,
-          password,
-          redirect: false,
-        });
-
-        if (result?.ok) {
-          toast({
-            title: "¡Cuenta creada!",
-            description: "Tu cuenta ha sido creada y has iniciado sesión",
-          });
-          resetForm();
-          onOpenChange(false);
-        }
-      } else {
-        toast({
-          title: "Error al registrarse",
-          description: data.message || "No se pudo crear la cuenta",
-          variant: "destructive",
-        });
-      }
-    } catch {
-      toast({
-        title: "Error",
-        description: "No se pudo crear la cuenta. Intenta de nuevo.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "login") {
-      handleLogin();
-    } else {
-      handleRegister();
-    }
+    handleLogin();
   };
 
+  const isRegister = mode === "register";
+
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
-          </DialogTitle>
+          <DialogTitle>{isRegister ? "Crea tu cuenta" : "Iniciar sesión"}</DialogTitle>
           <DialogDescription>
-            {mode === "login"
-              ? "Inicia sesión para guardar palabras favoritas y acceder a ellas desde cualquier dispositivo."
-              : "Regístrate para guardar tus palabras favoritas y seguir tu aprendizaje."}
+            {isRegister
+              ? "Entra con Google y tu cuenta se crea al instante, sin formulario ni correo de verificación."
+              : "Entra con tu cuenta de Google para guardar palabras favoritas y acceder a ellas desde cualquier dispositivo."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="grid gap-4 py-2">
-          {mode === "register" && (
-            <div className="grid gap-2">
-              <Label htmlFor="auth-name">Nombre (opcional)</Label>
-              <Input
-                id="auth-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Tu nombre"
-                disabled={isLoading}
-              />
-            </div>
+        <div className="grid gap-4 py-2">
+          <Button
+            type="button"
+            variant="cta"
+            size={isRegister ? "lg" : "default"}
+            className="w-full gap-2 min-h-[44px]"
+            disabled={isLoading}
+            onClick={handleGoogle}
+          >
+            <Chrome className="h-4 w-4" aria-hidden="true" />
+            Continuar con Google
+          </Button>
+          {!isRegister && (
+            <p className="text-center text-xs text-muted-foreground -mt-2">
+              También sirve si ya tienes cuenta.
+            </p>
           )}
 
-          <div className="grid gap-2">
-            <Label htmlFor="auth-email">Email</Label>
-            <Input
-              id="auth-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
-              required
+          {isRegister && (
+          <label className="flex items-start gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0"
               disabled={isLoading}
             />
-          </div>
+            <span>
+              Acepto los{" "}
+              <button
+                type="button"
+                onClick={() => openLegal("terms")}
+                className="link-underline-terracota rounded-sm text-primary"
+              >
+                Términos y Condiciones
+              </button>{" "}
+              y la{" "}
+              <button
+                type="button"
+                onClick={() => openLegal("privacy")}
+                className="link-underline-terracota rounded-sm text-primary"
+              >
+                Política de Privacidad
+              </button>
+              .
+            </span>
+          </label>
+          )}
 
-          <div className="grid gap-2">
-            <Label htmlFor="auth-password">Contraseña</Label>
-            <Input
-              id="auth-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={mode === "register" ? "Mínimo 8 caracteres" : "Tu contraseña"}
-              required
-              minLength={mode === "register" ? 8 : 1}
-              disabled={isLoading}
-            />
-          </div>
+          {!isRegister && (
+            <div className="border-t pt-2">
+              <button
+                type="button"
+                aria-expanded={showCredentials}
+                aria-controls="auth-credentials"
+                onClick={() => setShowCredentials((v) => !v)}
+                className="link-underline-terracota flex min-h-[44px] w-full items-center justify-center gap-1 text-sm font-medium text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Usar correo y contraseña
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${showCredentials ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
 
-          {mode === "register" && (
-            <div className="grid gap-2">
-              <Label htmlFor="auth-confirm-password">Confirmar contraseña</Label>
-              <Input
-                id="auth-confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repite tu contraseña"
-                required
-                minLength={8}
-                disabled={isLoading}
-                aria-invalid={confirmPassword.length > 0 && password !== confirmPassword}
-                className={confirmPassword.length > 0 && password !== confirmPassword ? "border-destructive" : ""}
-              />
-              {confirmPassword.length > 0 && password !== confirmPassword && (
-                <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
+              {showCredentials && (
+                <form id="auth-credentials" onSubmit={handleSubmit} className="grid gap-4 pt-2">
+                  <p className="text-xs text-muted-foreground">
+                    Solo si ya creaste una contraseña desde tu perfil. Las cuentas nuevas se crean con Google.
+                  </p>
+                  <div className="grid gap-2">
+                    <Label htmlFor="auth-email">Email</Label>
+                    <Input
+                      id="auth-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="tu@email.com"
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="auth-password">Contraseña</Label>
+                    <Input
+                      id="auth-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Tu contraseña"
+                      required
+                      minLength={1}
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <Button type="submit" variant="outline" className="w-full gap-2 min-h-[44px]" disabled={isLoading}>
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <LogIn className="h-4 w-4" aria-hidden="true" />
+                    )}
+                    Iniciar sesión con correo
+                  </Button>
+                </form>
               )}
             </div>
           )}
 
-          <div className="flex flex-col gap-2">
-            <Button type="submit" className="w-full gap-2" disabled={isLoading}>
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : mode === "login" ? (
-                <LogIn className="h-4 w-4" />
-              ) : (
-                <UserPlus className="h-4 w-4" />
-              )}
-              {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2"
-              disabled={isLoading}
-              onClick={() => signIn("google", { callbackUrl: "/" })}
-            >
-              <Chrome className="h-4 w-4" />
-              Continuar con Google
-            </Button>
-          </div>
-        </form>
-
-        <div className="text-center pt-2 border-t">
-          <p className="text-sm text-muted-foreground">
-            {mode === "login" ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}
-            <button
-              type="button"
-              className="ml-1 text-primary font-medium hover:underline"
-              onClick={() => setMode(mode === "login" ? "register" : "login")}
-            >
-              {mode === "login" ? "Regístrate" : "Inicia sesión"}
-            </button>
+          <p className="border-t pt-3 text-center text-sm text-foreground">
+            {isRegister ? (
+              <>
+                ¿Ya tienes contraseña?{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("login")}
+                  className="link-underline-terracota min-h-[44px] px-1 font-medium text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  Entrar
+                </button>
+              </>
+            ) : (
+              <>
+                ¿No tienes cuenta?{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("register")}
+                  className="link-underline-terracota min-h-[44px] px-1 font-medium text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  Crear una
+                </button>
+              </>
+            )}
           </p>
         </div>
       </DialogContent>
     </Dialog>
+    <LegalTermsModal
+      open={legalOpen}
+      onOpenChange={setLegalOpen}
+      initialTab={legalTab}
+      onAccept={() => setAcceptedTerms(true)}
+    />
+    </>
   );
 }

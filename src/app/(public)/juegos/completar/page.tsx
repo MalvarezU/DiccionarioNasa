@@ -1,0 +1,31 @@
+import { Type } from "lucide-react"
+import { Breadcrumbs } from "@/components/breadcrumbs"
+import { CompleteWordGame } from "@/components/juegos/complete-word-game"
+import { SoundToggle } from "@/components/juegos/sound-toggle"
+
+export default function CompletarPage() {
+  return (
+      <main id="contenido" className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
+        <Breadcrumbs
+          items={[
+            { label: "Inicio", href: "/" },
+            { label: "Juegos", href: "/juegos" },
+            { label: "Completar la palabra" },
+          ]}
+        />
+        <div className="flex items-center gap-2 mb-2">
+          <Type className="h-7 w-7 text-primary" />
+          <h1 className="text-3xl font-serif font-bold text-primary">
+            Completar la palabra
+          </h1>
+          <div className="ml-auto">
+            <SoundToggle />
+          </div>
+        </div>
+        <p className="text-muted-foreground mb-8">
+          Escribe las letras que faltan. Tienes 3 intentos por palabra.
+        </p>
+        <CompleteWordGame nivel="medio" />
+      </main>
+  )
+}

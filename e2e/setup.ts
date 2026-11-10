@@ -2,12 +2,13 @@ import { test as setup, expect } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
 import { config as dotenv } from "dotenv";
+import bcrypt from "bcryptjs";
 
 dotenv({ path: path.resolve(__dirname, "../.env") });
 
 const AUTH_DIR = path.resolve(__dirname, ".auth");
 
-// Setup con bcrypt cost 12 + BD gratuita lenta: margen amplio
+// Setup con bcrypt cost 10 + BD gratuita lenta: margen amplio
 setup.describe.configure({ timeout: 180000 });
 
 /**
@@ -31,62 +32,46 @@ setup("verifica entorno local", async ({ request }) => {
   }
 });
 
-/** Registro + login de usuario de prueba por UI; verificación directa en BD. */
+/** Alta directa en BD + login por UI con correo y contraseña.
+ * El registro por UI ya no existe (POST /api/auth/register → 410 Gone,
+ * app Google-first): el usuario se crea con Prisma (hash bcrypt cost 10 y
+ * emailVerified seteado — el callback signIn de credenciales lo exige) y
+ * se loguea por el modal nuevo ("Iniciar sesión" → "Usar correo y
+ * contraseña" → submit "Iniciar sesión con correo"). */
 setup("autentica usuario de prueba", async ({ page }) => {
   fs.mkdirSync(AUTH_DIR, { recursive: true });
   const stamp = Date.now();
   const email = `e2e-${stamp}@test.local`;
   const password = `E2ePass-${stamp}!`;
 
-  await page.goto("/");
-  await page.getByRole("button", { name: /iniciar sesión/i }).first().click();
-  await page.getByRole("button", { name: /^regístrate$/i }).click();
-  await page.getByPlaceholder("Tu nombre").fill("E2E User");
-  await page.getByPlaceholder("tu@email.com").fill(email);
-  await page.getByPlaceholder("Mínimo 8 caracteres").fill(password);
-  await page.getByPlaceholder("Repite tu contraseña").fill(password);
-  await page.getByRole("button", { name: /crear cuenta/i }).click();
-
-  // El registro puede auto-loguear: espera a que se asiente (cierre del
-  // modal o mensaje de verificación) antes de decidir el login manual.
-  await page
-    .waitForFunction(
-      () => {
-        const btns = Array.from(
-          document.querySelectorAll('button')
-        ).filter((b) => /iniciar sesión/i.test(b.textContent ?? ""));
-        return btns.length === 0;
-      },
-      { timeout: 20000 }
-    )
-    .catch(() => {});
-
-  const loginBtn = page.getByRole("button", { name: /iniciar sesión/i });
-  if (await loginBtn.first().isVisible().catch(() => false)) {
-    // No hubo auto-login: login manual por UI
-    await loginBtn.first().click();
-    await page.getByPlaceholder("tu@email.com").fill(email);
-    await page.getByPlaceholder("Tu contraseña").fill(password);
-    await page.getByRole("button", { name: /^iniciar sesión$/i }).click();
-  }
-
-  // Sin Resend en local el registro auto-verifica; si exigiera correo,
-  // se activa directo en BD (el flujo de UI ya quedó probado arriba).
   const { PrismaClient } = await import("@prisma/client");
   const db = new PrismaClient();
   try {
-    await db.user.updateMany({
-      where: { email },
-      data: { emailVerified: new Date(), verifyToken: null, verifyExpires: null },
+    await db.user.create({
+      data: {
+        email,
+        name: "E2E User",
+        password: await bcrypt.hash(password, 10),
+        emailVerified: new Date(),
+      },
     });
   } finally {
     await db.$disconnect();
   }
 
-  // Estado final: sesión activa (por auto-login o por el manual de arriba)
   await page.goto("/");
+  await page.getByRole("button", { name: /iniciar sesión/i }).first().click();
+  const toggle = page.getByRole("button", { name: /usar correo y contraseña/i });
+  if (await toggle.isVisible().catch(() => false)) {
+    await toggle.click();
+  }
+  await page.getByPlaceholder("tu@email.com").fill(email);
+  await page.getByPlaceholder("Tu contraseña").fill(password);
+  await page.getByRole("button", { name: /iniciar sesión con correo/i }).click();
+
+  // Login con bcrypt + BD gratuita: hasta 60 s bajo carga
   await expect(page.getByRole("button", { name: /iniciar sesión/i })).toBeHidden({
-    timeout: 20000,
+    timeout: 60000,
   });
   await page.context().storageState({ path: path.join(AUTH_DIR, "user.json") });
 
@@ -105,9 +90,13 @@ setup("autentica admin", async ({ page }) => {
 
   await page.goto("/");
   await page.getByRole("button", { name: /iniciar sesión/i }).first().click();
+  const toggle = page.getByRole("button", { name: /usar correo y contraseña/i });
+  if (await toggle.isVisible().catch(() => false)) {
+    await toggle.click();
+  }
   await page.getByPlaceholder("tu@email.com").fill(email!);
   await page.getByPlaceholder("Tu contraseña").fill(password!);
-  await page.getByRole("button", { name: /^iniciar sesión$/i }).click();
+  await page.getByRole("button", { name: /iniciar sesión con correo/i }).click();
   // Login con bcrypt cost 12 + BD gratuita: hasta 60 s bajo carga
   await expect(page.getByRole("button", { name: /iniciar sesión/i })).toBeHidden({
     timeout: 60000,

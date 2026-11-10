@@ -1,15 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Image as ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import type { LessonBlock, MediaRef } from "@/lib/courses/blocks"
+import { GripVertical } from "lucide-react"
+import { extraerYoutubeId, LIMITS, type LessonBlock } from "@/lib/courses/blocks"
 import { WordPicker, type PalabraEncontrada } from "./word-picker"
-import { MediaPicker } from "./media-picker"
+import { MediaPicker } from "@/components/media/media-picker"
+import { AudioPicker } from "@/components/media/audio-picker"
+import { EditorTextoRico } from "./text-editor"
+import { fetchWordsByIds, type CourseWordData } from "@/lib/courses/word-data"
 
 /**
  * Formularios de los bloques PRESENTACIONALES del editor:
@@ -29,13 +33,16 @@ export type BlockFormProps<B extends LessonBlock> = {
 export function FormText({ block, onChange, errores }: BlockFormProps<Extract<LessonBlock, { type: "text" }>>) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={`texto-${block.id}`}>Texto de la lección (markdown: # título, - lista, **negrita**, *cursiva*)</Label>
-      <Textarea
-        id={`texto-${block.id}`}
-        value={block.markdown}
-        onChange={(e) => onChange({ ...block, markdown: e.target.value })}
-        rows={6}
-        placeholder={"# El saludo\n\nEn Nasa Yuwe el saludo cambia según la hora…\n\n- *wii* — mañana\n- *yuwe* — tarde"}
+      <Label id={`label-texto-${block.id}`}>Texto de la lección</Label>
+      <p className="text-xs text-muted-foreground">
+        Escribe como en Word: usa los botones para títulos, negrita, cursiva y listas. El texto se guarda con formato básico (títulos, negrita, listas) y el estudiante lo ve tal como lo escribís.
+      </p>
+      <EditorTextoRico
+        value={block.html}
+        onChange={(html) => onChange({ ...block, html })}
+        maxChars={LIMITS.maxHtml}
+        ariaLabel={`Texto del bloque ${block.id}`}
+        ariaLabelledBy={`label-texto-${block.id}`}
       />
       <ErroresBloque errores={errores} />
     </div>
@@ -56,7 +63,6 @@ export function FormImage({ block, onChange, errores }: BlockFormProps<Extract<L
 
       {block.url ? (
         <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={block.url} alt={block.alt || ""} className="h-16 w-24 rounded-md object-cover" />
           <Button type="button" variant="outline" size="sm" onClick={() => onChange({ ...block, url: "", alt: "" })}>
             Quitar
@@ -96,52 +102,36 @@ export function FormImage({ block, onChange, errores }: BlockFormProps<Extract<L
 }
 
 export function FormAudio({ block, onChange, errores }: BlockFormProps<Extract<LessonBlock, { type: "audio" }>>) {
-  const esYoutube = block.media.source === "youtube"
-
   return (
     <div className="space-y-2">
-      <div className="flex gap-1 rounded-lg border border-outline-variant/40 p-1 w-fit">
-        <Button
-          type="button"
-          size="sm"
-          variant={!esYoutube ? "secondary" : "ghost"}
-          onClick={() => onChange({ ...block, media: { source: "upload" } })}
-        >
-          Subir archivo
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={esYoutube ? "secondary" : "ghost"}
-          onClick={() => onChange({ ...block, media: { source: "youtube" } })}
-        >
-          YouTube
-        </Button>
-      </div>
-
-      {!esYoutube ? (
-        <div>
-          <Input
-            type="file"
-            accept="audio/mpeg,audio/wav,audio/ogg"
-            className="h-9 w-auto max-w-[16rem] text-xs"
-            aria-label="Elegir audio del dispositivo"
-            disabled
+      <p className="text-sm text-muted-foreground">
+        El audio se sube como archivo (se comprime a Opus antes de enviar). YouTube es solo para videos.
+      </p>
+      {block.media.url ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">Audio listo</Badge>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onChange({ ...block, media: { source: "upload" } })}
+            >
+              Quitar
+            </Button>
+          </div>
+          <audio
+            controls
+            src={block.media.url}
+            className="w-full"
+            aria-label={block.title || "Audio del bloque"}
           />
-          <p className="mt-1 text-xs text-muted-foreground">
-            El audio subido se conecta con el flujo de audio existente (por ahora elegí YouTube).
-          </p>
         </div>
       ) : (
-        <div>
-          <Label htmlFor={`audio-yt-${block.id}`}>ID de YouTube</Label>
-          <Input
-            id={`audio-yt-${block.id}`}
-            value={block.media.youtubeId ?? ""}
-            onChange={(e) => onChange({ ...block, media: { source: "youtube", youtubeId: e.target.value } })}
-            placeholder="dQw4w9WgXcQ"
-          />
-        </div>
+        <AudioPicker
+          etiqueta="Subir audio del bloque"
+          onSubida={(url) => onChange({ ...block, media: { source: "upload", url } })}
+        />
       )}
 
       <div>
@@ -162,7 +152,7 @@ export function FormVideo({ block, onChange, errores }: BlockFormProps<Extract<L
   return (
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground">
-        El video es por YouTube, como elegiste. Pegá el ID de la URL (los 11 caracteres).
+        Los videos solo se añaden desde YouTube. Pegá el ID o la URL completa (se extraen los 11 caracteres).
       </p>
       <div className="grid gap-2">
         <div>
@@ -170,7 +160,7 @@ export function FormVideo({ block, onChange, errores }: BlockFormProps<Extract<L
           <Input
             id={`video-yt-${block.id}`}
             value={block.youtubeId}
-            onChange={(e) => onChange({ ...block, youtubeId: e.target.value })}
+            onChange={(e) => onChange({ ...block, youtubeId: extraerYoutubeId(e.target.value) })}
             placeholder="dQw4w9WgXcQ"
           />
         </div>
@@ -234,32 +224,104 @@ export function FormVocabulary({
   onChange,
   errores,
 }: BlockFormProps<Extract<LessonBlock, { type: "vocabulary" }>>) {
+  const [palabras, setPalabras] = useState<Map<string, CourseWordData>>(new Map())
+
+  useEffect(() => {
+    let alive = true
+    if (block.wordIds.length === 0) {
+      void Promise.resolve().then(() => {
+        if (alive) setPalabras(new Map())
+      })
+      return () => {
+        alive = false
+      }
+    }
+    fetchWordsByIds(block.wordIds).then((m) => {
+      if (alive) setPalabras(m)
+    })
+    return () => {
+      alive = false
+    }
+  }, [block.wordIds.join(",")])
+
+  const mover = (i: number, dir: -1 | 1) => {
+    const j = i + dir
+    if (j < 0 || j >= block.wordIds.length) return
+    const ids = [...block.wordIds]
+    ;[ids[i], ids[j]] = [ids[j]!, ids[i]!]
+    onChange({ ...block, wordIds: ids })
+  }
+
   return (
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground">
-        Lista de vocabulario: cada palabra aparece como ficha con audio.
+        Lista de vocabulario: cada palabra aparece como ficha con audio. {block.wordIds.length} palabra
+        {block.wordIds.length === 1 ? "" : "s"}.
       </p>
 
       {block.wordIds.length > 0 ? (
-        <ul className="space-y-1">
-          {block.wordIds.map((id, i) => (
-            <li key={`${block.id}-${id}`} className="flex items-center gap-2 rounded-md bg-surface-container-low px-3 py-1.5 text-sm">
-              <span className="text-muted-foreground">{i + 1}.</span>
-              <span className="font-mono text-xs">{id}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="ml-auto text-destructive"
-                onClick={() => onChange({ ...block, wordIds: block.wordIds.filter((w) => w !== id) })}
-                aria-label={`Quitar palabra ${id}`}
+        <ul className="space-y-2">
+          {block.wordIds.map((id, i) => {
+            const w = palabras.get(id)
+            return (
+              <li
+                key={`${block.id}-${id}`}
+                className="flex items-center gap-2 rounded-md border border-outline-variant/30 bg-surface-container-low px-3 py-2"
               >
-                Quitar
-              </Button>
-            </li>
-          ))}
+                <span className="cursor-grab text-muted-foreground" aria-hidden="true">
+                  <GripVertical className="h-4 w-4" />
+                </span>
+                <div className="flex-1">
+                  {w ? (
+                    <>
+                      <p className="text-sm font-medium">{w.spanish}</p>
+                      <p className="text-xs text-muted-foreground">{w.nasaYuwe}</p>
+                    </>
+                  ) : (
+                    <span className="font-mono text-xs text-muted-foreground">{id}</span>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={() => mover(i, -1)}
+                  disabled={i === 0}
+                  aria-label="Subir palabra"
+                >
+                  ↑
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={() => mover(i, 1)}
+                  disabled={i === block.wordIds.length - 1}
+                  aria-label="Bajar palabra"
+                >
+                  ↓
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => onChange({ ...block, wordIds: block.wordIds.filter((w) => w !== id) })}
+                  aria-label={`Quitar palabra ${w?.spanish ?? id}`}
+                >
+                  Quitar
+                </Button>
+              </li>
+            )
+          })}
         </ul>
-      ) : null}
+      ) : (
+        <p className="rounded-lg border border-dashed border-outline-variant/40 px-4 py-3 text-center text-sm text-muted-foreground">
+          Todavía no hay palabras. Busca una abajo para agregarla.
+        </p>
+      )}
 
       <WordPicker
         etiquetaTitulo="Agregar palabra al vocabulario"
@@ -275,11 +337,10 @@ export function FormVocabulary({
   )
 }
 
-/** Errores de validación de ESTE bloque, con las rutas del contrato. */
 export function ErroresBloque({ errores }: { errores: string[] }) {
   if (errores.length === 0) return null
   return (
-    <ul className="space-y-1 text-xs text-destructive" role="alert">
+    <ul className="space-y-1 text-xs text-destructive">
       {errores.map((e, i) => (
         <li key={i}>• {e}</li>
       ))}

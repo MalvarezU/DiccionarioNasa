@@ -262,3 +262,122 @@ describe("signIn exige email verificado en credenciales (B1.2)", () => {
     expect(db.user.findUnique).not.toHaveBeenCalled()
   })
 })
+
+describe("jwt Google sella id/role de BD (fix sub)", () => {
+  const signIn = authOptions.callbacks!.signIn!
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useRealTimers()
+    vi.mocked(db.user.findUnique).mockResolvedValue(null)
+    vi.mocked(db.user.create).mockResolvedValue({ id: "g-new", role: "user" } as never)
+    vi.mocked(db.user.update).mockResolvedValue({} as never)
+  })
+
+  it("usuario existente: token.id/role son los de BD, no el sub", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      id: "db-123",
+      role: "editor",
+      emailVerified: new Date(),
+    } as never)
+    const out = (await jwt({
+      token: {},
+      user: { id: "109999888777", email: "G@x.com", name: "Gugl" },
+      account: { provider: "google" },
+    } as never)) as unknown as Record<string, unknown>
+    expect(out.id).toBe("db-123")
+    expect(out.role).toBe("editor")
+    expect(typeof out.lastActivity).toBe("number")
+    expect(vi.mocked(db.user.create)).not.toHaveBeenCalled()
+    expect(vi.mocked(db.user.findUnique)).toHaveBeenCalledWith({
+      where: { email: "g@x.com" },
+    })
+  })
+
+  it("crea el usuario si no existe y sella el id nuevo", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue(null)
+    vi.mocked(db.user.create).mockResolvedValue({
+      id: "g-new",
+      role: "user",
+    } as never)
+    const out = (await jwt({
+      token: {},
+      user: { id: "109999888777", email: "Nueva@x.com", name: "Nueva" },
+      account: { provider: "google" },
+    } as never)) as unknown as Record<string, unknown>
+    expect(vi.mocked(db.user.create)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ email: "nueva@x.com", role: "user" }),
+      })
+    )
+    expect(out.id).toBe("g-new")
+    expect(out.role).toBe("user")
+  })
+
+  it("resuelve por profile.email cuando user.email falta", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      id: "db-9",
+      role: "user",
+      emailVerified: new Date(),
+    } as never)
+    const out = (await jwt({
+      token: {},
+      user: { id: "sub-sin-email", name: "Sin Mail" },
+      account: { provider: "google" },
+      profile: { email: "  P@x.com ", name: "Sin Mail" },
+    } as never)) as unknown as Record<string, unknown>
+    expect(vi.mocked(db.user.findUnique)).toHaveBeenCalledWith({
+      where: { email: "p@x.com" },
+    })
+    expect(out.id).toBe("db-9")
+  })
+
+  it("sin email devuelve null sin tocar la BD", async () => {
+    const out = await jwt({
+      token: {},
+      user: { id: "sub-x", name: "Sin Mail" },
+      account: { provider: "google" },
+      profile: {},
+    } as never)
+    expect(out).toBeNull()
+    expect(db.user.findUnique).not.toHaveBeenCalled()
+    expect(db.user.create).not.toHaveBeenCalled()
+  })
+
+  it("si la BD falla devuelve null (sesion invalida destruida)", async () => {
+    vi.mocked(db.user.findUnique).mockRejectedValue(new Error("db down"))
+    const out = await jwt({
+      token: {},
+      user: { id: "sub-x", email: "g@x.com" },
+      account: { provider: "google" },
+    } as never)
+    expect(out).toBeNull()
+  })
+
+  it("signIn Google delega sin duplicar: existente ya verificado no actualiza", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      id: "db-1",
+      emailVerified: new Date(),
+    } as never)
+    expect(
+      await signIn({
+        user: { email: "g@x.com", name: "Gugl" },
+        account: { provider: "google" },
+      } as never)
+    ).toBe(true)
+    expect(vi.mocked(db.user.update)).not.toHaveBeenCalled()
+    expect(vi.mocked(db.user.create)).not.toHaveBeenCalled()
+  })
+
+  it("regresion credentials: jwt sella id/role del authorize intactos", async () => {
+    const out = (await jwt({
+      token: {},
+      user: { id: "db-u1", email: "v@x.com", role: "editor" },
+      account: { provider: "credentials" },
+    } as never)) as unknown as Record<string, unknown>
+    expect(out.id).toBe("db-u1")
+    expect(out.role).toBe("editor")
+    expect(db.user.findUnique).not.toHaveBeenCalled()
+    expect(db.user.create).not.toHaveBeenCalled()
+  })
+})

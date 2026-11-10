@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 
 /**
- * GET /api/games/words?count=&exclude=
+ * GET /api/games/words?count=&exclude=&withAudio=
  * Palabras PUBLISHED aleatorias para los juegos (nunca toda la tabla en
- * memoria: ORDER BY RANDOM() LIMIT en DB). Público, sin auth.
+ * memoria: ORDER BY RAND() LIMIT en DB). Público, sin auth.
+ * `withAudio=1` filtra a palabras con audio (para el juego Escucha).
  */
 const DEFAULT_COUNT = 12
 const MAX_COUNT = 24
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
     const count = Number.isFinite(rawCount)
       ? Math.min(MAX_COUNT, Math.max(1, Math.floor(rawCount)))
       : DEFAULT_COUNT
+    const withAudio = params.get("withAudio") === "1"
     const exclude = (params.get("exclude") ?? "")
       .split(",")
       .map((s) => s.trim())
@@ -23,19 +25,21 @@ export async function GET(request: NextRequest) {
       .slice(0, MAX_COUNT)
 
     const words = (await db.$queryRawUnsafe(
-      `SELECT id, spanish, "nasaYuwe", pronunciation
-       FROM "DictionaryWord"
+      `SELECT id, spanish, \`nasaYuwe\`, pronunciation, illustrationUrl, audioUrl
+       FROM DictionaryWord
        WHERE status = 'PUBLISHED'
-       ${exclude.length > 0 ? `AND id NOT IN (${exclude.map((_, i) => `$${i + 2}`).join(",")})` : ""}
-       ORDER BY RANDOM()
-       LIMIT $1`,
-      count,
-      ...exclude
+       ${withAudio ? "AND audioUrl IS NOT NULL" : ""}
+       ${exclude.length > 0 ? `AND id NOT IN (${exclude.map(() => "?").join(",")})` : ""}
+       ORDER BY RAND()
+       LIMIT ?`,
+      ...(exclude.length > 0 ? [...exclude, count] : [count])
     )) as Array<{
       id: string
       spanish: string
       nasaYuwe: string
       pronunciation: string | null
+      illustrationUrl: string | null
+      audioUrl: string | null
     }>
 
     return NextResponse.json({ words, total: words.length })

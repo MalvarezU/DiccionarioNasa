@@ -57,6 +57,23 @@ describe("proxy /admin (B1.6)", () => {
     expect(res.headers.get("location")).toBeNull()
   })
 
+  it("editor no entra a /admin/usuarios (solo admin)", async () => {
+    vi.mocked(getToken).mockResolvedValue({ role: "editor" } as never)
+    const res = await proxy(
+      new NextRequest("http://localhost:3000/admin/usuarios")
+    )
+    expect(res.headers.get("location")).toContain("auth=denied")
+  })
+
+  it("admin entra a /admin/usuarios", async () => {
+    vi.mocked(getToken).mockResolvedValue({ role: "admin" } as never)
+    const res = await proxy(
+      new NextRequest("http://localhost:3000/admin/usuarios")
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+  })
+
   it("rutas fuera de /admin pasan sin verificar", async () => {
     const res = await proxy(urlRequest("http://localhost:3000/juegos"))
     expect(vi.mocked(getToken)).not.toHaveBeenCalled()

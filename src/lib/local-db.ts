@@ -111,12 +111,25 @@ export function getNormalizedInitial(word: string): string {
  * Overwrites existing words with the same ID.
  */
 export async function storeWords(words: DictionaryWord[]): Promise<void> {
+  // Normalizar `examples`: el export del servidor lo devuelve ya parseado
+  // (array). IndexedDB debe guardar siempre un JSON string para mantener el
+  // contrato de la interfaz. Esto también repara datos ya sincronizados mal.
+  const normalized = words.map((w) => ({
+    ...w,
+    examples:
+      w.examples == null
+        ? null
+        : typeof w.examples === "string"
+          ? w.examples
+          : JSON.stringify(w.examples),
+  }))
+
   await withDB(async (db) => {
     const tx = db.transaction(WORDS_STORE, "readwrite")
     const store = tx.objectStore(WORDS_STORE)
 
     await Promise.all(
-      words.map(
+      normalized.map(
         (word) =>
           new Promise<void>((resolve, reject) => {
             const request = store.put(word)
@@ -308,6 +321,12 @@ export async function searchLocalWords(
 
   const normalizedQuery = query.toLowerCase().trim()
 
+  if (!normalizedQuery) {
+    return []
+  }
+
+  const isSingleChar = normalizedQuery.length === 1
+
   return await withDB(async (db) => {
     const tx = db.transaction(WORDS_STORE, "readonly")
     const store = tx.objectStore(WORDS_STORE)
@@ -320,8 +339,14 @@ export async function searchLocalWords(
         const cursor = (event.target as IDBRequest).result as IDBCursorWithValue | null
         if (cursor) {
           const word = cursor.value as DictionaryWord
-          const matchesSpanish = word.spanish.toLowerCase().includes(normalizedQuery)
-          const matchesNasaYuwe = word.nasaYuwe.toLowerCase().includes(normalizedQuery)
+          const spanishLower = word.spanish.toLowerCase()
+          const nasaLower = word.nasaYuwe.toLowerCase()
+          const matchesSpanish = isSingleChar
+            ? spanishLower.startsWith(normalizedQuery)
+            : spanishLower.includes(normalizedQuery)
+          const matchesNasaYuwe = isSingleChar
+            ? nasaLower.startsWith(normalizedQuery)
+            : nasaLower.includes(normalizedQuery)
 
           if (matchesSpanish || matchesNasaYuwe) {
             results.push(word)

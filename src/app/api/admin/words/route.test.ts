@@ -41,6 +41,7 @@ const mockWord = {
   nasaYuwe: "ya:t",
   pronunciation: "yaat",
   audioUrl: null,
+  illustrationUrl: null,
   culturalContext: "Vivienda",
   category: "sustantivo",
   examples: null,
@@ -89,6 +90,49 @@ describe("GET /api/admin/words", () => {
       expect.objectContaining({
         where: { OR: [{ spanish: { contains: "casa" } }, { nasaYuwe: { contains: "casa" } }] },
       })
+    )
+  })
+
+  it("filters by illustration presence", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
+    vi.mocked(db.dictionaryWord.count).mockResolvedValue(0)
+
+    await GET(new Request("http://localhost:3000/api/admin/words?illustration=without"))
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { illustrationUrl: null } })
+    )
+
+    await GET(new Request("http://localhost:3000/api/admin/words?illustration=with"))
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { NOT: { illustrationUrl: null } } })
+    )
+  })
+
+  it("filters by audio presence", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
+    vi.mocked(db.dictionaryWord.count).mockResolvedValue(0)
+
+    await GET(new Request("http://localhost:3000/api/admin/words?audio=without"))
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { audioUrl: null } })
+    )
+
+    await GET(new Request("http://localhost:3000/api/admin/words?audio=with"))
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { NOT: { audioUrl: null } } })
+    )
+  })
+
+  it("filters by exact category", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
+    vi.mocked(db.dictionaryWord.count).mockResolvedValue(0)
+
+    await GET(new Request("http://localhost:3000/api/admin/words?category=sustantivo"))
+    expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { category: "sustantivo" } })
     )
   })
 

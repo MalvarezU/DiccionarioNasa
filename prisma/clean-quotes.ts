@@ -123,7 +123,7 @@ function printTable(plan: Plan): void {
 
 async function apply(plan: Plan): Promise<string> {
   const ts = new Date().toISOString().replace(/[:.]/g, '-')
-  const logPath = path.join(__dirname, `clean-quotes-${ts}.log.json`)
+  const logPath = path.join(import.meta.dirname, `clean-quotes-${ts}.log.json`)
 
   const byId = new Map<string, Record<string, string>>()
   for (const c of plan.changes) {

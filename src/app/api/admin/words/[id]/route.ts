@@ -1,11 +1,9 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { requireAdmin, requireRole } from '@/lib/auth'
-import {
-  getSupabaseServer,
-  AUDIO_BUCKET,
-  audioUrlToObjectPath,
-} from '@/lib/supabase-server'
+import { audioRefToKey } from '@/lib/media/storage'
+import { deleteObject } from '@/lib/r2'
+import { deleteMediaAssetByUrl } from '@/lib/media/delete-asset'
 
 // Valid status values
 const VALID_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED']
@@ -82,6 +80,7 @@ export async function PUT(
       'nasaYuwe',
       'pronunciation',
       'audioUrl',
+      'illustrationUrl',
       'culturalContext',
       'category',
       'examples',
@@ -156,6 +155,36 @@ export async function PUT(
       response.previousAudioUrl = changes.audioUrl.before as string | null
     }
 
+    // Ilustración reemplazada: borrar el asset anterior server-side para no
+    // dejar huérfanos en R2. Best-effort, nunca bloquea.
+    if ('illustrationUrl' in changes) {
+      const before = changes.illustrationUrl.before
+      const after = changes.illustrationUrl.after
+      if (typeof before === 'string' && before && before !== after) {
+        try {
+          await deleteMediaAssetByUrl(before)
+        } catch (cleanupError) {
+          console.error('Error limpiando ilustración anterior:', cleanupError)
+        }
+      }
+    }
+
+    // Audio reemplazado o quitado: borrar el objeto anterior de R2.
+    // El frontend también intenta borrarlo (compat), pero deleteObject es
+    // idempotente, así que el doble borrado es inofensivo.
+    if ('audioUrl' in changes) {
+      const before = changes.audioUrl.before
+      const after = changes.audioUrl.after
+      if (typeof before === 'string' && before && before !== after) {
+        try {
+          const key = audioRefToKey(before)
+          if (key) await deleteObject(key)
+        } catch (cleanupError) {
+          console.error('Error limpiando audio anterior:', cleanupError)
+        }
+      }
+    }
+
     return NextResponse.json(response, { status: 200 })
   } catch (error) {
     console.error('Error updating word:', error)
@@ -169,7 +198,7 @@ export async function PUT(
 /**
  * DELETE /api/admin/words/[id]
  *
- * Elimina la ficha y su audio asociado en Supabase Storage (si existe),
+ * Elimina la ficha y su audio asociado en R2 (si existe),
  * evitando archivos huérfanos. Las relaciones Favorite/ViewHistory se
  * eliminan en cascada según el schema de Prisma.
  */
@@ -194,19 +223,13 @@ export async function DELETE(
       )
     }
 
-    // Limpiar audio en Storage antes de borrar la ficha (best-effort)
-    const objectPath = existingWord.audioUrl
-      ? audioUrlToObjectPath(existingWord.audioUrl)
+    // Limpiar audio en R2 antes de borrar la ficha (best-effort)
+    const key = existingWord.audioUrl
+      ? audioRefToKey(existingWord.audioUrl)
       : null
-    if (objectPath) {
+    if (key) {
       try {
-        const supabase = getSupabaseServer()
-        const { error: storageError } = await supabase.storage
-          .from(AUDIO_BUCKET)
-          .remove([objectPath])
-        if (storageError) {
-          console.error('Error eliminando audio de la palabra:', storageError)
-        }
+        await deleteObject(key)
       } catch (storageException) {
         console.error('Error eliminando audio de la palabra:', storageException)
       }
@@ -224,10 +247,7 @@ export async function DELETE(
         entity: 'DictionaryWord',
         entityId: id,
         changes: JSON.stringify({
-          deleted: {
-            spanish: existingWord.spanish,
-            nasaYuwe: existingWord.nasaYuwe,
-          },
+          deleted: { ...existingWord },
           responsable: sessionUser?.name || sessionUser?.email,
         }),
         userId: sessionUser?.id,

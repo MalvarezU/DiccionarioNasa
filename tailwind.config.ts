@@ -10,9 +10,9 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-public-sans)'],
-        serif: ['var(--font-newsreader)'],
-        mono: ['var(--font-public-sans)'],
+        sans: ['var(--font-inter)'],
+        serif: ['var(--font-source-serif)'],
+        mono: ['var(--font-inter)'],
       },
     },
   },

@@ -16,7 +16,3 @@ export {
   mockBcrypt,
   installNextAuthMocks,
 } from "./next-auth"
-export {
-  mockSupabase,
-  installSupabaseMock,
-} from "./supabase"

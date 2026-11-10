@@ -2,7 +2,7 @@ import { expect } from "@playwright/test";
 import type { Actor, Task } from "../actor";
 import { NavegarLaWeb } from "../habilidades";
 
-/** Abrir el log completo de auditoría desde el dashboard. */
+/** Abrir el log completo de auditoría (botón "Ver todo" de Actividad reciente). */
 export class AbrirLogCompleto implements Task {
   descripcion = "abrir log de auditoría";
   static ahora(): AbrirLogCompleto {
@@ -10,7 +10,7 @@ export class AbrirLogCompleto implements Task {
   }
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
-    await page.getByRole("button", { name: /ver log completo/i }).click();
+    await page.getByRole("button", { name: "Ver todo", exact: true }).click();
     await expect(page.getByText(/log de auditoría/i).first()).toBeVisible({ timeout: 15000 });
   }
 }

@@ -13,6 +13,7 @@ export async function GET() {
           pronunciation: true,
           category: true,
           culturalContext: true,
+          audioUrl: true,
         },
         take: 12,
         orderBy: { spanish: "asc" },

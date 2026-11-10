@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type KeyboardEvent } from "react"
 import { CheckCircle2, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -39,13 +39,44 @@ export function QuizInteractivo({
     setRevisado(false)
   }
 
+  // Radiogroup manual (P2.6): no hay ToggleGroup en ui/, así que cada
+  // pregunta es role="radiogroup" y cada opción un botón con role="radio".
+  // Se mantiene el <button> nativo para conservar disabled y foco.
+  /** Elige la opción y mueve el foco a ella (con +-1 circular). */
+  function moverOpcion(
+    e: KeyboardEvent<HTMLButtonElement>,
+    pregunta: number,
+    actual: number,
+    totalOpciones: number,
+  ) {
+    const direccion =
+      e.key === "ArrowDown" || e.key === "ArrowRight"
+        ? 1
+        : e.key === "ArrowUp" || e.key === "ArrowLeft"
+          ? -1
+          : 0
+    if (direccion === 0) return
+    e.preventDefault()
+    const siguiente = (actual + direccion + totalOpciones) % totalOpciones
+    const grupo = e.currentTarget.parentElement
+    setRespuestas((prev) => ({ ...prev, [pregunta]: siguiente }))
+    // El foco se mueve tras el re-render (el orden de opciones no cambia).
+    requestAnimationFrame(() => {
+      const radios = grupo?.querySelectorAll('[role="radio"]')
+      ;(radios?.[siguiente] as HTMLElement | undefined)?.focus()
+    })
+  }
+
+  const faltaResponder = Object.keys(respuestas).length < total
+  const ayudaRevisarId = `${block.id}-ayuda-revisar`
+
   return (
     <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-4" data-testid="quiz-interactivo">
       <ol className="space-y-4">
         {block.questions.map((q, i) => (
           <li key={`${block.id}-q${i}`}>
             <p className="font-medium">{i + 1}. {q.prompt}</p>
-            <div className="mt-1.5 space-y-1.5">
+            <div className="mt-1.5 space-y-1.5" role="radiogroup" aria-label={`Pregunta ${i + 1}: ${q.prompt}`}>
               {q.options.map((op, j) => {
                 const elegida = respuestas[i] === j
                 let estilo = "border-outline-variant/40 hover:bg-surface-container-high"
@@ -55,14 +86,19 @@ export function QuizInteractivo({
                 } else if (elegida) {
                   estilo = "border-primary bg-primary/5"
                 }
+                // Roving tabindex: solo la elegida (o la primera) entra en el orden de tab.
+                const enTab = respuestas[i] === undefined ? j === 0 : elegida
                 return (
                   <button
                     key={`${block.id}-q${i}-o${j}`}
                     type="button"
+                    role="radio"
+                    aria-checked={elegida}
                     disabled={revisado}
-                    aria-pressed={elegida}
+                    tabIndex={enTab ? 0 : -1}
                     aria-label={`Opción ${j + 1} de la pregunta ${i + 1}`}
                     onClick={() => setRespuestas((prev) => ({ ...prev, [i]: j }))}
+                    onKeyDown={(e) => moverOpcion(e, i, j, q.options.length)}
                     className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors disabled:cursor-default ${estilo}`}
                   >
                     {op.text}
@@ -76,13 +112,21 @@ export function QuizInteractivo({
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {!revisado ? (
-          <Button
-            type="button"
-            onClick={revisar}
-            disabled={Object.keys(respuestas).length < total}
-          >
-            Revisar
-          </Button>
+          <>
+            <Button
+              type="button"
+              onClick={revisar}
+              disabled={faltaResponder}
+              aria-describedby={faltaResponder && total > 0 ? ayudaRevisarId : undefined}
+            >
+              Revisar
+            </Button>
+            {faltaResponder && total > 0 ? (
+              <p id={ayudaRevisarId} className="text-xs text-muted-foreground">
+                Respondé todo para revisar
+              </p>
+            ) : null}
+          </>
         ) : aprobo ? (
           <p className="flex items-center gap-2 text-sm font-medium text-secondary" role="status">
             <CheckCircle2 className="size-4" />

@@ -1,8 +1,11 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useToast } from "@/hooks/use-toast"
 import { type PreviewWordData } from "./WordPreviewModal"
+import { wordSuccessToastTitle } from "./word-toast"
 import { useWordAudio } from "./use-word-audio"
+import { useWordIllustration } from "./use-word-illustration"
 import {
   EMPTY_WORD_FORM,
   validateWordForm,
@@ -12,6 +15,8 @@ import {
 interface UseCreateWordArgs {
   onOpenChange: (open: boolean) => void
   onCreated: () => void
+  /** Término precargado (p. ej. desde una sugerencia). Solo semilla inicial. */
+  initialSpanish?: string
 }
 
 /**
@@ -19,16 +24,18 @@ interface UseCreateWordArgs {
  * borrador o publicada, y vista previa. Reusa use-word-audio y word-form
  * (mismo dominio que el editor; la UI difiere y vive en cada modal).
  */
-export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
-  const [form, setForm] = useState<WordForm>({ ...EMPTY_WORD_FORM })
+export function useCreateWord({ onOpenChange, onCreated, initialSpanish }: UseCreateWordArgs) {
+  const [form, setForm] = useState<WordForm>({ ...EMPTY_WORD_FORM, spanish: initialSpanish ?? "" })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const { toast } = useToast()
 
   const audio = useWordAudio()
+  const illustration = useWordIllustration()
   const { audioUrl, audioPreview, isUploadingAudio, removeAudio } = audio
+  const { illustrationUrl, resetIllustration } = illustration
 
   const handleChange = useCallback(
     (field: string, value: string) => {
@@ -46,7 +53,8 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
   const resetForm = useCallback(() => {
     setForm({ ...EMPTY_WORD_FORM })
     removeAudio()
-  }, [removeAudio])
+    resetIllustration(null)
+  }, [removeAudio, resetIllustration])
 
   const handleSubmit = useCallback(
     async (targetStatus: "DRAFT" | "PUBLISHED") => {
@@ -62,6 +70,7 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
           ...form,
           status: targetStatus,
           audioUrl: audioUrl || undefined,
+          illustrationUrl: illustrationUrl || undefined,
         }
 
         const res = await fetch("/api/admin/words", {
@@ -71,17 +80,14 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
         })
 
         if (res.ok) {
-          resetForm()
-          setSuccessMessage(
+          const message =
             targetStatus === "DRAFT"
               ? "Ficha guardada como borrador"
               : "Ficha guardada y publicada"
-          )
-          setTimeout(() => {
-            setSuccessMessage(null)
-            onOpenChange(false)
-            onCreated()
-          }, 1500)
+          resetForm()
+          toast({ title: wordSuccessToastTitle(message) })
+          onOpenChange(false)
+          onCreated()
         } else {
           const data = await res.json()
           setSubmitError(data.message || "Error al crear la ficha")
@@ -92,14 +98,13 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
         setIsSubmitting(false)
       }
     },
-    [form, audioUrl, resetForm, onOpenChange, onCreated]
+    [form, audioUrl, illustrationUrl, resetForm, toast, onOpenChange, onCreated]
   )
 
   const handleClose = useCallback(() => {
     if (!isSubmitting) {
       setFieldErrors({})
       setSubmitError(null)
-      setSuccessMessage(null)
       resetForm()
       onOpenChange(false)
     }
@@ -112,6 +117,7 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
     culturalContext: form.culturalContext || null,
     category: form.category || null,
     audioUrl: audioUrl || audioPreview || null,
+    illustrationUrl: illustrationUrl || null,
     status: form.status,
   }
 
@@ -119,11 +125,11 @@ export function useCreateWord({ onOpenChange, onCreated }: UseCreateWordArgs) {
     form,
     fieldErrors,
     submitError,
-    successMessage,
     previewOpen,
     setPreviewOpen,
     isSubmitting,
     audio,
+    illustration,
     previewWord,
     handleChange,
     handleSubmit,

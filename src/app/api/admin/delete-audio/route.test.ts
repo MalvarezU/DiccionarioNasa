@@ -5,37 +5,25 @@ vi.mock("@/lib/auth", () => ({
   requireRole: vi.fn(),
 }))
 
-const mockRemove = vi.fn()
+const mockDeleteObject = vi.fn()
 
-vi.mock("@/lib/supabase-server", () => ({
-  getSupabaseServer: vi.fn(() => ({
-    storage: {
-      from: vi.fn(() => ({
-        remove: mockRemove,
-      })),
-    },
-  })),
-  AUDIO_BUCKET: "audios",
-  audioUrlToObjectPath: vi.fn((url: string) => {
-    if (
-      url === "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc" ||
-      url === "https://rjdukxvhmvzbiqliakyu.supabase.co/storage/v1/object/public/audios/temp/file.mp3" ||
-      url === "temp/file.mp3"
-    ) {
-      return "temp/file.mp3"
-    }
-    return null
-  }),
-  signedUrlToObjectPath: vi.fn((url: string) => {
-    if (url === "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc") {
-      return "temp/file.mp3"
-    }
-    return null
-  }),
+vi.mock("@/lib/r2", () => ({
+  putObject: vi.fn(),
+  deleteObject: (...args: unknown[]) => mockDeleteObject(...args),
+  publicUrl: (key: string) => `https://cdn.test/${key}`,
 }))
 
 import { requireAdmin, requireRole } from "@/lib/auth"
 import { POST } from "./route"
+
+const R2_URL = "https://cdn.test/audios/temp/file.mp3"
+const LEGACY_PUBLIC =
+  "https://rjdukxvhmvzbiqliakyu.supabase.co/storage/v1/object/public/audios/temp/file.mp3"
+const LEGACY_SIGNED =
+  "https://xyz.supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc"
+
+// Nota: la ruta usa el audioRefToKey REAL (@/lib/media/storage); solo R2 va mockeado.
+process.env.R2_PUBLIC_BASE_URL = "https://cdn.test"
 
 const adminSession = { user: { id: "admin1", role: "admin" } } as never
 const editorSession = { user: { id: "editor1", role: "editor" } } as never
@@ -68,74 +56,71 @@ describe("POST /api/admin/delete-audio", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     allow()
-    mockRemove.mockReset()
+    mockDeleteObject.mockResolvedValue(undefined)
   })
 
-  it("deletes audio from Supabase Storage", async () => {
-    mockRemove.mockResolvedValue({ error: null })
-
-    const res = await POST(makeReq({
-      audioUrl: "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc",
-    }))
+  it("deletes audio from R2 by public URL", async () => {
+    const res = await POST(makeReq({ audioUrl: R2_URL }))
     const body = await res.json()
 
     expect(res.status).toBe(200)
     expect(body.message).toContain("eliminado")
-    expect(body.objectPath).toBe("temp/file.mp3")
+    expect(body.objectKey).toBe("audios/temp/file.mp3")
+    expect(mockDeleteObject).toHaveBeenCalledWith("audios/temp/file.mp3")
   })
 
-  it("returns 400 when audioUrl is missing", async () => {
-    const res = await POST(makeReq({}))
-    expect(res.status).toBe(400)
-  })
-
-  it("returns 400 when audioUrl is not a string", async () => {
-    const res = await POST(makeReq({ audioUrl: 123 }))
-    expect(res.status).toBe(400)
-  })
-
-  it("returns 400 when audioUrl is not a valid Supabase signed URL", async () => {
-    const res = await POST(makeReq({ audioUrl: "/audio/test.mp3" }))
-    expect(res.status).toBe(400)
-  })
-
-  it("accepts public URL", async () => {
-    mockRemove.mockResolvedValue({ error: null })
-
-    const res = await POST(makeReq({
-      audioUrl: "https://rjdukxvhmvzbiqliakyu.supabase.co/storage/v1/object/public/audios/temp/file.mp3",
-    }))
+  it("accepts legacy Supabase public URL", async () => {
+    const res = await POST(makeReq({ audioUrl: LEGACY_PUBLIC }))
     const body = await res.json()
 
     expect(res.status).toBe(200)
-    expect(body.objectPath).toBe("temp/file.mp3")
+    expect(body.objectKey).toBe("audios/temp/file.mp3")
   })
 
-  it("accepts objectPath directly", async () => {
-    mockRemove.mockResolvedValue({ error: null })
+  it("accepts legacy Supabase signed URL", async () => {
+    const res = await POST(makeReq({ audioUrl: LEGACY_SIGNED }))
+    const body = await res.json()
 
+    expect(res.status).toBe(200)
+    expect(body.objectKey).toBe("audios/temp/file.mp3")
+  })
+
+  it("accepts objectKey directly", async () => {
+    const res = await POST(makeReq({ objectKey: "audios/temp/file.mp3" }))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.objectKey).toBe("audios/temp/file.mp3")
+  })
+
+  it("normalizes bare relative path with audios/ prefix", async () => {
     const res = await POST(makeReq({ objectPath: "temp/file.mp3" }))
     const body = await res.json()
 
     expect(res.status).toBe(200)
-    expect(body.objectPath).toBe("temp/file.mp3")
+    expect(body.objectKey).toBe("audios/temp/file.mp3")
   })
 
-  it("returns 500 when remove fails", async () => {
-    mockRemove.mockResolvedValue({ error: new Error("Storage error") })
-
-    const res = await POST(makeReq({
-      audioUrl: "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc",
-    }))
-
-    expect(res.status).toBe(500)
+  it("returns 400 when audioUrl is missing", async () => {
+    expect((await POST(makeReq({}))).status).toBe(400)
   })
 
-  it("returns 401 when not admin", async () => {
+  it("returns 400 when audioUrl is not a string", async () => {
+    expect((await POST(makeReq({ audioUrl: 123 }))).status).toBe(400)
+  })
+
+  it("returns 400 when reference cannot be resolved", async () => {
+    expect((await POST(makeReq({ audioUrl: "/audio/test.mp3" }))).status).toBe(400)
+    expect(mockDeleteObject).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when R2 delete fails", async () => {
+    mockDeleteObject.mockRejectedValue(new Error("R2 caído"))
+    expect((await POST(makeReq({ audioUrl: R2_URL }))).status).toBe(500)
+  })
+
+  it("returns 401 when not editor", async () => {
     deny()
-    const res = await POST(makeReq({
-      audioUrl: "https://supabase.co/storage/v1/object/sign/audios/temp/file.mp3?token=abc",
-    }))
-    expect(res.status).toBe(401)
+    expect((await POST(makeReq({ audioUrl: R2_URL }))).status).toBe(401)
   })
 })

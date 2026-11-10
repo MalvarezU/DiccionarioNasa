@@ -1,13 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type KeyboardEvent } from "react"
 import { CheckCircle2, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { MediaRef } from "@/lib/courses/blocks"
-import { YoutubeEmbed } from "./block-media"
+import type { AudioMediaRef } from "@/lib/courses/blocks"
 
 /**
- * Ejercicio de escucha INTERACTIVO: suena el audio (subido o de YouTube) y el
+ * Ejercicio de escucha INTERACTIVO: suena el audio subido (R2) y el
  * estudiante elige la opción. Acierta → bloque aprobado (score 100); erra →
  * reintenta.
  */
@@ -17,7 +16,7 @@ export function EscuchaInteractivo({
 }: {
   block: {
     id: string
-    media: MediaRef
+    media: AudioMediaRef
     question: string
     options: Array<{ text: string; correct: boolean }>
   }
@@ -36,11 +35,35 @@ export function EscuchaInteractivo({
     }
   }
 
+  // Radiogroup manual (P2.6): no hay ToggleGroup en ui/, así que las
+  // opciones son botones con role="radio" (se conserva el <button> nativo
+  // para no perder disabled ni foco). Elegir resetea el error, igual que el click.
+  /** Elige la opción vecina y le pasa el foco (con +-1 circular). */
+  function moverOpcion(e: KeyboardEvent<HTMLButtonElement>, actual: number) {
+    const direccion =
+      e.key === "ArrowDown" || e.key === "ArrowRight"
+        ? 1
+        : e.key === "ArrowUp" || e.key === "ArrowLeft"
+          ? -1
+          : 0
+    if (direccion === 0) return
+    e.preventDefault()
+    const total = block.options.length
+    const siguiente = (actual + direccion + total) % total
+    const grupo = e.currentTarget.parentElement
+    setElegida(siguiente)
+    setEstado("jugando")
+    requestAnimationFrame(() => {
+      const radios = grupo?.querySelectorAll('[role="radio"]')
+      ;(radios?.[siguiente] as HTMLElement | undefined)?.focus()
+    })
+  }
+
+  const ayudaRevisarId = `${block.id}-ayuda-revisar`
+
   return (
     <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-4" data-testid="escucha-interactivo">
-      {block.media.source === "youtube" && block.media.youtubeId ? (
-        <YoutubeEmbed youtubeId={block.media.youtubeId} title="Audio del ejercicio" />
-      ) : block.media.url ? (
+      {block.media.url ? (
         <audio controls src={block.media.url} className="w-full" aria-label="Audio del ejercicio" />
       ) : (
         <p className="text-sm text-destructive">El audio del ejercicio no tiene fuente.</p>
@@ -48,7 +71,7 @@ export function EscuchaInteractivo({
 
       <p className="mt-3 font-medium">{block.question}</p>
 
-      <div className="mt-2 space-y-1.5">
+      <div className="mt-2 space-y-1.5" role="radiogroup" aria-label={`Pregunta de escucha: ${block.question}`}>
         {block.options.map((op, j) => {
           const elegidaEsta = elegida === j
           let estilo = "border-outline-variant/40 hover:bg-surface-container-high"
@@ -58,17 +81,22 @@ export function EscuchaInteractivo({
           } else if (elegidaEsta) {
             estilo = "border-primary bg-primary/5"
           }
+          // Roving tabindex: solo la elegida (o la primera) entra en el orden de tab.
+          const enTab = elegida === null ? j === 0 : elegidaEsta
           return (
             <button
               key={`${block.id}-o${j}`}
               type="button"
+              role="radio"
+              aria-checked={elegidaEsta}
               disabled={estado === "aprobado"}
-              aria-pressed={elegidaEsta}
-              aria-label={`Opción ${j + 1}`}
+              tabIndex={enTab ? 0 : -1}
+              aria-label={`Opción ${j + 1} de la pregunta 1`}
               onClick={() => {
                 setElegida(j)
                 setEstado("jugando")
               }}
+              onKeyDown={(e) => moverOpcion(e, j)}
               className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${estilo}`}
             >
               {op.text}
@@ -94,11 +122,17 @@ export function EscuchaInteractivo({
               type="button"
               onClick={revisar}
               disabled={elegida === null}
+              aria-describedby={elegida === null ? ayudaRevisarId : undefined}
               size={estado === "error" ? "sm" : "default"}
               variant={estado === "error" ? "outline" : "default"}
             >
               {estado === "error" ? <><RotateCcw className="size-3.5" /> Intentar de nuevo</> : "Revisar"}
             </Button>
+            {elegida === null ? (
+              <p id={ayudaRevisarId} className="text-xs text-muted-foreground">
+                Elige una opción para revisar
+              </p>
+            ) : null}
           </>
         )}
       </div>

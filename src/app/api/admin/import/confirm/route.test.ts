@@ -7,7 +7,7 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/db", () => ({
   db: {
-    dictionaryWord: { findFirst: vi.fn(), create: vi.fn() },
+    dictionaryWord: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn() },
     auditLog: { create: vi.fn() },
   },
 }))
@@ -35,10 +35,8 @@ const word = (spanish: string) => ({
   spanish,
   nasaYuwe: "ny",
   pronunciation: null,
-  audioUrl: null,
   culturalContext: null,
   category: null,
-  examples: null,
   status: "DRAFT" as const,
 })
 
@@ -50,7 +48,7 @@ describe("POST /api/admin/import/confirm [B1.10]", () => {
 
   it("confirma lo validado con bitacora por ficha y reporte", async () => {
     allow()
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue(null)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([])
     vi.mocked(db.dictionaryWord.create)
       .mockResolvedValueOnce({ id: "n-casa" } as never)
       .mockResolvedValueOnce({ id: "n-agua" } as never)
@@ -88,7 +86,7 @@ describe("POST /api/admin/import/confirm [B1.10]", () => {
 
   it("omite duplicados nuevos al confirmar", async () => {
     allow()
-    vi.mocked(db.dictionaryWord.findFirst).mockResolvedValue({ id: "old" } as never)
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([{ spanish: "casa" }] as never)
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
     const token = storePreview([word("casa")])

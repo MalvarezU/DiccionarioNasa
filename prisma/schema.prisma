@@ -6,9 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -18,6 +17,7 @@ model User {
   password  String?  // Hashed password (bcrypt)
   role      String   @default("user") // "user" | "editor" | "admin"
   emailVerified DateTime? // B1.2: verificación obligatoria (backfill en migración)
+  onboardedAt   DateTime? // Fase Google-first: onboarding post-registro (null = pendiente)
   verifyToken   String?   @unique
   verifyExpires DateTime?
   createdAt DateTime @default(now())
@@ -42,12 +42,6 @@ model PasswordReset {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-}
-
-enum LessonType {
-  READ
-  QUIZ
-  COMPLETE
 }
 
 enum ContentStatus {
@@ -79,8 +73,8 @@ model UserGameSession {
 model Course {
   id          String        @id @default(cuid())
   title       String
-  description String?
-  /// Imagen de portada del catálogo (URL pública de Supabase Storage).
+  description String? @db.Text
+  /// Imagen de portada del catálogo (URL pública de R2, `images/...`).
   coverImage  String?
   status      ContentStatus @default(DRAFT)
   sequential  Boolean       @default(true)
@@ -95,6 +89,8 @@ model Module {
   courseId String
   title    String
   order    Int      @default(0)
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
   course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons  Lesson[]
 
@@ -105,22 +101,16 @@ model Lesson {
   id       String     @id @default(cuid())
   moduleId String
   title    String
-  /// DEPRECATED: el tipo vive ahora en cada bloque de `content`.
-  /// Se conserva para el backfill y hasta la limpieza posterior.
-  type     LessonType @default(READ)
   order    Int        @default(0)
   /// Numeración visible ("1.1", "1.2"...). Calculada por el server al crear
-  /// y reasignada al reordenar. Null solo en migración pendiente de backfill.
+  /// y reasignada al reordenar.
   lessonNumber Int?
-  /// DEPRECATED junto con `type`: solo lo usan las lecciones legacy.
-  wordId   String?
-  /// DEPRECATED junto con `type`: payload legacy de QUIZ/COMPLETE.
-  payload  String?
   /// Documento de bloques de la lección: { version, blocks[] }.
   /// Ver src/lib/courses/blocks.ts para el contrato y la validación.
-  content  Json?
-  module   Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  word     DictionaryWord? @relation(fields: [wordId], references: [id], onDelete: SetNull)
+  content   Json
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   progress UserLessonProgress[]
 
   @@index([moduleId, order])
@@ -143,15 +133,15 @@ model UserLessonProgress {
 }
 
 model MediaAsset {
-  /// Imágenes guardadas EN POSTGRES (columna bytea), no en Supabase Storage.
-  /// Se sirven por /api/media/[id] con caché inmutable. Ventaja lateral: al ser
-  /// mismo origen, el service worker del PWA sí las puede cachear offline.
+  /// Metadatos de archivos guardados en Cloudflare R2 (rama feat/r2-media).
+  /// `data` (LONGBLOB) se eliminó: el binario vive en el bucket y acá solo
+  /// la clave. Las URLs públicas se derivan con publicUrl(objectKey).
   id         String   @id @default(cuid())
+  objectKey  String   @unique // "images/<uuid>.png" | "audios/<wordId>/..."
   filename   String
   /// MIME detectado por firma binaria, no el que declara el cliente.
   mimeType   String
   size       Int
-  data       Bytes
   uploadedBy String?
   createdAt  DateTime @default(now())
 
@@ -164,9 +154,14 @@ model DictionaryWord {
   nasaYuwe        String   // Word in Nasa Yuwe
   pronunciation   String?  // Written pronunciation guide
   audioUrl        String?  // URL to native speaker audio
-  culturalContext String?  // Cultural context of use
+  /// URL pública de la ilustración de la palabra (/api/media/[id]).
+  /// Igual que audioUrl, es un string y no una relación: el binario vive en
+  /// R2 (metadatos en MediaAsset, MariaDB) y se sirve por el mismo origen,
+  /// así el service worker del PWA lo puede cachear sin conexión.
+  illustrationUrl String?
+  culturalContext String?  @db.Text // Cultural context of use
   category        String?  // Grammatical category (noun, verb, adj, etc.)
-  examples        String?  // Usage examples (JSON string)
+  examples        String?  @db.Text // Usage examples (JSON string)
   status          String   @default("PUBLISHED") // "DRAFT" | "PUBLISHED" | "ARCHIVED"
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -174,7 +169,6 @@ model DictionaryWord {
   favorites  Favorite[]
   viewHistory ViewHistory[]
   auditLogs  AuditLog[]
-  lessons    Lesson[]
 }
 
 model Favorite {
@@ -218,7 +212,7 @@ model AuditLog {
   action    String   // "CREATE" | "UPDATE" | "DELETE" | "IMPORT"
   entity    String   // "DictionaryWord" | etc.
   entityId  String?
-  changes   String?  // JSON string with before/after
+  changes   String?  @db.LongText // JSON string with before/after
   userId    String?
   wordId    String?
   createdAt DateTime @default(now())

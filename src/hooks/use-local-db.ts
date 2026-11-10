@@ -5,13 +5,17 @@ import { useOnlineStatus } from "@/hooks/use-online-status"
 import {
   isLocalDBReady,
   storeWords,
+  getAllLocalWords,
   getLocalDBStats,
   getLastSync,
   setLastSync,
   clearLocalDB,
 } from "@/lib/local-db"
+import { downloadMediaQueue, extractMediaUrls } from "@/lib/media-sync"
 
 const PAGE_SIZE = 100
+/** Del progreso total: palabras 0-70, medios 70-100. */
+const WORDS_PROGRESS_CAP = 70
 
 interface UseLocalDBReturn {
   /** Whether the local DB has been fully downloaded and is ready for offline use */
@@ -29,7 +33,7 @@ interface UseLocalDBReturn {
   /** Start or resume the download */
   startDownload: () => Promise<void>
   /** Force a full re-sync: clear local DB and re-download everything */
-  forceResync: () => Promise<void>
+  forceResync: () => Promise<boolean>
   /** Refresh stats (word count + lastSync) from IndexedDB */
   refreshStats: () => Promise<void>
   /** Check and resume download if it was interrupted (call on mount) */
@@ -47,6 +51,36 @@ export function useLocalDB(): UseLocalDBReturn {
 
   // Ref to prevent concurrent downloads
   const downloadInProgressRef = useRef(false)
+  // Abort del sync en curso (unload/offline): corta palabras y medios.
+  const syncAbortRef = useRef<AbortController | null>(null)
+
+  /**
+   * Fase de medios: descarga audios + ilustraciones de las palabras
+   * (viven en R2, no en Hostinger). Nunca lanza: un fallo solo deja
+   * esos medios para on-demand. Mapea su progreso al tramo 70-100.
+   */
+  const downloadMediaPhase = useCallback(
+    async (signal?: AbortSignal) => {
+      const words = await getAllLocalWords()
+      const urls = extractMediaUrls(words)
+      if (urls.length === 0) {
+        setDownloadProgress(100)
+        return { downloaded: 0, failed: 0 }
+      }
+      const res = await downloadMediaQueue(urls, {
+        signal,
+        onProgress: (done, total) => {
+          const pct =
+            WORDS_PROGRESS_CAP +
+            Math.round(((total === 0 ? 1 : done / total) * (100 - WORDS_PROGRESS_CAP)))
+          setDownloadProgress(Math.min(100, pct))
+        },
+      })
+      setDownloadProgress(100)
+      return res
+    },
+    []
+  )
 
   /**
    * Core download logic shared between startDownload and forceResync.
@@ -58,7 +92,7 @@ export function useLocalDB(): UseLocalDBReturn {
       `/api/dictionary/export?page=${startPage}&pageSize=${PAGE_SIZE}`
     )
     if (!firstRes.ok) {
-      throw new Error("Error al conectar con el servidor")
+      throw new Error("Error al conectar con el servidor (status " + firstRes.status + ")")
     }
     const firstData = await firstRes.json()
     const totalWords: number = firstData.total ?? 0
@@ -73,9 +107,9 @@ export function useLocalDB(): UseLocalDBReturn {
     const pagesAlreadyDone = startPage - 1
     let completedPages = pagesAlreadyDone
 
-    // Show progress for already-completed pages
+    // Show progress for already-completed pages (tramo palabras: 0-70)
     if (pagesAlreadyDone > 0) {
-      setDownloadProgress(Math.round((pagesAlreadyDone / totalPages) * 100))
+      setDownloadProgress(Math.round((pagesAlreadyDone / totalPages) * WORDS_PROGRESS_CAP))
     }
 
     // Store first page data
@@ -84,7 +118,7 @@ export function useLocalDB(): UseLocalDBReturn {
       setLocalWordCount((prev) => prev + firstData.words.length)
     }
     completedPages++
-    setDownloadProgress(Math.round((completedPages / totalPages) * 100))
+    setDownloadProgress(Math.round((completedPages / totalPages) * WORDS_PROGRESS_CAP))
 
     // Fetch remaining pages sequentially
     let currentPage = startPage + 1
@@ -103,15 +137,18 @@ export function useLocalDB(): UseLocalDBReturn {
       }
 
       completedPages++
-      setDownloadProgress(Math.round((completedPages / totalPages) * 100))
+      setDownloadProgress(Math.round((completedPages / totalPages) * WORDS_PROGRESS_CAP))
       currentPage++
     }
+
+    // Fase de medios (tramo 70-100): audios + ilustraciones a caché del SW.
+    await downloadMediaPhase(syncAbortRef.current?.signal)
 
     // All pages downloaded successfully — update lastSync
     const syncTimestamp = new Date().toISOString()
     await setLastSync(syncTimestamp)
     setLastSyncState(syncTimestamp)
-  }, [])
+  }, [downloadMediaPhase])
 
   /**
    * Start or resume downloading the dictionary into IndexedDB.
@@ -126,6 +163,7 @@ export function useLocalDB(): UseLocalDBReturn {
     // Prevent concurrent downloads
     if (downloadInProgressRef.current) return
     downloadInProgressRef.current = true
+    syncAbortRef.current = new AbortController()
 
     setIsDownloading(true)
     setError(null)
@@ -182,42 +220,84 @@ export function useLocalDB(): UseLocalDBReturn {
    * Force a full re-sync: clear the local DB and re-download everything.
    * Used by the "Sincronizar ahora" button in settings.
    */
-  const forceResync = useCallback(async () => {
+  const forceResync = useCallback(async (): Promise<boolean> => {
     // Prevent concurrent downloads
-    if (downloadInProgressRef.current) return
+    if (downloadInProgressRef.current) return false
     downloadInProgressRef.current = true
+    syncAbortRef.current = new AbortController()
 
     setIsDownloading(true)
     setError(null)
     setDownloadProgress(0)
-    setLocalWordCount(0)
     setLastSyncState(null)
-    setIsReady(false)
+    // NO borramos todavía: si la descarga falla, el IndexedDB previo queda
+    // intacto y el usuario no se queda sin diccionario por un intento fallido.
 
     try {
-      // Clear existing local data
+      // 1) Descargar todo a memoria primero (sin tocar IndexedDB).
+      const firstRes = await fetch(
+        `/api/dictionary/export?page=1&pageSize=${PAGE_SIZE}`
+      )
+      if (!firstRes.ok) {
+        throw new Error("Error al conectar con el servidor (status " + firstRes.status + ")")
+      }
+      const firstData = await firstRes.json()
+      const totalWords: number = firstData.total ?? 0
+
+      if (totalWords === 0) {
+        throw new Error("El servidor no devolvió palabras")
+      }
+
+      const totalPages = Math.ceil(totalWords / PAGE_SIZE)
+      const collected: unknown[] = []
+      if (firstData.words && firstData.words.length > 0) {
+        collected.push(...firstData.words)
+      }
+      setDownloadProgress(Math.round((1 / totalPages) * WORDS_PROGRESS_CAP))
+
+      let currentPage = 2
+      let hasMore = firstData.hasMore
+      while (hasMore && currentPage <= totalPages) {
+        const res = await fetch(
+          `/api/dictionary/export?page=${currentPage}&pageSize=${PAGE_SIZE}`
+        )
+        if (!res.ok) {
+          throw new Error(`Error al descargar página ${currentPage}`)
+        }
+        const data = await res.json()
+        if (data.words && data.words.length > 0) {
+          collected.push(...data.words)
+        }
+        setDownloadProgress(Math.round((currentPage / totalPages) * WORDS_PROGRESS_CAP))
+        hasMore = data.hasMore
+        currentPage++
+      }
+
+      // 2) Solo si todo se descargó OK: reemplazar IndexedDB.
       await clearLocalDB()
-
-      // Re-download everything from scratch
-      await downloadAllPages(1)
-
-      // Mark as ready
+      await storeWords(collected as never)
+      // 3) Fase de medios (tramo 70-100).
+      await downloadMediaPhase(syncAbortRef.current?.signal)
+      const syncTimestamp = new Date().toISOString()
+      await setLastSync(syncTimestamp)
+      setLastSyncState(syncTimestamp)
       setIsReady(true)
       setDownloadProgress(100)
-
-      // Update final word count from DB
       const finalStats = await getLocalDBStats()
       setLocalWordCount(finalStats.wordCount)
+      return true
     } catch (err) {
       console.error("Force resync error:", err)
       setError(
         err instanceof Error ? err.message : "Error desconocido al sincronizar"
       )
+      // El IndexedDB previo queda intacto (no se limpió).
+      return false
     } finally {
       setIsDownloading(false)
       downloadInProgressRef.current = false
     }
-  }, [downloadAllPages])
+  }, [downloadAllPages, downloadMediaPhase])
 
   /**
    * Refresh stats (word count + lastSync) from IndexedDB.
@@ -269,11 +349,21 @@ export function useLocalDB(): UseLocalDBReturn {
     checkAndResume()
   }, [checkAndResume])
 
-  // Auto-resume on reconnect: when browser goes online and DB is not ready
+  // Auto-resume acotado: arranca solo al montar online o al reconectar,
+  // con tope de intentos. Sin tope, un servidor caído provocaría un loop
+  // infinito de reintentos (cada fallo deja isReady=false y el efecto
+  // redispara). Lo manual (startDownload/forceResync) no tiene tope.
+  const prevOnlineRef = useRef(isOnline)
+  const autoAttemptsRef = useRef(0)
+  const MAX_AUTO_ATTEMPTS = 2
   useEffect(() => {
-    if (isOnline && !isReady && !isDownloading) {
-      startDownload()
-    }
+    const wasOffline = !prevOnlineRef.current
+    prevOnlineRef.current = isOnline
+    if (!isOnline || isReady || isDownloading) return
+    if (!wasOffline && autoAttemptsRef.current > 0) return
+    if (autoAttemptsRef.current >= MAX_AUTO_ATTEMPTS) return
+    autoAttemptsRef.current++
+    startDownload()
   }, [isOnline, isReady, isDownloading, startDownload])
 
   return {

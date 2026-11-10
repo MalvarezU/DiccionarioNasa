@@ -14,7 +14,7 @@ export class IrADashboard implements Task {
   async ejecutar(actor: Actor): Promise<void> {
     const { page } = actor.usa(NavegarLaWeb);
     await page.goto("/admin");
-    await expect(page.getByRole("heading", { name: "Panel de Administración" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Resumen del panel" })).toBeVisible({
       timeout: 30000,
     });
     // Las stats agregadas fallan a veces con la BD saturada: un reintento

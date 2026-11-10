@@ -9,25 +9,42 @@ import { isLocalFavorite, toggleLocalFavorite } from "@/lib/demo-storage";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { parseCategories, type WordDetail } from "./word-detail";
 
-function toWordDetail(localWord: {
+export function toWordDetail(localWord: {
   id: string;
   spanish: string;
   nasaYuwe: string;
   pronunciation?: string | null;
   audioUrl?: string | null;
+  illustrationUrl?: string | null;
   culturalContext?: string | null;
   category?: string | null;
-  examples?: string | null;
+  examples?: unknown;
 }): WordDetail {
+  let examples: Array<{ spanish: string; nasaYuwe: string }> | null = null;
+  const raw = localWord.examples;
+  if (raw != null) {
+    if (Array.isArray(raw)) {
+      examples = raw as Array<{ spanish: string; nasaYuwe: string }>;
+    } else if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        examples = Array.isArray(parsed) ? parsed : null;
+      } catch {
+        examples = null;
+        console.warn("[use-word-detail] examples no parseable, se omite:", raw);
+      }
+    }
+  }
   return {
     id: localWord.id,
     spanish: localWord.spanish,
     nasaYuwe: localWord.nasaYuwe,
     pronunciation: localWord.pronunciation ?? null,
     audioUrl: localWord.audioUrl ?? null,
+    illustrationUrl: localWord.illustrationUrl ?? null,
     culturalContext: localWord.culturalContext ?? null,
     category: localWord.category ?? null,
-    examples: localWord.examples ? JSON.parse(localWord.examples) : null,
+    examples,
   } as WordDetail;
 }
 
@@ -71,23 +88,28 @@ export function useWordDetail(wordId: string | null, open: boolean) {
     const fetchWord = async () => {
       setIsLoading(true);
       try {
+        // Offline: intentar siempre IndexedDB (sin gating por isLocalDBReady,
+        // que puede estar desactualizado o reportar false por una carrera).
         if (!isOnline) {
-          const localReady = await isLocalDBReady();
-          if (localReady) {
-            const localWord = await getLocalWord(wordId);
-            setWord(localWord ? toWordDetail(localWord) : null);
-          } else {
-            setWord(null);
+          const localWord = await getLocalWord(wordId);
+          if (localWord) {
+            setWord(toWordDetail(localWord));
+            return;
           }
-        } else {
-          const response = await fetch(`/api/dictionary/words/${wordId}`);
-          if (response.ok) {
-            const data = await response.json();
-            setWord(data);
-          } else {
-            setWord(null);
-          }
+          setWord(null);
+          return;
         }
+
+        // Online: fetch del server; si falla (red caída, 503 del SW, etc.)
+        // caer a IndexedDB antes de dar "no se encontró".
+        const response = await fetch(`/api/dictionary/words/${wordId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setWord(data);
+          return;
+        }
+        const localWord = await getLocalWord(wordId);
+        setWord(localWord ? toWordDetail(localWord) : null);
       } catch {
         try {
           const localWord = await getLocalWord(wordId);

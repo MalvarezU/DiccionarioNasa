@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import * as XLSX from "xlsx"
 import {
   Upload,
   Download,
@@ -25,6 +26,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 interface PreviewColumn {
   header: string
@@ -142,6 +151,29 @@ export function ImportCorpusModal({
     }
   }, [preview, onImported])
 
+  const handleDownloadTemplate = useCallback(() => {
+    const rows = [
+      { Palabra_esp: "casa", "Palabra_nyW": "yat", Pronunciacion: "yát", "Contexto cultural": "Vivienda tradicional", "Categoría": "sustantivo", Estado: "PUBLISHED" },
+      { Palabra_esp: "agua", "Palabra_nyW": "yu'", Pronunciacion: "yú", "Contexto cultural": "", "Categoría": "sustantivo", Estado: "DRAFT" },
+      { Palabra_esp: "correr", "Palabra_nyW": "kwe'sx", Pronunciacion: "kwésh", "Contexto cultural": "", "Categoría": "verbo", Estado: "BORRADOR" },
+    ]
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Corpus")
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
+    const blob = new Blob([wbout], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "plantilla-corpus.xlsx"
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }, [])
+
   const handleDownloadReport = useCallback(() => {
     if (!importResult) return
     const header = "espanol,nasa_yuwe,resultado"
@@ -173,9 +205,9 @@ export function ImportCorpusModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="flex flex-col gap-0 p-0 overflow-hidden sm:max-w-2xl md:max-w-3xl">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
+          <DialogTitle className="flex items-center gap-2 font-serif tracking-tight text-lg text-primary">
             <Upload className="h-5 w-5 text-primary" />
             Importar corpus
           </DialogTitle>
@@ -184,32 +216,91 @@ export function ImportCorpusModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        <div className="space-y-4">
           <Card className="bg-muted/40">
-            <CardContent className="pt-4 pb-4 space-y-2">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                <strong>Paso 1:</strong> sube <code className="bg-muted px-1 rounded">.xlsx</code> o{" "}
-                <code className="bg-muted px-1 rounded">.csv</code> con encabezados
-                (<code className="bg-muted px-1 rounded">Palabra_esp</code>,{" "}
-                <code className="bg-muted px-1 rounded">Palabra_nyW</code>, categoría, ejemplos, estado).
-                <strong>Paso 2:</strong> revisa N listas + M errores y confirma.
-              </p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Duplicados por «español» se omiten sin sobrescribir. Sin columna de estado, todo queda en{" "}
-                <strong>Borrador</strong> para revisión.
+            <CardContent className="pt-4 pb-4 space-y-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <strong>Paso 1:</strong> sube <code className="bg-muted px-1 rounded">.xlsx</code> o{" "}
+                  <code className="bg-muted px-1 rounded">.csv</code> con encabezados
+                  (<code className="bg-muted px-1 rounded">Palabra_esp</code>,{" "}
+                  <code className="bg-muted px-1 rounded">Palabra_nyW</code>, categoría, estado).
+                  <strong>Paso 2:</strong> revisa N listas + M errores y confirma.
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Duplicados por «español» se omiten sin sobrescribir. Sin columna de estado, todo queda en{" "}
+                  <strong>Borrador</strong> para revisión.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  ¿No tienes el formato? Descarga la plantilla con 3 ejemplos y reemplázalos.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadTemplate}
+                  className="gap-1.5 shrink-0 text-xs h-8"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Descargar plantilla (.xlsx)
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto rounded-md border border-outline-variant/30">
+                <Table className="text-xs">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="h-8 px-2">Palabra_esp</TableHead>
+                      <TableHead className="h-8 px-2">Palabra_nyW</TableHead>
+                      <TableHead className="h-8 px-2">Pronunciación</TableHead>
+                      <TableHead className="h-8 px-2">Categoría</TableHead>
+                      <TableHead className="h-8 px-2">Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="px-2 py-1">casa</TableCell>
+                      <TableCell className="px-2 py-1">yat</TableCell>
+                      <TableCell className="px-2 py-1">yát</TableCell>
+                      <TableCell className="px-2 py-1">sustantivo</TableCell>
+                      <TableCell className="px-2 py-1">PUBLISHED</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="px-2 py-1">agua</TableCell>
+                      <TableCell className="px-2 py-1">yu&apos;</TableCell>
+                      <TableCell className="px-2 py-1">yú</TableCell>
+                      <TableCell className="px-2 py-1">sustantivo</TableCell>
+                      <TableCell className="px-2 py-1">DRAFT</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="px-2 py-1">correr</TableCell>
+                      <TableCell className="px-2 py-1">kwe&apos;sx</TableCell>
+                      <TableCell className="px-2 py-1">kwésh</TableCell>
+                      <TableCell className="px-2 py-1">verbo</TableCell>
+                      <TableCell className="px-2 py-1">BORRADOR</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+              <p className="text-xs text-muted-foreground italic">
+                Borrá las filas de ejemplo y llená las tuyas. Sin columna de estado, todo entra en Borrador.
               </p>
             </CardContent>
           </Card>
 
           <div className="space-y-2">
-            <Label>Subir archivo Excel o CSV</Label>
+            <Label className="text-xs">Subir archivo Excel o CSV</Label>
             <div className="flex items-center gap-3">
               <Input
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 onChange={handleFileUpload}
                 disabled={busy}
-                className="max-w-xs"
+                className="w-full sm:max-w-md"
               />
               {fileName && (
                 <Badge variant="secondary" className="gap-1">
@@ -313,8 +404,9 @@ export function ImportCorpusModal({
             </div>
           )}
         </div>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t border-outline-variant/30 px-6 py-4">
           <Button variant="outline" onClick={handleClose} disabled={busy}>
             {importResult ? "Cerrar" : "Cancelar"}
           </Button>

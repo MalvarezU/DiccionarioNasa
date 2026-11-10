@@ -13,7 +13,10 @@ import { buildAuditWhere, parseDateParam } from "../route"
 const EXPORT_MAX_ROWS = 50_000
 
 function csvCell(value: unknown): string {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`
+  let s = String(value ?? "")
+  // Evitar CSV injection (fórmulas) en Excel/LibreOffice.
+  if (/^[=+@-]/.test(s)) s = "'" + s
+  return `"${s.replace(/"/g, '""')}"`
 }
 
 export async function GET(request: Request) {

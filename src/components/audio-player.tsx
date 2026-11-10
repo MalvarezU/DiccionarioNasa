@@ -126,7 +126,7 @@ function AudioPlayerInner({ src, wordLabel, isCached }: { src: string; wordLabel
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 rounded-full bg-primary/10 hover:bg-primary/20 shrink-0"
+          className={`h-9 w-9 rounded-full bg-primary/10 hover:bg-primary/20 shrink-0 ${isPlaying ? "anim-audio-pulse" : ""}`}
           onClick={handlePlayPause}
           disabled={isLoading || isOfflineNotCached}
           aria-label={isPlaying ? "Pausar audio" : "Reproducir audio"}
@@ -188,7 +188,7 @@ function AudioPlayerInner({ src, wordLabel, isCached }: { src: string; wordLabel
 
       {/* HU1.3.2: Offline message when audio is not cached */}
       {isOfflineNotCached && (
-        <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1.5 pl-1">
+        <p className="text-xs text-tertiary flex items-center gap-1.5 pl-1">
           <WifiOff className="h-3 w-3 shrink-0" />
           Audio disponible solo en línea o guardando esta palabra como favorita cuando tengas conexión
         </p>

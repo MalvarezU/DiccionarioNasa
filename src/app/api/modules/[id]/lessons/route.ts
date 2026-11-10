@@ -4,30 +4,10 @@ import { requireRole } from "@/lib/auth"
 
 type Ctx = { params: Promise<{ id: string }> }
 
-const LESSON_TYPES = ["READ", "QUIZ", "COMPLETE"] as const
-
-function asPayload(value: unknown): string | null {
-  if (value === undefined || value === null) return null
-  if (typeof value === "string") return value
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return null
-  }
-}
-
-async function resolveWordId(wordSpanish: unknown): Promise<string | null> {
-  if (typeof wordSpanish !== "string" || !wordSpanish.trim()) return null
-  const word = await db.dictionaryWord.findFirst({
-    where: { spanish: { equals: wordSpanish.trim(), mode: "insensitive" }, status: "PUBLISHED" },
-    select: { id: true },
-  })
-  return word?.id ?? null
-}
-
 /**
  * POST /api/modules/[id]/lessons
- * Body { title, type?, wordSpanish?, payload? } (editor+)
+ * Body { title } (editor+). La lección nace vacía (content { version, blocks: [] });
+ * el contenido se arma en el editor de bloques (PUT /api/lessons/[id]).
  * - Auto-asigna `lessonNumber = max(módulo) + 1` (persistente; re-numerar al reordenar).
  * - 409 si el título ya existe en el módulo (dedupe).
  */
@@ -46,7 +26,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       return NextResponse.json({ message: "El título es obligatorio" }, { status: 400 })
     }
     const dupe = await db.lesson.findFirst({
-      where: { moduleId: id, title: { equals: title, mode: "insensitive" } },
+      where: { moduleId: id, title: { equals: title } },
       select: { id: true },
     })
     if (dupe) {
@@ -55,11 +35,6 @@ export async function POST(request: NextRequest, { params }: Ctx) {
         { status: 409 }
       )
     }
-    const type =
-      typeof body.type === "string" && (LESSON_TYPES as readonly string[]).includes(body.type)
-        ? body.type
-        : "READ"
-    const wordId = await resolveWordId(body.wordSpanish)
     const last = await db.lesson.findFirst({
       where: { moduleId: id },
       orderBy: { lessonNumber: "desc" },
@@ -71,11 +46,10 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       data: {
         moduleId: id,
         title,
-        type: type as (typeof LESSON_TYPES)[number],
         order,
-        wordId,
         lessonNumber,
-        payload: asPayload(body.payload),
+        content: { version: 2, blocks: [] },
+        updatedAt: new Date(),
       },
     })
     return NextResponse.json({ lesson }, { status: 201 })

@@ -58,8 +58,8 @@ describe("SearchBar", () => {
   })
 
   it("shows dropdown with results after typing 2+ chars", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: mockResults })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: mockResults }))
     )
     const user = userEvent.setup()
     render(<SearchBar />)
@@ -95,8 +95,8 @@ describe("SearchBar", () => {
   })
 
   it("shows suggest button when no results", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: [] })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: [] }))
     )
     const user = userEvent.setup()
     render(<SearchBar />)
@@ -129,8 +129,8 @@ describe("SearchBar", () => {
   })
 
   it("navigates with arrow keys and selects with enter", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: mockResults })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: mockResults }))
     )
     const user = userEvent.setup()
     render(<SearchBar />)
@@ -146,8 +146,8 @@ describe("SearchBar", () => {
   })
 
   it("closes dropdown on escape", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: mockResults })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: mockResults }))
     )
     const user = userEvent.setup()
     render(<SearchBar />)
@@ -161,8 +161,8 @@ describe("SearchBar", () => {
   })
 
   it("opens suggest modal when suggest button is clicked", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: [] })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: [] }))
     )
     const user = userEvent.setup()
     render(<SearchBar />)
@@ -182,8 +182,8 @@ describe("SearchBar", () => {
 
   it("calls onWordSelect when result is clicked", async () => {
     const onWordSelect = vi.fn()
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({ results: mockResults })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: mockResults }))
     )
     const user = userEvent.setup()
     render(<SearchBar onWordSelect={onWordSelect} />)
@@ -194,5 +194,170 @@ describe("SearchBar", () => {
     await user.click(item)
 
     expect(onWordSelect).toHaveBeenCalledWith("1")
+  })
+})
+
+describe("SearchBar grouped results (WU-L3)", () => {
+  const groupedResults = [
+    { id: "1", spanish: "Sol", nasaYuwe: "atek", pronunciation: "a-tek", category: "naturaleza" },
+    { id: "2", spanish: "Agua", nasaYuwe: "yatek", pronunciation: null, category: null },
+    { id: "3", spanish: "Katek ritual", nasaYuwe: "xyz", pronunciation: null, category: null },
+  ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    vi.mocked(useOnlineStatus).mockReturnValue(true)
+    mockDB()
+    // Fresh Response per call: a shared Response body can only be read once
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: groupedResults }))
+    )
+  })
+
+  async function typeQuery(user: ReturnType<typeof userEvent.setup>, q: string) {
+    render(<SearchBar />)
+    const input = screen.getByRole("combobox")
+    await user.type(input, q)
+    await screen.findByRole("listbox")
+    return input
+  }
+
+  it("groups results under exact, nasa, and spanish headers with counts", async () => {
+    const user = userEvent.setup()
+    await typeQuery(user, "atek")
+
+    expect(screen.getByText("Coincidencia exacta")).toBeDefined()
+    expect(screen.getByText("En Nasa Yuwe")).toBeDefined()
+    expect(screen.getByText("En español")).toBeDefined()
+    // Exact group comes first: atek (exact) before yatek and xyz
+    const options = screen.getAllByRole("option")
+    expect(options).toHaveLength(3)
+    expect(options[0].textContent).toMatch(/atek/)
+    expect(options[0].id).toBe("search-option-0")
+    expect(options[2].id).toBe("search-option-2")
+  })
+
+  it("omits empty groups", async () => {
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: [groupedResults[2]] }))
+    )
+    const user = userEvent.setup()
+    await typeQuery(user, "atek")
+
+    expect(screen.queryByText("Coincidencia exacta")).toBeNull()
+    expect(screen.queryByText("En Nasa Yuwe")).toBeNull()
+    expect(screen.getByText("En español")).toBeDefined()
+  })
+
+  it("shows footer with kbd hints, count, and explore link", async () => {
+    const user = userEvent.setup()
+    await typeQuery(user, "atek")
+
+    expect(screen.getByText("3 resultados")).toBeDefined()
+    expect(screen.getByText("navegar")).toBeDefined()
+    expect(screen.getByText("abrir")).toBeDefined()
+    expect(screen.getByText("cerrar")).toBeDefined()
+    const link = screen.getByRole("link", { name: /Explorar A-Z/ })
+    expect(link.getAttribute("href")).toBe("/diccionario?tab=explore")
+  })
+
+  it("keeps global highlightedIndex across groups for keyboard nav", async () => {
+    const user = userEvent.setup()
+    const input = await typeQuery(user, "atek")
+
+    await user.keyboard("{ArrowDown}")
+    // First global option (exact group) is highlighted
+    expect(input.getAttribute("aria-activedescendant")).toBe("search-option-0")
+    const options = screen.getAllByRole("option")
+    expect(options[0].getAttribute("aria-selected")).toBe("true")
+
+    // Walk past the group boundary into the second group
+    await user.keyboard("{ArrowDown}")
+    expect(input.getAttribute("aria-activedescendant")).toBe("search-option-1")
+    expect(options[1].getAttribute("aria-selected")).toBe("true")
+
+    await user.keyboard("{Enter}")
+    expect(await screen.findByTestId("word-detail-card")).toBeDefined()
+  })
+
+  it("renders inline play only when the result has audio, without selecting", async () => {
+    const playMock = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(window.HTMLMediaElement.prototype, "play", {
+      value: playMock,
+      writable: true,
+      configurable: true,
+    })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(
+        Response.json({
+          results: [
+            { ...groupedResults[0], audioUrl: "/audio/atek.mp3" },
+            { ...groupedResults[1], audioUrl: null },
+          ],
+        })
+      )
+    )
+    const user = userEvent.setup()
+    render(<SearchBar />)
+    await user.type(screen.getByRole("combobox"), "atek")
+    await screen.findByRole("listbox")
+
+    const playButton = screen.getByRole("button", {
+      name: "Escuchar pronunciación de atek",
+    })
+    await user.click(playButton)
+    expect(playMock).toHaveBeenCalled()
+    // stopPropagation: the detail card must not open
+    expect(screen.queryByTestId("word-detail-card")).toBeNull()
+    // Result without audio has no play button
+    expect(
+      screen.queryByRole("button", { name: /yatek/ })
+    ).toBeNull()
+  })
+})
+
+describe("SearchBar — guardado de búsquedas [fase2]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn()
+    vi.mocked(useOnlineStatus).mockReturnValue(true)
+    mockDB()
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(Response.json({ results: mockResults }))
+    )
+  })
+
+  it("POSTs search-history al abrir un resultado (sin bloquear)", async () => {
+    const user = userEvent.setup()
+    render(<SearchBar />)
+
+    await user.type(screen.getByRole("combobox"), "so")
+    const item = await screen.findByText("atek")
+    await user.click(item)
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/dictionary/search-history",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ query: "so" }),
+      })
+    )
+  })
+
+  it("POSTs search-history al confirmar con Enter", async () => {
+    const user = userEvent.setup()
+    render(<SearchBar />)
+
+    await user.type(screen.getByRole("combobox"), "so")
+    await screen.findByText("atek")
+    await user.keyboard("{ArrowDown}")
+    await user.keyboard("{Enter}")
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/dictionary/search-history",
+      expect.objectContaining({ method: "POST" })
+    )
+    expect(await screen.findByTestId("word-detail-card")).toBeDefined()
   })
 })

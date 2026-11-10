@@ -14,7 +14,9 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { WordDetailSkeleton } from "@/components/skeletons"
+import { WordIllustration } from "@/components/dictionary/word-illustration"
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AudioPlayer } from "@/components/audio-player";
@@ -54,7 +56,7 @@ export function WordContent({
   onLoginClick,
 }: WordContentProps) {
   if (isLoading) {
-    return <WordDetailSkeleton />;
+    return <WordDetailSkeleton layout="wide" />;
   }
 
   if (!word) {
@@ -65,8 +67,33 @@ export function WordContent({
     );
   }
 
+  // Sin ilustración la grilla colapsa a una sola columna: WordIllustration
+  // retorna null y no se reserva su hueco (misma regla que el skeleton).
+  const hasIllustration = Boolean(word.illustrationUrl);
+
   return (
-    <>
+    <div
+      className={cn(
+        "grid grid-cols-1 md:max-h-[88dvh]",
+        hasIllustration && "md:grid-cols-[5fr_7fr]"
+      )}
+    >
+      {/* Columna izquierda (desktop): ilustración grande y fija. En móvil
+          sigue apilada arriba con el mismo tamaño de antes. */}
+      {hasIllustration && (
+        <div className="md:sticky md:top-0 md:self-start md:p-8 md:pr-4">
+          <WordIllustration
+            url={word.illustrationUrl}
+            alt={word.spanish}
+            sizes="(max-width: 768px) 100vw, 480px"
+            className="mx-auto mb-4 w-full max-w-[16rem] md:mb-0 md:max-w-none"
+          />
+        </div>
+      )}
+
+      {/* Columna derecha: la ficha. Solo scrollea como red de seguridad
+          (contexto largo, muchos ejemplos); la ficha típica entra sin scroll. */}
+      <div className="md:min-h-0 md:overflow-y-auto md:p-8 md:pl-4">
       {/* Category badges */}
       {categories.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 mb-2">
@@ -74,7 +101,7 @@ export function WordContent({
             <Badge
               key={cat}
               variant="secondary"
-              className="text-xs gap-1 bg-surface-container-highest text-foreground hover:bg-tertiary-fixed transition-colors cursor-pointer"
+              className="text-xs gap-1 bg-surface-container-highest text-foreground hover:bg-secondary-container transition-colors cursor-pointer"
             >
               <Tag className="h-3 w-3" />
               {getCategoryDisplay(cat)}
@@ -104,7 +131,7 @@ export function WordContent({
         </span>
       </div>
 
-      <div className="mt-6 flex flex-col gap-8">
+      <div className="mt-4 flex flex-col gap-5">
         {/* Phonetic pronunciation */}
         {word.pronunciation ? (
           <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
@@ -184,7 +211,7 @@ export function WordContent({
             Contexto cultural
           </h3>
           {word.culturalContext ? (
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed border-l-2 border-terracota pl-3">
               {word.culturalContext}
             </p>
           ) : (
@@ -205,7 +232,7 @@ export function WordContent({
               {word.examples.map((ex, i) => (
                 <div
                   key={i}
-                  className="p-3 rounded-lg bg-surface-container-high"
+                  className="p-3 rounded-lg bg-surface-container-high border-l-2 border-terracota"
                 >
                   <p className="text-sm text-foreground font-medium">
                     {ex.spanish}
@@ -226,8 +253,9 @@ export function WordContent({
         {/* Favorite button */}
         <div className="flex flex-col gap-2 pb-2">
           <Button
+            key={isFavorite ? "favorito" : "no-favorito"}
             variant={isFavorite ? "default" : "outline"}
-            className={`w-full gap-2 ${isFavorite ? "bg-secondary hover:bg-secondary/90 transition-colors" : ""}`}
+            className={`w-full gap-2 transition-colors ${isFavorite ? "bg-secondary hover:bg-secondary/90 anim-match-pop" : "hover:border-tertiary/50 hover:text-tertiary"}`}
             onClick={onToggleFavorite}
             disabled={isTogglingFav || isDownloading}
           >
@@ -235,7 +263,7 @@ export function WordContent({
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Heart
-                className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`}
+                className={`h-4 w-4 ${isFavorite ? "fill-terracota text-terracota" : ""}`}
               />
             )}
             {isFavorite
@@ -256,6 +284,7 @@ export function WordContent({
           )}
         </div>
       </div>
-    </>
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { Volume2, Upload, X, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { Volume2, Upload, X, Trash2, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,7 @@ export function EditWordAudio({ audio, variant = "edit" }: { audio: Audio; varia
     handleDragLeave,
     handleFileInputChange,
     removeAudio,
+    clearAudio,
   } = audio
 
   return (
@@ -58,17 +59,34 @@ export function EditWordAudio({ audio, variant = "edit" }: { audio: Audio; varia
                   {audioUrl && !isUploadingAudio && (audioChanged ? " — Subido (guarda la ficha para conservarlo)" : " — Guardado")}
                 </p>
               </div>
-              {(variant === "create" ? !!audioFile : (audioChanged || !!originalAudioUrl)) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={removeAudio}
-                  disabled={isUploadingAudio}
-                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                  title={audioChanged ? "Restaurar audio original" : "Quitar audio"}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+              {(audioChanged || originalAudioUrl || audioFile) && (
+                <div className="flex gap-1">
+                  {audioChanged ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={removeAudio}
+                      disabled={isUploadingAudio}
+                      className="h-8 gap-1.5 text-xs"
+                      title="Descartar cambio y restaurar el audio guardado"
+                    >
+                      <X className="h-4 w-4" />
+                      Descartar
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearAudio}
+                      disabled={isUploadingAudio}
+                      className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+                      title="Quitar audio de la ficha"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Quitar
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
             {((audioPreview && !isUploadingAudio) || (audioUrl && !audioFile)) && (

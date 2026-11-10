@@ -12,7 +12,8 @@ import {
   Trash2,
   Heart,
   Clock,
-  AlertTriangle,
+  Check,
+  ChevronDown,
 } from "lucide-react"
 import {
   Card,
@@ -33,17 +34,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { ConfirmDialog } from "@/components/admin/confirm-dialog"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ROLES, type Role } from "@/lib/roles"
 import { useToast } from "@/hooks/use-toast"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 
 interface UserRow {
   id: string
@@ -57,6 +57,18 @@ interface UserRow {
   }
 }
 
+const ROLE_LABELS: Record<Role, string> = {
+  user: "Usuario",
+  editor: "Editor",
+  admin: "Administrador",
+}
+
+function RoleIcon({ role, className }: { role: string; className?: string }) {
+  if (role === "admin") return <ShieldCheck className={className} />
+  if (role === "editor") return <Pencil className={className} />
+  return <Shield className={className} />
+}
+
 export function UserManagementSection() {
   const { data: session } = useSession()
   const currentUserId = (session?.user as { id?: string })?.id
@@ -66,9 +78,11 @@ export function UserManagementSection() {
   const [totalUsers, setTotalUsers] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  // El input tipea al instante; el GET espera 300ms sin cambios.
+  const debouncedSearch = useDebouncedValue(search)
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true)
@@ -77,7 +91,7 @@ export function UserManagementSection() {
       // el comportamiento previo para instalaciones reales (<100 usuarios)
       // y la API queda acotada.
       const query = new URLSearchParams({ pageSize: "100" })
-      if (search) query.set("search", search)
+      if (debouncedSearch) query.set("search", debouncedSearch)
       const res = await fetch(`/api/admin/users?${query}`)
       if (res.ok) {
         const data = await res.json()
@@ -96,24 +110,15 @@ export function UserManagementSection() {
     } finally {
       setIsLoading(false)
     }
-  }, [search, toast])
+  }, [debouncedSearch, toast])
 
   useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
 
-  const ROLE_LABELS: Record<string, string> = {
-    user: "usuario",
-    editor: "editor",
-    admin: "administrador",
-  }
-
-  const nextRole = (role: string) =>
-    role === "admin" ? "user" : role === "editor" ? "admin" : "editor"
-
-  const handleToggleRole = async (user: UserRow) => {
-    const newRole = nextRole(user.role)
-    setUpdatingId(user.id)
+  const handleRoleChange = async (user: UserRow, newRole: Role) => {
+    if (newRole === user.role) return
+    setPendingUserId(user.id)
     try {
       const res = await fetch(`/api/admin/users/${user.id}`, {
         method: "PATCH",
@@ -127,7 +132,7 @@ export function UserManagementSection() {
         )
         toast({
           title: "Rol actualizado",
-          description: `${user.email} ahora es ${ROLE_LABELS[newRole] ?? newRole}`,
+          description: `${user.email} ahora es ${ROLE_LABELS[newRole].toLowerCase()}`,
         })
       } else {
         const data = await res.json()
@@ -144,7 +149,7 @@ export function UserManagementSection() {
         variant: "destructive",
       })
     } finally {
-      setUpdatingId(null)
+      setPendingUserId(null)
     }
   }
 
@@ -223,17 +228,17 @@ export function UserManagementSection() {
           {isLoading ? (
             <UsersTableSkeleton />
           ) : users.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/20 px-4 py-12">
               <Users className="h-10 w-10 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
                 {search ? "No se encontraron usuarios" : "No hay usuarios registrados"}
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border">
               <Table>
-                <TableHeader>
-                  <TableRow>
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="hover:bg-muted/40">
                     <TableHead>Usuario</TableHead>
                     <TableHead>Rol</TableHead>
                     <TableHead className="hidden sm:table-cell">Favoritos</TableHead>
@@ -274,46 +279,62 @@ export function UserManagementSection() {
                         )}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1 text-sm tabular-nums text-muted-foreground">
                           <Heart className="h-3 w-3" />
                           {user._count?.favorites ?? 0}
                         </span>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1 text-sm tabular-nums text-muted-foreground">
                           <Clock className="h-3 w-3" />
                           {user._count?.viewHistory ?? 0}
                         </span>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                      <TableCell className="hidden whitespace-nowrap text-sm tabular-nums text-muted-foreground md:table-cell">
                         {formatDate(user.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           {user.id !== currentUserId && (
                             <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-1 text-xs"
-                                disabled={updatingId === user.id}
-                                onClick={() => handleToggleRole(user)}
-                              >
-                                {updatingId === user.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : user.role === "admin" ? (
-                                  <Shield className="h-3 w-3" />
-                                ) : (
-                                  <ShieldCheck className="h-3 w-3" />
-                                )}
-                                {user.role === "admin" ? "A usuario" : user.role === "editor" ? "A admin" : "A editor"}
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="min-h-8 gap-1 text-xs group"
+                                    disabled={pendingUserId === user.id}
+                                    aria-label={"Cambiar rol de " + (user.name || user.email)}
+                                  >
+                                    {pendingUserId === user.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <RoleIcon role={user.role} className="h-3 w-3" />
+                                    )}
+                                    {ROLE_LABELS[user.role as Role] ?? user.role}
+                                    <ChevronDown className="h-3 w-3 text-muted-foreground transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-[state=open]:rotate-180" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {ROLES.map((role) => (
+                                    <DropdownMenuItem
+                                      key={role}
+                                      disabled={role === user.role}
+                                      onSelect={() => void handleRoleChange(user, role)}
+                                    >
+                                      <RoleIcon role={role} className="h-3 w-3" />
+                                      {ROLE_LABELS[role]}
+                                      {role === user.role && <Check className="ml-auto h-3 w-3" />}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                                 onClick={() => setDeleteTarget(user)}
-                                disabled={updatingId === user.id}
+                                disabled={pendingUserId === user.id}
                                 aria-label="Eliminar usuario"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -337,34 +358,21 @@ export function UserManagementSection() {
       </Card>
 
       {/* Delete confirmation dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              ¿Eliminar este usuario?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Se eliminará permanentemente la cuenta de{" "}
-              <strong>{deleteTarget?.email}</strong> junto con todos sus favoritos e historial.
-              Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Eliminar usuario
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        titulo="¿Eliminar este usuario?"
+        descripcion={
+          <>
+            Se eliminará permanentemente la cuenta de{" "}
+            <strong>{deleteTarget?.email}</strong> junto con todos sus favoritos e historial.
+            Esta acción no se puede deshacer.
+          </>
+        }
+        accionLabel="Eliminar usuario"
+        processing={isDeleting}
+        onConfirm={handleDelete}
+      />
     </>
   )
 }

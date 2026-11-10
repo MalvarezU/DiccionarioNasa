@@ -38,9 +38,34 @@ describe("LessonContentView — vista general", () => {
     render(<LessonContentView content={contenido([])} words={new Map()} />)
     expect(screen.getByText(/no tiene contenido/i)).toBeDefined()
   })
+
+  it("lección vacía en modo estudiante ofrece completar a mano", async () => {
+    const user = userEvent.setup()
+    const onCompleta = vi.fn()
+    render(
+      <LessonContentView content={contenido([])} words={new Map()} onCompleta={onCompleta} />
+    )
+    expect(screen.getByText(/no tiene contenido/i)).toBeDefined()
+    await user.click(screen.getByRole("button", { name: /Marcar como completada/i }))
+    expect(onCompleta).toHaveBeenCalledWith(null)
+  })
+
+  it("lección vacía en vista previa (admin) no ofrece acción", () => {
+    const onCompleta = vi.fn()
+    render(
+      <LessonContentView
+        content={contenido([])}
+        words={new Map()}
+        interactive={false}
+        onCompleta={onCompleta}
+      />
+    )
+    expect(screen.getByText(/no tiene contenido/i)).toBeDefined()
+    expect(screen.queryByRole("button", { name: /Marcar como completada/i })).toBeNull()
+  })
 })
 
-describe("bloque text — markdown restringido", () => {
+describe("bloque text — HTML sanitizado", () => {
   it("renderiza título, párrafos, lista, negrita y cursiva", () => {
     render(
       <LessonContentView
@@ -48,7 +73,7 @@ describe("bloque text — markdown restringido", () => {
           {
             id: "b1",
             type: "text",
-            markdown: "# Título\n\nPárrafo con **negrita** y *cursiva*.\n\n- uno\n- dos",
+            html: "<h2>Título</h2><p>Párrafo con <strong>negrita</strong> y <em>cursiva</em>.</p><ul><li>uno</li><li>dos</li></ul>",
           },
         ])}
         words={new Map()}
@@ -64,11 +89,11 @@ describe("bloque text — markdown restringido", () => {
     expect(items[0]!.textContent).toBe("uno")
   })
 
-  it("markdown vacío no renderiza nada", () => {
+  it("html vacío no renderiza nada", () => {
     const { container } = render(
-      <LessonContentView content={contenido([{ id: "b1", type: "text", markdown: "" }])} words={new Map()} />
+      <LessonContentView content={contenido([{ id: "b1", type: "text", html: "" }])} words={new Map()} />
     )
-    // el bloque de texto con markdown vacío no deja ningún elemento
+    // el bloque de texto con html vacío no deja ningún elemento
     expect(container.querySelector("[data-testid='lesson-content']")!.children).toHaveLength(0)
     expect(screen.queryByRole("heading")).toBeNull()
   })
@@ -89,6 +114,20 @@ describe("bloque image", () => {
   })
 })
 
+describe("bloque text — marcas combinadas", () => {
+  it("negrita+cursiva (***) renderiza em dentro de strong", () => {
+    render(
+      <LessonContentView
+        content={contenido([{ id: "b1", type: "text", html: "Hola <strong><em>yuwe</em></strong> mundo" }])}
+        words={new Map()}
+      />
+    )
+    const elemento = screen.getByText("yuwe") as HTMLElement
+    expect(elemento.closest("strong")).toBeTruthy()
+    expect(elemento.closest("em")).toBeTruthy()
+  })
+})
+
 describe("bloques de audio y video", () => {
   it("audio subido renderiza el reproductor", () => {
     render(
@@ -103,17 +142,20 @@ describe("bloques de audio y video", () => {
     expect(audio.src).toContain("narracion.mp3")
   })
 
-  it("audio de YouTube renderiza embebido nocookie", () => {
+  it("audio con fuente legacy de YouTube avisa en vez de embeber", () => {
+    // YouTube quedó exclusivo del bloque video: un audio viejo con youtubeId
+    // ya no renderiza iframe, muestra el aviso de falta de fuente.
     render(
       <LessonContentView
         content={contenido([
           { id: "b1", type: "audio", media: { source: "youtube", youtubeId: "dQw4w9WgXcQ" } },
         ])}
         words={new Map()}
+        interactive={false}
       />
     )
-    const iframe = screen.getByTitle("Audio de la lección") as HTMLIFrameElement
-    expect(iframe.src).toContain("youtube-nocookie.com/embed/dQw4w9WgXcQ")
+    expect(screen.queryByTitle("Audio de la lección")).toBeNull()
+    expect(screen.getByText(/aún no tiene fuente/i)).toBeDefined()
   })
 
   it("video de YouTube", () => {
@@ -127,11 +169,51 @@ describe("bloques de audio y video", () => {
     expect(iframe.src).toContain("youtube-nocookie.com/embed/dQw4w9WgXcQ")
   })
 
+  it("imagen sin url avisa y no renderiza <img> con src vacío", () => {
+    // Un <img src=""> hace que el browser re-descargue la página; el bloque
+    // incompleto (recién creado) debe generar aviso, no elemento roto.
+    render(
+      <LessonContentView
+        content={contenido([{ id: "b1", type: "image", url: "", alt: "algo" }])}
+        words={new Map()}
+        interactive={false}
+      />
+    )
+    expect(screen.getByText(/no tiene fuente/i)).toBeDefined()
+    expect(document.querySelector("img")).toBeNull()
+  })
+
+  it("imagen sin url en modo estudiante no muestra el aviso editorial", () => {
+    // El aviso de falta es mensaje editorial del admin: el estudiante no
+    // debe verlo (el validador server impide este estado en válido).
+    render(
+      <LessonContentView
+        content={contenido([{ id: "b1", type: "image", url: "", alt: "algo" }])}
+        words={new Map()}
+      />
+    )
+    expect(screen.queryByText(/no tiene fuente/i)).toBeNull()
+    expect(document.querySelector("img")).toBeNull()
+  })
+
+  it("video sin youtubeId avisa y no renderiza iframe con src vacío", () => {
+    render(
+      <LessonContentView
+        content={contenido([{ id: "b1", type: "video", youtubeId: "", title: "Clase" }])}
+        words={new Map()}
+        interactive={false}
+      />
+    )
+    expect(screen.getByText(/no tiene fuente/i)).toBeDefined()
+    expect(document.querySelector("iframe")).toBeNull()
+  })
+
   it("audio sin fuente avisa en vez de quedar mudo", () => {
     render(
       <LessonContentView
         content={contenido([{ id: "b1", type: "audio", media: { source: "upload" } }])}
         words={new Map()}
+        interactive={false}
       />
     )
     expect(screen.getByText(/aún no tiene fuente/i)).toBeDefined()
@@ -206,7 +288,7 @@ describe("bloques interactivos en vista previa y estudiante", () => {
     expect(screen.queryByText("¿Cómo se dice agua?")).toBeNull()
   })
 
-  it("listening y game muestran su panel (vista previa)", () => {
+  it("listening muestra su panel (vista previa)", () => {
     render(
       <LessonContentView
         content={contenido([
@@ -217,29 +299,13 @@ describe("bloques interactivos en vista previa y estudiante", () => {
             question: "¿Qué escuchaste?",
             options: [{ text: "yu", correct: true }, { text: "kwe", correct: false }],
           },
-          { id: "b3", type: "game", game: "memory", wordIds: ["w1", "w2"], difficulty: "easy" },
         ])}
         words={new Map()}
         interactive={false}
       />
     )
     expect(screen.getByText(/Ejercicio de escucha/)).toBeDefined()
-    expect(screen.getByText(/2 palabras/)).toBeDefined()
-  })
-
-  it("bloques legacy muestran su resumen", () => {
-    render(
-      <LessonContentView
-        content={contenido([
-          { id: "b4", type: "legacy-quiz-words", words: ["a", "b"] },
-          { id: "b5", type: "legacy-complete-word", wordId: "w1" },
-        ])}
-        words={new Map()}
-        interactive={false}
-      />
-    )
-    expect(screen.getByText(/Quiz con palabras/)).toBeDefined()
-    expect(screen.getByText(/completa la palabra/i)).toBeDefined()
+    expect(screen.getByText(/Ejercicio de escucha/)).toBeDefined()
   })
 })
 
@@ -302,7 +368,7 @@ describe("modo estudiante — los interactivos son jugables", () => {
     const onCompleta = vi.fn()
     render(
       <LessonContentView
-        content={contenido([{ id: "b9", type: "text", markdown: "Solo lectura" }])}
+        content={contenido([{ id: "b9", type: "text", html: "Solo lectura" }])}
         words={new Map()}
         onCompleta={onCompleta}
       />

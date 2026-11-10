@@ -36,10 +36,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const query = searchParams.get('q')?.trim() ?? ''
 
-  // Require at least 2 characters to search
-  if (query.length < 2) {
+  const MAX_QUERY_LENGTH = 100
+
+  // Require at least 1 character to search
+  if (query.length < 1) {
     return NextResponse.json(
-      { results: [], total: 0, message: 'Query must be at least 2 characters' },
+      { results: [], total: 0, message: 'Query must be at least 1 character' },
+      { status: 400 }
+    )
+  }
+
+  if (query.length > MAX_QUERY_LENGTH) {
+    return NextResponse.json(
+      { results: [], total: 0, message: 'Query must be at most 100 characters' },
       { status: 400 }
     )
   }
@@ -54,28 +63,31 @@ export async function GET(request: NextRequest) {
       setTimeout(() => resolve(null), timeoutMs)
     )
 
-    // Fetch more candidates than needed so we can rank and trim
-    // We use raw SQL with Postgres `unaccent` extension for accent-insensitive search
-    // (the extension must be enabled in Supabase: Database → Extensions → unaccent)
-    // Note: "nasaYuwe" is quoted because Postgres folds unquoted identifiers to lowercase
-    const searchPromise = db.$queryRaw<
-      Array<{
-        id: string
-        spanish: string
-        nasaYuwe: string
-        pronunciation: string | null
-        category: string | null
-      }>
-    >`
-      SELECT id, spanish, "nasaYuwe", pronunciation, category
-      FROM "DictionaryWord"
-      WHERE status = 'PUBLISHED'
-        AND (
-          lower(unaccent(spanish)) LIKE '%' || lower(unaccent(${query})) || '%'
-          OR lower(unaccent("nasaYuwe")) LIKE '%' || lower(unaccent(${query})) || '%'
-        )
-      LIMIT 50
-    `
+    // Fetch more candidates than needed so we can rank and trim.
+    // Vía ORM (findMany) en lugar de SQL crudo: la collation
+    // utf8mb4_unicode_ci ya es case- y accent-insensitive, así que
+    // `contains`/`startsWith` replican el LIKE anterior sin $queryRaw
+    // (el raw fallaba en el MariaDB gestionado de Hostinger con 500,
+    // mientras el mismo SQL andaba en phpMyAdmin y en local).
+    const isSingleChar = query.length === 1
+
+    const searchPromise = db.dictionaryWord.findMany({
+      where: {
+        status: "PUBLISHED",
+        OR: isSingleChar
+          ? [{ spanish: { startsWith: query } }, { nasaYuwe: { startsWith: query } }]
+          : [{ spanish: { contains: query } }, { nasaYuwe: { contains: query } }],
+      },
+      select: {
+        id: true,
+        spanish: true,
+        nasaYuwe: true,
+        pronunciation: true,
+        category: true,
+        audioUrl: true,
+      },
+      take: 50,
+    })
 
     const rawResults = await Promise.race([searchPromise, timeoutPromise])
 

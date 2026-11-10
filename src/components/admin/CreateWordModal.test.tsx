@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { ReactNode } from "react"
 
 vi.mock("@/components/ui/select", () => ({
   Select: ({ children, value, onValueChange }: any) => (
@@ -20,7 +21,27 @@ vi.mock("./WordPreviewModal", () => ({
     open ? <div data-testid="preview-modal" /> : null,
 }))
 
+const toastMock = vi.fn()
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: vi.fn(() => ({ toast: toastMock })),
+}))
+
 import { CreateWordModal } from "./CreateWordModal"
+
+/**
+ * The success toast title is a ReactNode (icon + text). Render it and
+ * assert on its text content plus the feedback icon instead of matching
+ * the raw object shape.
+ */
+function expectToastWithText(text: string) {
+  expect(toastMock).toHaveBeenCalledTimes(1)
+  const { title } = toastMock.mock.calls[0][0] as { title: ReactNode }
+  const { container } = render(<>{title}</>)
+  expect(container).toHaveTextContent(text)
+  const icon = container.querySelector("svg")
+  expect(icon).not.toBeNull()
+  expect(icon?.classList.contains("text-secondary")).toBe(true)
+}
 
 function renderModal() {
   const onOpenChange = vi.fn()
@@ -87,17 +108,40 @@ describe("CreateWordModal", () => {
     )
   })
 
-  it("shows success message after creating as draft", async () => {
+  it("toasts and closes immediately after creating as draft", async () => {
     vi.mocked(global.fetch).mockResolvedValue(
       Response.json({ id: "new1" }) as never
     )
-    renderModal()
+    const { onOpenChange, onCreated } = renderModal()
     const user = userEvent.setup()
     await user.type(screen.getByPlaceholderText("palabra en español"), "Casa")
     await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "Yat")
     await user.click(screen.getByText("Guardar como borrador"))
 
-    expect(await screen.findByText("Ficha guardada como borrador")).toBeDefined()
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledTimes(1)
+    })
+    expectToastWithText("Ficha guardada como borrador")
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(onCreated).toHaveBeenCalled()
+  })
+
+  it("toasts and closes immediately after creating as published", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      Response.json({ id: "new1" }) as never
+    )
+    const { onOpenChange, onCreated } = renderModal()
+    const user = userEvent.setup()
+    await user.type(screen.getByPlaceholderText("palabra en español"), "Casa")
+    await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "Yat")
+    await user.click(screen.getByText("Guardar y publicar"))
+
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledTimes(1)
+    })
+    expectToastWithText("Ficha guardada y publicada")
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(onCreated).toHaveBeenCalled()
   })
 
   it("shows error message when API returns error", async () => {

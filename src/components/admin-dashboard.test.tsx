@@ -59,7 +59,7 @@ describe("AdminDashboard", () => {
   it("renders dashboard stats after loading", async () => {
     mockFetchStats()
     render(<AdminDashboard />)
-    expect(await screen.findByText("Panel de Administración")).toBeDefined()
+    expect(await screen.findByText("Total de palabras")).toBeDefined()
     const totals = screen.getAllByText("100")
     expect(totals.length).toBeGreaterThanOrEqual(1)
   })
@@ -77,13 +77,50 @@ describe("AdminDashboard", () => {
     expect(await screen.findByText(/Coincide con el total/)).toBeDefined()
   })
 
-  it("shows quick action buttons", async () => {
+  it("renders no section tiles nav: navigation lives in the sidebar", async () => {
     mockFetchStats()
     render(<AdminDashboard />)
-    expect(await screen.findByText("Nueva ficha")).toBeDefined()
-    expect(screen.getByText("Gestionar fichas")).toBeDefined()
-    expect(screen.getByText("Importar corpus")).toBeDefined()
-    expect(screen.getByText("Ver log completo")).toBeDefined()
+    // El Resumen ya no duplica los links del sidebar persistente.
+    expect(
+      await screen.findByText("Total de palabras")
+    ).toBeDefined()
+    expect(
+      screen.queryByRole("navigation", { name: "Secciones del panel" })
+    ).toBeNull()
+    expect(screen.queryByText("Usuarios")).toBeNull()
+    // Pendientes y métricas siguen presentes.
+    expect(screen.getByText("Pendientes")).toBeDefined()
+    expect(screen.getByText("Estado de fichas")).toBeDefined()
+  })
+
+  it("renders no section tiles nav for editors either", async () => {
+    mockFetchStats()
+    render(<AdminDashboard isAdmin={false} />)
+    expect(
+      await screen.findByText("Total de palabras")
+    ).toBeDefined()
+    expect(
+      screen.queryByRole("navigation", { name: "Secciones del panel" })
+    ).toBeNull()
+    expect(screen.queryByText("Usuarios")).toBeNull()
+  })
+
+  it("shows pending items with links to resolving sections", async () => {
+    mockFetchStats()
+    render(<AdminDashboard />)
+    expect(await screen.findByText("Pendientes")).toBeDefined()
+    const borradores = screen.getByText("20 borradores por publicar")
+    expect(borradores.closest("a")?.getAttribute("href")).toBe("/admin/palabras")
+    const sinAudio = screen.getByText("10 publicadas sin audio")
+    expect(sinAudio.closest("a")?.getAttribute("href")).toBe("/admin/audios")
+  })
+
+  it("shows todo-al-dia when nothing is pending", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ ...mockStats, draftCount: 0, publishedWithoutAudio: 0 })
+    )
+    render(<AdminDashboard />)
+    expect(await screen.findByText("Sin pendientes. Todo al día.")).toBeDefined()
   })
 
   it("shows audio card", async () => {
@@ -106,158 +143,18 @@ describe("AdminDashboard", () => {
   })
 
   // ═══════════════════════════════════════
-  // CreateWordModal
-  // ═══════════════════════════════════════
-
-  it("opens CreateWordModal and renders form fields", async () => {
-    mockFetchStats()
-    const user = userEvent.setup()
-    render(<AdminDashboard />)
-    expect(await screen.findByText("Nueva ficha")).toBeDefined()
-    await user.click(screen.getByText("Nueva ficha"))
-    expect(screen.getByText("Crea una nueva entrada en el diccionario bilingüe")).toBeDefined()
-    expect(screen.getByPlaceholderText("palabra en español")).toBeDefined()
-    expect(screen.getByPlaceholderText("palabra en nasa yuwe")).toBeDefined()
-  })
-
-  it("CreateWordModal validates required fields", async () => {
-    mockFetchStats()
-    const user = userEvent.setup()
-    render(<AdminDashboard />)
-    expect(await screen.findByText("Nueva ficha")).toBeDefined()
-    await user.click(screen.getByText("Nueva ficha"))
-    await user.click(screen.getByText("Guardar como borrador"))
-    expect(screen.getByText(/El campo.*Español.*es obligatorio/)).toBeDefined()
-    expect(screen.getByText(/El campo.*Nasa Yuwe.*es obligatorio/)).toBeDefined()
-  })
-
-  it("CreateWordModal submits and shows success", async () => {
-    mockFetchStats()
-    const user = userEvent.setup()
-    render(<AdminDashboard />)
-    expect(await screen.findByText("Nueva ficha")).toBeDefined()
-    await user.click(screen.getByText("Nueva ficha"))
-    await user.type(screen.getByPlaceholderText("palabra en español"), "agua")
-    await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "yu'")
-    vi.mocked(fetch).mockResolvedValue(Response.json({ message: "ok" }))
-    await user.click(screen.getByText("Guardar como borrador"))
-    expect(await screen.findByText("Ficha guardada como borrador")).toBeDefined()
-  })
-
-  it("CreateWordModal submits and publishes", async () => {
-    mockFetchStats()
-    const user = userEvent.setup()
-    render(<AdminDashboard />)
-    expect(await screen.findByText("Nueva ficha")).toBeDefined()
-    await user.click(screen.getByText("Nueva ficha"))
-    await user.type(screen.getByPlaceholderText("palabra en español"), "sol")
-    await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "ate")
-    vi.mocked(fetch).mockResolvedValue(Response.json({ message: "ok" }))
-    await user.click(screen.getByText("Guardar y publicar"))
-    expect(await screen.findByText("Ficha guardada y publicada")).toBeDefined()
-  })
-
-  // ═══════════════════════════════════════
-  // ImportCorpusModal
-  // ═══════════════════════════════════════
-
-  it("opens ImportCorpusModal and shows format info", async () => {
-    mockFetchStats()
-    const user = userEvent.setup()
-    render(<AdminDashboard />)
-    expect(await screen.findByText("Importar corpus")).toBeDefined()
-    await user.click(screen.getByText("Importar corpus"))
-    expect(await screen.findByText("Subir archivo Excel o CSV")).toBeDefined()
-    expect(screen.getByText(/Todo entra en borrador/)).toBeDefined()
-  })
-
-  it("ImportCorpusModal previews file before confirm [B1.10]", async () => {
-    mockFetchStats()
-    const user = userEvent.setup()
-    render(<AdminDashboard />)
-    expect(await screen.findByText("Importar corpus")).toBeDefined()
-    await user.click(screen.getByText("Importar corpus"))
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({
-        fileName: "corpus.xlsx",
-        columns: [{ header: "Palabra_esp", mapped: "spanish" }],
-        total: 2,
-        valid: 2,
-        invalid: 0,
-        duplicates: 0,
-        errors: [],
-        previewToken: "tok",
-      })
-    )
-    await user.upload(
-      input,
-      new File(["x"], "corpus.xlsx", {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      })
-    )
-    expect(await screen.findByText(/Vista previa/)).toBeDefined()
-    expect(screen.getByText(/Confirmar \(2 en borrador\)/)).toBeDefined()
-  })
-
-  // ═══════════════════════════════════════
-  // FullAuditLogModal
+  // FullAuditLogModal (se abre desde "Ver todo" de Actividad reciente)
   // ═══════════════════════════════════════
 
   it("opens FullAuditLogModal and fetches logs", async () => {
     mockFetchStats()
     const user = userEvent.setup()
     render(<AdminDashboard />)
-    expect(await screen.findByText("Ver log completo")).toBeDefined()
+    expect(await screen.findByText("Ver todo")).toBeDefined()
     vi.mocked(fetch).mockResolvedValue(
       Response.json({ logs: mockStats.recentAuditLogs, totalPages: 1, total: 1 })
     )
-    await user.click(screen.getByText("Ver log completo"))
+    await user.click(screen.getByText("Ver todo"))
     expect(await screen.findByText("Log de auditoría completo")).toBeDefined()
-  })
-
-  // ═══════════════════════════════════════
-  // WordListModal + EditWordModal flow
-  // ═══════════════════════════════════════
-
-  it("opens WordListModal and renders table", async () => {
-    mockFetchStats()
-    const user = userEvent.setup()
-    render(<AdminDashboard />)
-    expect(await screen.findByText("Gestionar fichas")).toBeDefined()
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({
-        words: [
-          { id: "w1", spanish: "agua", nasaYuwe: "yu'", pronunciation: "", audioUrl: null, culturalContext: "", category: "sustantivo", status: "PUBLISHED" },
-        ],
-        totalPages: 1,
-        total: 1,
-      })
-    )
-    await user.click(screen.getByText("Gestionar fichas"))
-    expect(await screen.findByText("Gestión de fichas")).toBeDefined()
-    expect(screen.getByText("agua")).toBeDefined()
-  })
-
-  it("WordListModal to EditWordModal flow", async () => {
-    mockFetchStats()
-    const user = userEvent.setup()
-    render(<AdminDashboard />)
-    expect(await screen.findByText("Gestionar fichas")).toBeDefined()
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({
-        words: [
-          { id: "w1", spanish: "agua", nasaYuwe: "yu'", pronunciation: "", audioUrl: null, culturalContext: "", category: "sustantivo", status: "PUBLISHED" },
-        ],
-        totalPages: 1,
-        total: 1,
-      })
-    )
-    await user.click(screen.getByText("Gestionar fichas"))
-    expect(await screen.findByText("agua")).toBeDefined()
-    await user.click(screen.getByText("Editar"))
-    expect(await screen.findByText("Editar ficha")).toBeDefined()
-    expect(screen.getByDisplayValue("agua")).toBeDefined()
-    expect(screen.getByDisplayValue("yu'")).toBeDefined()
   })
 })

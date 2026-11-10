@@ -1,0 +1,292 @@
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import type { ReactNode } from "react"
+
+vi.mock("next-auth/react", () => ({
+  useSession: vi.fn(),
+}))
+
+const replaceMock = vi.fn()
+let mockSearchParams = new URLSearchParams()
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/admin/palabras",
+  useRouter: () => ({ replace: replaceMock }),
+  useSearchParams: () => mockSearchParams,
+}))
+
+vi.mock("@/components/ui/select", () => ({
+  Select: ({ children }: any) => <div>{children}</div>,
+  SelectTrigger: ({ children }: any) => <div>{children}</div>,
+  SelectContent: ({ children }: any) => <div>{children}</div>,
+  SelectItem: ({ children }: any) => <div>{children}</div>,
+  SelectValue: () => <span>value</span>,
+}))
+
+vi.mock("@/lib/admin-utils", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("@/lib/admin-utils")>()
+  return {
+    ...orig,
+    formatNumber: (n: number) => String(n),
+    WORD_CATEGORIES: [{ value: "sustantivo", label: "Sustantivo" }],
+  }
+})
+
+const toastMock = vi.fn()
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: vi.fn(() => ({ toast: toastMock })),
+}))
+
+import { useSession } from "next-auth/react"
+import AdminPalabrasPage from "./page"
+
+/**
+ * The word-flow toast title is a ReactNode (icon + text). Render it and
+ * assert on its text content plus the feedback icon instead of matching
+ * the raw object shape.
+ */
+function expectToastWithText(text: string) {
+  expect(toastMock).toHaveBeenCalledTimes(1)
+  const { title } = toastMock.mock.calls[0][0] as { title: ReactNode }
+  const { container } = render(<>{title}</>)
+  expect(container).toHaveTextContent(text)
+  const icon = container.querySelector("svg")
+  expect(icon).not.toBeNull()
+  expect(icon?.classList.contains("text-secondary")).toBe(true)
+}
+
+const mockWords = [
+  {
+    id: "w1",
+    spanish: "Casa",
+    nasaYuwe: "Yat",
+    pronunciation: "yat",
+    audioUrl: null,
+    culturalContext: null,
+    category: "sustantivo",
+    status: "PUBLISHED",
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
+  },
+]
+
+function mockFetchWords(words: typeof mockWords) {
+  vi.mocked(fetch).mockResolvedValue(
+    Response.json({ words, totalPages: 1, total: words.length })
+  )
+}
+
+describe("AdminPalabrasPage [F2]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSearchParams = new URLSearchParams()
+    global.fetch = vi.fn()
+    vi.mocked(useSession).mockReturnValue({
+      data: { user: { role: "admin" } as never, expires: "2099" },
+      status: "authenticated",
+      update: vi.fn(),
+    })
+  })
+
+  it("muestra acciones y la lista inline", async () => {
+    mockFetchWords(mockWords)
+    render(<AdminPalabrasPage />)
+
+    expect(screen.getByText("Gestión de palabras")).toBeDefined()
+    expect(screen.getByRole("button", { name: "Nueva ficha" })).toBeDefined()
+    expect(screen.getByRole("button", { name: /Importar corpus/i })).toBeDefined()
+    expect(await screen.findByText("Casa")).toBeDefined()
+  })
+
+  it("el empty state ofrece crear la primera ficha", async () => {
+    mockFetchWords([])
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+
+    expect(await screen.findByText("No hay fichas todavía")).toBeDefined()
+    const botones = screen.getAllByRole("button", { name: "Nueva ficha" })
+    expect(botones.length).toBeGreaterThan(0)
+    await user.click(botones[0])
+    // El modal de creación se abre (título del modal presente)
+    expect(await screen.findByRole("heading", { name: "Nueva ficha" })).toBeDefined()
+  })
+
+  // ═══════════════════════════════════════
+  // Modales (mudados desde el Resumen en F3: misma UI, nuevo hogar)
+  // ═══════════════════════════════════════
+
+  const mockWordRow = {
+    id: "w1",
+    spanish: "agua",
+    nasaYuwe: "yu'",
+    pronunciation: "",
+    audioUrl: null,
+    culturalContext: "",
+    category: "sustantivo",
+    status: "PUBLISHED",
+  }
+
+  function mockWordsList() {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ words: [mockWordRow], totalPages: 1, total: 1 })
+    )
+  }
+
+  it("opens CreateWordModal and renders form fields", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getAllByRole("button", { name: "Nueva ficha" })[0])
+    expect(screen.getByText("Crea una nueva entrada en el diccionario bilingüe")).toBeDefined()
+    expect(screen.getByPlaceholderText("palabra en español")).toBeDefined()
+    expect(screen.getByPlaceholderText("palabra en nasa yuwe")).toBeDefined()
+  })
+
+  it("CreateWordModal validates required fields", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getAllByRole("button", { name: "Nueva ficha" })[0])
+    await user.click(screen.getByText("Guardar como borrador"))
+    expect(screen.getByText(/El campo.*Español.*es obligatorio/)).toBeDefined()
+    expect(screen.getByText(/El campo.*Nasa Yuwe.*es obligatorio/)).toBeDefined()
+  })
+
+  it("CreateWordModal toasts and closes on draft submit", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getAllByRole("button", { name: "Nueva ficha" })[0])
+    await user.type(screen.getByPlaceholderText("palabra en español"), "sol")
+    await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "ate")
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ message: "ok" }))
+    await user.click(screen.getByText("Guardar como borrador"))
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledTimes(1)
+    })
+    expectToastWithText("Ficha guardada como borrador")
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText("palabra en español")).toBeNull()
+    })
+  })
+
+  it("CreateWordModal toasts and closes on publish", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getAllByRole("button", { name: "Nueva ficha" })[0])
+    await user.type(screen.getByPlaceholderText("palabra en español"), "luna")
+    await user.type(screen.getByPlaceholderText("palabra en nasa yuwe"), "ate")
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ message: "ok" }))
+    await user.click(screen.getByText("Guardar y publicar"))
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledTimes(1)
+    })
+    expectToastWithText("Ficha guardada y publicada")
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText("palabra en español")).toBeNull()
+    })
+  })
+
+  it("opens ImportCorpusModal and shows format info", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getByRole("button", { name: /Importar corpus/i }))
+    expect(await screen.findByText("Subir archivo Excel o CSV")).toBeDefined()
+    expect(screen.getByText(/Todo entra en borrador/)).toBeDefined()
+  })
+
+  it("ImportCorpusModal previews file before confirm [B1.10]", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    await user.click(screen.getByRole("button", { name: /Importar corpus/i }))
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({
+        fileName: "corpus.xlsx",
+        columns: [{ header: "Palabra_esp", mapped: "spanish" }],
+        total: 2,
+        valid: 2,
+        invalid: 0,
+        duplicates: 0,
+        errors: [],
+        previewToken: "tok",
+      })
+    )
+    await user.upload(
+      input,
+      new File(["x"], "corpus.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+    )
+    expect(await screen.findByText(/Vista previa/)).toBeDefined()
+    expect(screen.getByText(/Confirmar \(2 en borrador\)/)).toBeDefined()
+  })
+
+  it("inline list to EditWordModal flow", async () => {
+    mockWordsList()
+    const user = userEvent.setup()
+    render(<AdminPalabrasPage />)
+    expect(await screen.findByText("agua")).toBeDefined()
+    await user.click(screen.getByText("Editar"))
+    expect(await screen.findByText("Editar ficha")).toBeDefined()
+    expect(screen.getByDisplayValue("agua")).toBeDefined()
+    expect(screen.getByDisplayValue("yu'")).toBeDefined()
+  })
+
+  // ═══════════════════════════════════════
+  // Fase 4: filtros y paginación persisten en la URL
+  // ═══════════════════════════════════════
+
+  it("inicializa la vista desde ?q/?filtro/?page", async () => {
+    mockSearchParams = new URLSearchParams("q=Casa&filtro=PUBLISHED&page=2")
+    mockFetchWords(mockWords)
+    render(<AdminPalabrasPage />)
+
+    expect(await screen.findByText("Casa")).toBeDefined()
+    const url = String(vi.mocked(fetch).mock.calls[0][0])
+    expect(url).toContain("page=2")
+    expect(url).toContain("search=Casa")
+    expect(url).toContain("status=PUBLISHED")
+    expect(screen.getByPlaceholderText("Buscar palabra...")).toHaveProperty("value", "Casa")
+  })
+
+  it("ignora valores inválidos de la URL y cae a los defaults", async () => {
+    mockSearchParams = new URLSearchParams("filtro=XXX&page=zzz")
+    mockFetchWords(mockWords)
+    render(<AdminPalabrasPage />)
+
+    expect(await screen.findByText("Casa")).toBeDefined()
+    const url = String(vi.mocked(fetch).mock.calls[0][0])
+    expect(url).toContain("page=1")
+    expect(url).not.toContain("status=")
+    expect(url).not.toContain("search=")
+  })
+
+  it("Buscar espeja la vista en la URL con replace", async () => {
+    mockFetchWords(mockWords)
+    render(<AdminPalabrasPage />)
+    expect(await screen.findByText("Casa")).toBeDefined()
+
+    fireEvent.change(screen.getByPlaceholderText("Buscar palabra..."), {
+      target: { value: "sol" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Buscar" }))
+
+    expect(replaceMock).toHaveBeenCalledWith("/admin/palabras?q=sol", { scroll: false })
+    const lastUrl = String(vi.mocked(fetch).mock.calls.at(-1)?.[0])
+    expect(lastUrl).toContain("search=sol")
+  })
+
+  it("Limpiar filtros deja la URL sin query", async () => {
+    mockSearchParams = new URLSearchParams("q=Casa")
+    mockFetchWords([])
+    render(<AdminPalabrasPage />)
+
+    fireEvent.click(await screen.findByRole("button", { name: "Limpiar búsqueda y filtro" }))
+    expect(replaceMock).toHaveBeenCalledWith("/admin/palabras", { scroll: false })
+  })
+})

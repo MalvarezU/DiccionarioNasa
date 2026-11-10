@@ -6,7 +6,7 @@
  */
 import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { blocksForLegacyLesson } from "../src/lib/courses/legacy-migration";
+import { parseLessonContent } from "../src/lib/courses/blocks";
 
 const db = new PrismaClient();
 
@@ -39,35 +39,33 @@ const MODULES: Array<{
   title: string;
   lessons: Array<{
     title: string;
-    type: "READ" | "QUIZ" | "COMPLETE";
-    spanish?: string;
-    payload?: unknown;
-    /** Lección rica: documento de bloques directo (fase 4). */
+    /** Ficha de palabra (bloque word) + vocabulario con estas palabras. */
+    ficha?: string;
+    palabras?: string[];
+    /** Juego flashcards con estas palabras. */
+    flashcards?: string[];
+    /** Quiz "como se dice X" con distractores del pool. */
+    completa?: string;
+    /** Documento de bloques directo (leccion rica). */
     content?: { version: number; blocks: unknown[] };
   }>;
 }> = [
   {
     title: "Módulo 1: Primeras palabras",
     lessons: [
-      { title: "Lección 1.1: Casa y Agua", type: "READ", spanish: "Casa" },
-      {
-        title: "Lección 1.2: Quiz básico",
-        type: "QUIZ",
-        payload: { questions: [{ wordSpanish: "Casa" }, { wordSpanish: "Agua" }] },
-      },
+      { title: "Lección 1.1: Casa y Agua", ficha: "Casa", palabras: ["Casa", "Agua"] },
+      { title: "Lección 1.2: Quiz básico", flashcards: ["Casa", "Agua"] },
       {
         // Lección RICA (fase 4): texto + quiz propio. No depende del
         // diccionario, así que la e2e puede completarla siempre.
         title: "Lección 1.3: El saludo (contenido)",
-        type: "READ",
         content: {
-          version: 1,
+          version: 2,
           blocks: [
             {
               id: "blk_rich_t",
               type: "text",
-              markdown:
-                "# El saludo\n\nEn Nasa Yuwe el saludo cambia según la hora del día.\n\n- *wii* — mañana\n- *yuwe* — tarde",
+              html: "<h1>El saludo</h1><p>En Nasa Yuwe el saludo cambia según la hora del día.</p><ul><li><em>wii</em> — mañana</li><li><em>yuwe</em> — tarde</li></ul>",
             },
             {
               id: "blk_rich_q",
@@ -98,24 +96,15 @@ const MODULES: Array<{
   {
     title: "Módulo 2: Animales",
     lessons: [
-      { title: "Lección 2.1: Perro y Gallina", type: "READ", spanish: "Perro" },
-      {
-        title: "Lección 2.2: Completa la palabra",
-        type: "COMPLETE",
-        spanish: "Gallina",
-        payload: { level: "facil" },
-      },
+      { title: "Lección 2.1: Perro y Gallina", ficha: "Perro", palabras: ["Perro", "Gallina"] },
+      { title: "Lección 2.2: Completa la palabra", completa: "Gallina" },
     ],
   },
   {
     title: "Módulo 3: Elementos",
     lessons: [
-      { title: "Lección 3.1: Sol y Luna", type: "READ", spanish: "Sol" },
-      {
-        title: "Lección 3.2: Quiz final",
-        type: "QUIZ",
-        payload: { questions: [{ wordSpanish: "Sol" }, { wordSpanish: "Luna" }, { wordSpanish: "Fuego" }] },
-      },
+      { title: "Lección 3.1: Sol y Luna", ficha: "Sol", palabras: ["Sol", "Luna", "Fuego"] },
+      { title: "Lección 3.2: Quiz final", flashcards: ["Sol", "Luna", "Fuego"] },
     ],
   },
 ];
@@ -144,6 +133,20 @@ async function seedWords() {
       orderBy: { createdAt: "asc" },
       select: { id: true },
     })
+    if (filas.length === 0) {
+      // BD vacía (migración fresca): crear la palabra publicada.
+      await db.dictionaryWord.create({
+        data: {
+          spanish: w.spanish,
+          nasaYuwe: w.nasaYuwe,
+          pronunciation: w.pronunciation,
+          culturalContext: w.culturalContext,
+          category: w.category,
+          status: "PUBLISHED",
+        },
+      })
+      continue
+    }
     // Conserva la primera (publicándola); el resto, si es duplicado, fuera.
     for (const [i, fila] of filas.entries()) {
       if (i === 0) {
@@ -177,35 +180,78 @@ async function seedCourse() {
     });
     for (let li = 0; li < mod.lessons.length; li++) {
       const les = mod.lessons[li]!;
-      let wordId: string | null = null;
-      if (les.spanish) {
+      const idDe = async (spanish: string) => {
         const w = await db.dictionaryWord.findFirst({
-          where: { spanish: les.spanish, status: "PUBLISHED" },
-          select: { id: true },
+          where: { spanish: { equals: spanish }, status: "PUBLISHED" },
         });
-        wordId = w?.id ?? null;
+        if (!w) throw new Error("Palabra seed no encontrada: " + spanish);
+        return w as { id: string; spanish: string; nasaYuwe: string };
+      };
+      const blocks: unknown[] = [];
+      if (les.ficha) blocks.push({ id: "blk_seed_" + mi + "_" + li + "_w", type: "word", wordId: (await idDe(les.ficha)).id });
+      if (les.palabras) {
+        const ids: string[] = [];
+        for (const x of les.palabras) ids.push((await idDe(x)).id);
+        blocks.push({ id: "blk_seed_" + mi + "_" + li + "_v", type: "vocabulary", wordIds: ids });
       }
-      // El seed genera el documento de bloques: las lecciones ricas lo traen
-      // directo; el resto usa el MISMO mapeo que el backfill
-      // (src/lib/courses/legacy-migration.ts), para que una base nueva quede
-      // idéntica a una migrada.
-      const payloadJson = les.payload ? JSON.stringify(les.payload) : null;
-      const blocks =
-        les.content?.blocks ??
-        blocksForLegacyLesson(
-          { id: `seed_${mi}_${li}`, type: les.type, wordId, payload: payloadJson },
-          (_, i) => `blk_seed_${mi}_${li}_${i}`
-        );
+      if (les.flashcards) {
+        const words: { id: string; spanish: string; nasaYuwe: string }[] = [];
+        for (const x of les.flashcards) words.push(await idDe(x));
+        const opts = words.map((w) => ({ text: w.nasaYuwe, correct: true }));
+        // Quiz de reconocimiento: una pregunta por palabra, distractores del pool.
+        const pool = await db.dictionaryWord.findMany({
+          where: { status: "PUBLISHED" },
+          select: { spanish: true, nasaYuwe: true },
+          orderBy: { spanish: "asc" },
+          take: 20,
+        });
+        const questions: any[] = [];
+
+        for (const w of words) {
+          const distract = pool
+            .filter((d) => d.nasaYuwe !== w.nasaYuwe)
+            .slice(0, 3)
+            .map((d) => ({ text: d.nasaYuwe, correct: false }));
+          questions.push({
+            prompt: "Como se dice \"" + w.spanish + "\" en Nasa Yuwe?",
+            options: [{ text: w.nasaYuwe, correct: true }, ...distract],
+            explanation: w.spanish + " es " + w.nasaYuwe + ".",
+          });
+        }
+        blocks.push({ id: "blk_seed_" + mi + "_" + li + "_q", type: "quiz", passScore: 50, questions });
+      }
+      if (les.completa) {
+        const w = await idDe(les.completa);
+        const pool = await db.dictionaryWord.findMany({
+          where: { status: "PUBLISHED", NOT: { id: w.id } },
+          select: { spanish: true },
+          orderBy: { spanish: "asc" },
+          take: 12,
+        });
+        const distract = pool.slice(0, 3).map((d) => ({ text: d.spanish, correct: false }));
+        blocks.push({
+          id: "blk_seed_" + mi + "_" + li + "_q",
+          type: "quiz",
+          passScore: 50,
+          questions: [
+            {
+              prompt: "Como se dice \"" + w.spanish + "\" en Nasa Yuwe?",
+              options: [{ text: w.nasaYuwe, correct: true }, ...distract],
+              explanation: w.spanish + " es " + w.nasaYuwe + ".",
+            },
+          ],
+        });
+      }
+      if (les.content) blocks.push(...les.content.blocks);
+      const parsed = parseLessonContent({ version: 2, blocks });
+      if (!parsed.ok) throw new Error("Bloques invalidos en " + les.title + ": " + parsed.errors.join(" | "));
       await db.lesson.create({
         data: {
           moduleId: created.id,
           title: les.title,
-          type: les.type,
           order: li,
           lessonNumber: li + 1,
-          wordId,
-          payload: payloadJson,
-          content: { version: 1, blocks } as unknown as Prisma.InputJsonValue,
+          content: parsed.content as unknown as Prisma.InputJsonValue,
         },
       });
     }

@@ -6,6 +6,7 @@ import {
   VALID_AUDIO_EXTENSIONS,
   MAX_AUDIO_SIZE,
 } from "@/lib/admin-utils"
+import { compressToOpus } from "@/lib/audio/compress-audio"
 
 /**
  * Dominio de audio de la ficha: selección, validación, subida, drag&drop y
@@ -45,15 +46,20 @@ export function useWordAudio() {
       const error = validateAudioFile(file)
       if (error) { setAudioError(error); return }
       setAudioError(null)
-      setAudioFile(file)
+
+      // Comprime a Ogg Opus 24kbps mono antes de subir (si falla, sube el
+      // original: nunca bloquea). La preview usa el archivo comprimido.
+      const compressed = await compressToOpus(file)
+      const upFile = compressed.file
+      setAudioFile(upFile)
       if (audioPreview) URL.revokeObjectURL(audioPreview)
-      const previewUrl = URL.createObjectURL(file)
+      const previewUrl = URL.createObjectURL(upFile)
       setAudioPreview(previewUrl)
 
       setIsUploadingAudio(true)
       try {
         const formData = new FormData()
-        formData.append("file", file)
+        formData.append("file", upFile)
         const res = await fetch("/api/admin/upload-audio", { method: "POST", body: formData })
         const data = await res.json()
         if (res.ok) {
@@ -102,6 +108,17 @@ export function useWordAudio() {
     if (fileInputRef.current) fileInputRef.current.value = ""
   }, [audioPreview, originalAudioUrl])
 
+  /** Quita el audio de la ficha (queda en null: al guardar se borra el anterior). */
+  const clearAudio = useCallback(() => {
+    if (audioPreview) URL.revokeObjectURL(audioPreview)
+    setAudioFile(null)
+    setAudioUrl(null)
+    setAudioPreview(null)
+    setAudioError(null)
+    setAudioChanged(true)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }, [audioPreview])
+
   return {
     audioUrl,
     audioFile,
@@ -119,5 +136,6 @@ export function useWordAudio() {
     handleDragLeave,
     handleFileInputChange,
     removeAudio,
+    clearAudio,
   }
 }

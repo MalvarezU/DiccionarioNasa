@@ -36,7 +36,7 @@ export class ModuloVisible {
       descripcion: `módulo visible "${patron}"`,
       async responder(actor: Actor): Promise<boolean> {
         const { page } = actor.usa(NavegarLaWeb);
-        await expect(page.getByText(patron, { exact: false })).toBeVisible({ timeout: 30000 });
+        await expect(page.getByText(patron, { exact: false }).first()).toBeVisible({ timeout: 30000 });
         return true;
       },
     };
@@ -144,6 +144,60 @@ export class LeccionCompleta {
         // Polling interno: el progreso llega del backend tras recargar.
         await expect(fila).toHaveAttribute("data-completed", "true", {
           timeout: 30000,
+        });
+        return true;
+      },
+    };
+  }
+}
+
+/** La pantalla de celebración está visible (encabezado "¡Curso completado!"). */
+export class PantallaCelebracion {
+  static visible(): Question<boolean> {
+    return {
+      descripcion: "pantalla de celebración visible",
+      async responder(actor: Actor): Promise<boolean> {
+        const { page } = actor.usa(NavegarLaWeb);
+        await expect(page.getByRole("heading", { name: /¡Curso completado!/ })).toBeVisible({
+          timeout: 30000,
+        });
+        return true;
+      },
+    };
+  }
+}
+
+/** La sección "Sigue aprendiendo" está visible con al menos un curso sugerido. */
+export class SugerenciasDeCursos {
+  static visibles(): Question<boolean> {
+    return {
+      descripcion: "sugerencias de otros cursos visibles",
+      async responder(actor: Actor): Promise<boolean> {
+        const { page } = actor.usa(NavegarLaWeb);
+        await expect(page.getByText(/Sigue aprendiendo/)).toBeVisible({ timeout: 30000 });
+        const link = page.locator("a[href^='/cursos/']").filter({ hasText: /Ir al curso/ });
+        return (await link.count()) > 0;
+      },
+    };
+  }
+}
+
+/** El botón "Repasar el curso" vuelve a la primera lección (URL con ?leccion=). */
+export class RepasoVuelveAlInicio {
+  static funciona(): Question<boolean> {
+    return {
+      descripcion: "repaso vuelve a la primera lección",
+      async responder(actor: Actor): Promise<boolean> {
+        const { page } = actor.usa(NavegarLaWeb);
+        await expect(page.getByRole("button", { name: /Repasar el curso/i })).toBeVisible({
+          timeout: 15000,
+        });
+        await page.getByRole("button", { name: /Repasar el curso/i }).click();
+        // La URL debe cambiar a la primera lección
+        await expect(page).toHaveURL(/leccion=/, { timeout: 15000 });
+        // El canvas vuelve a mostrar una lección (no la celebración)
+        await expect(page.getByRole("heading", { name: /¡Curso completado!/ })).toBeHidden({
+          timeout: 15000,
         });
         return true;
       },

@@ -6,9 +6,10 @@ import { NextResponse } from "next/server"
  * Pensado para endpoints públicos de bajo volumen (suggest, register):
  * frena spam y fuerza bruta sin añadir infraestructura.
  *
- * Limitación conocida: el estado vive por instancia/edge. En Vercel con
- * múltiples instancias el límite es aproximado, no estricto. Si se necesita
- * estricto, migrar a Upstash Redis u otro store compartido.
+ * Limitación conocida: el estado vive por instancia. En producción con
+ * múltiples instancias (p. ej. Node.js App en Hostinger) el límite es
+ * aproximado, no estricto. Si se necesita estricto, migrar a Redis
+ * u otro store compartido.
  */
 
 const buckets = new Map<string, number[]>()
