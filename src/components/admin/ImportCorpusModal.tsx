@@ -192,7 +192,7 @@ export function ImportCorpusModal({
                 <strong>Paso 1:</strong> sube <code className="bg-muted px-1 rounded">.xlsx</code> o{" "}
                 <code className="bg-muted px-1 rounded">.csv</code> con encabezados
                 (<code className="bg-muted px-1 rounded">Palabra_esp</code>,{" "}
-                <code className="bg-muted px-1 rounded">Palabra_nyW</code>, categoría, ejemplos, estado).
+                <code className="bg-muted px-1 rounded">Palabra_nyW</code>, categoría, estado).
                 <strong>Paso 2:</strong> revisa N listas + M errores y confirma.
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">

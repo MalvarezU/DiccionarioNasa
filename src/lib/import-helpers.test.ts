@@ -43,18 +43,6 @@ describe("import-helpers [B1.10]", () => {
     expect(normalizeStatus(undefined)).toBe("DRAFT")
   })
 
-  it("normaliza ejemplos array y JSON", () => {
-    const a = validateRow({
-      spanish: "x",
-      nasaYuwe: "y",
-      examples: [{ spanish: "hola", nasaYuwe: "" }],
-    })
-    expect(a.ok && a.data.examples).toContain("hola")
-
-    const b = validateRow({ spanish: "x", nasaYuwe: "y", examples: "texto plano" })
-    expect(b.ok && b.data.examples).toContain("texto plano")
-  })
-
   it("detecta columnas conocidas y marca desconocidas", () => {
     const cols = detectColumns(["Palabra_esp", "Palabra_nyW", "ColumnaRara"])
     expect(cols).toEqual([

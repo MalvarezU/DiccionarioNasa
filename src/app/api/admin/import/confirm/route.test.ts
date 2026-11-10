@@ -35,10 +35,8 @@ const word = (spanish: string) => ({
   spanish,
   nasaYuwe: "ny",
   pronunciation: null,
-  audioUrl: null,
   culturalContext: null,
   category: null,
-  examples: null,
   status: "DRAFT" as const,
 })
 
