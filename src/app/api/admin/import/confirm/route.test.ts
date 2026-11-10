@@ -5,15 +5,27 @@ vi.mock("@/lib/auth", () => ({
   requireRole: vi.fn(),
 }))
 
-vi.mock("@/lib/db", () => ({
-  db: {
+vi.mock("@/lib/db", () => {
+  const db: Record<string, unknown> = {
     dictionaryWord: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn() },
     auditLog: { create: vi.fn() },
-  },
+  }
+  // La ruta usa `db.$transaction(async (tx) => ...)`: el mock ejecuta el
+  // callback con el propio db mockeado como `tx`.
+  db.$transaction = vi.fn(async (fn: unknown) =>
+    typeof fn === "function" ? (fn as (tx: unknown) => unknown)(db) : fn
+  )
+  return { db }
+})
+
+vi.mock("@/lib/content-version", () => ({
+  bumpContentVersion: vi.fn(),
+  getContentVersion: vi.fn(),
 }))
 
 import { requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { POST } from "./route"
 import { storePreview, __resetPreviewStore } from "../preview/route"
 
@@ -68,6 +80,8 @@ describe("POST /api/admin/import/confirm [B1.10]", () => {
       .mocked(db.auditLog.create)
       .mock.calls.filter((c) => (c[0] as { data: { entityId?: string } }).data.entityId)
     expect(fichaLogs).toHaveLength(2)
+    // BUMP-02: N filas aplicadas = exactamente un bump.
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
   it("token de un solo uso y 410 si expiro o no existe", async () => {
@@ -96,5 +110,7 @@ describe("POST /api/admin/import/confirm [B1.10]", () => {
     expect(body.created).toBe(0)
     expect(body.skipped).toBe(1)
     expect(db.dictionaryWord.create).not.toHaveBeenCalled()
+    // BUMP-03: 0 filas efectivas → sin bump.
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 })

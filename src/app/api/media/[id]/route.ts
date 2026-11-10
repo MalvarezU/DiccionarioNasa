@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { deleteMediaAssetById } from "@/lib/media/delete-asset"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -42,6 +43,10 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
  * DELETE /api/media/[id] (editor+): borra la fila y el objeto en R2.
  * Best-effort en R2: si falla, la fila ya está borrada y `r2-prune` recoge
  * el huérfano. Responde `storageDeleted` para transparencia.
+ *
+ * Fase A T06: +1 tras el borrado exitoso de la fila (post-commit: el helper
+ * ya hace sus propios writes; si el bump falla se registra con nivel error).
+ * 404 sin bump.
  */
 export async function DELETE(_request: NextRequest, { params }: Ctx) {
   const { error } = await requireRole("editor")
@@ -52,6 +57,11 @@ export async function DELETE(_request: NextRequest, { params }: Ctx) {
     const result = await deleteMediaAssetById(id)
     if (!result.deleted) {
       return NextResponse.json({ message: "Imagen no encontrada" }, { status: 404 })
+    }
+    try {
+      await bumpContentVersion(db)
+    } catch (bumpError) {
+      console.error("[content-version] bump post-commit fallido tras media DELETE:", bumpError)
     }
     return NextResponse.json({
       message: "Imagen eliminada",

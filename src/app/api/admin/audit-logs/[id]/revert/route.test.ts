@@ -4,8 +4,8 @@ vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
 }))
 
-vi.mock("@/lib/db", () => ({
-  db: {
+vi.mock("@/lib/db", () => {
+  const db: Record<string, unknown> = {
     auditLog: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
@@ -18,16 +18,36 @@ vi.mock("@/lib/db", () => ({
       delete: vi.fn(),
       create: vi.fn(),
     },
+    module: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    lesson: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
     user: {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    $transaction: vi.fn(async (ops: unknown[]) => ops),
-  },
+  }
+  // La ruta usa `db.$transaction(async (tx) => ...)` en los paths de
+  // DictionaryWord: el mock ejecuta el callback con el propio db como `tx`.
+  // El path de User usa forma array (evaluación ansiosa): se devuelve tal cual.
+  db.$transaction = vi.fn(async (ops: unknown) =>
+    typeof ops === "function" ? (ops as (tx: unknown) => unknown)(db) : ops
+  )
+  return { db }
+})
+
+vi.mock("@/lib/content-version", () => ({
+  bumpContentVersion: vi.fn(),
+  getContentVersion: vi.fn(),
 }))
 
 import { requireAdmin } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { POST } from "./route"
 
 const adminSession = {
@@ -72,12 +92,13 @@ describe("POST /api/admin/audit-logs/[id]/revert", () => {
     expect(res.status).toBe(401)
   })
 
-  it("404 si el log no existe", async () => {
+  it("404 si el log no existe sin bump", async () => {
     allow()
     vi.mocked(db.auditLog.findUnique).mockResolvedValue(null)
     vi.mocked(db.auditLog.findFirst).mockResolvedValue(null)
     const res = await POST(new Request("http://x"), { params: Promise.resolve({ id: "nope" }) })
     expect(res.status).toBe(404)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 
   it("409 si ya fue revertido", async () => {
@@ -125,6 +146,8 @@ describe("POST /api/admin/audit-logs/[id]/revert", () => {
       expect.objectContaining({ data: { category: "sustantivo" } })
     )
     expect(vi.mocked(db.auditLog.create)).toHaveBeenCalled()
+    // Revert aplicado = +1.
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
   it("409 para User DELETE (no reversible)", async () => {
@@ -165,6 +188,7 @@ describe("POST /api/admin/audit-logs/[id]/revert", () => {
     const res = await POST(new Request("http://x"), { params: Promise.resolve({ id: "log4" }) })
     expect(res.status).toBe(200)
     expect(vi.mocked(db.dictionaryWord.delete)).toHaveBeenCalledWith({ where: { id: "w2" } })
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
   it("CREATE sobre ficha inexistente devuelve 409", async () => {
@@ -285,6 +309,20 @@ describe("POST /api/admin/audit-logs/[id]/revert", () => {
     expect(res.status).toBe(409)
   })
 
+  it("422 si el DELETE no tiene snapshot completo (histórico) sin bump", async () => {
+    allow()
+    vi.mocked(db.auditLog.findUnique).mockResolvedValue({
+      id: "logH", action: "DELETE", entity: "DictionaryWord", entityId: "old-h",
+      changes: JSON.stringify({ responsable: "admin" }),
+      userId: "admin1", wordId: null, createdAt: new Date(),
+    } as never)
+    vi.mocked(db.auditLog.findFirst).mockResolvedValue(null)
+    const res = await POST(new Request("http://x"), { params: Promise.resolve({ id: "logH" }) })
+    expect(res.status).toBe(422)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
+    expect(db.dictionaryWord.create).not.toHaveBeenCalled()
+  })
+
   it("200 DELETE recrea la ficha con snapshot completo", async () => {
     allow()
     const snap = { spanish: "Sol", nasaYuwe: "Sek", pronunciation: "sek", category: "sustantivo", status: "PUBLISHED", audioUrl: null, illustrationUrl: null, culturalContext: "Constelación", examples: null }
@@ -341,3 +379,60 @@ describe("POST /api/admin/audit-logs/[id]/revert", () => {
     const createArg = vi.mocked(db.dictionaryWord.create).mock.calls[0][0] as { data: Record<string, unknown> }
     expect(createArg.data.status).toBe("DRAFT")
   })
+
+describe("POST revert borrado lógico Module/Lesson [fase-a T07]", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function moduleLog(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "logM1",
+      action: "DELETE",
+      entity: "Module",
+      entityId: "m1",
+      changes: JSON.stringify({ deleted: { id: "m1" }, responsable: "admin" }),
+      userId: "admin1",
+      wordId: null,
+      createdAt: new Date(),
+      ...overrides,
+    }
+  }
+
+  it("200 restaura deletedAt = null con bump", async () => {
+    allow()
+    vi.mocked(db.auditLog.findUnique).mockResolvedValue(moduleLog() as never)
+    vi.mocked(db.auditLog.findFirst).mockResolvedValue(null)
+    vi.mocked(db.module.findUnique).mockResolvedValue({ id: "m1", deletedAt: new Date() } as never)
+    vi.mocked(db.module.update).mockResolvedValue({ id: "m1", deletedAt: null } as never)
+    vi.mocked(db.auditLog.create).mockResolvedValue({ id: "rv" } as never)
+
+    const res = await POST(new Request("http://x"), { params: Promise.resolve({ id: "logM1" }) })
+    expect(res.status).toBe(200)
+    expect(vi.mocked(db.module.update)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "m1" }, data: { deletedAt: null } })
+    )
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
+  })
+
+  it("409 si el módulo ya está restaurado sin bump", async () => {
+    allow()
+    vi.mocked(db.auditLog.findUnique).mockResolvedValue(moduleLog() as never)
+    vi.mocked(db.auditLog.findFirst).mockResolvedValue(null)
+    vi.mocked(db.module.findUnique).mockResolvedValue({ id: "m1", deletedAt: null } as never)
+
+    const res = await POST(new Request("http://x"), { params: Promise.resolve({ id: "logM1" }) })
+    expect(res.status).toBe(409)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
+    expect(db.module.update).not.toHaveBeenCalled()
+  })
+
+  it("409 si la entidad ya no existe sin bump", async () => {
+    allow()
+    vi.mocked(db.auditLog.findUnique).mockResolvedValue(moduleLog() as never)
+    vi.mocked(db.auditLog.findFirst).mockResolvedValue(null)
+    vi.mocked(db.module.findUnique).mockResolvedValue(null)
+
+    const res = await POST(new Request("http://x"), { params: Promise.resolve({ id: "logM1" }) })
+    expect(res.status).toBe(409)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
+  })
+})

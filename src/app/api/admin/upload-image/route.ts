@@ -2,7 +2,9 @@ import { NextResponse } from "next/server"
 import { randomUUID } from "crypto"
 import { requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { validateImageUpload } from "@/lib/media/image"
+import { sha256Hex } from "@/lib/media/hash"
 import { putObject, deleteObject, publicUrl } from "@/lib/r2"
 
 /**
@@ -39,6 +41,8 @@ export async function POST(request: Request) {
   try {
     const userId = (session!.user as { id?: string }).id ?? null
     const key = `images/${randomUUID()}.${check.ext}`
+    // Fase A T08: hash sobre los bytes originales ANTES del putObject.
+    const sha256 = sha256Hex(bytes)
 
     try {
       await putObject(key, Buffer.from(bytes), check.mimeType)
@@ -52,15 +56,22 @@ export async function POST(request: Request) {
 
     let asset
     try {
-      asset = await db.mediaAsset.create({
-        data: {
-          objectKey: key,
-          filename: file.name,
-          mimeType: check.mimeType,
-          size: bytes.byteLength,
-          uploadedBy: userId,
-        },
-        select: { id: true, objectKey: true, filename: true, mimeType: true, size: true },
+      // Fase A T06: fila + bump en la misma transacción (una operación = +1).
+      asset = await db.$transaction(async (tx) => {
+        const created = await tx.mediaAsset.create({
+          data: {
+            objectKey: key,
+            filename: file.name,
+            mimeType: check.mimeType,
+            size: bytes.byteLength,
+            // Fase A T08: registro de medios (spec §4.1, HASH-01).
+            sha256,
+            uploadedBy: userId,
+          },
+          select: { id: true, objectKey: true, filename: true, mimeType: true, size: true, sha256: true },
+        })
+        await bumpContentVersion(tx)
+        return created
       })
     } catch (dbError) {
       // Compensación: el binario ya está en R2 pero sin fila que lo
