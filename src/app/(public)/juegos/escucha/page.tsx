@@ -23,8 +23,9 @@ export default function EscuchaPage() {
           </div>
         </div>
         <p className="text-muted-foreground mb-8">
-          Escucha el audio en Nasa Yuwe y elige su significado en español.
-          Las opciones suenan parecido: escucha con atención. Tienes 8 rondas.
+          Escucha el audio en Nasa Yuwe y elige su significado en español o la
+          palabra escrita. Las opciones suenan parecido: escucha con atención.
+          Tienes 8 rondas.
         </p>
         <EscuchaGame />
       </main>

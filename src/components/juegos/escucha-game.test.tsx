@@ -303,4 +303,31 @@ describe("escucha: escuchar y elegir en español [Fase 4]", () => {
       vi.useRealTimers()
     }
   })
+
+  it("toggle de modo muestra el botón Escritura y cambia las opciones a Nasa Yuwe", async () => {
+    const user = userEvent.setup()
+    render(<EscuchaGame words={WORDS} />)
+    expect(await screen.findByText("Ronda 1 de 8", {}, { timeout: 3000 })).toBeDefined()
+
+    const btnEscritura = screen.getByRole("button", { name: /escritura/i })
+    expect(btnEscritura).toBeDefined()
+
+    await user.click(btnEscritura)
+
+    expect(await screen.findByText("Ronda 1 de 8", {}, { timeout: 3000 })).toBeDefined()
+
+    const word = currentWord()
+    expect(screen.getByRole("button", { name: word.nasaYuwe })).toBeDefined()
+  })
+
+  it("el modo se persiste en localStorage", async () => {
+    const user = userEvent.setup()
+    render(<EscuchaGame words={WORDS} />)
+    expect(await screen.findByText("Ronda 1 de 8", {}, { timeout: 3000 })).toBeDefined()
+
+    await user.click(screen.getByRole("button", { name: /escritura/i }))
+    expect(await screen.findByText("Ronda 1 de 8", {}, { timeout: 3000 })).toBeDefined()
+
+    expect(localStorage.getItem("piiyaak:escucha:mode:v1")).toBe("escritura")
+  })
 })

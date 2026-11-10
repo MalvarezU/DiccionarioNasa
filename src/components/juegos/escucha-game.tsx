@@ -10,6 +10,7 @@ import {
   Check,
   Volume2,
   SkipForward,
+  ArrowLeftRight,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -36,7 +37,14 @@ import { playStreakTier } from "@/lib/game-sound"
 
 const NUM_ROUNDS = 8
 const MIN_ESCUCHA_WORDS = 4
-const STORE_KEY = "piiyaak:escucha:v1"
+const STORE_KEY_BASE = "piiyaak:escucha:v1"
+const MODE_STORAGE_KEY = "piiyaak:escucha:mode:v1"
+
+type EscuchaMode = "significado" | "escritura"
+
+function storeKey(mode: EscuchaMode): string {
+  return `${STORE_KEY_BASE}:${mode}`
+}
 
 interface EscuchaQuestion {
   word: GameWord
@@ -52,10 +60,10 @@ interface StoredEscucha {
   best: number
 }
 
-function loadStored(): StoredEscucha | null {
+function loadStored(key: string): StoredEscucha | null {
   try {
     if (typeof window === "undefined" || !window.sessionStorage) return null
-    const raw = sessionStorage.getItem(STORE_KEY)
+    const raw = sessionStorage.getItem(key)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<StoredEscucha>
     if (
@@ -80,18 +88,24 @@ function loadStored(): StoredEscucha | null {
   }
 }
 
-/** Opciones en español (1 correcta + 3 distractores parecidos por sonido/escritura). */
-function toQuestions(ask: GameWord[], pool: GameWord[]): EscuchaQuestion[] {
+/** Similaridad combinada por pronunciación + escritura (parentesco). */
+function combinedSimilarity(a: GameWord, b: GameWord): number {
+  const simWrite = stringSimilarity(a.nasaYuwe, b.nasaYuwe)
+  if (a.pronunciation && b.pronunciation) {
+    const simPron = stringSimilarity(a.pronunciation, b.pronunciation)
+    return (simPron + simWrite) / 2
+  }
+  return simWrite
+}
+
+/** Opciones según el modo: español (significado) o Nasa Yuwe escrito (escritura). */
+function toQuestions(ask: GameWord[], pool: GameWord[], mode: EscuchaMode): EscuchaQuestion[] {
   return ask.map((word) => {
-    const targetKey = word.pronunciation ?? word.nasaYuwe
-    // Distractores: los 3 más parecidos al correcto (por Nasa Yuwe o
-    // pronunciación) para forzar discriminación auditiva fina, no al azar.
-    // Si no hay suficientes, se rellena con el resto del pool.
     const ranked = pool
       .filter((w) => w.id !== word.id)
       .map((w) => ({
         w,
-        sim: stringSimilarity(targetKey, w.pronunciation ?? w.nasaYuwe),
+        sim: combinedSimilarity(word, w),
       }))
       .sort((a, b) => b.sim - a.sim)
     const distractorWords = ranked.slice(0, 3).map((r) => r.w)
@@ -101,18 +115,27 @@ function toQuestions(ask: GameWord[], pool: GameWord[]): EscuchaQuestion[] {
       )
       distractorWords.push(...rest.slice(0, 3 - distractorWords.length))
     }
-    const distractors = distractorWords.map((w) => w.spanish)
-    const options = shuffle([word.spanish, ...distractors])
+    if (mode === "significado") {
+      const distractors = distractorWords.map((w) => w.spanish)
+      const options = shuffle([word.spanish, ...distractors])
+      return {
+        word,
+        options,
+        correctIndex: options.indexOf(word.spanish),
+      }
+    }
+    const distractors = distractorWords.map((w) => w.nasaYuwe)
+    const options = shuffle([word.nasaYuwe, ...distractors])
     return {
       word,
       options,
-      correctIndex: options.indexOf(word.spanish),
+      correctIndex: options.indexOf(word.nasaYuwe),
     }
   })
 }
 
-function buildQuestions(pool: GameWord[]): EscuchaQuestion[] {
-  return toQuestions(shuffle(pool).slice(0, NUM_ROUNDS), pool)
+function buildQuestions(pool: GameWord[], mode: EscuchaMode): EscuchaQuestion[] {
+  return toQuestions(shuffle(pool).slice(0, NUM_ROUNDS), pool, mode)
 }
 
 export function EscuchaGame({
@@ -122,6 +145,7 @@ export function EscuchaGame({
   words?: GameWord[]
   onFinish?: (result: { correct: number; total: number }) => void
 } = {}) {
+  const [mode, setMode] = useState<EscuchaMode>("significado")
   const [roundKey, setRoundKey] = useState(0)
   const [retryKey, setRetryKey] = useState(0)
   const [pool, setPool] = useState<GameWord[] | null>(
@@ -151,10 +175,49 @@ export function EscuchaGame({
   )
   const tooFew = eligible !== null && eligible.length < MIN_ESCUCHA_WORDS
 
+  // Carga el modo guardado en localStorage al montar (sin SSR mismatch).
+  const isInitialLoad = useRef(true)
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false
+      try {
+        const saved = localStorage.getItem(MODE_STORAGE_KEY)
+        if (saved === "escritura" || saved === "significado") {
+          if (saved !== mode) setMode(saved)
+        }
+      } catch {}
+    }
+  }, [])
+
+  // Cuando el modo cambia: guardar en localStorage y resetear la partida.
+  const prevModeRef = useRef(mode)
+  useEffect(() => {
+    try {
+      localStorage.setItem(MODE_STORAGE_KEY, mode)
+    } catch {}
+    if (prevModeRef.current !== mode) {
+      const oldKey = storeKey(prevModeRef.current)
+      clearStored(oldKey)
+      prevModeRef.current = mode
+      setQuestions(null)
+      setRoundIndex(0)
+      setSelected(null)
+      setSkipped(false)
+      setAudioFailed(false)
+      setCorrectCount(0)
+      setStreak(0)
+      setBestStreak(0)
+      setFinished(false)
+      setReported(false)
+      setResults([])
+      setRoundKey((k) => k + 1)
+    }
+  }, [mode])
+
   // Ronda inicial: restaurada de sesión o nueva (patrón ordena-game)
   const initial = useMemo(() => {
     if (!eligible || eligible.length < MIN_ESCUCHA_WORDS) return null
-    const stored = loadStored()
+    const stored = loadStored(storeKey(mode))
     if (stored) {
       const byId = new Map(eligible.map((w) => [w.id, w]))
       if (
@@ -166,7 +229,7 @@ export function EscuchaGame({
           .slice(0, NUM_ROUNDS)
         if (stored.index < words.length) {
           return {
-            questions: toQuestions(words, eligible),
+            questions: toQuestions(words, eligible, mode),
             index: stored.index,
             correct: Math.min(stored.correct, words.length),
             streak: stored.streak,
@@ -176,13 +239,13 @@ export function EscuchaGame({
       }
     }
     return {
-      questions: buildQuestions(eligible),
+      questions: buildQuestions(eligible, mode),
       index: 0,
       correct: 0,
       streak: 0,
       best: 0,
     }
-  }, [eligible, roundKey])
+  }, [eligible, roundKey, mode])
 
   const [questions, setQuestions] = useState<EscuchaQuestion[] | null>(null)
   const [roundIndex, setRoundIndex] = useState(0)
@@ -226,7 +289,7 @@ export function EscuchaGame({
     if (!questions || finished) return
     try {
       sessionStorage.setItem(
-        STORE_KEY,
+        storeKey(mode),
         JSON.stringify({
           ids: questions.map((q) => q.word.id),
           index: roundIndex,
@@ -238,7 +301,7 @@ export function EscuchaGame({
     } catch {
       // almacenamiento bloqueado: el juego sigue
     }
-  }, [questions, roundIndex, correctCount, streak, bestStreak, finished])
+  }, [questions, roundIndex, correctCount, streak, bestStreak, finished, mode])
 
   // Fase motion: un solo momento hero (entrada de ronda con slide) +
   // pulso del badge al subir de tier + countUp del resultado final.
@@ -340,16 +403,21 @@ export function EscuchaGame({
     }
   }, [answered])
 
-  function clearStored() {
+  function clearStored(key: string) {
     try {
-      sessionStorage.removeItem(STORE_KEY)
+      sessionStorage.removeItem(key)
     } catch {
       // ignorar
     }
   }
 
+  function handleModeChange(newMode: EscuchaMode) {
+    if (newMode === mode) return
+    setMode(newMode)
+  }
+
   function handleRestart() {
-    clearStored()
+    clearStored(storeKey(mode))
     setQuestions(null)
     setRoundIndex(0)
     setSelected(null)
@@ -365,7 +433,7 @@ export function EscuchaGame({
   }
 
   function handleRetry() {
-    clearStored()
+    clearStored(storeKey(mode))
     setQuestions(null)
     setResults([])
     setPool(providedWords && providedWords.length >= 1 ? providedWords : null)
@@ -377,7 +445,7 @@ export function EscuchaGame({
     if (!finished || reported || total === 0) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot: reporta una sola vez al terminar (patrón flashcard-game)
     setReported(true)
-    clearStored()
+    clearStored(storeKey(mode))
     onFinish?.({ correct: correctCount, total })
     const won = correctCount >= total * 0.5
     if (won) playWin()
@@ -540,6 +608,26 @@ export function EscuchaGame({
 
   return (
     <div ref={motionRoot} className="max-w-2xl mx-auto space-y-4">
+      <div className="flex items-center justify-center gap-2" role="group" aria-label="Modo de juego">
+        <Button
+          variant={mode === "significado" ? "default" : "outline"}
+          size="sm"
+          onClick={() => handleModeChange("significado")}
+          className="gap-1.5 min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+        >
+          <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
+          Significado
+        </Button>
+        <Button
+          variant={mode === "escritura" ? "default" : "outline"}
+          size="sm"
+          onClick={() => handleModeChange("escritura")}
+          className="gap-1.5 min-h-11 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+        >
+          <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
+          Escritura
+        </Button>
+      </div>
       <div ref={streakRoot} className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-montana">
@@ -580,8 +668,10 @@ export function EscuchaGame({
       <Card key={roundIndex} className="border-primary/20 bg-primary/[0.02]">
         <CardContent data-question className="pt-5 pb-4 flex flex-col items-center gap-3">
           <p className="text-sm text-muted-foreground">
-            Escucha el audio en Nasa Yuwe y elige su significado en español.
-            Las opciones suenan parecido: escucha con atención.
+            {mode === "significado"
+              ? "Escucha el audio en Nasa Yuwe y elige su significado en español."
+              : "Escucha el audio en Nasa Yuwe y elige la palabra escrita."}
+            {" "}Las opciones suenan parecido: escucha con atención.
           </p>
           {/* Zona de reveal con altura reservada: siempre montada con
               min-h de 3 líneas (palabra text-4xl + pronunciación + español).
@@ -596,7 +686,7 @@ export function EscuchaGame({
             {answered ? (
               <div className="flex flex-col items-center gap-1">
                 <p className="font-serif text-4xl font-bold text-foreground">
-                  {current.word.nasaYuwe}
+                  {mode === "significado" ? current.word.nasaYuwe : current.word.spanish}
                 </p>
                 {current.word.pronunciation ? (
                   <p className="text-sm text-muted-foreground">
@@ -608,7 +698,7 @@ export function EscuchaGame({
                   </p>
                 )}
                 <p className="text-base text-muted-foreground">
-                  {correctSpanish}
+                  {mode === "significado" ? correctSpanish : current.word.nasaYuwe}
                 </p>
               </div>
             ) : (
