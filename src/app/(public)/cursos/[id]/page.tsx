@@ -14,6 +14,9 @@ import { CoursePlayerSkeleton } from "@/components/skeletons"
 import { CourseOutline } from "@/components/cursos/player/course-outline"
 import { LessonCanvas } from "@/components/cursos/player/lesson-canvas"
 import { PlayerShell } from "@/components/cursos/player/player-shell"
+import { CourseCelebration } from "@/components/cursos/player/course-celebration"
+import { isCourseFinished, selectCourseSuggestions } from "@/components/cursos/player/course-completion"
+import type { CourseSummary } from "@/components/cursos/course-card"
 import { useLessonNavigation } from "@/components/cursos/player/use-lesson-navigation"
 import {
   useLessonLoader,
@@ -94,6 +97,7 @@ export default function CursoDetailPage({
   const [reloadKey, setReloadKey] = useState(0)
   const [completedLessons, setCompletedLessons] = useState<string[]>([])
   const [lastVisited, setLastVisited] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<CourseSummary[]>([])
   // Única fuente del AuthModal (H4): el canvas y el outline solo piden sesión.
   const [authOpen, setAuthOpen] = useState(false)
 
@@ -231,10 +235,22 @@ export default function CursoDetailPage({
   )
 
   const completedSet = useMemo(() => new Set(completedLessons), [completedLessons])
+
   const nav = useLessonNavigation({
     course: course ?? EMPTY_COURSE,
     completedIds: completedSet,
     lastVisited,
+  })
+
+  // Última lección del curso completa → pantalla de celebración.
+  // Derivación pura del estado existente (ver course-completion.ts).
+  // El anónimo nunca llega: handleLessonComplete hace early-return sin
+  // marcar completedSet.
+  const isFinished = isCourseFinished({
+    course,
+    activeLessonId: nav.activeLessonId,
+    next: nav.next,
+    completedIds: completedSet,
   })
 
   const handleSelectLesson = useCallback(
@@ -245,7 +261,23 @@ export default function CursoDetailPage({
     [nav, handleLessonOpen]
   )
 
-  // "Continuar donde quedé" vive en el outline (usa onSelect directo).
+  // Sugerencias para la pantalla de celebración: otros cursos publicados
+  // (excluye el actual). Se trae una sola vez por curso, no depende del
+  // progreso del usuario.
+  useEffect(() => {
+    if (!id) return
+    let alive = true
+    fetch("/api/courses")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!alive || !data || !Array.isArray(data.courses)) return
+        setSuggestions(selectCourseSuggestions(data.courses as CourseSummary[], id))
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [id])
 
   // Carga on-demand de la lección activa: cache primero (sin flash), red si
   // falta. Solo sets asíncronos en el then; el fallo se reintenta borrando
@@ -491,6 +523,17 @@ export default function CursoDetailPage({
                       </div>
                     </div>
                   </div>
+                ) : isFinished ? (
+                  <CourseCelebration
+                    courseTitle={course.title}
+                    completedCount={completedLessons.length}
+                    totalCount={course.modules.reduce((a, m) => a + m.lessons.length, 0)}
+                    suggestions={suggestions}
+                    onRepasar={() => {
+                      const first = course.modules[0]?.lessons[0]?.id ?? null
+                      if (first) handleSelectLesson(first)
+                    }}
+                  />
                 ) : (
                   <LessonCanvas
                     lesson={canvasLesson}
