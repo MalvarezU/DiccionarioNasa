@@ -24,7 +24,10 @@ import { acquireBumpLock, releaseBumpLock } from "./lock";
 /**
  * T04 — Bumps grupo import (dos pasos) + revert (spec §2.3 puntos 6–9).
  *
- * - Staging (`POST /api/admin/import`) y preview: SIN bump (spec §2.3.6/8).
+ * - Legacy (`POST /api/admin/import`): +1 por request con ≥1 fila aplicada
+ *   (escribe filas reales — espejo de `confirm`, spec §2.3.6); 0 filas
+ *   efectivas o 4xx → sin bump.
+ * - Preview: SIN bump (spec §2.3.8, solo lectura).
  * - Confirm: +1 por confirmación aplicada con ≥1 fila (N filas = +1, no +N);
  *   0 filas efectivas → sin bump.
  * - Revert: +1 solo si aplica (2xx); 404/409/410/422 → sin bump.
