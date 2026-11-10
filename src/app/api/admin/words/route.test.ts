@@ -5,15 +5,27 @@ vi.mock("@/lib/auth", () => ({
   requireRole: vi.fn(),
 }))
 
-vi.mock("@/lib/db", () => ({
-  db: {
+vi.mock("@/lib/db", () => {
+  const db: Record<string, unknown> = {
     dictionaryWord: { findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
     auditLog: { create: vi.fn() },
-  },
+  }
+  // La ruta usa `db.$transaction(async (tx) => ...)`: el mock ejecuta el
+  // callback con el propio db mockeado como `tx`.
+  db.$transaction = vi.fn(async (fn: unknown) =>
+    typeof fn === "function" ? (fn as (tx: unknown) => unknown)(db) : fn
+  )
+  return { db }
+})
+
+vi.mock("@/lib/content-version", () => ({
+  bumpContentVersion: vi.fn(),
+  getContentVersion: vi.fn(),
 }))
 
 import { requireAdmin, requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { GET, POST } from "./route"
 
 const adminSession = { user: { id: "admin1", name: "Admin", email: "a@b.com", role: "admin" } } as never
@@ -173,6 +185,40 @@ describe("POST /api/admin/words", () => {
     expect(res.status).toBe(201)
     const body = await res.json()
     expect(body.word.spanish).toBe("casa")
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns 400 for invalid status without bump", async () => {
+    allow()
+    const res = await POST(
+      new Request("http://localhost:3000/api/admin/words", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spanish: "casa", nasaYuwe: "ya:t", status: "WRONG" }),
+      })
+    )
+    expect(res.status).toBe(400)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
+    expect(db.dictionaryWord.create).not.toHaveBeenCalled()
+  })
+
+  it("normalizes lowercase status to uppercase", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.create).mockResolvedValue({ ...mockWord, status: "PUBLISHED" })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await POST(
+      new Request("http://localhost:3000/api/admin/words", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spanish: "casa", nasaYuwe: "ya:t", status: "published" }),
+      })
+    )
+    expect(res.status).toBe(201)
+    expect(vi.mocked(db.dictionaryWord.create)).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "PUBLISHED" }) })
+    )
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
   it("returns 400 when required fields missing", async () => {

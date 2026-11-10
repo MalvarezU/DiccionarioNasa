@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth"
 import { audioRefToKey } from "@/lib/media/storage"
 import { deleteObject } from "@/lib/r2"
 import { deleteMediaAssetByUrl } from "@/lib/media/delete-asset"
+import { bumpContentVersion } from "@/lib/content-version"
 
 /**
  * POST /api/admin/audit-logs/[id]/revert
@@ -78,9 +79,10 @@ export async function POST(
         try { await deleteMediaAssetByUrl(word.illustrationUrl) } catch { /* best-effort */ }
       }
 
-      await db.$transaction([
-        db.dictionaryWord.delete({ where: { id: wordId } }),
-        db.auditLog.create({
+      // Fase A T04: revert aplicado = +1 (misma transacción que la mutación).
+      await db.$transaction(async (tx) => {
+        await tx.dictionaryWord.delete({ where: { id: wordId } });
+        await tx.auditLog.create({
           data: {
             action: "REVERT",
             entity: "DictionaryWord",
@@ -89,19 +91,22 @@ export async function POST(
             userId: adminUser.id,
             wordId: null,
           },
-        }),
-      ])
+        });
+        await bumpContentVersion(tx);
+      })
 
       return NextResponse.json({ ok: true, message: "Ficha eliminada (revertido)" })
     }
 
-    // DELETE → recrear si hay snapshot completo
+    // DELETE → recrear si hay snapshot completo. Sin snapshot (logs
+    // históricos anteriores a la versión con snapshot) → 422 documentado
+    // (spec E2), sin bump y sin mutación.
     if (original.action === "DELETE") {
       const snapshot = (changes.deleted ?? null) as Record<string, unknown> | null
       if (!snapshot || typeof snapshot.spanish !== "string" || typeof snapshot.nasaYuwe !== "string") {
         return NextResponse.json(
           { message: "No se puede revertir: el log no tiene datos suficientes (anterior a la versión con snapshot completo)" },
-          { status: 409 }
+          { status: 422 }
         )
       }
       // Si la palabra ya existe de nuevo, no recrear
@@ -123,24 +128,29 @@ export async function POST(
       }
       if (!data.status) data.status = "DRAFT"
 
-      const created = await db.dictionaryWord.create({ data: data as never })
+      const created = await db.$transaction(async (tx) => {
+        const row = await tx.dictionaryWord.create({ data: data as never });
 
-      await db.auditLog.create({
-        data: {
-          action: "REVERT",
-          entity: "DictionaryWord",
-          entityId: created.id,
-          changes: JSON.stringify({
-            originalLogId: id,
-            originalEntityId: original.entityId,
-            restored: "recreated",
-            newId: created.id,
-            responsable: adminUser.name || adminUser.email,
-          }),
-          userId: adminUser.id,
-          wordId: created.id,
-        },
-      })
+        await tx.auditLog.create({
+          data: {
+            action: "REVERT",
+            entity: "DictionaryWord",
+            entityId: row.id,
+            changes: JSON.stringify({
+              originalLogId: id,
+              originalEntityId: original.entityId,
+              restored: "recreated",
+              newId: row.id,
+              responsable: adminUser.name || adminUser.email,
+            }),
+            userId: adminUser.id,
+            wordId: row.id,
+          },
+        });
+
+        await bumpContentVersion(tx);
+        return row;
+      });
 
       return NextResponse.json({ ok: true, message: "Ficha recreada (revertido)", newId: created.id })
     }
@@ -182,9 +192,10 @@ export async function POST(
       updateData[field] = before
     }
 
-    await db.$transaction([
-      db.dictionaryWord.update({ where: { id: wordId }, data: updateData }),
-      db.auditLog.create({
+    // Fase A T04: revert aplicado = +1 (misma transacción que la mutación).
+    await db.$transaction(async (tx) => {
+      await tx.dictionaryWord.update({ where: { id: wordId }, data: updateData });
+      await tx.auditLog.create({
         data: {
           action: "REVERT",
           entity: "DictionaryWord",
@@ -197,10 +208,52 @@ export async function POST(
           userId: adminUser.id,
           wordId,
         },
-      }),
-    ])
+      });
+      await bumpContentVersion(tx);
+    })
 
     return NextResponse.json({ ok: true, message: "Cambio revertido" })
+  }
+
+  // ---------------- Module / Lesson ----------------
+  // Fase A T07: revert de un borrado lógico (DELETE → deletedAt) =
+  // deletedAt = null + bump (+1, regla 2.2.3). Si ya está restaurado
+  // (deletedAt null) o la entidad no existe → 409/404 sin bump ni mutación.
+  if ((original.entity === "Module" || original.entity === "Lesson") && original.action === "DELETE") {
+    const entityId = original.entityId
+    if (!entityId) {
+      return NextResponse.json({ message: "No se puede revertir: falta el id de la entidad" }, { status: 409 })
+    }
+    const current =
+      original.entity === "Module"
+        ? await db.module.findUnique({ where: { id: entityId } })
+        : await db.lesson.findUnique({ where: { id: entityId } })
+    if (!current) {
+      return NextResponse.json({ message: "La entidad ya no existe" }, { status: 409 })
+    }
+    if (current.deletedAt === null) {
+      return NextResponse.json({ message: "El borrado ya fue revertido" }, { status: 409 })
+    }
+
+    await db.$transaction(async (tx) => {
+      if (original.entity === "Module") {
+        await tx.module.update({ where: { id: entityId }, data: { deletedAt: null } })
+      } else {
+        await tx.lesson.update({ where: { id: entityId }, data: { deletedAt: null } })
+      }
+      await tx.auditLog.create({
+        data: {
+          action: "REVERT",
+          entity: original.entity,
+          entityId,
+          changes: JSON.stringify({ originalLogId: id, restored: "undeleted", responsable: adminUser.name || adminUser.email }),
+          userId: adminUser.id,
+        },
+      })
+      await bumpContentVersion(tx)
+    })
+
+    return NextResponse.json({ ok: true, message: "Borrado revertido" })
   }
 
   // ---------------- User ----------------

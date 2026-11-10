@@ -1,0 +1,289 @@
+name: Seed content
+
+# Fase C W2 (spec §3): robot semanal de semilla offline.
+# Genera piiyaak-seed.zip con scripts/build-content-bundle.ts y lo publica en
+# R2 bajo seed/<N>/ (inmutable) + seed/latest.json (único objeto mutable).
+#
+# Matriz de logging (§3.4): permitido contentVersion, conteos, bytes por
+# clase, objectKeys, URLs públicas, tiempos, códigos de salida y decisión
+# SKIP/publicar. NUNCA: valor de CI_SYNC_SECRET, credenciales R2, cuerpos del
+# bundle, bytes de medios ni encabezados de auth. Ningún paso usa `set -x`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      content_version:
+        description: "Re-publicar una versión concreta (vacío = versión actual remota)"
+        required: false
+        type: string
+      dry_run:
+        description: "Genera y verifica sin publicar en R2"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # Lunes 03:00 UTC, semanal (Fase D podrá cambiar la cadencia).
+    - cron: "0 3 * * 1"
+
+concurrency:
+  group: seed-content
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      AWS_REGION: auto
+      AWS_EC2_METADATA_DISABLED: "true"
+
+    steps:
+      # Paso 1 — checkout.
+      - uses: actions/checkout@v4
+
+      # Paso 2 — Node 24 + dependencias + prisma (precedente ci-e2e.yml).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+
+      # Paso 3 — Bun como ejecutor del generador (dependencias vía npm ci).
+      - uses: oven-sh/setup-bun@v2
+
+      # Guarda: falla cerrado si falta un secreto (mensaje sin valores).
+      - name: Verificar secretos requeridos
+        env:
+          CI_SYNC_SECRET: ${{ secrets.CI_SYNC_SECRET }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in CI_SYNC_SECRET R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET R2_PUBLIC_BASE_URL; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::falta el secreto $name (repo Settings → Secrets → Actions)"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      # Paso 4 — generar. El script imprime líneas `METRIC <clave>=<valor>`
+      # (words, courses, modules, lessons, mediaFiles, bytes_total,
+      # bytes_audio, bytes_image); el step las publica en el job summary.
+      - name: Generar bundle seed
+        env:
+          CI_SYNC_SECRET: ${{ secrets.CI_SYNC_SECRET }}
+          SEED_API_BASE: ${{ vars.SEED_API_BASE }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: |
+          set -euo pipefail
+          api_base="${SEED_API_BASE:-https://diccionario-nasa-liart.vercel.app}"
+          args=(--out dist/seed)
+          if [ -n "${{ inputs.content_version }}" ]; then
+            args+=(--expect-version "${{ inputs.content_version }}")
+          fi
+          SEED_API_BASE="$api_base" bun run scripts/build-content-bundle.ts "${args[@]}" | tee /tmp/seed-build.log
+          {
+            echo "## Seed build"
+            echo ""
+            echo "| métrica | valor |"
+            echo "|---|---|"
+            grep '^METRIC ' /tmp/seed-build.log | while read -r _ kv; do
+              k="${kv%%=*}"
+              v="${kv#*=}"
+              echo "| $k | $v |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Paso 5 — SKIP barato por latest.json: si latest.contentVersion ya es
+      # la versión generada, termina en verde sin subir nada. latest.json
+      # ausente o ilegible → se continúa (primera publicación).
+      # Omitido en dry_run (el dry-run no consulta R2).
+      - name: Decidir SKIP por latest.json
+        id: skip
+        if: ${{ !inputs.dry_run }}
+        env:
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: |
+          set -euo pipefail
+          cv="$(jq -r '.contentVersion' dist/seed/manifest.json)"
+          echo "versión generada: $cv"
+          echo "content_version=$cv" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          if latest_json="$(curl -fsSL --max-time 30 "$R2_PUBLIC_BASE_URL/seed/latest.json")"; then
+            latest_cv="$(printf '%s' "$latest_json" | jq -r '.contentVersion // empty' || true)"
+            if [ -n "$latest_cv" ] && [ "$latest_cv" = "$cv" ]; then
+              echo "SKIP: seed $cv ya publicado; sin subida" | tee -a "$GITHUB_STEP_SUMMARY"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "latest=$latest_cv ≠ generada=$cv; se publica"
+            fi
+          else
+            echo "latest.json ausente o ilegible; se continúa (primera publicación)"
+          fi
+
+      # Guarda canónica de publicación (Fase D W4.3 E3): los pasos 6, 7, 8 y
+      # 10 comparten literalmente `if: ${{ !inputs.dry_run &&
+      # steps.skip.outputs.skip != 'true' }}`. Deduplicación documental: la
+      # expresión se repite idéntica a propósito (cero riesgo semántico);
+      # cualquier cambio futuro debe aplicarse a las 4 a la vez.
+      # Paso 6 — guarda anti-sobrescritura: seed/<N>/ es inmutable; si el zip
+      # ya existe, el job falla (re-publicar exige content_version distinto).
+      # Omitido en dry_run.
+      - name: Guarda anti-sobrescritura
+        if: ${{ !inputs.dry_run && steps.skip.outputs.skip != 'true' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          cv="${{ steps.skip.outputs.content_version }}"
+          key="seed/$cv/piiyaak-seed.zip"
+          endpoint="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          if aws s3api head-object --bucket "$R2_BUCKET" --key "$key" --endpoint-url "$endpoint" >/dev/null 2>&1; then
+            echo "::error::$key ya existe en R2 (inmutable); re-publicar exige un content_version distinto o intervención manual"
+            exit 1
+          fi
+          echo "guarda en verde: $key no existe; se publica seed $cv"
+
+      # Paso 7 — publicar zip + manifest.json con sus ContentType y verificar
+      # con objectExists (head-object) ambos; falso → falla.
+      # Omitido en dry_run.
+      - name: Publicar seed en R2
+        if: ${{ !inputs.dry_run && steps.skip.outputs.skip != 'true' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          cv="${{ steps.skip.outputs.content_version }}"
+          endpoint="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          aws s3api put-object --bucket "$R2_BUCKET" --key "seed/$cv/piiyaak-seed.zip" \
+            --body dist/seed/piiyaak-seed.zip --content-type application/zip \
+            --endpoint-url "$endpoint" >/dev/null
+          aws s3api put-object --bucket "$R2_BUCKET" --key "seed/$cv/manifest.json" \
+            --body dist/seed/manifest.json --content-type application/json \
+            --endpoint-url "$endpoint" >/dev/null
+          for key in "seed/$cv/piiyaak-seed.zip" "seed/$cv/manifest.json"; do
+            if ! aws s3api head-object --bucket "$R2_BUCKET" --key "$key" --endpoint-url "$endpoint" >/dev/null 2>&1; then
+              echo "::error::verificación post-subida fallida: $key no existe tras putObject"
+              exit 1
+            fi
+          done
+          echo "publicado seed/$cv (zip + manifest.json) y verificado"
+
+      # Paso 8 — verificación post-publicación (publicación real): re-descarga
+      # ambos objetos publicados, compara bytes del zip contra el local y
+      # sha256 de la db extraída contra manifest.dbSha256. Distinto → job
+      # rojo (los objetos inmutables quedan; la corrección es una versión
+      # nueva, nunca sobrescritura).
+      - name: Verificación post-publicación
+        if: ${{ !inputs.dry_run && steps.skip.outputs.skip != 'true' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          cv="${{ steps.skip.outputs.content_version }}"
+          endpoint="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          aws s3api get-object --bucket "$R2_BUCKET" --key "seed/$cv/piiyaak-seed.zip" \
+            /tmp/seed-published.zip --endpoint-url "$endpoint" >/dev/null
+          if ! cmp -s dist/seed/piiyaak-seed.zip /tmp/seed-published.zip; then
+            echo "::error::bytes re-descargados difieren del zip local (seed/$cv)"
+            exit 1
+          fi
+          expected_sha="$(jq -r '.dbSha256' dist/seed/manifest.json)"
+          published_sha="$(unzip -p /tmp/seed-published.zip piiyaak.db | sha256sum | cut -d' ' -f1)"
+          if [ "$published_sha" != "$expected_sha" ]; then
+            echo "::error::dbSha256 del zip publicado ($published_sha) difiere del manifiesto ($expected_sha)"
+            exit 1
+          fi
+          echo "verificación post-publicación en verde: bytes idénticos, dbSha256=$expected_sha"
+
+      # Paso 9 — verificación local (dry_run): misma exigencia sin R2:
+      # manifiesto, layout del zip y dbSha256 recomputado contra dist/seed.
+      - name: Verificación local (dry_run)
+        if: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          jq -e '.format == "piiyaak-seed/1"
+            and (.contentVersion | test("^[0-9]+$"))
+            and (.dbSha256 | test("^[0-9a-f]{64}$"))
+            and (.zipBytes > 0) and (.dbBytes > 0)' dist/seed/manifest.json >/dev/null
+          unzip -l dist/seed/piiyaak-seed.zip
+          expected_sha="$(jq -r '.dbSha256' dist/seed/manifest.json)"
+          local_sha="$(sha256sum dist/seed/piiyaak.db | cut -d' ' -f1)"
+          if [ "$local_sha" != "$expected_sha" ]; then
+            echo "::error::dbSha256 local ($local_sha) difiere del manifiesto ($expected_sha)"
+            exit 1
+          fi
+          echo "verificación local dry_run en verde: dbSha256=$expected_sha"
+
+      # Paso 10 — actualizar seed/latest.json con un único putObject (el PUT
+      # es atómico; nunca hay latest.json parcial) y verificar con
+      # objectExists. Omitido en dry_run.
+      # Definición canónica de bytesTotal (Fase D W4.2 E2): bytesTotal =
+      # dbBytes + Σ files[].size, calculada por emitManifest
+      # (src/lib/seed/bundle-builder.ts:537) sobre el manifest.json generado.
+      # Este paso REPLICA ese valor con `jq -r '.bytesTotal'`; nunca lo
+      # recalcula por otra vía. Si un lector necesita el total, lo lee del
+      # manifiesto.
+      - name: Actualizar latest.json
+        if: ${{ !inputs.dry_run && steps.skip.outputs.skip != 'true' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: |
+          set -euo pipefail
+          cv="${{ steps.skip.outputs.content_version }}"
+          endpoint="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          bytes_total="$(jq -r '.bytesTotal' dist/seed/manifest.json)"
+          files="$(jq -r '.files | length' dist/seed/manifest.json)"
+          now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          jq -n --arg cv "$cv" --arg base "$R2_PUBLIC_BASE_URL" \
+            --argjson bytes_total "$bytes_total" --argjson files "$files" --arg now "$now" \
+            '{contentVersion: $cv,
+               manifestUrl: "\($base)/seed/\($cv)/manifest.json",
+               zipUrl: "\($base)/seed/\($cv)/piiyaak-seed.zip",
+               bytesTotal: $bytes_total, files: $files, updatedAt: $now}' > /tmp/seed-latest.json
+          aws s3api put-object --bucket "$R2_BUCKET" --key seed/latest.json \
+            --body /tmp/seed-latest.json --content-type application/json \
+            --endpoint-url "$endpoint" >/dev/null
+          if ! aws s3api head-object --bucket "$R2_BUCKET" --key seed/latest.json \
+            --endpoint-url "$endpoint" >/dev/null 2>&1; then
+            echo "::error::seed/latest.json no existe tras putObject"
+            exit 1
+          fi
+          echo "latest.json actualizado a contentVersion=$cv"
+
+      # Paso 11 — subir dist/seed/manifest.json como artifact (observabilidad).
+      - name: Subir manifest.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-manifest
+          path: dist/seed/manifest.json
+          if-no-files-found: error

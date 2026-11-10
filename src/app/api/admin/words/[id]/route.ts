@@ -4,8 +4,10 @@ import { requireAdmin, requireRole } from '@/lib/auth'
 import { audioRefToKey } from '@/lib/media/storage'
 import { deleteObject } from '@/lib/r2'
 import { deleteMediaAssetByUrl } from '@/lib/media/delete-asset'
+import { bumpContentVersion } from '@/lib/content-version'
 
-// Valid status values
+// T07: `DictionaryWord.status` es String libre — toda escritura normaliza a
+// mayúsculas y valida contra este conjunto; inválido → 400 sin bump.
 const VALID_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED']
 
 /**
@@ -52,6 +54,12 @@ export async function PUT(
     // Parse request body
     const body = await request.json()
 
+    // T07: normalizar el estado a mayúsculas antes de comparar/validar.
+    const normalizedBody: Record<string, unknown> = { ...body }
+    if ('status' in normalizedBody && typeof normalizedBody.status === 'string') {
+      normalizedBody.status = normalizedBody.status.toUpperCase().trim()
+    }
+
     // Validate required fields if provided (must not be empty strings)
     if ('spanish' in body && (!body.spanish || body.spanish.trim() === '')) {
       return NextResponse.json(
@@ -67,7 +75,7 @@ export async function PUT(
     }
 
     // Validate status if provided
-    if ('status' in body && !VALID_STATUSES.includes(body.status)) {
+    if ('status' in normalizedBody && !VALID_STATUSES.includes(normalizedBody.status as string)) {
       return NextResponse.json(
         { error: `Estado inválido. Valores permitidos: ${VALID_STATUSES.join(', ')}` },
         { status: 400 }
@@ -91,9 +99,9 @@ export async function PUT(
     const changes: Record<string, { before: unknown; after: unknown }> = {}
 
     for (const field of updatableFields) {
-      if (field in body) {
+      if (field in normalizedBody) {
         const oldValue = existingWord[field]
-        const newValue = body[field]
+        const newValue = normalizedBody[field]
 
         // Compare values (treat null and empty string as equivalent for optional fields)
         const oldNormalized = oldValue ?? null
@@ -119,31 +127,37 @@ export async function PUT(
     // Build update data object
     const updateData: Record<string, unknown> = {}
     for (const field of Object.keys(changes)) {
-      updateData[field] = body[field]
+      updateData[field] = normalizedBody[field]
     }
 
-    // Update the word
-    const updatedWord = await db.dictionaryWord.update({
-      where: { id },
-      data: updateData,
-    })
+    // Fase A T03: mutación + bump en la misma transacción (una operación = +1).
+    // La limpieza best-effort de medios reemplazados queda fuera (post-commit).
+    const updatedWord = await db.$transaction(async (tx) => {
+      const updated = await tx.dictionaryWord.update({
+        where: { id },
+        data: updateData,
+      })
 
-    // HU3.3.5: Determine appropriate audit action (PUBLISH, ARCHIVE, or UPDATE)
-    const auditAction = determineAuditAction(changes)
+      // HU3.3.5: Determine appropriate audit action (PUBLISH, ARCHIVE, or UPDATE)
+      const auditAction = determineAuditAction(changes)
 
-    // Create an AuditLog entry with the determined action
-    await db.auditLog.create({
-      data: {
-        action: auditAction,
-        entity: 'DictionaryWord',
-        entityId: id,
-        changes: JSON.stringify({
-          ...changes,
-          responsable: session!.user.name || session!.user.email,
-        }),
-        userId: (session!.user as { id: string }).id,
-        wordId: id,
-      },
+      // Create an AuditLog entry with the determined action
+      await tx.auditLog.create({
+        data: {
+          action: auditAction,
+          entity: 'DictionaryWord',
+          entityId: id,
+          changes: JSON.stringify({
+            ...changes,
+            responsable: session!.user.name || session!.user.email,
+          }),
+          userId: (session!.user as { id: string }).id,
+          wordId: id,
+        },
+      })
+
+      await bumpContentVersion(tx)
+      return updated
     })
 
     // Build response, including previousAudioUrl if audioUrl changed
@@ -196,11 +210,14 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/admin/words/[id]
+ * DELETE /api/admin/words/[id] — borrado LÓGICO (Fase A T07, decisión D3).
  *
- * Elimina la ficha y su audio asociado en R2 (si existe),
- * evitando archivos huérfanos. Las relaciones Favorite/ViewHistory se
- * eliminan en cascada según el schema de Prisma.
+ * Reemplazo lateral: en vez de borrar la fila física, se archiva
+ * (`status = "ARCHIVED"`) + bump en la misma transacción. El endpoint mantiene
+ * su respuesta 200 ({ message, id }) y sigue registrando
+ * `AuditLog(action: "DELETE")` con el `entityId` para que los tombstones del
+ * sync continúen funcionando (spec §3.4). El audio asociado se conserva: la
+ * ficha archivada puede restaurarse y su audio sigue siendo válido.
  */
 export async function DELETE(
   _request: Request,
@@ -223,36 +240,28 @@ export async function DELETE(
       )
     }
 
-    // Limpiar audio en R2 antes de borrar la ficha (best-effort)
-    const key = existingWord.audioUrl
-      ? audioRefToKey(existingWord.audioUrl)
-      : null
-    if (key) {
-      try {
-        await deleteObject(key)
-      } catch (storageException) {
-        console.error('Error eliminando audio de la palabra:', storageException)
-      }
-    }
+    await db.$transaction(async (tx) => {
+      await tx.dictionaryWord.update({ where: { id }, data: { status: 'ARCHIVED' } })
 
-    await db.dictionaryWord.delete({ where: { id } })
+      const sessionUser = session?.user as
+        | { id: string; name?: string | null; email?: string | null }
+        | undefined
 
-    const sessionUser = session?.user as
-      | { id: string; name?: string | null; email?: string | null }
-      | undefined
+      await tx.auditLog.create({
+        data: {
+          action: 'DELETE',
+          entity: 'DictionaryWord',
+          entityId: id,
+          changes: JSON.stringify({
+            deleted: { ...existingWord },
+            responsable: sessionUser?.name || sessionUser?.email,
+          }),
+          userId: sessionUser?.id,
+          wordId: null,
+        },
+      })
 
-    await db.auditLog.create({
-      data: {
-        action: 'DELETE',
-        entity: 'DictionaryWord',
-        entityId: id,
-        changes: JSON.stringify({
-          deleted: { ...existingWord },
-          responsable: sessionUser?.name || sessionUser?.email,
-        }),
-        userId: sessionUser?.id,
-        wordId: null,
-      },
+      await bumpContentVersion(tx)
     })
 
     return NextResponse.json(
@@ -287,7 +296,10 @@ export async function PATCH(
 
     // Parse request body
     const body = await request.json()
-    const { status } = body
+    const rawStatus = body?.status
+
+    // T07: normalizar a mayúsculas antes de validar (minúsculas históricas se aceptan).
+    const status = typeof rawStatus === 'string' ? rawStatus.toUpperCase().trim() : rawStatus
 
     // Validate status
     if (!status || !VALID_STATUSES.includes(status)) {
@@ -319,30 +331,35 @@ export async function PATCH(
 
     const previousStatus = existingWord.status
 
-    // Update the word status
-    const updatedWord = await db.dictionaryWord.update({
-      where: { id },
-      data: { status },
-    })
+    // Fase A T03: mutación + bump en la misma transacción (una operación = +1).
+    const updatedWord = await db.$transaction(async (tx) => {
+      const updated = await tx.dictionaryWord.update({
+        where: { id },
+        data: { status },
+      })
 
-    // Determine audit action based on new status
-    let auditAction = 'UPDATE'
-    if (status === 'PUBLISHED') auditAction = 'PUBLISH'
-    else if (status === 'ARCHIVED') auditAction = 'ARCHIVE'
+      // Determine audit action based on new status
+      let auditAction = 'UPDATE'
+      if (status === 'PUBLISHED') auditAction = 'PUBLISH'
+      else if (status === 'ARCHIVED') auditAction = 'ARCHIVE'
 
-    // Create audit log entry
-    await db.auditLog.create({
-      data: {
-        action: auditAction,
-        entity: 'DictionaryWord',
-        entityId: id,
-        changes: JSON.stringify({
-          status: { before: previousStatus, after: status },
-          responsable: session!.user.name || session!.user.email,
-        }),
-        userId: (session!.user as { id: string }).id,
-        wordId: id,
-      },
+      // Create audit log entry
+      await tx.auditLog.create({
+        data: {
+          action: auditAction,
+          entity: 'DictionaryWord',
+          entityId: id,
+          changes: JSON.stringify({
+            status: { before: previousStatus, after: status },
+            responsable: session!.user.name || session!.user.email,
+          }),
+          userId: (session!.user as { id: string }).id,
+          wordId: id,
+        },
+      })
+
+      await bumpContentVersion(tx)
+      return updated
     })
 
     return NextResponse.json(

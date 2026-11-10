@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { requireRole } from "@/lib/auth"
 import { parseLessonContent } from "@/lib/courses/blocks"
 import { sanitizeLessonContent } from "@/lib/courses/text-sanitizer"
+import { bumpContentVersion } from "@/lib/content-version"
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -50,7 +51,12 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ message: "Nada que actualizar" }, { status: 400 })
     }
-    const lesson = await db.lesson.update({ where: { id }, data })
+    // Fase A T05: mutación + bump en la misma transacción (una operación = +1).
+    const lesson = await db.$transaction(async (tx) => {
+      const updated = await tx.lesson.update({ where: { id }, data })
+      await bumpContentVersion(tx)
+      return updated
+    })
     return NextResponse.json({ lesson })
   } catch (err) {
     console.error("Lesson update error:", err)
@@ -132,7 +138,12 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
       return NextResponse.json({ message: "Nada que actualizar" }, { status: 400 })
     }
 
-    const lesson = await db.lesson.update({ where: { id }, data })
+    // Fase A T05: mutación + bump en la misma transacción (una operación = +1).
+    const lesson = await db.$transaction(async (tx) => {
+      const updated = await tx.lesson.update({ where: { id }, data })
+      await bumpContentVersion(tx)
+      return updated
+    })
     return NextResponse.json({ lesson })
   } catch (err) {
     console.error("Lesson content update error:", err)
@@ -140,13 +151,30 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** DELETE /api/lessons/[id] (editor+: no borra fichas, solo la lección) */
-export async function DELETE(_request: NextRequest, { params }: Ctx) {
-  const { error } = await requireRole("editor")
+/**
+ * DELETE /api/lessons/[id] — borrado LÓGICO (Fase A T07, decisión D3).
+ *
+ * Reemplazo lateral: `deletedAt = now()` + bump en la misma transacción, con
+ * `AuditLog` DELETE para reversibilidad. Respuesta sin cambios
+ * ({ success: true }). No borra fichas (editor+: lección suelta).
+ */
+export async function DELETE(request: NextRequest, { params }: Ctx) {
+  const { session, error } = await requireRole("editor")
   if (error) return error
   try {
     const { id } = await params
-    await db.lesson.delete({ where: { id } })
+    await db.$transaction(async (tx) => {
+      await tx.lesson.update({ where: { id }, data: { deletedAt: new Date() } })
+      await tx.auditLog.create({
+        data: {
+          action: "DELETE",
+          entity: "Lesson",
+          entityId: id,
+          userId: (session?.user as { id?: string } | undefined)?.id,
+        },
+      })
+      await bumpContentVersion(tx)
+    })
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error("Lesson delete error:", err)

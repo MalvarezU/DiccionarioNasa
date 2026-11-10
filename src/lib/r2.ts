@@ -85,14 +85,35 @@ export async function deleteObject(key: string): Promise<void> {
 }
 
 /** true si el objeto existe en el bucket (verificación post-subida). */
-export async function objectExists(key: string): Promise<boolean> {
-  try {
+export async function objectExists(key: string): Promise<boolean> {  try {
     await getR2Client().send(
       new HeadObjectCommand({ Bucket: r2Bucket(), Key: key }),
     )
     return true
   } catch {
     return false
+  }
+}
+
+/**
+ * Descarga los bytes crudos de un objeto R2 (Fase A T08/T09: hash sha256
+ * sobre bytes originales y backfill de medios legacy).
+ *
+ * Retorna `null` si el objeto no existe (NoSuchKey/NotFound); otros errores
+ * de red o permisos se propagan al llamante.
+ */
+export async function getObjectBytes(key: string): Promise<Buffer | null> {
+  try {
+    const res = await getR2Client().send(
+      new GetObjectCommand({ Bucket: r2Bucket(), Key: key }),
+    )
+    const bytes = await (res.Body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray()
+    return Buffer.from(bytes)
+  } catch (err) {
+    const code = (err as { Code?: string; name?: string })?.Code
+      ?? (err as { name?: string })?.name
+    if (code === "NoSuchKey" || code === "NotFound") return null
+    throw err
   }
 }
 

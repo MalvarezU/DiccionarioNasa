@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server"
 import { requireRole } from "@/lib/auth"
+import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { audioKey } from "@/lib/media/storage"
+import { sha256Hex } from "@/lib/media/hash"
 import { detectAudioMime, expectedExtensions } from "@/lib/media/audio"
-import { putObject, publicUrl } from "@/lib/r2"
+import { putObject, deleteObject, publicUrl } from "@/lib/r2"
 
 const VALID_MIME_TYPES = [
   "audio/mpeg",
@@ -22,7 +25,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 }
 
 export async function POST(request: Request) {
-  const { error } = await requireRole("editor")
+  const { session, error } = await requireRole("editor")
   if (error) return error
 
   const file = await extractFile(request)
@@ -42,11 +45,12 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const key = audioKey("temp", file.name)
     const contentType = MIME_BY_EXTENSION[extensionOf(file.name)] ?? "audio/mpeg"
+    // Fase A T08: hash sobre los bytes originales ANTES del putObject.
+    const sha256 = sha256Hex(buffer)
 
     try {
       await putObject(key, buffer, contentType)
-    } catch (uploadError) {
-      console.error("R2 upload error:", uploadError)
+    } catch (uploadError) {      console.error("R2 upload error:", uploadError)
       return NextResponse.json(
         { message: "Error al subir el audio al servidor" },
         { status: 500 }
@@ -58,11 +62,37 @@ export async function POST(request: Request) {
     // favoritos, palabra del día y caché offline.
     const audioUrl = publicUrl(key)
 
+    // Fase A T06: cerrar la brecha de inventario — toda subida crea su fila
+    // MediaAsset ( Igual que upload-image). Si el insert falla, se compensa
+    // borrando el objeto de R2 y no hay bump.
+    try {
+      await db.$transaction(async (tx) => {
+        await tx.mediaAsset.create({
+          data: {
+            objectKey: key,
+            filename: file.name,
+            mimeType: contentType,
+            size: file.size,
+            // Fase A T08: registro de medios (spec §4.1, HASH-01).
+            sha256,
+            uploadedBy: (session?.user as { id?: string } | undefined)?.id ?? null,
+          },
+        })
+        await bumpContentVersion(tx)
+      })
+    } catch (dbError) {
+      await deleteObject(key).catch((cleanupError) =>
+        console.error("R2 cleanup error:", cleanupError)
+      )
+      throw dbError
+    }
+
     return NextResponse.json({
       audioUrl,
       objectKey: key,
       fileName: file.name,
       size: file.size,
+      sha256,
       message: "Audio subido correctamente",
     })
   } catch (error) {

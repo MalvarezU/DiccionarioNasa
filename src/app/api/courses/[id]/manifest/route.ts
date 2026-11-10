@@ -58,11 +58,14 @@ export async function GET(_request: Request, { params }: Ctx) {
         status: true,
         sequential: true,
         modules: {
+          // Fase A T07: el manifest excluye borrados lógicos.
+          where: { deletedAt: null },
           select: {
             id: true,
             title: true,
             order: true,
             lessons: {
+              where: { deletedAt: null },
               select: {
                 id: true,
                 title: true,

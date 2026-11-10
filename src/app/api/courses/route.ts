@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { db } from "@/lib/db"
 import { requireRole } from "@/lib/auth"
+import { bumpContentVersion } from "@/lib/content-version"
 
 const VALID_STATUS = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const
 
@@ -25,9 +26,12 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "asc" },
       include: {
         modules: {
+          // Fase A T07: el árbol público excluye borrados lógicos.
+          where: { deletedAt: null },
           orderBy: { order: "asc" },
           include: {
             lessons: {
+              where: { deletedAt: null },
               orderBy: [{ lessonNumber: "asc" }, { id: "asc" }],
               select: { id: true, lessonNumber: true },
             },
@@ -92,13 +96,18 @@ export async function POST(request: NextRequest) {
         : "DRAFT"
     const sequential = body?.sequential === undefined ? true : body.sequential === true
 
-    const course = await db.course.create({
-      data: {
-        title,
-        description: typeof body?.description === "string" ? body.description.trim() || null : null,
-        status,
-        sequential,
-      },
+    // Fase A T05: creación + bump en la misma transacción (una operación = +1).
+    const course = await db.$transaction(async (tx) => {
+      const created = await tx.course.create({
+        data: {
+          title,
+          description: typeof body?.description === "string" ? body.description.trim() || null : null,
+          status,
+          sequential,
+        },
+      })
+      await bumpContentVersion(tx)
+      return created
     })
     return NextResponse.json({ course }, { status: 201 })
   } catch (error) {
