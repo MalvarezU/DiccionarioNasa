@@ -27,26 +27,16 @@ describe("ImportCorpusModal", () => {
     global.fetch = vi.fn()
   })
 
-  it("renders dialog title", () => {
+  it("renderiza el diálogo con título, etiqueta y área de archivo", () => {
     renderModal()
     expect(screen.getByText("Importar corpus")).toBeDefined()
-  })
-
-  it("shows file upload label", () => {
-    renderModal()
     expect(screen.getByText("Subir archivo Excel o CSV")).toBeDefined()
+    expect(document.querySelectorAll('input[type="file"]').length).toBeGreaterThan(0)
   })
 
-  it("shows file upload area", () => {
-    renderModal()
-    const fileInputs = document.querySelectorAll('input[type="file"]')
-    expect(fileInputs.length).toBeGreaterThan(0)
-  })
-
-  it("calls onOpenChange(false) when cancel clicked", async () => {
+  it("cierra el modal al pulsar Cancelar", async () => {
     const { onOpenChange } = renderModal()
-    const cancelBtn = screen.getByText("Cancelar")
-    await userEvent.setup().click(cancelBtn)
+    await userEvent.setup().click(screen.getByText("Cancelar"))
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })

@@ -15,6 +15,10 @@ export default defineConfig({
     clearMocks: true,
     restoreMocks: true,
     pool: "forks",
+    // Mitigación de flakiness: los tests pasan aislados y fallan intercalados
+    // (course-manager, admin/palabras). Se desactiva el paralelismo entre
+    // archivos mientras se investiga la causa raíz (estado compartido/mocks).
+    fileParallelism: false,
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary", "html"],

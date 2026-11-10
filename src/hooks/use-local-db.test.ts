@@ -89,9 +89,11 @@ describe("useLocalDB", () => {
     expect(result.current.downloadProgress).toBe(100)
   })
 
-  it.skip("forceResync clears local DB and re-downloads", { timeout: 5000 }, async () => {
-    vi.mocked(global.fetch).mockResolvedValue(
-      Response.json(mockExportResponse) as never
+  it("forceResync clears local DB and re-downloads", { timeout: 5000 }, async () => {
+    // Respuesta fresca por llamada: el hook hace fetch al montar y otro en
+    // forceResync; reutilizar el mismo Response rompe el segundo .json().
+    vi.mocked(global.fetch).mockImplementation(
+      () => Promise.resolve(Response.json(mockExportResponse)) as never
     )
 
     const { result } = renderHook(() => useLocalDB())
