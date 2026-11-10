@@ -52,6 +52,22 @@ export function parseAuditChanges(changes: string | null): ParsedAuditChanges {
 
   // Shape 3: bulk-status anidado { status: {before, after} } ya cubierto por Shape 1.
 
+  // Shape 4: sugerencia de palabra { term, comment?, source? }.
+  // No es un diff (no hay before/after): se presenta como fila única
+  // "Palabra sugerida → comentario" para que el detalle no quede vacío.
+  if (typeof obj.term === "string" && obj.term.trim().length > 0) {
+    const term = obj.term.trim()
+    const comment = typeof obj.comment === "string" && obj.comment.trim()
+      ? obj.comment.trim()
+      : null
+    rows.push({
+      label: "Palabra sugerida",
+      before: term,
+      after: comment ?? "(sin comentario)",
+    })
+    return { rows, summary: null, responsable }
+  }
+
   // Summary para CREATE/IMPORT/DELETE/snapshot
   let summary: string | null = null
   if (obj.deleted && typeof obj.deleted === "object") {
@@ -64,6 +80,47 @@ export function parseAuditChanges(changes: string | null): ParsedAuditChanges {
   }
 
   return { rows, summary, responsable }
+}
+
+/** Estado de una sugerencia. Vive en el JSON de `changes` (sin schema). */
+export type SuggestionStatus = "PENDING" | "DONE" | "ARCHIVED"
+
+export interface ParsedSuggestion {
+  term: string
+  comment: string | null
+  status: SuggestionStatus
+  decidedAt: string | null
+  decidedBy: string | null
+}
+
+/**
+ * Lee una sugerencia desde el `changes` de un log SUGGEST.
+ * Logs viejos sin `status` se tratan como PENDING (compatibilidad).
+ * Devuelve null si el JSON no es una sugerencia válida.
+ */
+export function parseSuggestion(changes: string | null): ParsedSuggestion | null {
+  if (!changes) return null
+  let obj: Record<string, unknown>
+  try {
+    const parsed: unknown = JSON.parse(changes)
+    if (!parsed || typeof parsed !== "object") return null
+    obj = parsed as Record<string, unknown>
+  } catch {
+    return null
+  }
+  if (typeof obj.term !== "string" || obj.term.trim().length === 0) return null
+  const rawStatus = typeof obj.status === "string" ? obj.status : "PENDING"
+  const status: SuggestionStatus =
+    rawStatus === "DONE" || rawStatus === "ARCHIVED" ? rawStatus : "PENDING"
+  const comment =
+    typeof obj.comment === "string" && obj.comment.trim() ? obj.comment.trim() : null
+  return {
+    term: obj.term.trim(),
+    comment,
+    status,
+    decidedAt: typeof obj.decidedAt === "string" ? obj.decidedAt : null,
+    decidedBy: typeof obj.decidedBy === "string" ? obj.decidedBy : null,
+  }
 }
 
 export function isRevertible(log: { action: string; entity: string; changes: string | null }): boolean {

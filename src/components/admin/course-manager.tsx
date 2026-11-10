@@ -889,7 +889,7 @@ function CourseManagerInner({ canDelete = false }: { canDelete?: boolean }) {
               </div>
 
               {stats ? (
-                <p className="text-2xs text-muted-foreground" data-testid="curso-stats">
+                <p className="text-2xs text-muted-foreground" data-testid="curso-stats-detalle">
                   {stats.alumnos} alumno{stats.alumnos === 1 ? "" : "s"}
                   {stats.promedioPct !== null && ` · avance promedio ${stats.promedioPct}%`}
                   {" · "}

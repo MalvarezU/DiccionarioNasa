@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { successToastTitle } from "./word-toast"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
-import { matchIllustrationFiles } from "@/lib/media/bulk-match"
+import { matchIllustrationFiles, normalizeStem } from "@/lib/media/bulk-match"
 import {
   bulkActionFor,
   type BulkPolicy,
@@ -35,17 +35,30 @@ export interface MediaBulkRow {
   reason: string | null
   status: MediaBulkStatus
   detail?: string
+  /** true si el wordId lo eligió el admin (modal), no el matching por nombre. */
+  assigned?: boolean
 }
 
 export interface MediaBulkDone {
   ok: number
   omitidos: number
   errores: number
+  /** Filas que quedaron sin ficha asignada (no se suben). */
+  sinAsignar: number
 }
 
 export interface MediaConfirmTarget {
   id: string
   spanish: string
+}
+
+/** Candidato del buscador del modal de asignación (ya con hasExisting resuelto). */
+export interface BulkAssignCandidate {
+  id: string
+  spanish: string
+  nasaYuwe: string
+  category: string | null
+  hasExisting: boolean
 }
 
 /**
@@ -106,6 +119,12 @@ export interface UseMediaWordsManagerResult<F extends MediaField> {
   prepareBulk: (files: FileList | null) => Promise<void>
   runBulk: () => Promise<void>
   setRowDecision: (index: number, decision: BulkRowDecision) => void
+  /** Búsqueda client-side sobre el diccionario completo ya descargado por prepareBulk. */
+  searchBulkWords: (query: string) => BulkAssignCandidate[]
+  /** Asigna a una fila del lote la ficha elegida en el modal. */
+  assignBulkWord: (index: number, wordId: string) => void
+  /** Saca una fila del lote (archivo que no corresponde subir). */
+  removeBulkRow: (index: number) => void
 }
 
 const PAGE_SIZE = 20
@@ -168,6 +187,11 @@ export function useMediaWordsManager<F extends MediaField>(
   const [bulkPolicy, setBulkPolicy] = useState<BulkPolicy>("skip-existing")
   const [bulkRunning, setBulkRunning] = useState(false)
   const [bulkDone, setBulkDone] = useState<MediaBulkDone | null>(null)
+
+  // Diccionario completo de la última preparación de lote: el buscador del
+  // modal de asignación filtra acá (ya se descargó para el matching; pedirlo
+  // de nuevo por tecla sería un fetch repetido de lo mismo).
+  const allWordsRef = useRef<Row[]>([])
 
   // Filtros vivos en un ref: load() es estable y siempre lee lo vigente.
   // (Si leyera del closure, un refresh disparado por un upload anterior
@@ -242,8 +266,16 @@ export function useMediaWordsManager<F extends MediaField>(
       const { matched, unmatched } = matchIllustrationFiles(Array.from(files), all)
       const byFile = new Map(matched.map((m) => [m.file.name, m]))
       const byId = new Map(all.map((w) => [w.id, w]))
+      // Las asignaciones manuales sobreviven a un re-prepare (p. ej. cuando el
+      // admin agrega más archivos al lote): se preservan por nombre+tamaño.
+      const manuales = new Map(
+        bulk.filter((b) => b.assigned && b.wordId).map((b) => [`${b.file.name}|${b.file.size}`, b])
+      )
+      allWordsRef.current = all
       setBulk(
         Array.from(files).map((file) => {
+          const prev = manuales.get(`${file.name}|${file.size}`)
+          if (prev) return prev
           const m = byFile.get(file.name)
           if (m) {
             return {
@@ -313,15 +345,62 @@ export function useMediaWordsManager<F extends MediaField>(
     }
     // Solo cuentan como omitidas las filas CON coincidencia que la política
     // salta (p.ej. ya tiene el medio). Las filas sin coincidencia se
-    // muestran aparte como "sin coincidencia" y no entran al conteo.
+    // muestran aparte como "sin coincidencia" y no entran al conteo; se
+    // informan como "sin asignar" para que el admin no pierda ninguna.
     const omitidos = bulk.filter((b) => b.wordId !== null && bulkActionFor(b, bulkPolicy) === "omitir").length
+    const sinAsignar = bulk.filter((b) => b.wordId === null).length
     setBulkRunning(false)
-    setBulkDone({ ok, omitidos, errores })
+    setBulkDone({ ok, omitidos, errores, sinAsignar })
     await load()
   }
 
   function setRowDecision(index: number, decision: BulkRowDecision) {
     setBulk((prev) => prev.map((b, i) => (i === index ? { ...b, decision } : b)))
+  }
+
+  /**
+   * Búsqueda para el modal de asignación: substring normalizado contra el
+   * español y el nasa yuwe, con la MISMA normalización del matching
+   * (normalizeStem). Vacío → sin resultados (nada que mostrar aún).
+   */
+  function searchBulkWords(query: string): BulkAssignCandidate[] {
+    const q = normalizeStem(query)
+    if (!q) return []
+    return allWordsRef.current
+      .filter((w) => normalizeStem(w.spanish).includes(q) || normalizeStem(w.nasaYuwe).includes(q))
+      .slice(0, 8)
+      .map((w) => ({
+        id: w.id,
+        spanish: w.spanish,
+        nasaYuwe: w.nasaYuwe,
+        category: w.category,
+        hasExisting: !!w[config.field],
+      }))
+  }
+
+  /** Elige del modal: la fila queda lista para el mismo "Subir lote". */
+  function assignBulkWord(index: number, wordId: string) {
+    const word = allWordsRef.current.find((w) => w.id === wordId)
+    if (!word) return
+    setBulk((prev) =>
+      prev.map((b, i) =>
+        i === index
+          ? {
+              ...b,
+              wordId: word.id,
+              wordLabel: `${word.spanish} / ${word.nasaYuwe}`,
+              hasExisting: !!word[config.field],
+              reason: null,
+              decision: "auto" as const,
+              assigned: true,
+            }
+          : b
+      )
+    )
+  }
+
+  function removeBulkRow(index: number) {
+    setBulk((prev) => prev.filter((_, i) => i !== index))
   }
 
   return {
@@ -354,5 +433,8 @@ export function useMediaWordsManager<F extends MediaField>(
     prepareBulk,
     runBulk,
     setRowDecision,
+    searchBulkWords,
+    assignBulkWord,
+    removeBulkRow,
   }
 }

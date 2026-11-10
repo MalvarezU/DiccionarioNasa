@@ -23,7 +23,7 @@ export async function createModule(request: NextRequest) {
       return NextResponse.json({ message: "courseId y título obligatorios" }, { status: 400 })
     }
     const count = await db.module.count({ where: { courseId } })
-    const mod = await db.module.create({ data: { courseId, title, order: count } })
+    const mod = await db.module.create({ data: { courseId, title, order: count, updatedAt: new Date() } })
     return NextResponse.json({ module: mod }, { status: 201 })
   } catch (err) {
     console.error("Module create error:", err)

@@ -36,6 +36,7 @@ const audioBulkTexts: MediaBulkCardTexts = {
   policySelectId: "bulk-policy-aud",
   keepTitle: "Conservar el audio actual",
   replaceTitle: "Reemplazar por el nuevo audio",
+  existingBadge: "ya tiene audio",
   omittedWord: "omitidos",
   emptyHint: "Seleccioná archivos para previsualizar el lote y su estado.",
 }
@@ -77,6 +78,9 @@ export function AudiosManager() {
     prepareBulk,
     runBulk,
     setRowDecision,
+    searchBulkWords,
+    assignBulkWord,
+    removeBulkRow,
   } = useMediaWordsManager(audioConfig)
 
   return (
@@ -242,6 +246,9 @@ export function AudiosManager() {
         onPolicyChange={setBulkPolicy}
         onRun={() => void runBulk()}
         onRowDecision={setRowDecision}
+        onSearchWords={searchBulkWords}
+        onAssignWord={assignBulkWord}
+        onRemoveRow={removeBulkRow}
         texts={audioBulkTexts}
         tone="primary"
       />

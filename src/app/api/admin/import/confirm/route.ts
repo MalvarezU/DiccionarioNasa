@@ -5,8 +5,10 @@ import { takePreview } from "../preview/route";
 
 /**
  * POST /api/admin/import/confirm
- * Body { previewToken }. Escribe lo validado en el preview (transacción
- * por lotes) con bitácora por ficha + resumen. Requiere editor+.
+ * Body { previewToken }. Escribe lo validado en el preview (escritura
+ * secuencial por ficha, con bitácora por ficha + resumen). Requiere editor+.
+ * No es una transacción: si falla a mitad, las fichas ya creadas quedan y
+ * el reintento omite las duplicadas (idempotente por «español»).
  * Devuelve filas para el reporte CSV (lo arma el cliente).
  */
 export async function POST(request: Request) {
@@ -36,16 +38,24 @@ export async function POST(request: Request) {
     let skipped = 0;
     const report: Array<{ spanish: string; nasaYuwe: string; resultado: string }> = [];
 
+    // Re-chequeo de duplicados en una sola consulta (pudo entrar algo entre
+    // preview y confirm): evita N roundtrips a la BD.
+    const pendingNames = [...new Set(rows.map((r) => r.spanish))];
+    const existing = await db.dictionaryWord.findMany({
+      where: { spanish: { in: pendingNames } },
+      select: { spanish: true },
+    });
+    const taken = new Set(existing.map((w) => w.spanish.trim().toLowerCase()));
+
     for (const row of rows) {
-      // Re-chequeo de duplicado (pudo entrar algo entre preview y confirm)
-      const dup = await db.dictionaryWord.findFirst({
-        where: { spanish: { equals: row.spanish } },
-      });
-      if (dup) {
+      const key = row.spanish.trim().toLowerCase();
+      if (taken.has(key)) {
         skipped++;
         report.push({ spanish: row.spanish, nasaYuwe: row.nasaYuwe, resultado: "omitida (duplicada)" });
+        taken.add(key); // evita duplicados dentro del propio lote
         continue;
       }
+      taken.add(key);
       try {
         const createdWord = await db.dictionaryWord.create({ data: { ...row } });
         await db.auditLog.create({

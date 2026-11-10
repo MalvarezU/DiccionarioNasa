@@ -63,50 +63,31 @@ export async function GET(request: NextRequest) {
       setTimeout(() => resolve(null), timeoutMs)
     )
 
-    // Fetch more candidates than needed so we can rank and trim
-    // MySQL/MariaDB: la collation utf8mb4_unicode_ci ya es case- y accent-insensitive,
-    // así que reemplaza al `unaccent` de Postgres. `nasaYuwe` va entre backticks.
+    // Fetch more candidates than needed so we can rank and trim.
+    // Vía ORM (findMany) en lugar de SQL crudo: la collation
+    // utf8mb4_unicode_ci ya es case- y accent-insensitive, así que
+    // `contains`/`startsWith` replican el LIKE anterior sin $queryRaw
+    // (el raw fallaba en el MariaDB gestionado de Hostinger con 500,
+    // mientras el mismo SQL andaba en phpMyAdmin y en local).
     const isSingleChar = query.length === 1
 
-    const searchPromise = isSingleChar
-      ? db.$queryRaw<
-          Array<{
-            id: string
-            spanish: string
-            nasaYuwe: string
-            pronunciation: string | null
-            category: string | null
-            audioUrl: string | null
-          }>
-        >`
-          SELECT id, spanish, \`nasaYuwe\`, pronunciation, category, audioUrl
-          FROM DictionaryWord
-          WHERE status = 'PUBLISHED'
-            AND (
-              spanish LIKE CONCAT(${query}, '%')
-              OR \`nasaYuwe\` LIKE CONCAT(${query}, '%')
-            )
-          LIMIT 50
-        `
-      : db.$queryRaw<
-          Array<{
-            id: string
-            spanish: string
-            nasaYuwe: string
-            pronunciation: string | null
-            category: string | null
-            audioUrl: string | null
-          }>
-        >`
-          SELECT id, spanish, \`nasaYuwe\`, pronunciation, category, audioUrl
-          FROM DictionaryWord
-          WHERE status = 'PUBLISHED'
-            AND (
-              spanish LIKE CONCAT('%', ${query}, '%')
-              OR \`nasaYuwe\` LIKE CONCAT('%', ${query}, '%')
-            )
-          LIMIT 50
-        `
+    const searchPromise = db.dictionaryWord.findMany({
+      where: {
+        status: "PUBLISHED",
+        OR: isSingleChar
+          ? [{ spanish: { startsWith: query } }, { nasaYuwe: { startsWith: query } }]
+          : [{ spanish: { contains: query } }, { nasaYuwe: { contains: query } }],
+      },
+      select: {
+        id: true,
+        spanish: true,
+        nasaYuwe: true,
+        pronunciation: true,
+        category: true,
+        audioUrl: true,
+      },
+      take: 50,
+    })
 
     const rawResults = await Promise.race([searchPromise, timeoutPromise])
 

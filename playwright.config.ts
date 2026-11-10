@@ -24,6 +24,12 @@ export default defineConfig({
       testMatch: /offline-media\.spec\.ts/,
     },
     {
+      // PWA offline sin R2: sync por UI + ficha + audio sin conexión, con
+      // palabra "E2E *" propia (la limpia el teardown global). Sin sesión.
+      name: "pwa-offline",
+      testMatch: /pwa-offline\.spec\.ts/,
+    },
+    {
       // Guardas de paleta: sin sesión ni datos. Corre primero para que una
       // regresión de color se reporte antes que la suite pesada.
       name: "paleta",
@@ -35,13 +41,13 @@ export default defineConfig({
     },
     {
       name: "screenplay-user",
-      testMatch: /usuario\.screenplay\.spec\.ts/,
+      testMatch: /usuario\.screenplay\.spec\.ts|celebracion\.screenplay\.spec\.ts/,
       dependencies: ["setup"],
       use: { storageState: "e2e/.auth/user.json" },
     },
     {
       name: "screenplay-admin",
-      testMatch: /admin\.screenplay\.spec\.ts/,
+      testMatch: /admin\.screenplay\.spec\.ts|logs\.screenplay\.spec\.ts/,
       dependencies: ["setup"],
       use: { storageState: "e2e/.auth/admin.json" },
     },

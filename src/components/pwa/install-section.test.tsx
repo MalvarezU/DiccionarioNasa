@@ -62,25 +62,11 @@ describe("InstallSection", () => {
     mockUserAgent(userAgentOrig)
   })
 
-  it("muestra las 2 plataformas, QR y copiar enlace", () => {
+  it("muestra las 2 plataformas y el enlace de descarga APK", () => {
     render(<InstallSection />)
     expect(screen.getByText("Android / Chrome")).toBeDefined()
     expect(screen.getByText("Escritorio")).toBeDefined()
-    expect(screen.getByRole("img", { name: /Código QR/ })).toBeDefined()
-    expect(screen.getByText("https://piiyaak.test")).toBeDefined()
-  })
-
-  it("copiar enlace confirma visualmente", async () => {
-    const writeText = vi.fn(async () => {})
-    Object.defineProperty(navigator, "clipboard", {
-      writable: true,
-      configurable: true,
-      value: { writeText },
-    })
-    render(<InstallSection />)
-    fireEvent.click(screen.getByRole("button", { name: "Copiar enlace" }))
-    await screen.findByText("¡Copiado!")
-    expect(writeText).toHaveBeenCalledWith("https://piiyaak.test")
+    expect(screen.getByRole("link", { name: /Descargar APK/ })).toBeDefined()
   })
 
   it("sin prompt nativo los botones siguen visibles y abren el diálogo", () => {

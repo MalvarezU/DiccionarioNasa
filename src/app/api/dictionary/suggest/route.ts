@@ -11,6 +11,15 @@ const MAX_COMMENT_LENGTH = 500
 const SUGGEST_LIMIT = 5
 const SUGGEST_WINDOW_MS = 60_000
 
+/** Normalización para dedup: minúsculas + sin tildes + trim (igual que search). */
+function normalizeTerm(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim()
+}
+
 /**
  * POST /api/dictionary/suggest
  * Accept a word suggestion from a user.
@@ -53,8 +62,61 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Store as an AuditLog entry with action "SUGGEST" for admin review
-    // This reuses the existing model until a dedicated Suggestion model is added
+    // Doble chequeo de solo lectura (sin schema nuevo):
+    // 1. Si el término ya existe publicado, no se guarda nada.
+    //    La collation utf8mb4_unicode_ci hace el equals case- y accent-insensitive.
+    const cleanTerm = term.trim()
+    const existing = await db.dictionaryWord.findFirst({
+      where: {
+        status: "PUBLISHED",
+        OR: [{ spanish: { equals: cleanTerm } }, { nasaYuwe: { equals: cleanTerm } }],
+      },
+      select: { id: true },
+    })
+    if (existing) {
+      return NextResponse.json({
+        success: true,
+        message: "Esa palabra ya está en el diccionario",
+        alreadyExists: true,
+      })
+    }
+
+    // 2. Si ya fue sugerida y sigue PENDIENTE (normalizada), no se duplica.
+    //    Las ATENDIDA/ARCHIVADA sí permiten volver a sugerir (se reabre el ciclo).
+    //    Logs viejos sin `status` se tratan como PENDING (compatibilidad).
+    //
+    //    Tope deliberado (500): se escanea en memoria sobre los últimos logs.
+    //    Si algún día se superan, las pendientes más viejas caen fuera del
+    //    dedup y se podrían aceptar duplicados; el arreglo correcto a futuro
+    //    es una columna `status` real (aplazado: ver plan del módulo de logs).
+    const normalized = normalizeTerm(cleanTerm)
+    const prior = await db.auditLog.findMany({
+      where: { action: "SUGGEST", entity: "DictionaryWord" },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+      select: { changes: true },
+    })
+    const alreadySuggested = prior.some((l) => {
+      try {
+        const c = JSON.parse(l.changes ?? "") as { term?: unknown; status?: unknown }
+        if (typeof c.term !== "string" || normalizeTerm(c.term) !== normalized) return false
+        const st = typeof c.status === "string" ? c.status : "PENDING"
+        return st === "PENDING"
+      } catch {
+        return false
+      }
+    })
+    if (alreadySuggested) {
+      return NextResponse.json({
+        success: true,
+        message: "Esa palabra ya está en revisión",
+        alreadySuggested: true,
+      })
+    }
+
+    // Store as an AuditLog entry with action "SUGGEST" for admin review.
+    // El estado vive en el JSON (PENDING/DONE/ARCHIVED): sin tabla ni
+    // migración. Logs viejos sin `status` se leen como PENDING.
     await db.auditLog.create({
       data: {
         action: 'SUGGEST',
@@ -64,6 +126,7 @@ export async function POST(request: NextRequest) {
           term: term.trim(),
           comment: cleanComment,
           source: 'community',
+          status: 'PENDING',
         }),
       },
     })

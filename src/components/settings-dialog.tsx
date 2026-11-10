@@ -98,27 +98,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       return
     }
 
-    // Reset feedback before starting
     setSyncFeedback("none")
 
     try {
-      await forceResync()
-      // forceResync resolves only after completion (success or error is in useLocalDB.error)
-      // We check the error state after the promise resolves
-      // But since forceResync catches internally and sets error in the hook,
-      // we need a small delay for the state to update.
-      // Instead, let's check for errors directly:
-      // Actually, forceResync sets error in useLocalDB. After it resolves,
-      // React will re-render with the new error state. But we're still in the
-      // event handler callback, so state updates are batched.
-      // We'll use a microtask to check the result after React processes:
-      setTimeout(() => {
-        // The error and lastSync will have been updated by now
-        // We'll derive feedback from the current hook state
-        // Since we can't read future state here, we set "success"
-        // and rely on the error check below
+      const ok = await forceResync()
+      if (ok) {
         setSyncFeedback("success")
-      }, 100)
+      } else {
+        setSyncFeedback("error")
+      }
     } catch {
       setSyncFeedback("error")
     }

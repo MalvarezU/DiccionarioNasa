@@ -39,12 +39,15 @@ interface CreateWordModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated: () => void
+  /** Término precargado en español (p. ej. desde una sugerencia). */
+  initialSpanish?: string
 }
 
 export function CreateWordModal({
   open,
   onOpenChange,
   onCreated,
+  initialSpanish,
 }: CreateWordModalProps) {
   const {
     form,
@@ -59,7 +62,7 @@ export function CreateWordModal({
     handleChange,
     handleSubmit,
     handleClose,
-  } = useCreateWord({ onOpenChange, onCreated })
+  } = useCreateWord({ onOpenChange, onCreated, initialSpanish })
   const { audioUrl, audioPreview, isUploadingAudio } = audio
 
   return (

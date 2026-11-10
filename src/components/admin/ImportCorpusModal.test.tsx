@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("@/lib/admin-utils", () => ({
@@ -38,5 +38,65 @@ describe("ImportCorpusModal", () => {
     const { onOpenChange } = renderModal()
     await userEvent.setup().click(screen.getByText("Cancelar"))
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("preview y confirmar: muestra vista previa, confirma y reporta", async () => {
+    const { onImported } = renderModal()
+
+    const fetchMock = vi.mocked(global.fetch)
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          fileName: "corpus.xlsx",
+          columns: [{ header: "Palabra_esp", mapped: "spanish" }],
+          total: 2,
+          valid: 2,
+          invalid: 0,
+          duplicates: 0,
+          errors: [],
+          previewToken: "tok-1",
+        }),
+        { status: 200 }
+      )
+    )
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          created: 2,
+          skipped: 0,
+          total: 2,
+          report: [{ spanish: "casa", nasaYuwe: "ny", resultado: "creada (DRAFT)" }],
+        }),
+        { status: 200 }
+      )
+    )
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(["x"], "corpus.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await waitFor(() => expect(screen.getByText(/2 listas/)).toBeDefined(), { timeout: 5000 })
+    const confirmBtn = screen.getByRole("button", { name: /confirmar/i })
+    await userEvent.setup().click(confirmBtn)
+
+    await waitFor(() => expect(screen.getByText(/importación completada/i)).toBeDefined(), {
+      timeout: 5000,
+    })
+    expect(onImported).toHaveBeenCalled()
+  })
+
+  it("Descargar plantilla genera un enlace de descarga sin romper", async () => {
+    const createObjectURL = vi.fn(() => "blob:mock-url")
+    const revokeObjectURL = vi.fn()
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, writable: true })
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, writable: true })
+
+    renderModal()
+    const btn = screen.getByRole("button", { name: /descargar plantilla/i })
+    await userEvent.setup().click(btn)
+
+    expect(createObjectURL).toHaveBeenCalled()
   })
 })

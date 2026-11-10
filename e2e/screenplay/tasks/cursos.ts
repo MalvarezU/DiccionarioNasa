@@ -102,9 +102,11 @@ export class AnadirLeccion implements Task {
     const { page } = actor.usa(NavegarLaWeb);
     let boton;
     if (this.modulo) {
-      // El label ya viene aislado por módulo; el botón se busca en su bloque
+      // El label ya viene aislado por módulo; el botón se busca en su bloque.
+      // El bloque es el Accordion.Item del módulo (div[data-module-id]);
+      // el viejo div.rounded-lg dejó de matchear con el restyle de las cards.
       const campo = page.getByLabel(`Título de nueva lección en ${this.modulo}`);
-      const bloque = page.locator("div.rounded-lg", { has: campo });
+      const bloque = page.locator("div[data-module-id]", { has: campo });
       await campo.fill(this.titulo);
       boton = bloque.getByRole("button", { name: "Añadir lección" });
     } else {
