@@ -169,10 +169,23 @@ describe("extractMediaUrls", () => {
     const urls = extractMediaUrls([
       { audioUrl: "https://cdn/a.ogg", illustrationUrl: "https://cdn/i.webp" },
       { audioUrl: "https://cdn/a.ogg", illustrationUrl: null },
-      { audioUrl: "/api/media/relativa", illustrationUrl: undefined },
+      { audioUrl: "/api/other", illustrationUrl: undefined },
       { audioUrl: null, illustrationUrl: null },
     ])
     expect(urls.sort()).toEqual(["https://cdn/a.ogg", "https://cdn/i.webp"])
+  })
+
+  it("acepta el redirect legacy /api/media/<id> (sin extension)", () => {
+    const urls = extractMediaUrls([
+      { audioUrl: "/api/media/abc123", illustrationUrl: "/api/media/img456" },
+      { audioUrl: "/api/media/abc123", illustrationUrl: null },
+      { audioUrl: "  /api/media/con-espacios  ", illustrationUrl: undefined },
+    ])
+    expect(urls.sort()).toEqual([
+      "/api/media/abc123",
+      "/api/media/con-espacios",
+      "/api/media/img456",
+    ])
   })
 
   it("lista vacía devuelve vacío", () => {

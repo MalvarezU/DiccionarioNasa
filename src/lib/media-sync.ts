@@ -224,7 +224,8 @@ export async function downloadMediaQueue(
 
 /**
  * Extrae las URLs únicas de medios de una lista de palabras.
- * Solo http(s) (las relativas no son de R2 y no se pre-descargan).
+ * Acepta http(s) (R2/prod), rutas relativas con extensión de media y el
+ * redirect legacy `/api/media/<id>` (302 a R2, sin extensión).
  */
 export function extractMediaUrls(
   words: Array<{ audioUrl?: string | null; illustrationUrl?: string | null }>
@@ -239,7 +240,8 @@ export function extractMediaUrls(
       // dejar medios sin cachear. Otras rutas relativas se ignoran.
       const isHttp = /^https?:\/\//i.test(v)
       const isMediaRel = /^\/.*\.(mp3|wav|ogg|png|jpe?g|webp|avif|gif)(\?|$)/i.test(v)
-      if (isHttp || isMediaRel) {
+      const isApiMedia = v.startsWith("/api/media/")
+      if (isHttp || isMediaRel || isApiMedia) {
         urls.add(v)
       }
     }
