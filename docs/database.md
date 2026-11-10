@@ -16,21 +16,14 @@
 
 ## 2. Diagrama Entidad-Relación
 
+Cuatro diagramas por dominio, verificados contra `prisma/schema.prisma` (13 modelos).
+
+### 2.1 Usuarios y autenticación
+
 ```mermaid
 erDiagram
-    USER ||--o{ FAVORITE : "guarda"
-    USER ||--o{ VIEW_HISTORY : "registra"
-    USER ||--o{ SEARCH_HISTORY : "emite"
     USER ||--o{ PASSWORD_RESET : "solicita"
     USER ||--o{ USER_GAME_SESSION : "juega"
-    USER ||--o{ USER_LESSON_PROGRESS : "avanza"
-    DICTIONARY_WORD ||--o{ FAVORITE : "es favorita de"
-    DICTIONARY_WORD ||--o{ VIEW_HISTORY : "es vista por"
-    DICTIONARY_WORD ||--o{ AUDIT_LOG : "es auditada"
-    DICTIONARY_WORD ||--o{ LESSON : "ilustra"
-    COURSE ||--o{ MODULE : "contiene"
-    MODULE ||--o{ LESSON : "agrupa"
-    LESSON ||--o{ USER_LESSON_PROGRESS : "es progresada por"
 
     USER {
         cuid id PK
@@ -39,6 +32,7 @@ erDiagram
         string password
         string role "user|editor|admin"
         timestamp emailVerified
+        timestamp onboardedAt
         string verifyToken UK
         timestamp verifyExpires
         timestamp createdAt
@@ -46,7 +40,7 @@ erDiagram
     }
 
     PASSWORD_RESET {
-        cuid id PK
+        uuid id PK
         string userId FK
         string token UK
         timestamp expires
@@ -66,55 +60,20 @@ erDiagram
         timestamp createdAt
         timestamp updatedAt
     }
+```
 
-    COURSE {
-        cuid id PK
-        string title
-        string description
-        string coverImage
-        enum status "DRAFT|PUBLISHED|ARCHIVED"
-        boolean sequential
-        timestamp createdAt
-        timestamp updatedAt
-    }
+### 2.2 Diccionario
 
-    MODULE {
-        cuid id PK
-        string courseId FK
-        string title
-        int order
-    }
+```mermaid
+erDiagram
+    USER ||--o{ FAVORITE : "guarda"
+    USER ||--o{ VIEW_HISTORY : "registra"
+    USER ||--o{ SEARCH_HISTORY : "emite"
+    DICTIONARY_WORD ||--o{ FAVORITE : "es favorita de"
+    DICTIONARY_WORD ||--o{ VIEW_HISTORY : "es vista por"
 
-    LESSON {
+    USER {
         cuid id PK
-        string moduleId FK
-        string title
-        enum type "READ|QUIZ|COMPLETE (DEPRECATED)"
-        int order
-        int lessonNumber
-        string wordId FK
-        string payload "DEPRECATED"
-        jsonb content
-    }
-
-    USER_LESSON_PROGRESS {
-        cuid id PK
-        string userId FK
-        string lessonId FK
-        boolean completed
-        int score
-        timestamp lastVisitedAt
-        timestamp completedAt
-    }
-
-    MEDIA_ASSET {
-        cuid id PK
-        string filename
-        string mimeType
-        int size
-        bytes data
-        string uploadedBy
-        timestamp createdAt
     }
 
     DICTIONARY_WORD {
@@ -152,10 +111,82 @@ erDiagram
         string query
         timestamp createdAt
     }
+```
+
+### 2.3 Cursos y aprendizaje
+
+```mermaid
+erDiagram
+    USER ||--o{ USER_LESSON_PROGRESS : "avanza"
+    COURSE ||--o{ MODULE : "contiene"
+    MODULE ||--o{ LESSON : "agrupa"
+    LESSON ||--o{ USER_LESSON_PROGRESS : "es progresada por"
+
+    USER {
+        cuid id PK
+    }
+
+    COURSE {
+        cuid id PK
+        string title
+        string description
+        string coverImage
+        enum status "DRAFT|PUBLISHED|ARCHIVED"
+        boolean sequential
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    MODULE {
+        cuid id PK
+        string courseId FK
+        string title
+        int order
+    }
+
+    LESSON {
+        cuid id PK
+        string moduleId FK
+        string title
+        int order
+        int lessonNumber
+        json content "documento de bloques"
+    }
+
+    USER_LESSON_PROGRESS {
+        cuid id PK
+        string userId FK
+        string lessonId FK
+        boolean completed
+        int score
+        timestamp lastVisitedAt
+        timestamp completedAt
+    }
+```
+
+### 2.4 Plataforma (media y auditoría)
+
+```mermaid
+erDiagram
+    DICTIONARY_WORD ||--o{ AUDIT_LOG : "es auditada"
+
+    DICTIONARY_WORD {
+        cuid id PK
+    }
+
+    MEDIA_ASSET {
+        cuid id PK
+        string objectKey UK
+        string filename
+        string mimeType
+        int size
+        string uploadedBy
+        timestamp createdAt
+    }
 
     AUDIT_LOG {
         uuid id PK
-        string action "CREATE|UPDATE|DELETE|IMPORT"
+        string action "CREATE|UPDATE|DELETE|IMPORT|PUBLISH|ARCHIVE|BATCH_*|REVERT|SUGGEST"
         string entity
         string entityId
         string changes
@@ -181,6 +212,7 @@ Cuentas de usuario con verificación de email y roles.
 | `password` | TEXT | | Hash bcrypt |
 | `role` | TEXT | NOT NULL, default `'user'` | `user` \| `editor` \| `admin` |
 | `emailVerified` | TIMESTAMP | | Fecha de verificación (null = pendiente) |
+| `onboardedAt` | TIMESTAMP | | Onboarding post-registro (Fase Google-first) |
 | `verifyToken` | TEXT | UNIQUE | Token de verificación |
 | `verifyExpires` | TIMESTAMP | | Expiración del token |
 | `createdAt` | TIMESTAMP | NOT NULL, default `now()` | |
@@ -262,19 +294,16 @@ Módulos dentro de un curso.
 
 ### 3.6 `Lesson`
 
-Lecciones dentro de un módulo. El contenido es un documento JSONB de bloques.
+Lecciones dentro de un módulo. El contenido es un documento JSON de bloques (`{ version, blocks[] }`); los campos legacy `type`, `wordId` y `payload` se eliminaron del esquema.
 
 | Columna | Tipo | Constraint | Descripción |
 |---------|------|------------|-------------|
 | `id` | TEXT (cuid) | PK | |
 | `moduleId` | TEXT | FK → Module, NOT NULL | |
 | `title` | TEXT | NOT NULL | |
-| `type` | ENUM `LessonType` | NOT NULL, default `READ` | **DEPRECATED** — vive en `content.blocks[]` |
 | `order` | INT | NOT NULL, default 0 | Posición en el módulo |
 | `lessonNumber` | INT | | Numeración visible ("1.1", "1.2") |
-| `wordId` | TEXT | FK → DictionaryWord, nullable | Palabra ilustrativa |
-| `payload` | TEXT | | **DEPRECATED** — payload legacy QUIZ/COMPLETE |
-| `content` | JSONB | | Documento `{ version, blocks[] }` |
+| `content` | JSON | | Documento `{ version, blocks[] }` |
 
 **Índices:** `(moduleId, order)`, `(moduleId, lessonNumber)`
 
@@ -389,7 +418,7 @@ Registro de auditoría de cambios en el diccionario.
 | Columna | Tipo | Constraint | Descripción |
 |---------|------|------------|-------------|
 | `id` | UUID | PK, default `gen_random_uuid()` | |
-| `action` | TEXT | NOT NULL | `CREATE` \| `UPDATE` \| `DELETE` \| `IMPORT` |
+| `action` | TEXT | NOT NULL | `CREATE` \| `UPDATE` \| `DELETE` \| `IMPORT` \| `PUBLISH` \| `ARCHIVE` \| `BATCH_*` \| `REVERT` \| `SUGGEST` |
 | `entity` | TEXT | NOT NULL | Entidad afectada |
 | `entityId` | TEXT | | ID de la entidad |
 | `changes` | TEXT | | JSON string (before/after) |
@@ -405,7 +434,6 @@ Registro de auditoría de cambios en el diccionario.
 
 | Enum | Valores | Uso |
 |------|---------|-----|
-| `LessonType` | `READ`, `QUIZ`, `COMPLETE` | `Lesson.type` (DEPRECATED) |
 | `ContentStatus` | `DRAFT`, `PUBLISHED`, `ARCHIVED` | `Course.status` |
 
 ---
@@ -418,7 +446,6 @@ Registro de auditoría de cambios en el diccionario.
 | `UserGameSession.userId` | `User.id` | N:1 | CASCADE |
 | `Module.courseId` | `Course.id` | N:1 | CASCADE |
 | `Lesson.moduleId` | `Module.id` | N:1 | CASCADE |
-| `Lesson.wordId` | `DictionaryWord.id` | N:1 | SET NULL |
 | `UserLessonProgress.userId` | `User.id` | N:1 | CASCADE |
 | `UserLessonProgress.lessonId` | `Lesson.id` | N:1 | CASCADE |
 | `Favorite.userId` | `User.id` | N:1 | CASCADE |
@@ -484,7 +511,7 @@ Migración del motor a **MariaDB** (paridad con Hostinger: su hosting Node.js + 
 | `Bytes` (MediaAsset.data) | BYTEA | LONGBLOB |
 | Búsqueda sin acentos | `unaccent()` + `lower()` | collation `utf8mb4_unicode_ci` (case- y accent-insensitive) |
 | `contains`/`equals` con `mode: "insensitive"` | soportado | **no soportado** — se elimina `mode`; la collation lo cubre |
-| `ORDER BY RANDOM()` | ✓ | `ORDER BY RAND()` |
+| `ORDER BY RANDOM()` | Sí | `ORDER BY RAND()` |
 | Placeholders raw | `$1, $2…` | `?` (bind por posición) |
 | Identificadores con mayúscula | `"nasaYuwe"` | `` `nasaYuwe` `` (backticks) |
 

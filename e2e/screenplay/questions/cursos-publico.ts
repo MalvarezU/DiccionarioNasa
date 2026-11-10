@@ -36,7 +36,7 @@ export class ModuloVisible {
       descripcion: `módulo visible "${patron}"`,
       async responder(actor: Actor): Promise<boolean> {
         const { page } = actor.usa(NavegarLaWeb);
-        await expect(page.getByText(patron, { exact: false })).toBeVisible({ timeout: 30000 });
+        await expect(page.getByText(patron, { exact: false }).first()).toBeVisible({ timeout: 30000 });
         return true;
       },
     };

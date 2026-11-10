@@ -54,7 +54,7 @@ async function main() {
   await createAdmin()
   console.log('')
 
-  const csvPath = path.join(__dirname, 'seed-data.csv')
+  const csvPath = path.join(import.meta.dirname, 'seed-data.csv')
 
   if (!fs.existsSync(csvPath)) {
     console.error('CSV file not found:', csvPath)

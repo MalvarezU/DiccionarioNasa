@@ -69,11 +69,11 @@ asume tabla vacía; con filas hay que partirla):
 
 ## 6. Criterios de aceptación
 
-✅ Subida de imagen/audio desde `/admin` funciona contra R2 con la misma UX.
-✅ URLs públicas, permanentes y cacheables por el SW (test offline verde).
-✅ Datos legacy migrables con script idempotente + backup previo.
-✅ `@supabase/supabase-js` fuera de la rama.
-✅ Suite unit (879) + E2E (45) verde.
+Sí Subida de imagen/audio desde `/admin` funciona contra R2 con la misma UX.
+Sí URLs públicas, permanentes y cacheables por el SW (test offline verde).
+Sí Datos legacy migrables con script idempotente + backup previo.
+Sí `@supabase/supabase-js` fuera de la rama.
+Sí Suite unit (879) + E2E (45) verde.
 
 ## 7. Cambios recientes y auditoría
 

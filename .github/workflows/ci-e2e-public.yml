@@ -1,0 +1,61 @@
+name: CI E2E public
+
+# E2E público en PR y push a main. Corre los proyectos que NO necesitan
+# credenciales de admin: guard, paleta y screenplay-public.
+#
+# La suite E2E tiene un fusible anti-prod (e2e/setup.ts): solo corre contra una
+# BD local. Por eso este workflow levanta una MariaDB efímera como service
+# container (la rama usa provider = "mysql") y siembra con el seed de prueba.
+# Los proyectos pesados (screenplay-user/admin/multi, tiptap-font,
+# editor-texto-edge) siguen en el workflow manual ci-e2e.yml.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  e2e-public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test
+          MARIADB_DATABASE: piiyaak_test
+          MARIADB_USER: test
+          MARIADB_PASSWORD: test
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 60
+    env:
+      DATABASE_URL: mysql://test:test@localhost:3307/piiyaak_test
+      ADMIN_EMAIL: admin@test.local
+      ADMIN_PASSWORD: TestAdmin123!
+      NEXTAUTH_SECRET: test-secret-solo-local
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      # El seed principal (351 palabras del CSV) + el seed de prueba (admin + curso demo).
+      - run: npx tsx prisma/seed.ts
+      - run: npx tsx prisma/seed-test.ts
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=guard
+      - run: npx playwright test --project=paleta
+      - run: npx playwright test --project=screenplay-public
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-public
+          path: test-results/
