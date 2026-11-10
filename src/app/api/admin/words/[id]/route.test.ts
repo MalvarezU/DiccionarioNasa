@@ -5,12 +5,23 @@ vi.mock("@/lib/auth", () => ({
   requireRole: vi.fn(),
 }))
 
-vi.mock("@/lib/db", () => ({
-  db: {
+vi.mock("@/lib/db", () => {
+  const db: Record<string, unknown> = {
     dictionaryWord: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     auditLog: { create: vi.fn() },
     mediaAsset: { findUnique: vi.fn(), findFirst: vi.fn(), delete: vi.fn() },
-  },
+  }
+  // La ruta usa `db.$transaction(async (tx) => ...)`: el mock ejecuta el
+  // callback con el propio db mockeado como `tx`.
+  db.$transaction = vi.fn(async (fn: unknown) =>
+    typeof fn === "function" ? (fn as (tx: unknown) => unknown)(db) : fn
+  )
+  return { db }
+})
+
+vi.mock("@/lib/content-version", () => ({
+  bumpContentVersion: vi.fn(),
+  getContentVersion: vi.fn(),
 }))
 
 const mockDeleteObject = vi.fn()
@@ -23,6 +34,7 @@ vi.mock("@/lib/r2", () => ({
 
 import { requireAdmin, requireRole } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { PUT, PATCH, DELETE } from "./route"
 
 const adminSession = { user: { id: "admin1", name: "Admin", email: "a@b.com", role: "admin" } } as never
@@ -80,6 +92,7 @@ describe("PUT /api/admin/words/[id]", () => {
     )
     const body = await res.json()
     expect(body.word.spanish).toBe("hogar")
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
   it("returns 404 when word not found", async () => {
@@ -222,7 +235,7 @@ describe("PUT /api/admin/words/[id]", () => {
     expect(res.status).toBe(400)
   })
 
-  it("returns 400 for invalid status", async () => {
+  it("returns 400 for invalid status without bump", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
 
@@ -235,9 +248,31 @@ describe("PUT /api/admin/words/[id]", () => {
       params
     )
     expect(res.status).toBe(400)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 
-  it("returns 200 with message when no changes detected", async () => {
+  it("normalizes lowercase status to uppercase with bump", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...existingWord, status: "ARCHIVED" })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "archived" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(200)
+    expect(vi.mocked(db.dictionaryWord.update)).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "ARCHIVED" }) })
+    )
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns 200 with message when no changes detected without bump", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
 
@@ -251,6 +286,7 @@ describe("PUT /api/admin/words/[id]", () => {
     )
     const body = await res.json()
     expect(body.message).toBe("No se detectaron cambios")
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 
   it("returns 401 when not admin", async () => {
@@ -302,7 +338,8 @@ describe("PUT /api/admin/words/[id]", () => {
       params
     )
     expect(del.status).toBe(403)
-    expect(db.dictionaryWord.delete).not.toHaveBeenCalled()
+    expect(db.dictionaryWord.update).not.toHaveBeenCalled()
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 
   it("editor sí puede editar con PUT [B1.5]", async () => {
@@ -320,6 +357,7 @@ describe("PUT /api/admin/words/[id]", () => {
       params
     )
     expect(res.status).toBe(200)
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -343,9 +381,31 @@ describe("PATCH /api/admin/words/[id]", () => {
     const body = await res.json()
     expect(body.word.status).toBe("PUBLISHED")
     expect(body.previousStatus).toBe("DRAFT")
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
-  it("returns 400 for invalid status", async () => {
+  it("normalizes lowercase status to uppercase with bump", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...existingWord, status: "ARCHIVED" })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    const res = await PATCH(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "archived" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(200)
+    expect(vi.mocked(db.dictionaryWord.update)).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: "ARCHIVED" } })
+    )
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns 400 for invalid status without bump", async () => {
     allow()
     const res = await PATCH(
       new Request("http://localhost:3000/api/admin/words/w1", {
@@ -356,6 +416,7 @@ describe("PATCH /api/admin/words/[id]", () => {
       params
     )
     expect(res.status).toBe(400)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 
   it("returns 404 when word not found", async () => {
@@ -373,7 +434,7 @@ describe("PATCH /api/admin/words/[id]", () => {
     expect(res.status).toBe(404)
   })
 
-  it("returns early if status is already the same", async () => {
+  it("returns early if status is already the same without bump", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({ ...existingWord, status: "PUBLISHED" })
 
@@ -387,20 +448,21 @@ describe("PATCH /api/admin/words/[id]", () => {
     )
     const body = await res.json()
     expect(body.message).toContain("ya tiene este estado")
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 })
 
-describe("DELETE /api/admin/words/[id]", () => {
+describe("DELETE /api/admin/words/[id] — borrado lógico (Fase A T07)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     allow()
     mockDeleteObject.mockReset()
   })
 
-  it("deletes word without audio", async () => {
+  it("archiva la ficha (no la borra) con bump y log DELETE", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
-    vi.mocked(db.dictionaryWord.delete).mockResolvedValue(existingWord)
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...existingWord, status: "ARCHIVED" })
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
 
     const res = await DELETE(
@@ -411,17 +473,26 @@ describe("DELETE /api/admin/words/[id]", () => {
 
     expect(res.status).toBe(200)
     expect(body.id).toBe("w1")
-    expect(db.dictionaryWord.delete).toHaveBeenCalledWith({ where: { id: "w1" } })
+    expect(vi.mocked(db.dictionaryWord.update)).toHaveBeenCalledWith({
+      where: { id: "w1" },
+      data: { status: "ARCHIVED" },
+    })
+    expect(db.dictionaryWord.delete).not.toHaveBeenCalled()
+    expect(vi.mocked(db.auditLog.create)).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "DELETE" }) })
+    )
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
+    // El audio se conserva: la ficha archivada puede restaurarse.
     expect(mockDeleteObject).not.toHaveBeenCalled()
   })
 
-  it("deletes word and its audio from R2", async () => {
+  it("archiva aunque la ficha tenga audio (no toca R2)", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
       ...existingWord,
       audioUrl: "https://xyz.supabase.co/storage/v1/object/public/audios/temp/audio.mp3",
     })
-    vi.mocked(db.dictionaryWord.delete).mockResolvedValue(existingWord)
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...existingWord, status: "ARCHIVED" })
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
     mockDeleteObject.mockResolvedValue(undefined)
 
@@ -431,29 +502,11 @@ describe("DELETE /api/admin/words/[id]", () => {
     )
 
     expect(res.status).toBe(200)
-    expect(mockDeleteObject).toHaveBeenCalledWith("audios/temp/audio.mp3")
+    expect(mockDeleteObject).not.toHaveBeenCalled()
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
-  it("deletes word even if R2 cleanup fails", async () => {
-    allow()
-    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
-      ...existingWord,
-      audioUrl: "https://xyz.supabase.co/storage/v1/object/public/audios/temp/audio.mp3",
-    })
-    vi.mocked(db.dictionaryWord.delete).mockResolvedValue(existingWord)
-    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
-    mockDeleteObject.mockRejectedValue(new Error("boom"))
-
-    const res = await DELETE(
-      new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),
-      params
-    )
-
-    expect(res.status).toBe(200)
-    expect(db.dictionaryWord.delete).toHaveBeenCalled()
-  })
-
-  it("returns 404 when word not found", async () => {
+  it("returns 404 when word not found without bump", async () => {
     allow()
     vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(null)
 
@@ -462,6 +515,7 @@ describe("DELETE /api/admin/words/[id]", () => {
       params
     )
     expect(res.status).toBe(404)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 
   it("returns 401 when not admin", async () => {

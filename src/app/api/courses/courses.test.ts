@@ -14,19 +14,32 @@ vi.mock("@/app/api/auth/[...nextauth]/route", () => ({
   authOptions: {},
 }))
 
-vi.mock("@/lib/db", () => ({
-  db: {
+vi.mock("@/lib/db", () => {
+  const db: Record<string, unknown> = {
     course: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     module: { count: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
     lesson: { count: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn() },
     dictionaryWord: { findFirst: vi.fn() },
     userLessonProgress: { upsert: vi.fn(), findMany: vi.fn() },
-  },
+    auditLog: { create: vi.fn() },
+  }
+  // Los handlers usan `db.$transaction(async (tx) => ...)`: el mock ejecuta
+  // el callback con el propio db mockeado como `tx`.
+  db.$transaction = vi.fn(async (fn: unknown) =>
+    typeof fn === "function" ? (fn as (tx: unknown) => unknown)(db) : fn
+  )
+  return { db }
+})
+
+vi.mock("@/lib/content-version", () => ({
+  bumpContentVersion: vi.fn(),
+  getContentVersion: vi.fn(),
 }))
 
 import { getServerSession } from "next-auth"
 import { requireAdmin, requireRole, requireAuth } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { bumpContentVersion } from "@/lib/content-version"
 import { GET as listGET, POST as coursesPOST } from "./route"
 import { urlRequest } from "@/test/factories/request"
 import { GET as detailGET, PATCH as coursePATCH, DELETE as courseDELETE } from "./[id]/route"
@@ -79,16 +92,18 @@ describe("cursos API [B2.2]", () => {
     )
   })
 
-  it("crear exige título y defaultea DRAFT+secuencial", async () => {
+  it("crear exige título y defaultea DRAFT+secuencial con bump", async () => {
     allowEditor()
     vi.mocked(db.course.create).mockResolvedValue({ id: "c1" } as never)
     const bad = await coursesPOST(jsonReq("http://x/api/courses", {}) as never)
     expect(bad.status).toBe(400)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
     const ok = await coursesPOST(jsonReq("http://x/api/courses", { title: "T" }) as never)
     expect(ok.status).toBe(201)
     expect(db.course.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "DRAFT", sequential: true }) })
     )
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
   })
 
   it("detalle oculta borrador al público y lo muestra al editor", async () => {
@@ -143,13 +158,15 @@ describe("cursos API [B2.2]", () => {
     expect(body.stats).toEqual({ alumnos: 0, promedioPct: null, completadas: 0 })
   })
 
-  it("PATCH valida y DELETE exige admin", async () => {
+  it("PATCH valida con bump y DELETE archiva (exige admin)", async () => {
     allowEditor()
     vi.mocked(db.course.update).mockResolvedValue({ id: "c1" } as never)
     const empty = await coursePATCH(jsonReq("http://x", {}) as never, params("c1"))
     expect(empty.status).toBe(400)
+    expect(bumpContentVersion).not.toHaveBeenCalled()
     const ok = await coursePATCH(jsonReq("http://x", { status: "PUBLISHED" }) as never, params("c1"))
     expect(ok.status).toBe(200)
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
 
     vi.mocked(requireAdmin).mockResolvedValue({
       session: null,
@@ -158,14 +175,30 @@ describe("cursos API [B2.2]", () => {
     const del = await courseDELETE({} as never, params("c1"))
     expect(del.status).toBe(403)
     expect(db.course.delete).not.toHaveBeenCalled()
+
+    // DELETE exitoso: reemplazo lateral a ARCHIVED + bump, sin borrado físico.
+    allowEditor()
+    vi.mocked(requireAdmin).mockResolvedValue({
+      session: { user: { id: "a1", role: "admin" } },
+      error: null,
+    } as never)
+    vi.mocked(db.course.update).mockResolvedValue({ id: "c1", status: "ARCHIVED" } as never)
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    const archived = await courseDELETE({} as never, params("c1"))
+    expect(archived.status).toBe(200)
+    expect(vi.mocked(db.course.update)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "c1" }, data: { status: "ARCHIVED" } })
+    )
+    expect(db.course.delete).not.toHaveBeenCalled()
   })
 
-  it("módulos y lecciones CRUD solo con título (contenido va por PUT)", async () => {
+  it("módulos y lecciones CRUD con bump (solo con título; contenido va por PUT)", async () => {
     allowEditor()
     vi.mocked(db.module.count).mockResolvedValue(2)
     vi.mocked(db.module.create).mockResolvedValue({ id: "m1" } as never)
     const mod = await modulesPOST(jsonReq("http://x/api/modules", { courseId: "c1", title: "M" }) as never)
     expect(mod.status).toBe(201)
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
 
     vi.mocked(db.module.findUnique).mockResolvedValue({ id: "m1" } as never)
     vi.mocked(db.lesson.count).mockResolvedValue(0)
@@ -175,6 +208,7 @@ describe("cursos API [B2.2]", () => {
       params("m1")
     )
     expect(les.status).toBe(201)
+    expect(bumpContentVersion).toHaveBeenCalledTimes(2)
     expect(db.lesson.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -194,22 +228,21 @@ describe("cursos API [B2.2]", () => {
     vi.mocked(db.lesson.update).mockResolvedValue({ id: "l1" } as never)
     const upd = await lessonPATCH(jsonReq("http://x", { title: "L2" }) as never, params("l1"))
     expect(upd.status).toBe(200)
+    expect(bumpContentVersion).toHaveBeenCalledTimes(3)
 
     vi.mocked(db.module.update).mockResolvedValue({ id: "m1" } as never)
     const mord = await modulePATCH(jsonReq("http://x", { order: 3 }) as never, params("m1"))
     expect(mord.status).toBe(200)
+    expect(bumpContentVersion).toHaveBeenCalledTimes(4)
   })
 
-  it("reorder solo toca lo propio del curso", async () => {
+  it("reorder solo toca lo propio del curso con un solo bump", async () => {
     allowEditor()
     vi.mocked(db.course.findUnique).mockResolvedValue({ id: "c1" } as never)
-    vi.mocked(db.module.findMany).mockResolvedValue([{ id: "m1" }] as never)
+    vi.mocked(db.module.findMany).mockResolvedValue([{ id: "m1", order: 1 }] as never)
     vi.mocked(db.module.update).mockResolvedValue({} as never)
     vi.mocked(db.module.findFirst).mockResolvedValue({ id: "m1" } as never)
     vi.mocked(db.lesson.findMany).mockResolvedValue([] as never)
-    ;(db as unknown as { $transaction: ReturnType<typeof vi.fn> }).$transaction = vi
-      .fn()
-      .mockResolvedValue([])
     const res = await reorderPOST(
       jsonReq("http://x", { modules: ["m1", "mX"], lessons: {} }) as never,
       params("c1")
@@ -220,6 +253,22 @@ describe("cursos API [B2.2]", () => {
     expect(db.module.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "m1" } })
     )
+    expect(bumpContentVersion).toHaveBeenCalledTimes(1)
+  })
+
+  it("reorder no-op no toca nada ni hace bump", async () => {
+    allowEditor()
+    vi.mocked(db.course.findUnique).mockResolvedValue({ id: "c1" } as never)
+    vi.mocked(db.module.findMany).mockResolvedValue([{ id: "m1", order: 0 }] as never)
+    const res = await reorderPOST(
+      jsonReq("http://x", { modules: ["m1"], lessons: {} }) as never,
+      params("c1")
+    )
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.updated).toBe(0)
+    expect(db.module.update).not.toHaveBeenCalled()
+    expect(bumpContentVersion).not.toHaveBeenCalled()
   })
 
   it("progreso: upsert + % por curso", async () => {
@@ -409,9 +458,6 @@ describe("lecciones: numeración y dedupe [admin-cursos]", () => {
       ] as never)
     vi.mocked(db.module.update).mockResolvedValue({} as never)
     vi.mocked(db.lesson.update).mockResolvedValue({} as never)
-    ;(db as unknown as { $transaction: ReturnType<typeof vi.fn> }).$transaction = vi
-      .fn()
-      .mockResolvedValue([])
 
     const res = await reorderPOST(
       jsonReq("http://x", { lessons: { m1: ["l2", "l1"] } }) as never,
@@ -487,6 +533,7 @@ describe("PUT /api/lessons/[id] — guardar contenido [cursos-fase2]", () => {
     expect(arg.data.title).toBe("Lección nueva")
     expect(arg.data.content.version).toBe(2)
     expect(arg.data.content.blocks).toHaveLength(1)
+    expect(bumpContentVersion).toHaveBeenCalled()
   })
 
   it("rechaza contenido inválido y NO guarda nada", async () => {

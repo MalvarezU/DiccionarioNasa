@@ -68,6 +68,26 @@ describe("sync API [B3.1]", () => {
     )
   })
 
+  it("R-ARCHIVED: status histórico en minúsculas va a removedIds y no a words", async () => {
+    allow()
+    const t0 = new Date("2026-09-01T00:00:00Z")
+    const t1 = new Date("2026-09-02T00:00:00Z")
+    vi.mocked(db.dictionaryWord.findMany).mockResolvedValue([
+      { id: "w1", spanish: "a", nasaYuwe: "b", pronunciation: null, audioUrl: null, culturalContext: null, category: null, examples: null, status: "PUBLISHED", updatedAt: t1 },
+      { id: "w2", spanish: "c", nasaYuwe: "d", pronunciation: null, audioUrl: null, culturalContext: null, category: null, examples: null, status: "archived", updatedAt: t1 },
+    ] as never)
+    vi.mocked(db.auditLog.findMany).mockResolvedValue([])
+
+    const res = await syncGET(
+      new Request(`http://x/api/sync?since=${t0.toISOString()}&limit=10`) as never
+    )
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.words.map((w: { id: string }) => w.id)).toEqual(["w1"])
+    expect(body.removedIds).toEqual(expect.arrayContaining(["w2"]))
+  })
+
   it("pagina con cursor opaco y filtra updatedAt inválido", async () => {
     allow()
     const t1 = new Date("2026-09-02T00:00:00Z")

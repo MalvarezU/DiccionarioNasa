@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireRole } from "@/lib/auth"
+import { bumpContentVersion } from "@/lib/content-version"
+
+// T07: `DictionaryWord.status` es String libre — toda escritura normaliza a
+// mayúsculas y valida contra este conjunto; inválido → 400 sin bump.
+const VALID_STATUSES = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const
+
+function normalizeStatus(raw: unknown): string | null {
+  if (typeof raw !== "string") return null
+  const normalized = raw.toUpperCase().trim()
+  return (VALID_STATUSES as readonly string[]).includes(normalized) ? normalized : null
+}
 
 /**
  * GET /api/admin/words
@@ -108,39 +119,54 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create the word
-    const word = await db.dictionaryWord.create({
-      data: {
-        spanish: spanish.trim(),
-        nasaYuwe: nasaYuwe.trim(),
-        pronunciation: pronunciation?.trim() || null,
-        audioUrl: audioUrl?.trim() || null,
-        illustrationUrl: illustrationUrl?.trim() || null,
-        culturalContext: culturalContext?.trim() || null,
-        category: category?.trim() || null,
-        examples: examples ? JSON.stringify(examples) : null,
-        status: status || "DRAFT",
-      },
-    })
+    // T07: normaliza el estado (mayúsculas) y valida; inválido → 400 sin bump.
+    const rawStatus = typeof status === "string" && status.trim() ? status : "DRAFT"
+    const normalizedStatus = normalizeStatus(rawStatus)
+    if (!normalizedStatus) {
+      return NextResponse.json(
+        { message: "Estado inválido. Valores permitidos: DRAFT, PUBLISHED, ARCHIVED" },
+        { status: 400 }
+      )
+    }
 
-    // Log the action in audit log
-    await db.auditLog.create({
-      data: {
-        action: "CREATE",
-        entity: "DictionaryWord",
-        entityId: word.id,
-        changes: JSON.stringify({
-          spanish: word.spanish,
-          nasaYuwe: word.nasaYuwe,
-          category: word.category,
-          status: word.status,
-          audioUrl: word.audioUrl || null,
-          illustrationUrl: word.illustrationUrl || null,
-          responsable: session!.user.name || session!.user.email,
-        }),
-        userId: (session!.user as { id: string }).id,
-        wordId: word.id,
-      },
+    // Fase A T03: mutación + bump en la misma transacción (una operación = +1).
+    const word = await db.$transaction(async (tx) => {
+      const created = await tx.dictionaryWord.create({
+        data: {
+          spanish: spanish.trim(),
+          nasaYuwe: nasaYuwe.trim(),
+          pronunciation: pronunciation?.trim() || null,
+          audioUrl: audioUrl?.trim() || null,
+          illustrationUrl: illustrationUrl?.trim() || null,
+          culturalContext: culturalContext?.trim() || null,
+          category: category?.trim() || null,
+          examples: examples ? JSON.stringify(examples) : null,
+          status: normalizedStatus,
+        },
+      })
+
+      // Log the action in audit log
+      await tx.auditLog.create({
+        data: {
+          action: "CREATE",
+          entity: "DictionaryWord",
+          entityId: created.id,
+          changes: JSON.stringify({
+            spanish: created.spanish,
+            nasaYuwe: created.nasaYuwe,
+            category: created.category,
+            status: created.status,
+            audioUrl: created.audioUrl || null,
+            illustrationUrl: created.illustrationUrl || null,
+            responsable: session!.user.name || session!.user.email,
+          }),
+          userId: (session!.user as { id: string }).id,
+          wordId: created.id,
+        },
+      })
+
+      await bumpContentVersion(tx)
+      return created
     })
 
     return NextResponse.json({ word }, { status: 201 })
