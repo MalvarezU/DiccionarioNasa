@@ -101,6 +101,7 @@ function combinedSimilarity(a: GameWord, b: GameWord): number {
 /** Opciones según el modo: español (significado) o Nasa Yuwe escrito (escritura). */
 function toQuestions(ask: GameWord[], pool: GameWord[], mode: EscuchaMode): EscuchaQuestion[] {
   return ask.map((word) => {
+    const answerOf = (w: GameWord) => (mode === "significado" ? w.spanish : w.nasaYuwe)
     const ranked = pool
       .filter((w) => w.id !== word.id)
       .map((w) => ({
@@ -108,28 +109,36 @@ function toQuestions(ask: GameWord[], pool: GameWord[], mode: EscuchaMode): Escu
         sim: combinedSimilarity(word, w),
       }))
       .sort((a, b) => b.sim - a.sim)
-    const distractorWords = ranked.slice(0, 3).map((r) => r.w)
+    // Distractores: los más parecidos, pero SIN repetir la respuesta
+    // (una palabra no puede ser idéntica a otra en las opciones).
+    const seen = new Set<string>([answerOf(word)])
+    const distractorWords: GameWord[] = []
+    for (const r of ranked) {
+      const a = answerOf(r.w)
+      if (seen.has(a)) continue
+      seen.add(a)
+      distractorWords.push(r.w)
+      if (distractorWords.length >= 3) break
+    }
     if (distractorWords.length < 3) {
       const rest = shuffle(
-        pool.filter((w) => w.id !== word.id && !distractorWords.includes(w))
+        pool.filter((w) => w.id !== word.id && !distractorWords.includes(w) && !seen.has(answerOf(w)))
       )
-      distractorWords.push(...rest.slice(0, 3 - distractorWords.length))
-    }
-    if (mode === "significado") {
-      const distractors = distractorWords.map((w) => w.spanish)
-      const options = shuffle([word.spanish, ...distractors])
-      return {
-        word,
-        options,
-        correctIndex: options.indexOf(word.spanish),
+      for (const w of rest) {
+        if (distractorWords.length >= 3) break
+        const a = answerOf(w)
+        if (seen.has(a)) continue
+        seen.add(a)
+        distractorWords.push(w)
       }
     }
-    const distractors = distractorWords.map((w) => w.nasaYuwe)
-    const options = shuffle([word.nasaYuwe, ...distractors])
+    const correct = answerOf(word)
+    const distractors = distractorWords.map(answerOf)
+    const options = shuffle([correct, ...distractors])
     return {
       word,
       options,
-      correctIndex: options.indexOf(word.nasaYuwe),
+      correctIndex: options.indexOf(correct),
     }
   })
 }
