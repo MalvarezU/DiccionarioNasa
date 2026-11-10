@@ -84,11 +84,16 @@ export async function POST(request: NextRequest) {
     // 2. Si ya fue sugerida y sigue PENDIENTE (normalizada), no se duplica.
     //    Las ATENDIDA/ARCHIVADA sí permiten volver a sugerir (se reabre el ciclo).
     //    Logs viejos sin `status` se tratan como PENDING (compatibilidad).
+    //
+    //    Tope deliberado (500): se escanea en memoria sobre los últimos logs.
+    //    Si algún día se superan, las pendientes más viejas caen fuera del
+    //    dedup y se podrían aceptar duplicados; el arreglo correcto a futuro
+    //    es una columna `status` real (aplazado: ver plan del módulo de logs).
     const normalized = normalizeTerm(cleanTerm)
     const prior = await db.auditLog.findMany({
       where: { action: "SUGGEST", entity: "DictionaryWord" },
       orderBy: { createdAt: "desc" },
-      take: 200,
+      take: 500,
       select: { changes: true },
     })
     const alreadySuggested = prior.some((l) => {

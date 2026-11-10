@@ -41,7 +41,7 @@ export default defineConfig({
     },
     {
       name: "screenplay-admin",
-      testMatch: /admin\.screenplay\.spec\.ts/,
+      testMatch: /admin\.screenplay\.spec\.ts|logs\.screenplay\.spec\.ts/,
       dependencies: ["setup"],
       use: { storageState: "e2e/.auth/admin.json" },
     },

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { CreateWordModal } from "./CreateWordModal"
+import { toast } from "@/hooks/use-toast"
 import { parseSuggestion, type SuggestionStatus } from "@/lib/audit-revert"
 import { formatDate, type AuditLogEntry } from "@/lib/admin-utils"
 
@@ -106,7 +107,13 @@ export function SuggestionsManager() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       await load()
     } catch {
-      // El error queda visible por simpleza: la card no cambia y el admin reintenta.
+      // La card no cambia (el estado real lo tiene el server) y el admin
+      // puede reintentar; el toast hace visible el fallo.
+      toast({
+        title: "No se pudo guardar la decisión",
+        description: "Reintentá en unos segundos; si sigue fallando, refrescá la página.",
+        variant: "destructive",
+      })
     } finally {
       setActingId(null)
     }

@@ -220,6 +220,17 @@ describe("POST /api/dictionary/suggest", () => {
     expect(vi.mocked(db.auditLog.create)).toHaveBeenCalledTimes(1)
   })
 
+  it("el dedup escanea hasta 500 logs (tope deliberado)", async () => {
+    mockEmptyReads()
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+
+    await POST(makeRequest({ term: "nueva" }))
+
+    expect(vi.mocked(db.auditLog.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 500 })
+    )
+  })
+
   it("el create incluye status PENDING", async () => {
     mockEmptyReads()
     vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
