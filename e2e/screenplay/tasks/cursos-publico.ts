@@ -95,3 +95,4 @@ export class ResolverQuizInteractivo {
     return tarea;
   }
 }
+
