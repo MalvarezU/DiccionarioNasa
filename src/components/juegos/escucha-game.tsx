@@ -100,41 +100,82 @@ function combinedSimilarity(a: GameWord, b: GameWord): number {
 
 /** Opciones según el modo: español (significado) o Nasa Yuwe escrito (escritura). */
 function toQuestions(ask: GameWord[], pool: GameWord[], mode: EscuchaMode): EscuchaQuestion[] {
+  // Deduplicar el pool por (spanish, nasaYuwe) para evitar palabras repetidas.
+  const seenPool = new Set<string>()
+  const uniquePool = pool.filter((w) => {
+    const key = `${w.spanish}||${w.nasaYuwe}`
+    if (seenPool.has(key)) return false
+    seenPool.add(key)
+    return true
+  })
+
   return ask.map((word) => {
     const answerOf = (w: GameWord) => (mode === "significado" ? w.spanish : w.nasaYuwe)
-    const ranked = pool
+    const correct = answerOf(word)
+    const ranked = uniquePool
       .filter((w) => w.id !== word.id)
       .map((w) => ({
         w,
         sim: combinedSimilarity(word, w),
       }))
       .sort((a, b) => b.sim - a.sim)
-    // Distractores: los más parecidos, pero SIN repetir la respuesta
-    // (una palabra no puede ser idéntica a otra en las opciones).
-    const seen = new Set<string>([answerOf(word)])
+
+    // Distractores: los más parecidos, sin repetir NINGUNA respuesta.
+    // Comparación directa por el string que aparece en las opciones.
+    const seenAnswers = new Set<string>([correct])
     const distractorWords: GameWord[] = []
     for (const r of ranked) {
       const a = answerOf(r.w)
-      if (seen.has(a)) continue
-      seen.add(a)
+      if (seenAnswers.has(a)) continue
+      seenAnswers.add(a)
       distractorWords.push(r.w)
       if (distractorWords.length >= 3) break
     }
     if (distractorWords.length < 3) {
       const rest = shuffle(
-        pool.filter((w) => w.id !== word.id && !distractorWords.includes(w) && !seen.has(answerOf(w)))
+        uniquePool.filter((w) => w.id !== word.id && !distractorWords.includes(w) && !seenAnswers.has(answerOf(w)))
       )
       for (const w of rest) {
         if (distractorWords.length >= 3) break
         const a = answerOf(w)
-        if (seen.has(a)) continue
-        seen.add(a)
+        if (seenAnswers.has(a)) continue
+        seenAnswers.add(a)
         distractorWords.push(w)
       }
     }
-    const correct = answerOf(word)
+
     const distractors = distractorWords.map(answerOf)
     const options = shuffle([correct, ...distractors])
+
+    // Verificación final: si aún hay duplicados, eliminarlos.
+    const uniqueOptions = [...new Set(options)]
+    if (uniqueOptions.length < options.length) {
+      // Re-construir sin duplicados
+      const finalOptions = [correct]
+      const used = new Set<string>([correct])
+      for (const d of distractors) {
+        if (used.has(d)) continue
+        used.add(d)
+        finalOptions.push(d)
+      }
+      // Rellenar si faltan
+      const remaining = uniquePool
+        .filter((w) => w.id !== word.id && !used.has(answerOf(w)))
+        .map((w) => answerOf(w))
+      for (const r of remaining) {
+        if (finalOptions.length >= 4) break
+        if (used.has(r)) continue
+        used.add(r)
+        finalOptions.push(r)
+      }
+      const shuffled = shuffle(finalOptions)
+      return {
+        word,
+        options: shuffled,
+        correctIndex: shuffled.indexOf(correct),
+      }
+    }
+
     return {
       word,
       options,
