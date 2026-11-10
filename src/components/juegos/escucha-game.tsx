@@ -17,12 +17,11 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  buildFlashcardQuestions,
   gameWordsWithAudio,
   reportGameResult,
   type GameWord,
 } from "@/lib/game-words"
-import { shuffle } from "@/lib/game-utils"
+import { shuffle, stringSimilarity } from "@/lib/game-utils"
 import { useOfflineAudio } from "@/hooks/use-offline-audio"
 import { useGameFeedback } from "./game-feedback"
 import { Confetti } from "./confetti"
@@ -81,14 +80,35 @@ function loadStored(): StoredEscucha | null {
   }
 }
 
-/** Opciones en español (1 correcta + 3 distractores de la tanda). */
+/** Opciones en español (1 correcta + 3 distractores parecidos por sonido/escritura). */
 function toQuestions(ask: GameWord[], pool: GameWord[]): EscuchaQuestion[] {
-  const built = buildFlashcardQuestions(ask, pool, "nasa-es")
-  return ask.map((word, i) => ({
-    word,
-    options: built[i]!.options,
-    correctIndex: built[i]!.correctIndex,
-  }))
+  return ask.map((word) => {
+    const targetKey = word.pronunciation ?? word.nasaYuwe
+    // Distractores: los 3 más parecidos al correcto (por Nasa Yuwe o
+    // pronunciación) para forzar discriminación auditiva fina, no al azar.
+    // Si no hay suficientes, se rellena con el resto del pool.
+    const ranked = pool
+      .filter((w) => w.id !== word.id)
+      .map((w) => ({
+        w,
+        sim: stringSimilarity(targetKey, w.pronunciation ?? w.nasaYuwe),
+      }))
+      .sort((a, b) => b.sim - a.sim)
+    const distractorWords = ranked.slice(0, 3).map((r) => r.w)
+    if (distractorWords.length < 3) {
+      const rest = shuffle(
+        pool.filter((w) => w.id !== word.id && !distractorWords.includes(w))
+      )
+      distractorWords.push(...rest.slice(0, 3 - distractorWords.length))
+    }
+    const distractors = distractorWords.map((w) => w.spanish)
+    const options = shuffle([word.spanish, ...distractors])
+    return {
+      word,
+      options,
+      correctIndex: options.indexOf(word.spanish),
+    }
+  })
 }
 
 function buildQuestions(pool: GameWord[]): EscuchaQuestion[] {
@@ -561,6 +581,7 @@ export function EscuchaGame({
         <CardContent data-question className="pt-5 pb-4 flex flex-col items-center gap-3">
           <p className="text-sm text-muted-foreground">
             Escucha el audio en Nasa Yuwe y elige su significado en español.
+            Las opciones suenan parecido: escucha con atención.
           </p>
           {/* Zona de reveal con altura reservada: siempre montada con
               min-h de 3 líneas (palabra text-4xl + pronunciación + español).
