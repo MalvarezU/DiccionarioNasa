@@ -2,12 +2,14 @@
 
 import { Suspense, useState } from "react"
 import { useSession } from "next-auth/react"
-import { PackagePlus, Plus, Upload } from "lucide-react"
+import { PackagePlus, Plus, Smartphone, Upload } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { AdminPageHeader } from "@/components/admin/admin-page-header"
 import { CreateWordModal } from "@/components/admin/CreateWordModal"
 import { ImportCorpusModal } from "@/components/admin/ImportCorpusModal"
 import { SeedDispatchModal } from "@/components/admin/SeedDispatchModal"
+import { ApkDispatchModal } from "@/components/admin/ApkDispatchModal"
 import { EditWordModal } from "@/components/admin/EditWordModal"
 import { WordListContent } from "@/components/admin/word-list-content"
 import { WordTableSkeleton } from "@/components/skeletons"
@@ -27,6 +29,7 @@ export default function AdminPalabrasPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [seedOpen, setSeedOpen] = useState(false)
+  const [apkOpen, setApkOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingWord, setEditingWord] = useState<WordForEdit | null>(null)
   const [listKey, setListKey] = useState(0)
@@ -50,6 +53,10 @@ export default function AdminPalabrasPage() {
             <Button variant="outline" onClick={() => setSeedOpen(true)} className="gap-2">
               <PackagePlus className="h-4 w-4" />
               Generar contenido offline
+            </Button>
+            <Button variant="outline" onClick={() => setApkOpen(true)} className="gap-2">
+              <Smartphone className="h-4 w-4" />
+              Publicar APK
             </Button>
           </>
         }
@@ -77,6 +84,7 @@ export default function AdminPalabrasPage() {
       <CreateWordModal open={createOpen} onOpenChange={setCreateOpen} onCreated={refreshList} />
       <ImportCorpusModal open={importOpen} onOpenChange={setImportOpen} onImported={refreshList} />
       <SeedDispatchModal open={seedOpen} onOpenChange={setSeedOpen} />
+      <ApkDispatchModal open={apkOpen} onOpenChange={setApkOpen} />
       <EditWordModal
         key={editingWord?.id ?? "new"}
         open={editOpen}

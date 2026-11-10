@@ -70,6 +70,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url)
   if (!url.protocol.startsWith("http")) return
 
+  // APKs: descarga directa del navegador, sin interceptar ni cachear.
+  // Un Response de caché/opaco rompe la descarga ("Failed to convert value
+  // to 'Response'") y el instalador espera el binario intacto.
+  if (url.pathname.endsWith(".apk")) return
+
   // Audios (mismo origen u otros, p. ej. R2): cache-first con tope
   const isAudio =
     req.destination === "audio" ||
