@@ -65,6 +65,15 @@ async function isUrlCached(url: string): Promise<boolean> {
   }
 }
 
+// Nombres de cache compartidos con public/sw.js (NO cambiarlos sin sincronizar
+// ambos archivos): el sync guarda acá y el SW sirve offline desde acá.
+const AUDIO_CACHE_NAME = "piiyaak-audio-v1"
+const IMAGE_CACHE_NAME = "piiyaak-image-v1"
+
+function cacheNameForUrl(url: string): string {
+  return /\.(mp3|wav|ogg)(\?|$)/i.test(url) ? AUDIO_CACHE_NAME : IMAGE_CACHE_NAME
+}
+
 async function fetchOne(
   url: string,
   timeoutMs: number,
@@ -81,7 +90,19 @@ async function fetchOne(
     // no-cors: R2 responde opaco sin importar CORS; el SW lo cachea igual.
     // cache: "reload" evita contar como "descargado" algo que solo quedó
     // en el HTTP cache del navegador y se evapora.
-    await fetch(url, { mode: "no-cors", cache: "reload", signal: ctrl.signal })
+    const res = await fetch(url, { mode: "no-cors", cache: "reload", signal: ctrl.signal })
+    // Cacheo explícito (además del SW): hace el sync determinista aunque el
+    // SW aún no esté controlando la página. Guardar responses opacas en la
+    // Cache API es legal y jugable offline.
+    try {
+      if (typeof caches !== "undefined") {
+        const cache = await caches.open(cacheNameForUrl(url))
+        await cache.put(url, res.clone())
+      }
+    } catch {
+      // Si el cacheo falla, el SW (si está activo) puede haberlo cacheado
+      // igual por su handler; no rompemos el sync por esto.
+    }
     return "ok"
   } catch {
     return MEDIA_ERR
@@ -210,14 +231,17 @@ export function extractMediaUrls(
 ): string[] {
   const urls = new Set<string>()
   for (const w of words) {
-    if (typeof w.audioUrl === "string" && w.audioUrl.startsWith("http")) {
-      urls.add(w.audioUrl)
-    }
-    if (
-      typeof w.illustrationUrl === "string" &&
-      w.illustrationUrl.startsWith("http")
-    ) {
-      urls.add(w.illustrationUrl)
+    for (const u of [w.audioUrl, w.illustrationUrl]) {
+      if (typeof u !== "string" || !u.trim()) continue
+      const v = u.trim()
+      // Aceptar URLs absolutas (R2/prod) y rutas relativas de mismo origen
+      // con extensión de media (/audio/*.mp3, /images/*.png, etc.) para no
+      // dejar medios sin cachear. Otras rutas relativas se ignoran.
+      const isHttp = /^https?:\/\//i.test(v)
+      const isMediaRel = /^\/.*\.(mp3|wav|ogg|png|jpe?g|webp|avif|gif)(\?|$)/i.test(v)
+      if (isHttp || isMediaRel) {
+        urls.add(v)
+      }
     }
   }
   return [...urls]
