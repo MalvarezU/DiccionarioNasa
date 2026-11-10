@@ -96,4 +96,17 @@ describe("ImportCorpusModal", () => {
     })
     expect(onImported).toHaveBeenCalled()
   })
+
+  it("Descargar plantilla genera un enlace de descarga sin romper", async () => {
+    const createObjectURL = vi.fn(() => "blob:mock-url")
+    const revokeObjectURL = vi.fn()
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, writable: true })
+    Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, writable: true })
+
+    renderModal()
+    const btn = screen.getByRole("button", { name: /descargar plantilla/i })
+    await userEvent.setup().click(btn)
+
+    expect(createObjectURL).toHaveBeenCalled()
+  })
 })
