@@ -62,11 +62,13 @@ describe("InstallSection", () => {
     mockUserAgent(userAgentOrig)
   })
 
-  it("muestra las 2 plataformas y el enlace de descarga APK", () => {
+  it("muestra las 2 plataformas y el enlace a la página de descarga", () => {
     render(<InstallSection />)
     expect(screen.getByText("Android / Chrome")).toBeDefined()
     expect(screen.getByText("Escritorio")).toBeDefined()
-    expect(screen.getByRole("link", { name: /Descargar APK/ })).toBeDefined()
+    const link = screen.getByRole("link", { name: /página de descarga/ });
+    expect(link).toBeDefined()
+    expect(link).toHaveAttribute("href", "/descargar")
   })
 
   it("sin prompt nativo los botones siguen visibles y abren el diálogo", () => {

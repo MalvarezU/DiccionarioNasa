@@ -94,14 +94,14 @@ export function InstallSection() {
           <div className="text-center sm:text-left max-w-sm">
             <p className="font-semibold text-sm">Descargá la app (APK)</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Instalación directa en Android. Disponible próximamente.
+              Instalación directa en Android. Versión publicada y con código QR en la página de descarga.
             </p>
             <a
-              href="/descargas/piiyaak.apk"
+              href="/descargar"
               className="inline-flex items-center gap-2 mt-3 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               <Download className="h-3.5 w-3.5" />
-              Descargar APK
+              Ir a la página de descarga
             </a>
           </div>
         </div>
