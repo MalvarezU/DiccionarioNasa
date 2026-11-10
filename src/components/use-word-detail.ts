@@ -9,7 +9,7 @@ import { isLocalFavorite, toggleLocalFavorite } from "@/lib/demo-storage";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { parseCategories, type WordDetail } from "./word-detail";
 
-function toWordDetail(localWord: {
+export function toWordDetail(localWord: {
   id: string;
   spanish: string;
   nasaYuwe: string;
@@ -18,8 +18,23 @@ function toWordDetail(localWord: {
   illustrationUrl?: string | null;
   culturalContext?: string | null;
   category?: string | null;
-  examples?: string | null;
+  examples?: unknown;
 }): WordDetail {
+  let examples: Array<{ spanish: string; nasaYuwe: string }> | null = null;
+  const raw = localWord.examples;
+  if (raw != null) {
+    if (Array.isArray(raw)) {
+      examples = raw as Array<{ spanish: string; nasaYuwe: string }>;
+    } else if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        examples = Array.isArray(parsed) ? parsed : null;
+      } catch {
+        examples = null;
+        console.warn("[use-word-detail] examples no parseable, se omite:", raw);
+      }
+    }
+  }
   return {
     id: localWord.id,
     spanish: localWord.spanish,
@@ -29,7 +44,7 @@ function toWordDetail(localWord: {
     illustrationUrl: localWord.illustrationUrl ?? null,
     culturalContext: localWord.culturalContext ?? null,
     category: localWord.category ?? null,
-    examples: localWord.examples ? JSON.parse(localWord.examples) : null,
+    examples,
   } as WordDetail;
 }
 

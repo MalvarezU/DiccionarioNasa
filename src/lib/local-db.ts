@@ -111,12 +111,25 @@ export function getNormalizedInitial(word: string): string {
  * Overwrites existing words with the same ID.
  */
 export async function storeWords(words: DictionaryWord[]): Promise<void> {
+  // Normalizar `examples`: el export del servidor lo devuelve ya parseado
+  // (array). IndexedDB debe guardar siempre un JSON string para mantener el
+  // contrato de la interfaz. Esto también repara datos ya sincronizados mal.
+  const normalized = words.map((w) => ({
+    ...w,
+    examples:
+      w.examples == null
+        ? null
+        : typeof w.examples === "string"
+          ? w.examples
+          : JSON.stringify(w.examples),
+  }))
+
   await withDB(async (db) => {
     const tx = db.transaction(WORDS_STORE, "readwrite")
     const store = tx.objectStore(WORDS_STORE)
 
     await Promise.all(
-      words.map(
+      normalized.map(
         (word) =>
           new Promise<void>((resolve, reject) => {
             const request = store.put(word)
