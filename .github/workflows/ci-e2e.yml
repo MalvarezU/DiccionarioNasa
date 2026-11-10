@@ -33,6 +33,7 @@ jobs:
       - run: npx playwright test --project=screenplay-user
       - run: npx playwright test --project=screenplay-admin
       - run: npx playwright test --project=screenplay-multi
+      - run: npx playwright test --project=pwa-offline
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -42,7 +42,8 @@ test.describe("PWA offline: ficha y audio sin conexion", () => {
   const stamp = Date.now();
   const termino = `E2E Pwa Offline ${stamp}`;
   const ejemploEs = `Ejemplo sin conexion ${stamp}`;
-  const audioPath = "/audio/Kupe.mp3";
+  const audioPath = "/audio/e2e-test.mp3";
+  const ilustracionPath = "/logoPiiyaak.png";
   let wordId = "";
 
   test.beforeAll(async () => {
@@ -61,6 +62,7 @@ test.describe("PWA offline: ficha y audio sin conexion", () => {
           nasaYuwe: `Pwa Offline ${stamp}`,
           pronunciation: "pwa",
           audioUrl: audioPath,
+          illustrationUrl: ilustracionPath,
           culturalContext: "Palabra sembrada por la spec pwa-offline",
           category: "sustantivo",
           examples: JSON.stringify([
@@ -187,6 +189,17 @@ test.describe("PWA offline: ficha y audio sin conexion", () => {
       }
     });
     expect(syncedCount).toBeGreaterThan(0);
+    // El sync tambien debe haber cacheado la ilustracion (extractMediaUrls +
+    // fetchOne): el asset crudo queda en piiyaak-image-v1.
+    const ilusCached = await page.evaluate(async (url: string) => {
+      try {
+        const cache = await caches.open("piiyaak-image-v1");
+        return (await cache.match(url)) ? "si" : "no";
+      } catch {
+        return "sin-cache-api";
+      }
+    }, ilustracionPath);
+    expect(ilusCached).toBe("si");
     await page.keyboard.press("Escape");
 
     const audioCached = () =>
@@ -216,6 +229,22 @@ test.describe("PWA offline: ficha y audio sin conexion", () => {
     await expect.poll(audioCached, { timeout: 30000 }).toBe("si");
     await opcion.getByRole("button", { name: /pausar/i }).click();
 
+    // Online: la ficha tambien abre con ilustracion (el SW cachea /_next/image
+    // al interceptar el request del <img>). Se afirma antes de cortar red.
+    await opcion.click();
+    const fichaOnline = page.getByRole("dialog");
+    await expect(
+      fichaOnline.getByRole("heading", { name: /pwa offline/i })
+    ).toBeVisible({ timeout: 20000 });
+    const imgOnline = fichaOnline.locator("img").first();
+    await expect(imgOnline).toBeVisible({ timeout: 20000 });
+    await expect
+      .poll(async () => imgOnline.evaluate((el) => (el as HTMLImageElement).naturalWidth), {
+        timeout: 20000,
+      })
+      .toBeGreaterThan(0);
+    await page.keyboard.press("Escape");
+
     // Sin conexion: la busqueda sugiere desde IndexedDB...
     await context.setOffline(true);
     await page.getByPlaceholder(/Buscar/).fill("");
@@ -232,7 +261,17 @@ test.describe("PWA offline: ficha y audio sin conexion", () => {
     await expect(
       ficha.getByRole("heading", { name: /pwa offline/i })
     ).toBeVisible({ timeout: 20000 });
+    // Contenido completo: espanol, nasa yuwe y ejemplos.
+    await expect(ficha.getByText(termino).first()).toBeVisible({ timeout: 20000 });
     await expect(ficha.getByText(ejemploEs)).toBeVisible({ timeout: 20000 });
+    // La ilustracion sigue cargada offline (cache del SW).
+    const imgOffline = ficha.locator("img").first();
+    await expect(imgOffline).toBeVisible({ timeout: 20000 });
+    await expect
+      .poll(async () => imgOffline.evaluate((el) => (el as HTMLImageElement).naturalWidth), {
+        timeout: 20000,
+      })
+      .toBeGreaterThan(0);
     await page.keyboard.press("Escape");
 
     // ...y el audio sale del cache del SW, no del 503 offline: el clic lo
