@@ -49,6 +49,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
         order,
         lessonNumber,
         content: { version: 2, blocks: [] },
+        updatedAt: new Date(),
       },
     })
     return NextResponse.json({ lesson }, { status: 201 })

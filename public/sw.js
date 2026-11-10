@@ -11,9 +11,9 @@
 
 const SHELL_CACHE = "piiyaak-shell-v5"
 const AUDIO_CACHE = "piiyaak-audio-v1"
-const AUDIO_MAX_ENTRIES = 50
+const AUDIO_MAX_ENTRIES = 200
 const IMAGE_CACHE = "piiyaak-image-v1"
-const IMAGE_MAX_ENTRIES = 100
+const IMAGE_MAX_ENTRIES = 400
 
 const SHELL_ASSETS = ["/", "/offline", "/manifest.webmanifest", "/icon-192.png", "/apple-touch-icon-180.png"]
 
@@ -47,9 +47,12 @@ self.addEventListener("activate", (event) => {
 async function trimCache(cacheName, maxEntries) {
   try {
     const cache = await caches.open(cacheName)
-    const keys = await cache.keys()
-    if (keys.length > maxEntries) {
+    // Borrar TODOS los excedentes (antes solo 1 por llamada: con descargas
+    // masivas el caché crecía sin cota entre trims).
+    let keys = await cache.keys()
+    while (keys.length > maxEntries) {
       await cache.delete(keys[0])
+      keys = await cache.keys()
     }
   } catch {
     // ignorar: el contenido sigue funcionando online

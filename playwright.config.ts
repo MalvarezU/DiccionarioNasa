@@ -35,13 +35,13 @@ export default defineConfig({
     },
     {
       name: "screenplay-user",
-      testMatch: /usuario\.screenplay\.spec\.ts/,
+      testMatch: /usuario\.screenplay\.spec\.ts|celebracion\.screenplay\.spec\.ts/,
       dependencies: ["setup"],
       use: { storageState: "e2e/.auth/user.json" },
     },
     {
       name: "screenplay-admin",
-      testMatch: /admin\.screenplay\.spec\.ts/,
+      testMatch: /admin\.screenplay\.spec\.ts|logs\.screenplay\.spec\.ts/,
       dependencies: ["setup"],
       use: { storageState: "e2e/.auth/admin.json" },
     },

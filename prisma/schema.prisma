@@ -89,6 +89,8 @@ model Module {
   courseId String
   title    String
   order    Int      @default(0)
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
   course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons  Lesson[]
 
@@ -105,8 +107,10 @@ model Lesson {
   lessonNumber Int?
   /// Documento de bloques de la lección: { version, blocks[] }.
   /// Ver src/lib/courses/blocks.ts para el contrato y la validación.
-  content  Json
-  module   Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  content   Json
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   progress UserLessonProgress[]
 
   @@index([moduleId, order])

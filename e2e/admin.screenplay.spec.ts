@@ -458,6 +458,38 @@ test.describe("admin Piiyaak (Screenplay)", () => {
     }
   });
 
+  test("ilustraciones: sin coincidencia se asigna manual desde el modal", async ({ page }) => {
+    const stamp = Date.now();
+    const n1 = `E2E Asig ${stamp}`;
+    const f1 = `e2e-sinmatch-${stamp}.png`;
+    const id1 = await crearFichaE2E(page, n1);
+    try {
+      await page.goto("/admin/ilustraciones");
+      await page.getByLabel("Elegir imágenes para el lote").setInputFiles([
+        { name: f1, mimeType: "image/png", buffer: PNG_AZUL_1X1 },
+      ]);
+      await expect(page.getByText("sin coincidencia").first()).toBeVisible({ timeout: 15000 });
+
+      // Asignar: el modal precarga el stem del archivo (sin resultados)…
+      await page.getByRole("button", { name: `Asignar ${f1}` }).click();
+      const buscador = page.getByRole("textbox", { name: "Buscar ficha para asignar" });
+      await expect(buscador).toBeVisible();
+      await expect(page.getByText(/Sin resultados para/)).toBeVisible();
+
+      // …buscar la ficha creada y elegirla.
+      await buscador.fill(n1);
+      await page.getByRole("button", { name: new RegExp(n1) }).first().click();
+
+      // La fila queda asignada (label ficha) y reasignable; el ciclo de subida
+      // final ya lo cubren los tests de lote con R2.
+      await expect(page.getByText(`→ ${n1} / E2EYuwe ${n1}`)).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText("sin coincidencia")).toBeHidden();
+      await expect(page.getByRole("button", { name: `Cambiar asignación de ${f1}` })).toBeVisible();
+    } finally {
+      await borrarFichaE2E(page, id1);
+    }
+  });
+
   // Fase audios: WAV sintetizado de 1s (RIFF/WAVE valido para la firma binaria)
   function wavBytes(segundos = 1, freq = 440): Buffer {
     const rate = 44100;

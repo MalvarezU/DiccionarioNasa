@@ -13,7 +13,12 @@ export type FileRef = { name: string }
 export type BulkMatch = { file: FileRef; wordId: string; wordLabel: string }
 export type BulkUnmatched = { file: FileRef; reason: "sin coincidencia" | "ambiguo" }
 
-function normalizeStem(name: string): string {
+/**
+ * Normaliza un nombre de archivo/etiqueta para comparar: quita extensión,
+ * convierte -/_ en espacios, saca diacríticos y baja a minúsculas. La usa el
+ * matching del lote y el buscador de asignación manual (misma regla en ambos).
+ */
+export function normalizeStem(name: string): string {
   const dot = name.lastIndexOf(".")
   const stem = (dot === -1 ? name : name.slice(0, dot)).trim()
   return (

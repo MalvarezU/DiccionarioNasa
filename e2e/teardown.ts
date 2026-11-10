@@ -9,6 +9,8 @@ import { config as dotenv } from "dotenv";
  * - Cursos "E2E *" (cascada: módulos, lecciones, progreso).
  * - Imágenes subidas por la suite, con nombre "e2e-*" (van a Postgres como
  *   bytea: sin esta limpieza cada corrida acumularía binarios).
+ * - Logs SUGGEST "E2E Sug ..." de la suite de logs (el resto del AuditLog
+ *   queda como histórico).
  */
 async function teardown() {
   // Sin DATABASE_URL exportado (p.ej. corrida manual sin e2e-local.sh),
@@ -40,8 +42,13 @@ async function teardown() {
     const media = await db.mediaAsset.deleteMany({
       where: { filename: { startsWith: "e2e-" } },
     });
+    // Sugerencias creadas por la suite de logs (términos "E2E Sug ..."):
+    // el resto del AuditLog es histórico y jamás se toca.
+    const suggestLogs = await db.auditLog.deleteMany({
+      where: { action: "SUGGEST", changes: { contains: '"E2E Sug ' } },
+    });
     console.log(
-      `[teardown] sesiones juego: ${sessions.count}, palabras: ${words.count}, usuarios: ${users.count}, cursos: ${courses.count}, imágenes: ${media.count}`
+      `[teardown] sesiones juego: ${sessions.count}, palabras: ${words.count}, usuarios: ${users.count}, cursos: ${courses.count}, imágenes: ${media.count}, sugerencias: ${suggestLogs.count}`
     );
   } finally {
     await db.$disconnect();

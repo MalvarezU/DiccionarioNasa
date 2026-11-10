@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, render, screen } from "@testing-library/react"
-import { Reveal } from "./reveal"
+import type * as RevealModule from "./reveal"
 
 type IOCallback = (entries: Array<{ isIntersecting: boolean; target: Element }>) => void
 
@@ -8,11 +8,17 @@ type IOCallback = (entries: Array<{ isIntersecting: boolean; target: Element }>)
  * Contrato del Reveal on scroll (B2): contenido siempre en DOM, oculto hasta
  * intersectar (threshold ~0.15), disparo único con disconnect, reduced-motion
  * directo sin observar, delay/className/`as` passthrough.
+ *
+ * Anti-flicker: la animación solo ocurre en la primera carga (F5); una vez
+ * revelado al menos una vez en la sesión SPA, los montajes siguientes
+ * arrancan visibles sin observar. Como el flag vive a nivel módulo, cada
+ * test importa un módulo fresco (`vi.resetModules` + import dinámico).
  */
 describe("Reveal", () => {
   const RealIO = globalThis.IntersectionObserver
   const realMatchMedia = globalThis.matchMedia
 
+  let Reveal: typeof RevealModule.Reveal
   let callbacks: IOCallback[]
   let observed: Element[]
   let lastOptions: IntersectionObserverInit | undefined
@@ -28,15 +34,10 @@ describe("Reveal", () => {
     })
   }
 
-  beforeEach(() => {
-    callbacks = []
-    observed = []
-    lastOptions = undefined
-    constructed = 0
-    disconnected = 0
+  function mockReducedMotion(matches: boolean) {
     globalThis.matchMedia = (() => ({
-      matches: false,
-      media: "",
+      matches,
+      media: matches ? "(prefers-reduced-motion: reduce)" : "",
       onchange: null,
       addListener: () => {},
       removeListener: () => {},
@@ -44,6 +45,15 @@ describe("Reveal", () => {
       removeEventListener: () => {},
       dispatchEvent: () => false,
     })) as unknown as typeof globalThis.matchMedia
+  }
+
+  beforeEach(async () => {
+    callbacks = []
+    observed = []
+    lastOptions = undefined
+    constructed = 0
+    disconnected = 0
+    mockReducedMotion(false)
     globalThis.IntersectionObserver = class {
       constructor(cb: IOCallback, options?: IntersectionObserverInit) {
         constructed += 1
@@ -58,11 +68,15 @@ describe("Reveal", () => {
         disconnected += 1
       }
     } as unknown as typeof IntersectionObserver
+    // Módulo fresco: el flag de sesión SPA arranca en false en cada test.
+    vi.resetModules()
+    ;({ Reveal } = await import("./reveal"))
   })
 
   afterEach(() => {
     globalThis.IntersectionObserver = RealIO
     globalThis.matchMedia = realMatchMedia
+    vi.resetModules()
   })
 
   it("contenido siempre en DOM, oculto hasta intersectar (threshold ~0.15)", () => {
@@ -112,16 +126,7 @@ describe("Reveal", () => {
   })
 
   it("respeta prefers-reduced-motion: muestra directo sin observar", () => {
-    globalThis.matchMedia = (() => ({
-      matches: true,
-      media: "(prefers-reduced-motion: reduce)",
-      onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => false,
-    })) as unknown as typeof globalThis.matchMedia
+    mockReducedMotion(true)
     const { container } = render(
       <Reveal>
         <p>Sin animación</p>
@@ -139,5 +144,45 @@ describe("Reveal", () => {
       </Reveal>
     )
     expect(container.firstElementChild?.className).toContain("is-visible")
+  })
+
+  it("navegación cliente: tras un reveal, los montajes siguientes arrancan visibles sin observar", () => {
+    const first = render(
+      <Reveal>
+        <p>Primera carga</p>
+      </Reveal>
+    )
+    expect(first.container.firstElementChild?.className).not.toContain("is-visible")
+    fire(0, true)
+    expect(first.container.firstElementChild?.className).toContain("is-visible")
+    first.unmount()
+
+    const constructedAfterFirst = constructed
+    const second = render(
+      <Reveal>
+        <p>Navegación cliente</p>
+      </Reveal>
+    )
+    // Visible desde el primer paint (sin flash de opacity:0) y sin observer.
+    expect(second.container.firstElementChild?.className).toContain("is-visible")
+    expect(constructed).toBe(constructedAfterFirst)
+  })
+
+  it("sin ningún reveal previo, cada montaje conserva la animación (oculto → observer)", () => {
+    const first = render(
+      <Reveal>
+        <p>Uno</p>
+      </Reveal>
+    )
+    // Sin intersectar: el flag de sesión sigue en false, el siguiente
+    // montaje también arranca oculto con su propio observer.
+    first.unmount()
+    const second = render(
+      <Reveal>
+        <p>Dos</p>
+      </Reveal>
+    )
+    expect(second.container.firstElementChild?.className).not.toContain("is-visible")
+    expect(constructed).toBe(2)
   })
 })

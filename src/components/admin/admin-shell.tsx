@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Images,
   LayoutDashboard,
+  Lightbulb,
   Users,
 } from "lucide-react"
 import type { ComponentType } from "react"
@@ -52,7 +53,10 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Diccionario",
-    items: [{ title: "Palabras", href: "/admin/palabras", icon: BookOpen }],
+    items: [
+      { title: "Palabras", href: "/admin/palabras", icon: BookOpen },
+      { title: "Sugerencias", href: "/admin/sugerencias", icon: Lightbulb },
+    ],
   },
   {
     label: "Cursos",

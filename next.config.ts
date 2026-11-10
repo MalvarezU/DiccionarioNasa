@@ -24,6 +24,12 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  experimental: {
+    // Sandbox de build en hosting compartido (Hostinger): limita hilos/
+    // procesos que el sandbox no puede crear (os error 11 con 63 workers).
+    cpus: 2,
+    workerThreads: false,
+  },
   allowedDevOrigins: [
     "preview-chat-c0b3a305-afb6-43bb-a109-680dbc0aec86.space-z.ai",
   ],

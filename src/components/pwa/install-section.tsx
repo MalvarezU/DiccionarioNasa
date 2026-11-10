@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { QRCodeSVG } from "qrcode.react"
-import { Check, Copy, Download, MonitorDown, Smartphone } from "lucide-react"
+import { Check, Download, MonitorDown, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { InstallDialog, type InstallVariant } from "./install-dialog"
@@ -22,19 +21,7 @@ type ManualVariant = InstallVariant
  */
 export function InstallSection() {
   const { instalPromptDisponible, instalada, instalar } = useInstallPrompt()
-  const [copiado, setCopiado] = useState(false)
   const [manual, setManual] = useState<ManualVariant | null>(null)
-  const origen = typeof window !== "undefined" ? window.location.origin : ""
-
-  const copiar = async () => {
-    try {
-      await navigator.clipboard.writeText(origen || window.location.href)
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 2000)
-    } catch {
-      // clipboard no disponible (http/permisos): no se rompe nada
-    }
-  }
 
   const accionar = (origen: Exclude<ManualVariant, "ios">) => {
     setManual(isIOSDevice() ? "ios" : origen)
@@ -104,29 +91,18 @@ export function InstallSection() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 rounded-xl border bg-card p-6">
-          <div className="bg-card p-3 rounded-lg shrink-0" aria-hidden={false}>
-            <QRCodeSVG
-              value={origen || "https://piiyaak.org"}
-              size={160}
-              role="img"
-              aria-label={`Código QR para abrir ${origen || "Piiyaak"}`}
-            />
-          </div>
           <div className="text-center sm:text-left max-w-sm">
-            <p className="font-semibold text-sm">Pasala a otro celular</p>
-            <p className="text-xs text-muted-foreground mt-1 break-all">
-              Escaneá el QR o copiá el enlace:{" "}
-              <span className="font-mono">{origen}</span>
+            <p className="font-semibold text-sm">Descargá la app (APK)</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Instalación directa en Android. Disponible próximamente.
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 mt-3"
-              onClick={() => void copiar()}
+            <a
+              href="/descargas/piiyaak.apk"
+              className="inline-flex items-center gap-2 mt-3 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
-              {copiado ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {copiado ? "¡Copiado!" : "Copiar enlace"}
-            </Button>
+              <Download className="h-3.5 w-3.5" />
+              Descargar APK
+            </a>
           </div>
         </div>
       </div>

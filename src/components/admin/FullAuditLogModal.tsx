@@ -34,7 +34,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AuditLogDetailDialog } from "./audit-log-detail-dialog"
-import { isRevertible, revertedOriginalId } from "@/lib/audit-revert"
+import { isRevertible, revertedOriginalId, parseAuditChanges } from "@/lib/audit-revert"
+/** Para SUGGEST la columna muestra el término (no el JSON crudo). */
+function suggestTerm(changes: string | null): string | null {
+  const rows = parseAuditChanges(changes).rows
+  const first = rows[0]
+  return first && first.label === "Palabra sugerida" && typeof first.before === "string"
+    ? first.before
+    : null
+}
 import {
   type AuditLogEntry,
   formatDate,
@@ -338,7 +346,9 @@ export function FullAuditLogModal({
                           </span>
                         </TableCell>
                         <TableCell className="text-2xs text-muted-foreground max-w-[200px] truncate">
-                          {log.changes || "—"}
+                          {log.action === "SUGGEST"
+                            ? (suggestTerm(log.changes) ?? "—")
+                            : (log.changes || "—")}
                         </TableCell>
                       </TableRow>
                     ))}

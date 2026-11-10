@@ -3,7 +3,9 @@ import { NextRequest } from "next/server"
 
 vi.mock("@/lib/db", () => ({
   db: {
-    $queryRaw: vi.fn(),
+    dictionaryWord: {
+      findMany: vi.fn(),
+    },
   },
 }))
 
@@ -21,6 +23,11 @@ const mockRawResults = [
   { id: "2", spanish: "casamiento", nasaYuwe: "kasamyento", pronunciation: null, category: "sustantivo" },
   { id: "3", spanish: "casco", nasaYuwe: "kasko", pronunciation: null, category: "sustantivo" },
 ]
+
+/** Los mocks son filas parciales del modelo: castear a never satisface el tipo de findMany. */
+function mockFindMany(words: unknown[]) {
+  vi.mocked(db.dictionaryWord.findMany).mockResolvedValue(words as never)
+}
 
 describe("GET /api/dictionary/search", () => {
   beforeEach(() => {
@@ -47,7 +54,7 @@ describe("GET /api/dictionary/search", () => {
     })
 
     it("accepts a single-character query", async () => {
-      vi.mocked(db.$queryRaw).mockResolvedValue(mockRawResults)
+      mockFindMany(mockRawResults)
 
       const response = await GET(req("a"))
       expect(response.status).toBe(200)
@@ -59,7 +66,7 @@ describe("GET /api/dictionary/search", () => {
 
   describe("happy path", () => {
     it("returns ranked search results", async () => {
-      vi.mocked(db.$queryRaw).mockResolvedValue(mockRawResults)
+      mockFindMany(mockRawResults)
 
       const response = await GET(req("cas"))
       expect(response.status).toBe(200)
@@ -75,7 +82,7 @@ describe("GET /api/dictionary/search", () => {
         { id: "2", spanish: "casa", nasaYuwe: "y", pronunciation: null, category: "n" },
         { id: "3", spanish: "cas", nasaYuwe: "z", pronunciation: null, category: "n" },
       ]
-      vi.mocked(db.$queryRaw).mockResolvedValue(results)
+      mockFindMany(results)
 
       const response = await GET(req("cas"))
       const body = await response.json()
@@ -91,7 +98,7 @@ describe("GET /api/dictionary/search", () => {
         pronunciation: null,
         category: "n",
       }))
-      vi.mocked(db.$queryRaw).mockResolvedValue(manyResults)
+      mockFindMany(manyResults)
 
       const response = await GET(req("casa"))
       const body = await response.json()
@@ -105,7 +112,7 @@ describe("GET /api/dictionary/search", () => {
         { id: "2", spanish: "cas", nasaYuwe: "z", pronunciation: null, category: "n" },
         { id: "3", spanish: "casa", nasaYuwe: "y", pronunciation: null, category: "n" },
       ]
-      vi.mocked(db.$queryRaw).mockResolvedValue(results)
+      mockFindMany(results)
 
       const response = await GET(req("cas"))
       const body = await response.json()
@@ -119,14 +126,14 @@ describe("GET /api/dictionary/search", () => {
 
   describe("edge cases", () => {
     it("returns 500 on database error", async () => {
-      vi.mocked(db.$queryRaw).mockRejectedValue(new Error("DB error"))
+      vi.mocked(db.dictionaryWord.findMany).mockRejectedValue(new Error("DB error"))
 
       const response = await GET(req("test"))
       expect(response.status).toBe(500)
     })
 
     it("returns empty array for no matches", async () => {
-      vi.mocked(db.$queryRaw).mockResolvedValue([])
+      mockFindMany([])
 
       const response = await GET(req("xyzxyz"))
       const body = await response.json()
@@ -140,7 +147,7 @@ describe("GET /api/dictionary/search", () => {
         { id: "1", spanish: "arbol", nasaYuwe: "x", pronunciation: null, category: "n" },
         { id: "2", spanish: "árbol", nasaYuwe: "y", pronunciation: null, category: "n" },
       ]
-      vi.mocked(db.$queryRaw).mockResolvedValue(results)
+      mockFindMany(results)
 
       const response = await GET(req("arbol"))
       const body = await response.json()
@@ -151,12 +158,12 @@ describe("GET /api/dictionary/search", () => {
     })
 
     it("passes the query to the raw SQL", async () => {
-      vi.mocked(db.$queryRaw).mockResolvedValue([])
+      mockFindMany([])
 
       await GET(req("sol"))
 
       // Verify the query was included in the SQL (template literal)
-      expect(vi.mocked(db.$queryRaw)).toHaveBeenCalled()
+      expect(vi.mocked(db.dictionaryWord.findMany)).toHaveBeenCalled()
     })
   })
 })

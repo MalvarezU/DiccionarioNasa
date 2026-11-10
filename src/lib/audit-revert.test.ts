@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   parseAuditChanges,
+  parseSuggestion,
   isRevertible,
   revertedOriginalId,
 } from "@/lib/audit-revert"
@@ -45,6 +46,39 @@ describe("audit-revert helpers", () => {
     const c = JSON.stringify({ originalLogId: "abc", restored: { category: "sustantivo" }, responsable: "admin" })
     const r = parseAuditChanges(c)
     expect(r.summary).toBe("Cambio revertido")
+  })
+
+  it("shape sugerencia {term, comment} devuelve fila Palabra sugerida", () => {
+    const c = JSON.stringify({ term: "yat", comment: "la escuché en clase", source: "community" })
+    const r = parseAuditChanges(c)
+    expect(r.rows).toHaveLength(1)
+    expect(r.rows[0].label).toBe("Palabra sugerida")
+    expect(r.rows[0].before).toBe("yat")
+    expect(r.rows[0].after).toBe("la escuché en clase")
+  })
+
+  it("shape sugerencia sin comentario usa placeholder", () => {
+    const c = JSON.stringify({ term: "yat", comment: null, source: "community" })
+    const r = parseAuditChanges(c)
+    expect(r.rows).toHaveLength(1)
+    expect(r.rows[0].before).toBe("yat")
+    expect(r.rows[0].after).toBe("(sin comentario)")
+  })
+
+  it("parseSuggestion lee term/comment/status", () => {
+    const s = parseSuggestion(JSON.stringify({ term: " yat ", comment: "x", source: "community", status: "DONE", decidedAt: "2026-01-01", decidedBy: "a@b.c" }))
+    expect(s).toEqual({ term: "yat", comment: "x", status: "DONE", decidedAt: "2026-01-01", decidedBy: "a@b.c" })
+  })
+
+  it("parseSuggestion: log viejo sin status es PENDING", () => {
+    const s = parseSuggestion(JSON.stringify({ term: "yat", comment: null, source: "community" }))
+    expect(s?.status).toBe("PENDING")
+  })
+
+  it("parseSuggestion: null ante JSON inválido o sin term", () => {
+    expect(parseSuggestion(null)).toBeNull()
+    expect(parseSuggestion("{bad")).toBeNull()
+    expect(parseSuggestion(JSON.stringify({ comment: "x" }))).toBeNull()
   })
 
   it("JSON malformado devuelve el texto crudo como summary", () => {
