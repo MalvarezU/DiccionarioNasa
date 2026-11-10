@@ -108,7 +108,8 @@ describe("GET /api/sync/full [Fase B W3b]", () => {
     expect(Object.keys(body).sort()).toEqual(
       ["contentVersion", "courses", "media", "words"].sort()
     )
-    expect(body.contentVersion).toBe(41)
+    expect(body.contentVersion).toBe("41")
+    expect(typeof body.contentVersion).toBe("string")
     expect(body.words).toHaveLength(1)
     expect(body.words[0]).toMatchObject({ id: "w1", status: "PUBLISHED" })
     expect(typeof body.words[0].updatedAt).toBe("string")
@@ -185,7 +186,7 @@ describe("GET /api/sync/full [Fase B W3b]", () => {
     const res = await GET(authed() as never)
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({
-      contentVersion: 41, words: [], courses: [], media: [],
+      contentVersion: "41", words: [], courses: [], media: [],
     })
   })
 
@@ -348,6 +349,6 @@ describe("GET /api/sync/full [Fase B W3b]", () => {
       }) as never
     )
     expect(current.status).toBe(200)
-    expect((await current.json()).contentVersion).toBe(41)
+    expect((await current.json()).contentVersion).toBe("41")
   })
 })

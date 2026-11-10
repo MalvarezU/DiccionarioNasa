@@ -79,6 +79,35 @@ export function audioRefToKey(ref: string | null | undefined): string | null {
 }
 
 /**
+ * Referencia a un MediaAsset derivada de un `illustrationUrl` guardado:
+ * - legacy `/api/media/<id>` → fila por id
+ * - URL pública R2 actual → fila por objectKey (se recorta la base)
+ *
+ * Devuelve null si no se puede resolver a una fila (externa o vacía),
+ * igual que `audioRefToKey` devuelve null para rutas locales.
+ */
+export type IllustrationAssetRef =
+  | { kind: "id"; id: string }
+  | { kind: "key"; objectKey: string }
+
+export function illustrationRefToAssetRef(
+  ref: string | null | undefined
+): IllustrationAssetRef | null {
+  if (!ref || typeof ref !== "string") return null
+
+  const legacy = ref.match(/^\/api\/media\/([\w-]+)\/?$/)
+  if (legacy?.[1]) return { kind: "id", id: legacy[1] }
+
+  const base = r2PublicBase()
+  if (base && ref.startsWith(`${base}/`)) {
+    const key = ref.split("?")[0]!.slice(base.length + 1)
+    return isSafeKey(key) ? { kind: "key", objectKey: key } : null
+  }
+
+  return null
+}
+
+/**
  * Portadas de curso: solo URLs de media propia.
  * Acepta el redirect legacy `/api/media/<id>` (302 a R2) y la base pública R2.
  */

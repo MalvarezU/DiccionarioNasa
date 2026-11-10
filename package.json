@@ -27,6 +27,7 @@
     "db:migrate-media-to-r2": "npx tsx prisma/migrate-media-to-r2.ts",
     "db:r2-prune": "npx tsx prisma/r2-prune.ts",
     "db:backfill-sha256": "npx tsx prisma/backfill-media-sha256.ts",
+    "seed:build": "npx tsx scripts/build-content-bundle.ts --out dist/seed",
     "db:test:up": "podman compose -f docker-compose.test.yml up -d",
     "db:test:up:mysql": "podman compose -f docker-compose.test.mysql.yml up -d",
     "db:test:migrate": "set -a; . ./.env.test; set +a; prisma migrate deploy",
