@@ -1,13 +1,18 @@
 "use client"
 
-import { Loader2, UploadCloud } from "lucide-react"
+import { useState } from "react"
+import { Loader2, Search, UploadCloud, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   bulkActionFor,
   type BulkPolicy,
   type BulkRowDecision,
 } from "@/lib/media/bulk-policy"
-import type { MediaBulkDone, MediaBulkRow } from "./use-media-words-manager"
+import { normalizeStem } from "@/lib/media/bulk-match"
+import type { BulkAssignCandidate, MediaBulkDone, MediaBulkRow } from "./use-media-words-manager"
 
 export interface MediaBulkCardTexts {
   description: string
@@ -20,6 +25,8 @@ export interface MediaBulkCardTexts {
   replaceTitle: string
   /** "omitidos" (audios) u "omitidas" (ilustraciones): el copy de cada panel. */
   omittedWord: string
+  /** "ya tiene audio" / "ya tiene ilustración": badge en los candidatos del modal. */
+  existingBadge: string
   emptyHint: string
 }
 
@@ -32,6 +39,12 @@ export interface MediaBulkCardProps {
   onPolicyChange: (policy: BulkPolicy) => void
   onRun: () => void
   onRowDecision: (index: number, decision: BulkRowDecision) => void
+  /** Búsqueda del modal de asignación (filtrada por el hook, en memoria). */
+  onSearchWords: (query: string) => BulkAssignCandidate[]
+  /** Elección del modal: index de la fila + id de la ficha elegida. */
+  onAssignWord: (index: number, wordId: string) => void
+  /** Quita una fila del lote (archivo que no corresponde). */
+  onRemoveRow: (index: number) => void
   texts: MediaBulkCardTexts
   /**
    * Section identity tone, derived from the manager's config.field
@@ -46,6 +59,10 @@ export interface MediaBulkCardProps {
  * ilustraciones: mismos tokens de estado (secondary/destructive/primary/
  * tertiary), solo cambian los textos que recibe por props y el tono de
  * identidad del header (`tone`, derivado del config.field de cada panel).
+ *
+ * Las filas sin coincidencia (o ambiguas) ofrecen asignación manual: un
+ * modal con buscador sobre el diccionario; la fila elegida entra al mismo
+ * "Subir lote" con la política vigente.
  */
 export function MediaBulkCard({
   bulk,
@@ -56,10 +73,34 @@ export function MediaBulkCard({
   onPolicyChange,
   onRun,
   onRowDecision,
+  onSearchWords,
+  onAssignWord,
+  onRemoveRow,
   texts,
   tone = "primary",
 }: MediaBulkCardProps) {
   const toneChip = tone === "tertiary" ? "bg-tertiary/10 text-tertiary" : "bg-primary/10 text-primary"
+
+  // Índice de la fila que está asignando (null = modal cerrado).
+  const [assignIndex, setAssignIndex] = useState<number | null>(null)
+  const [query, setQuery] = useState("")
+  const asignando = assignIndex !== null ? bulk[assignIndex] : null
+  const candidatos = assignIndex !== null ? onSearchWords(query) : []
+
+  function abrirModal(index: number) {
+    // Precarga la búsqueda con el stem del archivo: en filas ambiguas los
+    // candidatos conflictivos aparecen primero; en sin coincidencia ayuda
+    // si el nombre se parece a la ficha.
+    setQuery(normalizeStem(bulk[index]?.file.name ?? ""))
+    setAssignIndex(index)
+  }
+
+  function elegir(wordId: string) {
+    if (assignIndex !== null) onAssignWord(assignIndex, wordId)
+    setAssignIndex(null)
+    setQuery("")
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
       {/* Header */}
@@ -135,6 +176,42 @@ export function MediaBulkCard({
                   ) : (
                     <span className="text-xs font-medium text-destructive">→ {b.reason}</span>
                   )}
+                  {b.reason !== null ? (
+                    <span className="flex shrink-0 gap-1">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => abrirModal(i)}
+                        aria-label={`Asignar ${b.file.name}`}
+                      >
+                        Asignar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => onRemoveRow(i)}
+                        aria-label={`Quitar ${b.file.name} del lote`}
+                        title="Quitar del lote"
+                      >
+                        Quitar
+                      </Button>
+                    </span>
+                  ) : b.assigned ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 shrink-0 px-2 text-xs"
+                      onClick={() => abrirModal(i)}
+                      aria-label={`Cambiar asignación de ${b.file.name}`}
+                    >
+                      Cambiar
+                    </Button>
+                  ) : null}
                   {b.wordId && b.hasExisting && bulkPolicy === "per-row" && b.status === "pendiente" ? (
                     <span className="flex shrink-0 gap-1">
                       <Button
@@ -193,6 +270,9 @@ export function MediaBulkCard({
               <p className="text-sm">
                 Lote terminado: {bulkDone.ok} subidas, {bulkDone.omitidos} {texts.omittedWord},{" "}
                 {bulkDone.errores} errores.
+                {bulkDone.sinAsignar > 0 ? (
+                  <span className="font-medium text-destructive"> {bulkDone.sinAsignar} sin asignar.</span>
+                ) : null}
               </p>
             </div>
           ) : null}
@@ -200,6 +280,64 @@ export function MediaBulkCard({
       ) : (
         <p className="border-t px-5 py-4 text-xs text-muted-foreground">{texts.emptyHint}</p>
       )}
+
+      {/* Modal de asignación manual */}
+      <Dialog open={assignIndex !== null} onOpenChange={(v) => (!v ? setAssignIndex(null) : undefined)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Asignar ficha</DialogTitle>
+            <DialogDescription className="truncate font-mono text-xs">
+              {asignando?.file.name ?? ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Nasa Yuwe o Español…"
+              className="pl-9"
+              aria-label="Buscar ficha para asignar"
+              autoFocus
+            />
+          </div>
+
+          {query.trim().length > 0 && candidatos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin resultados para “{query.trim()}”.</p>
+          ) : null}
+
+          {candidatos.length > 0 ? (
+            <ul className="max-h-64 space-y-1 overflow-y-auto">
+              {candidatos.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => elegir(c.id)}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-surface-container-high"
+                  >
+                    <span className="font-serif font-bold text-primary">{c.nasaYuwe}</span>
+                    <span className="text-muted-foreground">⇄ {c.spanish}</span>
+                    {c.category ? <Badge variant="secondary">{c.category}</Badge> : null}
+                    {c.hasExisting ? <Badge variant="outline">{texts.existingBadge}</Badge> : null}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="self-start text-xs text-muted-foreground"
+            onClick={() => setAssignIndex(null)}
+          >
+            <X className="mr-1 h-3 w-3" /> Cancelar
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

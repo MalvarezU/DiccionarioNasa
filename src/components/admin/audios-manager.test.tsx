@@ -14,8 +14,10 @@ vi.mock("@/lib/audio/compress-audio", () => ({
   opusFileName: (n: string) => n.replace(/\.[^.]*$/, "") + ".ogg",
 }))
 
-vi.mock("@/lib/media/bulk-match", () => ({
-  // use real-ish matching by filename stem
+vi.mock("@/lib/media/bulk-match", async (importOriginal) => ({
+  // matching mockeado (stem simple), pero normalizeStem real: la búsqueda
+  // del modal de asignación lo usa.
+  ...(await importOriginal<Record<string, unknown>>()),
   matchIllustrationFiles: vi.fn(),
 }))
 
@@ -328,6 +330,135 @@ describe("AudiosManager — lote", () => {
     expect(btn.disabled).toBe(true)
 
     expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter((c) => String(c[0]).includes("/api/admin/upload-audio")).length).toBe(uploadsBefore)
+  })
+
+  it("asignación manual: modal busca y la fila entra al mismo lote", { timeout: 30000 }, async () => {
+    render(<AudiosManager />)
+    await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
+
+    await act(async () => {
+      const input = document.querySelector('input[aria-label="Elegir audios para el lote"]') as HTMLInputElement
+      fireEvent.change(input, { target: { files: [new File(["x"], "SinMatch.mp3", { type: "audio/mpeg" })] as unknown as FileList } })
+      await new Promise((r) => setTimeout(r, 2000))
+    })
+    await waitFor(() => expect(bodyHas("sin coincidencia")).toBeTruthy(), { timeout: 5000 })
+
+    // Abrir el modal: la búsqueda se precarga con el stem del archivo.
+    fireEvent.click(screen.getByRole("button", { name: "Asignar SinMatch.mp3" }))
+    const buscador = await screen.findByRole("textbox", { name: "Buscar ficha para asignar" })
+
+    // Buscar "casa": aparece el candidato (client-side, sin fetch).
+    fireEvent.change(buscador, { target: { value: "casa" } })
+    expect(bodyHas(/sin resultados/i)).toBeFalsy()
+    fireEvent.click(screen.getByRole("button", { name: /Yat\s*⇄\s*Casa/ }))
+
+    // La fila quedó asignada y lista para el mismo lote.
+    await waitFor(() => expect(bodyHas("→ Casa / Yat")).toBeTruthy(), { timeout: 5000 })
+    expect(bodyHas("sin coincidencia")).toBeFalsy()
+    const btn = screen.getByRole("button", { name: /subir lote/i }) as HTMLButtonElement
+    expect(btn.disabled).toBe(false)
+
+    await act(async () => {
+      btn.click()
+      await new Promise((r) => setTimeout(r, 2000))
+    })
+    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidas, 0 omitidos, 0 errores\./)).toBeTruthy(), { timeout: 15000 })
+    expect(bodyHas("sin asignar")).toBeFalsy()
+    // El PUT guardó el audio en la ficha elegida.
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      expect.stringContaining("/api/admin/words/w1"),
+      expect.objectContaining({ method: "PUT" })
+    )
+  })
+
+  it("asignación manual: el admin puede reasignar con Cambiar", { timeout: 30000 }, async () => {
+    render(<AudiosManager />)
+    await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
+
+    await act(async () => {
+      const input = document.querySelector('input[aria-label="Elegir audios para el lote"]') as HTMLInputElement
+      fireEvent.change(input, { target: { files: [new File(["x"], "SinMatch.mp3", { type: "audio/mpeg" })] as unknown as FileList } })
+      await new Promise((r) => setTimeout(r, 2000))
+    })
+    await waitFor(() => expect(bodyHas("sin coincidencia")).toBeTruthy(), { timeout: 5000 })
+
+    fireEvent.click(screen.getByRole("button", { name: "Asignar SinMatch.mp3" }))
+    const buscador = await screen.findByRole("textbox", { name: "Buscar ficha para asignar" })
+    fireEvent.change(buscador, { target: { value: "casa" } })
+    fireEvent.click(screen.getByRole("button", { name: /Yat\s*⇄\s*Casa/ }))
+    await waitFor(() => expect(bodyHas("→ Casa / Yat")).toBeTruthy(), { timeout: 5000 })
+
+    // Reasignar a Agua (que ya tiene audio: el badge avisa).
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar asignación de SinMatch.mp3" }))
+    const buscador2 = await screen.findByRole("textbox", { name: "Buscar ficha para asignar" })
+    fireEvent.change(buscador2, { target: { value: "agua" } })
+    fireEvent.click(screen.getByRole("button", { name: /Yu'\s*⇄\s*Agua/ }))
+    await waitFor(() => expect(bodyHas("→ Agua / Yu'")).toBeTruthy(), { timeout: 5000 })
+  })
+
+  it("las asignaciones manuales sobreviven a un re-prepare del lote", { timeout: 30000 }, async () => {
+    render(<AudiosManager />)
+    await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
+
+    const makeFiles = () => [new File(["x"], "SinMatch.mp3", { type: "audio/mpeg" })] as unknown as FileList
+    await act(async () => {
+      const input = document.querySelector('input[aria-label="Elegir audios para el lote"]') as HTMLInputElement
+      fireEvent.change(input, { target: { files: makeFiles() } })
+      await new Promise((r) => setTimeout(r, 2000))
+    })
+    await waitFor(() => expect(bodyHas("sin coincidencia")).toBeTruthy(), { timeout: 5000 })
+
+    fireEvent.click(screen.getByRole("button", { name: "Asignar SinMatch.mp3" }))
+    const buscador = await screen.findByRole("textbox", { name: "Buscar ficha para asignar" })
+    fireEvent.change(buscador, { target: { value: "casa" } })
+    fireEvent.click(screen.getByRole("button", { name: /Yat\s*⇄\s*Casa/ }))
+    await waitFor(() => expect(bodyHas("→ Casa / Yat")).toBeTruthy(), { timeout: 5000 })
+
+    // Re-prepare con el MISMO archivo (nombre+tamaño): la asignación queda.
+    await act(async () => {
+      const input = document.querySelector('input[aria-label="Elegir audios para el lote"]') as HTMLInputElement
+      fireEvent.change(input, { target: { files: makeFiles() } })
+      await new Promise((r) => setTimeout(r, 2000))
+    })
+    await waitFor(() => expect(bodyHas("→ Casa / Yat")).toBeTruthy(), { timeout: 5000 })
+    expect(bodyHas("sin coincidencia")).toBeFalsy()
+  })
+
+  it("Quitar saca la fila del lote", { timeout: 30000 }, async () => {
+    render(<AudiosManager />)
+    await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
+
+    await act(async () => {
+      const input = document.querySelector('input[aria-label="Elegir audios para el lote"]') as HTMLInputElement
+      const files = [new File(["x"], "Casa.mp3", { type: "audio/mpeg" }), new File(["y"], "SinMatch.mp3", { type: "audio/mpeg" })]
+      fireEvent.change(input, { target: { files: files as unknown as FileList } })
+      await new Promise((r) => setTimeout(r, 2000))
+    })
+    await waitFor(() => expect(bodyHas("sin coincidencia")).toBeTruthy(), { timeout: 5000 })
+
+    fireEvent.click(screen.getByRole("button", { name: "Quitar SinMatch.mp3 del lote" }))
+    await waitFor(() => expect(bodyHas("SinMatch.mp3")).toBeFalsy(), { timeout: 5000 })
+    // La fila con match sigue intacta.
+    expect(bodyHas("→ Casa / Yat")).toBeTruthy()
+  })
+
+  it("el resumen del lote cuenta las filas sin asignar", { timeout: 30000 }, async () => {
+    render(<AudiosManager />)
+    await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
+
+    await act(async () => {
+      const input = document.querySelector('input[aria-label="Elegir audios para el lote"]') as HTMLInputElement
+      const files = [new File(["x"], "Casa.mp3", { type: "audio/mpeg" }), new File(["y"], "SinMatch.mp3", { type: "audio/mpeg" })]
+      fireEvent.change(input, { target: { files: files as unknown as FileList } })
+      await new Promise((r) => setTimeout(r, 2000))
+    })
+    await waitFor(() => expect(bodyHas("sin coincidencia")).toBeTruthy(), { timeout: 5000 })
+
+    await act(async () => {
+      screen.getByRole("button", { name: /subir lote/i }).click()
+      await new Promise((r) => setTimeout(r, 2000))
+    })
+    await waitFor(() => expect(bodyHas(/Lote terminado: 1 subidas, 0 omitidos, 0 errores\. 1 sin asignar\./)).toBeTruthy(), { timeout: 15000 })
   })
 })
 

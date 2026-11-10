@@ -67,6 +67,32 @@ describe("IllustrationsManager — lote", () => {
     await waitFor(() => expect(document.body.textContent).toContain("sin coincidencia"), { timeout: 5000 })
   })
 
+  it("asignación manual: modal busca y la fila queda lista (smoke del card compartido)", { timeout: 30000 }, async () => {
+    render(<IllustrationsManager />)
+    await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })
+
+    await act(async () => {
+      selectFiles(["SinMatch.png"])
+      await new Promise((r) => setTimeout(r, 500))
+    })
+    await waitFor(() => expect(bodyHas("sin coincidencia")).toBeTruthy(), { timeout: 5000 })
+
+    fireEvent.click(screen.getByRole("button", { name: "Asignar SinMatch.png" }))
+    const buscador = await screen.findByRole("textbox", { name: "Buscar ficha para asignar" })
+    fireEvent.change(buscador, { target: { value: "agua" } })
+
+    // Agua ya tiene ilustración: el candidato muestra el badge del panel.
+    const candidato = await screen.findByRole("button", { name: /Yu'\s*⇄\s*Agua/ })
+    expect(candidato.textContent).toContain("ya tiene ilustración")
+    fireEvent.click(candidato)
+
+    await waitFor(() => expect(bodyHas("→ Agua / Yu'")).toBeTruthy(), { timeout: 5000 })
+    expect(bodyHas("sin coincidencia")).toBeFalsy()
+    // Con política por defecto (skip-existing) y ficha que ya tiene, no hay nada subible.
+    const btn = screen.getByRole("button", { name: /subir lote/i }) as HTMLButtonElement
+    expect(btn.disabled).toBe(true)
+  })
+
   it("runBulk feliz", { timeout: 30000 }, async () => {
     render(<IllustrationsManager />)
     await waitFor(() => expect(bodyHas("Casa")).toBeTruthy(), { timeout: 5000 })

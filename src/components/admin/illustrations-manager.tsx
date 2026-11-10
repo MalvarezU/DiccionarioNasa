@@ -37,6 +37,7 @@ const illustrationBulkTexts: MediaBulkCardTexts = {
   policySelectId: "bulk-policy-ilus",
   keepTitle: "Conservar la imagen actual",
   replaceTitle: "Reemplazar por la nueva imagen",
+  existingBadge: "ya tiene ilustración",
   omittedWord: "omitidas",
   emptyHint: "Seleccioná archivos para previsualizar el lote y su estado.",
 }
@@ -76,6 +77,9 @@ export function IllustrationsManager() {
     prepareBulk,
     runBulk,
     setRowDecision,
+    searchBulkWords,
+    assignBulkWord,
+    removeBulkRow,
   } = useMediaWordsManager(illustrationConfig)
 
   return (
@@ -249,6 +253,9 @@ export function IllustrationsManager() {
         onPolicyChange={setBulkPolicy}
         onRun={() => void runBulk()}
         onRowDecision={setRowDecision}
+        onSearchWords={searchBulkWords}
+        onAssignWord={assignBulkWord}
+        onRemoveRow={removeBulkRow}
         texts={illustrationBulkTexts}
         tone="tertiary"
       />

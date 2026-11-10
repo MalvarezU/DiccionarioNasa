@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { matchIllustrationFiles } from "./bulk-match"
+import { matchIllustrationFiles, normalizeStem } from "./bulk-match"
 
 const WORDS = [
   { id: "w1", spanish: "Casa", nasaYuwe: "Yat" },
@@ -48,5 +48,12 @@ describe("matchIllustrationFiles", () => {
   it("nombre vacío o sin stem no matchea", () => {
     const { unmatched } = matchIllustrationFiles([{ name: ".png" }, { name: "" }], WORDS)
     expect(unmatched).toHaveLength(2)
+  })
+
+  it("normalizeStem: extensión, separadores, diacríticos y caso", () => {
+    expect(normalizeStem("Mi_Casa-Grande.PNG")).toBe("mi casa grande")
+    expect(normalizeStem("camión.jpg")).toBe("camion")
+    expect(normalizeStem("Yu'")).toBe("yu'")
+    expect(normalizeStem("  ")).toBe("")
   })
 })
