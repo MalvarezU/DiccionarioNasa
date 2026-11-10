@@ -113,7 +113,7 @@ jobs:
       # Paso 5 — SKIP barato por latest.json: si latest.contentVersion ya es
       # la versión generada, termina en verde sin subir nada. latest.json
       # ausente o ilegible → se continúa (primera publicación).
-      # Omitido en dry_run (paso 10: el dry-run no consulta R2).
+      # Omitido en dry_run (el dry-run no consulta R2).
       - name: Decidir SKIP por latest.json
         id: skip
         if: ${{ !inputs.dry_run }}
@@ -137,6 +137,11 @@ jobs:
             echo "latest.json ausente o ilegible; se continúa (primera publicación)"
           fi
 
+      # Guarda canónica de publicación (Fase D W4.3 E3): los pasos 6, 7, 8 y
+      # 10 comparten literalmente `if: ${{ !inputs.dry_run &&
+      # steps.skip.outputs.skip != 'true' }}`. Deduplicación documental: la
+      # expresión se repite idéntica a propósito (cero riesgo semántico);
+      # cualquier cambio futuro debe aplicarse a las 4 a la vez.
       # Paso 6 — guarda anti-sobrescritura: seed/<N>/ es inmutable; si el zip
       # ya existe, el job falla (re-publicar exige content_version distinto).
       # Omitido en dry_run.
@@ -186,7 +191,7 @@ jobs:
           done
           echo "publicado seed/$cv (zip + manifest.json) y verificado"
 
-      # Paso 8 (publicación real) — verificación post-publicación: re-descarga
+      # Paso 8 — verificación post-publicación (publicación real): re-descarga
       # ambos objetos publicados, compara bytes del zip contra el local y
       # sha256 de la db extraída contra manifest.dbSha256. Distinto → job
       # rojo (los objetos inmutables quedan; la corrección es una versión
@@ -216,7 +221,7 @@ jobs:
           fi
           echo "verificación post-publicación en verde: bytes idénticos, dbSha256=$expected_sha"
 
-      # Paso 8 (dry_run, local) — misma exigencia sin R2: formato del
+      # Paso 9 — verificación local (dry_run): misma exigencia sin R2:
       # manifiesto, layout del zip y dbSha256 recomputado contra dist/seed.
       - name: Verificación local (dry_run)
         if: ${{ inputs.dry_run }}
@@ -235,9 +240,15 @@ jobs:
           fi
           echo "verificación local dry_run en verde: dbSha256=$expected_sha"
 
-      # Paso 9 — actualizar seed/latest.json con un único putObject (el PUT
+      # Paso 10 — actualizar seed/latest.json con un único putObject (el PUT
       # es atómico; nunca hay latest.json parcial) y verificar con
       # objectExists. Omitido en dry_run.
+      # Definición canónica de bytesTotal (Fase D W4.2 E2): bytesTotal =
+      # dbBytes + Σ files[].size, calculada por emitManifest
+      # (src/lib/seed/bundle-builder.ts:537) sobre el manifest.json generado.
+      # Este paso REPLICA ese valor con `jq -r '.bytesTotal'`; nunca lo
+      # recalcula por otra vía. Si un lector necesita el total, lo lee del
+      # manifiesto.
       - name: Actualizar latest.json
         if: ${{ !inputs.dry_run && steps.skip.outputs.skip != 'true' }}
         env:

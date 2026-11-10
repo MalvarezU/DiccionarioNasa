@@ -287,6 +287,42 @@ describe("bundle-builder [W1]", () => {
     })
   })
 
+  describe("latest.json — definición canónica de bytesTotal (Fase D W4.2 E2)", () => {
+    it("latest.json replica bytesTotal del manifest para el mismo build", () => {
+      const dbBytes = 98765
+      const files = [
+        { objectKey: "images/w1.png", sha256: "b".repeat(64), size: 40, mimeType: "image/png", localPath: "media/b.png" },
+        { objectKey: "audios/w1/clip.mp3", sha256: "a".repeat(64), size: 60, mimeType: "audio/mpeg", localPath: "media/a.mp3" },
+      ]
+      const manifest = emitManifest({
+        contentVersion: "42",
+        createdAt: "2026-11-09T00:00:00.000Z",
+        dbSha256: "c".repeat(64),
+        dbBytes,
+        zipBytes: 200,
+        files,
+        counts: { words: 2, courses: 1, modules: 1, lessons: 2, mediaFiles: 2 },
+      })
+      // Réplica exacta de la construcción del paso 9 de seed-content.yml:
+      // bytes_total se lee de `.bytesTotal`, nunca se recalcula.
+      const latest = {
+        contentVersion: manifest.contentVersion,
+        bytesTotal: manifest.bytesTotal,
+        files: manifest.files.length,
+      }
+      expect(latest.bytesTotal).toBe(manifest.bytesTotal)
+      expect(manifest.bytesTotal).toBe(dbBytes + 40 + 60)
+      expect(latest.files).toBe(2)
+    })
+
+    it("seed-content.yml paso 9 cita la definición canónica (emitManifest)", () => {
+      const yml = readFileSync(join(process.cwd(), ".github/workflows/seed-content.yml"), "utf8")
+      expect(yml).toContain("jq -r '.bytesTotal'")
+      expect(yml).toContain("emitManifest")
+      expect(yml).toContain("bundle-builder.ts:537")
+    })
+  })
+
   describe("runBuild (códigos §0 + foto atómica)", () => {
     it("foto atómica: cvPost !== cvPre → código 2 y <out> borrado", async () => {
       const { bundle, bytes } = bundleWithRealBytes()
