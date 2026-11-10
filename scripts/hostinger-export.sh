@@ -71,9 +71,9 @@ fi
 if [ "$SKIP_SEED" = false ]; then
   echo "→ seed diccionario..."
   if [ "$RESEED" = true ]; then
-    bun run prisma/seed.ts -- --force 2>/dev/null || bun run prisma/seed.ts --force
+    npx tsx prisma/seed.ts -- --force 2>/dev/null || npx tsx prisma/seed.ts --force
   else
-    bun run prisma/seed.ts
+    npx tsx prisma/seed.ts
   fi
 else
   echo "→ salto seed (--skip-seed)"

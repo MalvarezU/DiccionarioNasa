@@ -41,8 +41,8 @@ npx prisma migrate deploy
 # seed-test.ts solo consolida palabras existentes: primero el seed principal
 # (351 palabras del CSV) y luego el seed de prueba (admin + curso demo).
 echo "→ seed de diccionario..."
-bun run prisma/seed.ts
+npx tsx prisma/seed.ts
 echo "→ seed de prueba..."
-bun run prisma/seed-test.ts
+npx tsx prisma/seed-test.ts
 echo "→ playwright $*..."
 npx playwright test "$@"
