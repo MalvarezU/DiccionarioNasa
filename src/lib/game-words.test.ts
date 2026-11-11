@@ -143,3 +143,51 @@ describe("gameWordsWithAudio [Fase 4]", () => {
     await expect(gameWordsWithAudio(12)).resolves.toEqual([])
   })
 })
+
+describe("variedad: exclusión de palabras recientes", () => {
+  const CUATRO = [
+    { id: "n1", spanish: "Casa", nasaYuwe: "Yat" },
+    { id: "n2", spanish: "Agua", nasaYuwe: "Yu" },
+    { id: "n3", spanish: "Sol", nasaYuwe: "Sek" },
+    { id: "n4", spanish: "Luna", nasaYuwe: "Ate" },
+  ]
+  const RECENT_KEY = "piiyaak:game:v1:recent"
+
+  it("excluye las servidas recientemente y guarda lo nuevo servido", async () => {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(["old1", "old2"]))
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ words: CUATRO }) as never
+    )
+    await fetchGameWords(12)
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/games/words?count=12&exclude=${encodeURIComponent("old1,old2")}`
+    )
+    const stored = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as string[]
+    expect(stored.slice(0, 4)).toEqual(["n1", "n2", "n3", "n4"])
+    expect(stored).toContain("old1")
+  })
+
+  it("reintenta sin exclusión si el pool filtrado queda por debajo del mínimo", async () => {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(["old1", "old2", "old3"]))
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        Response.json({ words: CUATRO.slice(0, 2) }) as never
+      )
+      .mockResolvedValueOnce(Response.json({ words: CUATRO }) as never)
+    const words = await fetchGameWords(12)
+    expect(words).toHaveLength(4)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    const urls = vi.mocked(fetch).mock.calls.map((c) => c[0])
+    expect(urls[0]).toContain("exclude=")
+    expect(urls[1]).toBe("/api/games/words?count=12")
+  })
+
+  it("sin historial reciente no agrega exclude ni hace doble fetch", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ words: CUATRO }) as never
+    )
+    await fetchGameWords(12)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=12")
+  })
+})

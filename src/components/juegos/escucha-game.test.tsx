@@ -167,7 +167,7 @@ describe("escucha: escuchar y elegir en español [Fase 4]", () => {
     ).toBeDefined()
     expect(screen.getByRole("button", { name: "Reintentar" })).toBeDefined()
     expect(screen.getByRole("link", { name: "Volver a juegos" })).toBeDefined()
-    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=12&withAudio=1")
+    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=16&withAudio=1")
   })
 
   it("revelar la palabra no cambia la altura de la página (zona con altura reservada)", async () => {

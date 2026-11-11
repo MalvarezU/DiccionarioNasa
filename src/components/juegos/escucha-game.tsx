@@ -211,7 +211,10 @@ export function EscuchaGame({
   useEffect(() => {
     if (providedWords && providedWords.length >= 1) return
     let alive = true
-    gameWordsWithAudio(12).then((words) => {
+    // 16 (MAX 24 de la API): muestrea más del pool con audio para que
+    // junto con el exclude de recientes la variedad entre sesiones sea
+    // real (antes 12 de ~31 audios daban enorme solapamiento).
+    gameWordsWithAudio(16).then((words) => {
       if (alive) setPool(words)
     })
     return () => {

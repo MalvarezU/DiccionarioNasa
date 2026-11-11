@@ -60,27 +60,98 @@ export function buildFlashcardQuestions(
   })
 }
 
-export async function fetchGameWords(count: number): Promise<GameWord[]> {
+/**
+ * Ring buffer de palabras servidas recientemente (variedad real entre
+ * sesiones): los helpers pasan `exclude=` a la API y guardan lo servido.
+ * Es compartido entre juegos: una palabra vista en cualquier juego se
+ * aparta un rato en todos, así el repertorio rota en vez de repetir el
+ * mismo grupo (el diccionario tiene cientos de palabras).
+ */
+const RECENT_KEY = `${LS_PREFIX}:recent`
+const RECENT_MAX = 24
+
+function recentWordIds(): string[] {
   try {
-    const res = await fetch(`/api/games/words?count=${count}`)
-    if (!res.ok) return []
-    const data = await res.json()
-    if (!Array.isArray(data.words)) return []
-    return data.words
-      .filter(
-        (w: Partial<GameWord>) => w?.id && w?.spanish && w?.nasaYuwe
-      )
-      .map((w: Partial<GameWord>) => ({
-        id: w.id!,
-        spanish: w.spanish!,
-        nasaYuwe: w.nasaYuwe!,
-        pronunciation: w.pronunciation ?? null,
-        illustrationUrl: w.illustrationUrl ?? null,
-        audioUrl: w.audioUrl ?? null,
-      }))
+    const raw = localStorage.getItem(RECENT_KEY)
+    const parsed: unknown = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is string => typeof x === "string")
+      : []
   } catch {
     return []
   }
+}
+
+function trackWordIds(ids: readonly string[]): void {
+  if (ids.length === 0) return
+  try {
+    const prev = recentWordIds()
+    const seen = new Set(ids)
+    const next = [...ids, ...prev.filter((id) => !seen.has(id))].slice(0, RECENT_MAX)
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next))
+  } catch {
+    // almacenamiento lleno/bloqueado: solo pierde variedad, no funcionalidad
+  }
+}
+
+function normalizeWords(input: unknown): GameWord[] {
+  if (!Array.isArray(input)) return []
+  return (input as Array<Partial<GameWord>>)
+    .filter((w) => w?.id && w?.spanish && w?.nasaYuwe)
+    .map((w) => ({
+      id: w.id!,
+      spanish: w.spanish!,
+      nasaYuwe: w.nasaYuwe!,
+      pronunciation: w.pronunciation ?? null,
+      illustrationUrl: w.illustrationUrl ?? null,
+      audioUrl: w.audioUrl ?? null,
+    }))
+}
+
+async function apiGameWords(
+  count: number,
+  withAudio: boolean,
+  exclude: readonly string[]
+): Promise<GameWord[]> {
+  try {
+    const qs = [`count=${count}`]
+    if (withAudio) qs.push("withAudio=1")
+    if (exclude.length > 0) {
+      qs.push(`exclude=${encodeURIComponent(exclude.join(","))}`)
+    }
+    const res = await fetch(`/api/games/words?${qs.join("&")}`)
+    if (!res.ok) return []
+    const data = await res.json()
+    return normalizeWords(data?.words)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Palabras reales con variedad: excluye las servidas recientemente y, si
+ * el pool filtrado queda por debajo del mínimo del juego (pools chicos,
+ * p. ej. pocos audios publicados), reintenta sin exclusión.
+ */
+async function fetchGameWordsInner(
+  count: number,
+  withAudio: boolean
+): Promise<GameWord[]> {
+  const recent = recentWordIds().slice(0, count)
+  if (recent.length > 0) {
+    const fresh = await apiGameWords(count, withAudio, recent)
+    if (fresh.length >= 4) {
+      trackWordIds(fresh.map((w) => w.id))
+      return fresh
+    }
+  }
+  const plain = await apiGameWords(count, withAudio, [])
+  if (plain.length >= 4) trackWordIds(plain.map((w) => w.id))
+  return plain
+}
+
+export async function fetchGameWords(count: number): Promise<GameWord[]> {
+  return fetchGameWordsInner(count, false)
 }
 
 /** Palabras reales o demo (el juego nunca queda vacío). */
@@ -103,28 +174,11 @@ export async function gameWordsOrDemo(count: number): Promise<GameWord[]> {  con
  * devuelve `[]` para que el juego caiga a su estado de error real.
  */
 export async function gameWordsWithAudio(count: number): Promise<GameWord[]> {
-  try {
-    const res = await fetch(`/api/games/words?count=${count}&withAudio=1`)
-    if (!res.ok) return []
-    const data = await res.json()
-    if (!Array.isArray(data.words)) return []
-    const words = data.words
-      .filter(
-        (w: Partial<GameWord>) => w?.id && w?.spanish && w?.nasaYuwe && w?.audioUrl
-      )
-      .map((w: Partial<GameWord>) => ({
-        id: w.id!,
-        spanish: w.spanish!,
-        nasaYuwe: w.nasaYuwe!,
-        pronunciation: w.pronunciation ?? null,
-        illustrationUrl: w.illustrationUrl ?? null,
-        audioUrl: w.audioUrl ?? null,
-      }))
-    if (words.length < 4) return []
-    return words
-  } catch {
-    return []
-  }
+  const words = (await fetchGameWordsInner(count, true)).filter(
+    (w) => w.audioUrl
+  )
+  if (words.length < 4) return []
+  return words
 }
 
 export function loadGameBest(game: GameId): GameBest {
