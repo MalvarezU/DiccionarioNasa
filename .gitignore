@@ -88,3 +88,6 @@ playwright/.auth/
 e2e/.auth/
 
 dist/
+
+# Generado por scripts/build-sw-precache.mjs (versionado por BUILD_ID)
+public/sw-precache.js

@@ -25,13 +25,45 @@ describe("PWA [B3.2]", () => {
     }
   })
 
-  it("service worker con shell, offline y tope de audios", () => {
+  it("service worker con shell versionado, fallback estatico y topes de medios", () => {
     const sw = fs.readFileSync(path.join(root, "public/sw.js"), "utf-8")
-    expect(sw).toContain("/offline")
+    // Fallback independiente de la ruta (F1/F7): offline.html estatico, nunca
+    // el HTML de otra ruta.
+    expect(sw).toContain("/offline.html")
     expect(sw).toContain("/manifest.webmanifest")
     expect(sw).toContain("/apple-touch-icon-180.png")
     expect(sw).toContain("AUDIO_MAX_ENTRIES")
+    expect(sw).toContain("IMAGE_MAX_ENTRIES")
+    // Nombres de cache de medios estables (media-sync.ts los comparte).
+    expect(sw).toContain('AUDIO_CACHE = "piiyaak-audio-v1"')
+    expect(sw).toContain('IMAGE_CACHE = "piiyaak-image-v1"')
     expect(sw).not.toContain("nasa-yuwe-shell-v1")
+  })
+
+  it("precache por asset sin todo-o-nada (F6)", () => {
+    const sw = fs.readFileSync(path.join(root, "public/sw.js"), "utf-8")
+    // Un 404 no tumba el precache: era cache.addAll atómico.
+    expect(sw).toContain("Promise.allSettled")
+    expect(sw).not.toMatch(/cache\.addAll\(/)
+    expect(sw).toContain("sw-precache.js")
+  })
+
+  it("RSC del prefetcher en cache aparte con dedupe por pathname (F4)", () => {
+    const sw = fs.readFileSync(path.join(root, "public/sw.js"), "utf-8")
+    expect(sw).toContain('RSC_CACHE = "piiyaak-rsc-v1"')
+    expect(sw).toMatch(/url\.pathname/)
+  })
+})
+
+describe("PWA offline.html: fallback estatico sin JS", () => {
+  it("existe, lleva el marker del contrato y no carga scripts", () => {
+    const html = fs.readFileSync(path.join(root, "public/offline.html"), "utf-8")
+    expect(html).toContain('id="offline-fallback"')
+    expect(html).toContain("Sin conexi")
+    expect(html).not.toMatch(/<script/i)
+    for (const href of ["/diccionario", "/juegos", "/cursos"]) {
+      expect(html).toContain(`href="${href}"`)
+    }
   })
 })
 
@@ -46,8 +78,10 @@ describe("PWA [B3.2] — service worker no cachea respuestas no-store", () => {
     expect(sw).toMatch(/!cc\.includes\("no-store"\)/)
   })
 
-  it("la caché del shell subió de v4 a v5 (limpia caché vieja con CSS stale)", () => {
-    expect(sw).toContain('SHELL_CACHE = "piiyaak-shell-v5"')
-    expect(sw).not.toContain('SHELL_CACHE = "piiyaak-shell-v4"')
+  it("las cachés del shell subieron a v6 (precache versionado + runtime con cota)", () => {
+    expect(sw).toContain('PRECACHE_CACHE = "piiyaak-precache-v6"')
+    expect(sw).toContain('SHELL_CACHE = "piiyaak-shell-v6"')
+    expect(sw).not.toContain("piiyaak-shell-v5")
+    expect(sw).not.toContain("piiyaak-precache-v5")
   })
 })

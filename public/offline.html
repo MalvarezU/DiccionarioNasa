@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#173f35">
+<title>Sin conexión — Piiyaak</title>
+<style>
+  :root {
+    --montana: #173f35;
+    --montana-deep: #0e2a22;
+    --territorio: #496b55;
+    --amarillo-tierra: #d7ae55;
+    --terracota: #b96f4a;
+    --crema: #f5f0e6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--crema);
+    color: var(--montana-deep);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 4rem 1.25rem 2rem;
+    text-align: center;
+  }
+  .mark {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 9999px;
+    background: var(--montana);
+    color: var(--crema);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+  }
+  h1 {
+    margin: 1rem 0 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.5rem;
+    color: var(--montana);
+  }
+  p.sub { margin: 0.5rem 0 0; color: var(--territorio); max-width: 26rem; }
+  ul {
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    width: 100%;
+    max-width: 26rem;
+    text-align: left;
+  }
+  li + li { margin-top: 0.5rem; }
+  a.card {
+    display: block;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(73, 107, 85, 0.35);
+    border-radius: 0.5rem;
+    background: #fffdf8;
+    color: var(--montana);
+    text-decoration: none;
+  }
+  a.card small { display: block; color: var(--territorio); font-size: 0.75rem; }
+  a.retry {
+    margin-top: 1.5rem;
+    display: inline-block;
+    padding: 0.6rem 1.25rem;
+    border: 1px solid var(--terracota);
+    border-radius: 0.5rem;
+    color: var(--montana);
+    text-decoration: none;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body id="offline-fallback">
+  <div class="mark" aria-hidden="true">◍</div>
+  <h1>Sin conexión</h1>
+  <p class="sub">Esto sí puedes usar sin internet:</p>
+  <ul>
+    <li><a class="card" href="/diccionario">Diccionario descargado<small>Las palabras que descargaste en tu dispositivo.</small></a></li>
+    <li><a class="card" href="/diccionario">Tus favoritas<small>Tus palabras guardadas en este navegador.</small></a></li>
+    <li><a class="card" href="/juegos">Juegos con palabras de muestra<small>Practicá con el vocabulario incluido en la app.</small></a></li>
+    <li><a class="card" href="/cursos">Cursos<small>Tus lecciones guardadas.</small></a></li>
+  </ul>
+  <!-- href="": recarga la URL pedida (el fallback se sirve en esa URL),
+       asi Reintentar reintenta la pagina real, no el fallback. -->
+  <a class="retry" href="">Reintentar</a>
+</body>
+</html>

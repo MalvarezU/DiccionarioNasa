@@ -1,32 +1,72 @@
 /// <reference lib="webworker" />
 
-// Piiyaak v3: app shell + offline + audios + imágenes R2.
-// - Navegaciones: network-first con fallback a /offline.
-// - Estáticos mismo origen: stale-while-revalidate.
-// - API: network-first (IndexedDB cubre la búsqueda offline).
-// - Audios e imágenes (mismo origen u otros, p. ej. R2): cache-first con tope.
+// Piiyaak v6: app shell + fallback independiente de la ruta + medios R2.
+// - Navegaciones: network-first. Offline: HTML de la MISMA ruta si esta en
+//   cache, si no el fallback estatico /offline.html (cero JS: nunca hidrata,
+//   nunca descuadra). JAMAS se sirve el HTML de otra ruta (ese era el bug que
+//   mataba la app con "Application error").
+// - Precache generado por el build (public/sw-precache.js, versionado con el
+//   BUILD_ID): install por asset con allSettled, sin todo-o-nada.
+// - Payloads RSC (?_rsc= del prefetcher de Next): cache aparte con dedupe por
+//   pathname y tope, para que no inunden el shell.
+// - API: network-first (IndexedDB cubre la busqueda offline).
+// - Audios e imagenes (mismo origen u otros, p. ej. R2): cache-first con tope.
 //   OJO opacas: <audio>/<img> piden en modo no-cors y la respuesta es opaca
-//   (status 0, ok === false). Si solo se guarda `res.ok`, el caché nunca se
-//   llena: se acepta también `res.type === "opaque"`, con tope para acotar.
+//   (status 0, ok === false). Si solo se guarda `res.ok`, el cache nunca se
+//   llena: se acepta tambien `res.type === "opaque"`, con tope para acotar.
 
-const SHELL_CACHE = "piiyaak-shell-v5"
+const PRECACHE_CACHE = "piiyaak-precache-v6"
+const SHELL_CACHE = "piiyaak-shell-v6"
+const SHELL_MAX_ENTRIES = 60
+const RSC_CACHE = "piiyaak-rsc-v1"
+const RSC_MAX_ENTRIES = 40
 const AUDIO_CACHE = "piiyaak-audio-v1"
-const AUDIO_MAX_ENTRIES = 200
+const AUDIO_MAX_ENTRIES = 400
 const IMAGE_CACHE = "piiyaak-image-v1"
-const IMAGE_MAX_ENTRIES = 400
+const IMAGE_MAX_ENTRIES = 120
 
-const SHELL_ASSETS = ["/", "/offline", "/manifest.webmanifest", "/icon-192.png", "/apple-touch-icon-180.png"]
+// Respaldo minimo si el build no genero sw-precache.js (p. ej. dev).
+// OJO: solo assets estaticos, nunca HTML de rutas.
+const FALLBACK_ASSETS = ["/offline.html", "/manifest.webmanifest", "/icon-192.png", "/apple-touch-icon-180.png"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(SHELL_CACHE)
-      .then((cache) => cache.addAll(SHELL_ASSETS))
-      .catch((err) => {
-        console.warn("SW: fallo precache shell:", err)
-      })
+    (async () => {
+      try {
+        importScripts("/sw-precache.js")
+      } catch {
+        // Sin manifiesto del build (dev): se usa el respaldo.
+      }
+      const manifest = self.__PIIYAAK_PRECACHE
+      const assets =
+        manifest && Array.isArray(manifest.assets) && manifest.assets.length > 0
+          ? manifest.assets
+          : FALLBACK_ASSETS
+      const cache = await caches.open(PRECACHE_CACHE)
+      // Por asset (F6): un 404 no tumba todo el precache.
+      const results = await Promise.allSettled(
+        assets.map((url) =>
+          cache.add(url).catch((err) => {
+            throw new Error(`${url}: ${err?.message ?? err}`)
+          })
+        )
+      )
+      const failed = results.filter((r) => r.status === "rejected")
+      if (failed.length > 0) {
+        console.warn(
+          "SW: precache parcial:",
+          failed.map((r) => r.reason?.message ?? r.reason).join("; ")
+        )
+      }
+      // Primera instalacion: tomar control rapido. Con version previa
+      // instalada, NO skipWaiting (el aviso de version lo maneja la pagina).
+      const names = await caches.keys()
+      const hadPrior = names.some((n) => n !== PRECACHE_CACHE && n.startsWith("piiyaak-precache-"))
+      if (!hadPrior) await self.skipWaiting()
+    })().catch((err) => {
+      console.warn("SW: fallo precache shell:", err)
+    })
   )
-  self.skipWaiting()
 })
 
 self.addEventListener("activate", (event) => {
@@ -36,7 +76,15 @@ self.addEventListener("activate", (event) => {
       .then((names) =>
         Promise.all(
           names
-            .filter((n) => n !== SHELL_CACHE && n !== AUDIO_CACHE && n !== IMAGE_CACHE && !n.startsWith("nasa-yuwe-audio"))
+            .filter(
+              (n) =>
+                n !== PRECACHE_CACHE &&
+                n !== SHELL_CACHE &&
+                n !== RSC_CACHE &&
+                n !== AUDIO_CACHE &&
+                n !== IMAGE_CACHE &&
+                !n.startsWith("nasa-yuwe-audio")
+            )
             .map((n) => caches.delete(n))
         )
       )
@@ -48,7 +96,7 @@ async function trimCache(cacheName, maxEntries) {
   try {
     const cache = await caches.open(cacheName)
     // Borrar TODOS los excedentes (antes solo 1 por llamada: con descargas
-    // masivas el caché crecía sin cota entre trims).
+    // masivas el cache crecia sin cota entre trims).
     let keys = await cache.keys()
     while (keys.length > maxEntries) {
       await cache.delete(keys[0])
@@ -71,7 +119,7 @@ self.addEventListener("fetch", (event) => {
   if (!url.protocol.startsWith("http")) return
 
   // APKs: descarga directa del navegador, sin interceptar ni cachear.
-  // Un Response de caché/opaco rompe la descarga ("Failed to convert value
+  // Un Response de cache/opaco rompe la descarga ("Failed to convert value
   // to 'Response'") y el instalador espera el binario intacto.
   if (url.pathname.endsWith(".apk")) return
 
@@ -145,25 +193,67 @@ self.addEventListener("fetch", (event) => {
     return
   }
 
-  // Navegaciones: network-first con fallback offline
+  // Payloads RSC (?_rsc=): el prefetcher de Next inunda el shell con
+  // duplicados. Cache aparte, clave = pathname (dedupe), con tope.
+  if (url.searchParams.has("_rsc")) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(RSC_CACHE)
+        try {
+          const res = await fetch(req)
+          if (res.ok) {
+            await cache.put(url.pathname, res.clone())
+            void trimCache(RSC_CACHE, RSC_MAX_ENTRIES)
+          }
+          return res
+        } catch {
+          const hit = await cache.match(url.pathname)
+          return (
+            hit ||
+            new Response("Sin conexión", {
+              status: 503,
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            })
+          )
+        }
+      })()
+    )
+    return
+  }
+
+  // Navegaciones: network-first con fallback independiente de la ruta.
+  // Offline: 1) HTML de la MISMA ruta (hidrata bien), 2) /offline.html
+  // estatico (cero JS: imposible descuadrar), 3) 503 plano.
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone()
-          caches.open(SHELL_CACHE).then((cache) => {
-            if (res.ok) cache.put(req, copy).catch(() => {})
-          })
+      (async () => {
+        try {
+          const res = await fetch(req)
+          if (res.ok) {
+            const copy = res.clone()
+            const cache = await caches.open(SHELL_CACHE)
+            // No bloquear la navegacion por el cacheo.
+            void cache
+              .put(req, copy)
+              .then(() => trimCache(SHELL_CACHE, SHELL_MAX_ENTRIES))
+              .catch(() => {})
+          }
           return res
-        })
-        .catch(async () => {
-          const cache = await caches.open(SHELL_CACHE)
-          return (
-            (await cache.match(req)) ||
-            (await cache.match("/offline")) ||
-            new Response("Sin conexión", { status: 503 })
-          )
-        })
+        } catch {
+          const shell = await caches.open(SHELL_CACHE)
+          const same = await shell.match(req)
+          if (same) return same
+          const precache = await caches.open(PRECACHE_CACHE)
+          const precached = await precache.match(req)
+          if (precached) return precached
+          const fallback = await precache.match("/offline.html")
+          if (fallback) return fallback
+          return new Response("Sin conexión", {
+            status: 503,
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          })
+        }
+      })()
     )
     return
   }
@@ -179,6 +269,7 @@ self.addEventListener("fetch", (event) => {
           const cc = (res.headers.get("Cache-Control") || "").toLowerCase()
           if (res.ok && !cc.includes("no-store")) {
             cache.put(req, res.clone()).catch(() => {})
+            void trimCache(SHELL_CACHE, SHELL_MAX_ENTRIES)
           }
           return res
         })
