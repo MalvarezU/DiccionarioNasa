@@ -66,7 +66,13 @@ describe("LegalTermsModal", () => {
     render(
       <LegalTermsModal open={true} onOpenChange={onOpenChange} onAccept={onAccept} />
     )
-    await user.click(screen.getByRole("button", { name: /^cerrar$/i }))
+    // Hay dos "Cerrar" (X del diálogo + botón del footer): el del caso es el
+    // del footer, que no es el [data-slot="dialog-close"].
+    const cerrar = screen
+      .getAllByRole("button", { name: /^cerrar$/i })
+      .find((b) => b.getAttribute("data-slot") !== "dialog-close")
+    expect(cerrar).toBeDefined()
+    await user.click(cerrar as HTMLElement)
     expect(onAccept).not.toHaveBeenCalled()
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })

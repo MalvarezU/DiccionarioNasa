@@ -100,7 +100,7 @@ describe("InstallSection", () => {
     render(<InstallSection />)
     fireEvent.click(screen.getByRole("button", { name: "Instalar ahora" }))
     await screen.findByRole("dialog")
-    fireEvent.click(screen.getByRole("button", { name: "Close" }))
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar" }))
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull()
     })

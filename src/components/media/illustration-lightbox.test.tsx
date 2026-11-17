@@ -23,7 +23,7 @@ describe("IllustrationLightbox", () => {
     // El tamaño real usa el render canónico de la ficha
     expect(dialog.textContent ?? "").toContain("Ilustración de casa")
 
-    fireEvent.click(getByRole("button", { name: "Close" }))
+    fireEvent.click(getByRole("button", { name: "Cerrar" }))
     expect(queryByRole("dialog")).toBeNull()
   })
 })
