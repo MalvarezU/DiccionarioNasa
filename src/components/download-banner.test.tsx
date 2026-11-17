@@ -12,6 +12,7 @@ vi.mock("@/hooks/use-local-db", () => ({
 
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import { useLocalDB } from "@/hooks/use-local-db"
+import type { MediaUsage } from "@/lib/media-sync"
 import { DownloadBanner } from "./download-banner"
 
 const defaultDBState = {
@@ -25,6 +26,9 @@ const defaultDBState = {
   forceResync: vi.fn(),
   refreshStats: vi.fn(),
   checkAndResume: vi.fn(),
+  mediaUsage: null as MediaUsage | null,
+  refreshMediaUsage: vi.fn(),
+  clearMedia: vi.fn(),
 }
 
 function mockOnline(online: boolean) {
@@ -55,16 +59,26 @@ describe("DownloadBanner", () => {
     expect(container.innerHTML).toBe("")
   })
 
-  it("shows progress during download", () => {
+  it("shows progress during download with media budget cap", () => {
     mockDB({ isDownloading: true, downloadProgress: 42 })
     render(<DownloadBanner />)
-    expect(screen.getByText("Descargando diccionario... 42%")).toBeDefined()
+    expect(screen.getByText(/descargando diccionario\.\.\. 42%/i)).toBeDefined()
+    expect(screen.getByText(/tope 50 MB en medios/i)).toBeDefined()
   })
 
   it("shows completion state", () => {
     mockDB({ isReady: true })
     render(<DownloadBanner />)
-    expect(screen.getByText("Diccionario listo para usar sin conexión")).toBeDefined()
+    expect(screen.getByText(/diccionario listo para usar sin conexión/i)).toBeDefined()
+  })
+
+  it("shows media summary in completion state when measured", () => {
+    mockDB({
+      isReady: true,
+      mediaUsage: { bytes: 8 * 1024 * 1024, quota: 100 * 1024 * 1024, audios: 343, illustrations: 12 },
+    })
+    render(<DownloadBanner />)
+    expect(screen.getByText(/343 audios, 12 ilustraciones/i)).toBeDefined()
   })
 
   it("shows error state", () => {

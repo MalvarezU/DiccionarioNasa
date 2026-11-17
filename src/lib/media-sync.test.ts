@@ -1,5 +1,15 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest"
-import { downloadMediaQueue, extractMediaUrls } from "./media-sync"
+import {
+  downloadMediaQueue,
+  extractMediaUrls,
+  extractMediaByKind,
+  planMediaDownloads,
+  estimateBytes,
+  isMeteredConnection,
+  MEDIA_BUDGET_BYTES,
+  AUDIO_ENTRY_CAP,
+  IMAGE_ENTRY_CAP,
+} from "./media-sync"
 
 /** CacheStorage mockeable por test. */
 function mockCaches(cachedUrls: Set<string>) {
@@ -33,7 +43,7 @@ describe("downloadMediaQueue", () => {
   it("cola vacía devuelve ceros y reporta progreso", async () => {
     const onProgress = vi.fn()
     const r = await downloadMediaQueue([], { onProgress })
-    expect(r).toEqual({ total: 0, downloaded: 0, skippedCached: 0, failed: 0 })
+    expect(r).toEqual({ total: 0, downloaded: 0, skippedCached: 0, failed: 0, skippedBudget: 0 })
     expect(onProgress).toHaveBeenCalledWith(0, 0, 0)
   })
 
@@ -43,7 +53,7 @@ describe("downloadMediaQueue", () => {
       ["https://cdn/x1.ogg", "https://cdn/x2.webp"],
       { ...fast, concurrency: 2 }
     )
-    expect(r).toEqual({ total: 2, downloaded: 2, skippedCached: 0, failed: 0 })
+    expect(r).toEqual({ total: 2, downloaded: 2, skippedCached: 0, failed: 0, skippedBudget: 0 })
     expect(globalThis.fetch).toHaveBeenCalledTimes(2)
   })
 
@@ -74,7 +84,7 @@ describe("downloadMediaQueue", () => {
       ["https://cdn/ok1.ogg", "https://cdn/bad.ogg", "https://cdn/ok2.ogg"],
       { ...fast, concurrency: 1 }
     )
-    expect(r).toEqual({ total: 3, downloaded: 2, skippedCached: 0, failed: 1 })
+    expect(r).toEqual({ total: 3, downloaded: 2, skippedCached: 0, failed: 1, skippedBudget: 0 })
   })
 
   it("timeout aborta el ítem colgado sin congelar el sync", async () => {
@@ -160,7 +170,7 @@ describe("downloadMediaQueue", () => {
       ["https://cdn/1", "https://cdn/2"],
       fast
     )
-    expect(r).toEqual({ total: 2, downloaded: 0, skippedCached: 0, failed: 2 })
+    expect(r).toEqual({ total: 2, downloaded: 0, skippedCached: 0, failed: 2, skippedBudget: 0 })
   })
 })
 
@@ -190,5 +200,131 @@ describe("extractMediaUrls", () => {
 
   it("lista vacía devuelve vacío", () => {
     expect(extractMediaUrls([])).toEqual([])
+  })
+})
+
+describe("extractMediaByKind", () => {
+  it("clasifica audios e ilustraciones (/api/media va a ilustraciones)", () => {
+    const { audios, illustrations } = extractMediaByKind([
+      { audioUrl: "https://cdn/a.ogg", illustrationUrl: "https://cdn/i.webp" },
+      { audioUrl: "/audio/local.mp3", illustrationUrl: "/api/media/legacy" },
+    ])
+    expect(audios.sort()).toEqual(["/audio/local.mp3", "https://cdn/a.ogg"])
+    expect(illustrations.sort()).toEqual(["/api/media/legacy", "https://cdn/i.webp"])
+  })
+})
+
+describe("planMediaDownloads (presupuesto 50MB)", () => {
+  it("audios primero: entran todos (343 x 25KB < 10MB)", () => {
+    const words = Array.from({ length: 343 }, (_, i) => ({
+      audioUrl: `https://cdn/a${i}.mp3`,
+      illustrationUrl: null,
+    }))
+    const plan = planMediaDownloads(words)
+    expect(plan.audios).toHaveLength(343)
+    expect(plan.illustrations).toHaveLength(0)
+    expect(plan.estimatedBytes).toBeLessThan(10 * 1024 * 1024)
+  })
+
+  it("ilustraciones con tope de 120 entradas (~40MB)", () => {
+    const words = Array.from({ length: 200 }, (_, i) => ({
+      audioUrl: null,
+      illustrationUrl: `https://cdn/i${i}.png`,
+    }))
+    const plan = planMediaDownloads(words)
+    expect(plan.illustrations).toHaveLength(IMAGE_ENTRY_CAP)
+    expect(plan.audios).toHaveLength(0)
+    expect(plan.estimatedBytes).toBeLessThanOrEqual(50 * 1024 * 1024)
+  })
+
+  it("audios con tope de 400 entradas aunque el presupuesto dé más", () => {
+    const words = Array.from({ length: 500 }, (_, i) => ({
+      audioUrl: `https://cdn/a${i}.mp3`,
+      illustrationUrl: null,
+    }))
+    const plan = planMediaDownloads(words)
+    expect(plan.audios).toHaveLength(AUDIO_ENTRY_CAP)
+  })
+
+  it("caso real 343+343: todos los audios + 120 ilustraciones < 50MB", () => {
+    const words = Array.from({ length: 343 }, (_, i) => ({
+      audioUrl: `https://cdn/a${i}.mp3`,
+      illustrationUrl: `https://cdn/i${i}.png`,
+    }))
+    const plan = planMediaDownloads(words)
+    expect(plan.audios).toHaveLength(343)
+    expect(plan.illustrations).toHaveLength(120)
+    expect(plan.estimatedBytes).toBeLessThanOrEqual(MEDIA_BUDGET_BYTES)
+  })
+})
+
+describe("downloadMediaQueue con presupuesto", () => {
+  it("budgetBytes frena con skippedBudget en vez de fallar", async () => {
+    globalThis.fetch = vi.fn(async () => new Response("bin", { status: 200 })) as never as never
+    const r = await downloadMediaQueue(
+      ["https://cdn/1.ogg", "https://cdn/2.ogg", "https://cdn/3.ogg"],
+      { ...fast, concurrency: 1, budgetBytes: 10 }
+    )
+    // Cada ogg estima 25KB > 10B: ninguno se intenta, ninguno falla.
+    expect(r.downloaded).toBe(0)
+    expect(r.failed).toBe(0)
+    expect(r.skippedBudget).toBe(3)
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+  })
+
+  it("lo ya-cacheado cuenta al presupuesto (resume no lo excede)", async () => {
+    mockCaches(new Set(["https://cdn/cached.ogg"]))
+    globalThis.fetch = vi.fn(async () => new Response("bin", { status: 200 })) as never as never
+    const r = await downloadMediaQueue(
+      ["https://cdn/cached.ogg", "https://cdn/new.ogg"],
+      { ...fast, concurrency: 1, budgetBytes: estimateBytes("https://cdn/cached.ogg") }
+    )
+    // El cacheado consume el presupuesto: el nuevo queda para on-demand.
+    expect(r.skippedCached).toBe(1)
+    expect(r.skippedBudget).toBe(1)
+    expect(r.downloaded).toBe(0)
+  })
+
+  it("mismo origen usa cors (legible) y cross-origin no-cors (opaco)", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("bin", {
+          status: 200,
+          headers: { "Content-Length": "12345" },
+        })
+    )
+    globalThis.fetch = fetchMock as never
+    const r = await downloadMediaQueue(["/audio/local.mp3"], {
+      ...fast,
+      concurrency: 1,
+      budgetBytes: 30000,
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/audio/local.mp3",
+      expect.objectContaining({ mode: "cors" })
+    )
+    expect(r.downloaded).toBe(1)
+    expect(r.skippedBudget).toBe(0)
+  })
+})
+
+describe("isMeteredConnection", () => {
+  it("false sin connection API, true con saveData o 2g", () => {
+    expect(isMeteredConnection()).toBe(false)
+    Object.defineProperty(navigator, "connection", {
+      value: { saveData: true, effectiveType: "4g" },
+      configurable: true,
+    })
+    expect(isMeteredConnection()).toBe(true)
+    Object.defineProperty(navigator, "connection", {
+      value: { saveData: false, effectiveType: "2g" },
+      configurable: true,
+    })
+    expect(isMeteredConnection()).toBe(true)
+    Object.defineProperty(navigator, "connection", {
+      value: { saveData: false, effectiveType: "4g" },
+      configurable: true,
+    })
+    expect(isMeteredConnection()).toBe(false)
   })
 })

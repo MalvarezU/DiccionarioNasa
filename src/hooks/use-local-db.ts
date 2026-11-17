@@ -11,7 +11,16 @@ import {
   setLastSync,
   clearLocalDB,
 } from "@/lib/local-db"
-import { downloadMediaQueue, extractMediaUrls } from "@/lib/media-sync"
+import {
+  downloadMediaQueue,
+  planMediaDownloads,
+  isMeteredConnection,
+  requestPersistence,
+  getMediaUsage,
+  clearMediaCaches,
+  MEDIA_BUDGET_BYTES,
+  type MediaUsage,
+} from "@/lib/media-sync"
 
 const PAGE_SIZE = 100
 /** Del progreso total: palabras 0-70, medios 70-100. */
@@ -38,6 +47,12 @@ interface UseLocalDBReturn {
   refreshStats: () => Promise<void>
   /** Check and resume download if it was interrupted (call on mount) */
   checkAndResume: () => Promise<void>
+  /** Uso real de medios (null hasta la primera medición) */
+  mediaUsage: MediaUsage | null
+  /** Re-mide el uso de medios (estimate + conteo de cachés) */
+  refreshMediaUsage: () => Promise<void>
+  /** Libera audios + ilustraciones cacheados (no toca palabras) */
+  clearMedia: () => Promise<void>
 }
 
 export function useLocalDB(): UseLocalDBReturn {
@@ -48,27 +63,50 @@ export function useLocalDB(): UseLocalDBReturn {
   const [localWordCount, setLocalWordCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [lastSync, setLastSyncState] = useState<string | null>(null)
+  const [mediaUsage, setMediaUsage] = useState<MediaUsage | null>(null)
 
   // Ref to prevent concurrent downloads
   const downloadInProgressRef = useRef(false)
   // Abort del sync en curso (unload/offline): corta palabras y medios.
   const syncAbortRef = useRef<AbortController | null>(null)
 
+  /** Re-mide el uso real de medios (estimate del origen + conteo). */
+  const refreshMediaUsage = useCallback(async () => {
+    try {
+      setMediaUsage(await getMediaUsage())
+    } catch {
+      // Sin APIs de storage: queda null (la UI lo oculta).
+    }
+  }, [])
+
+  /** Libera audios + ilustraciones y re-mide. No toca palabras. */
+  const clearMedia = useCallback(async () => {
+    await clearMediaCaches()
+    await refreshMediaUsage()
+  }, [refreshMediaUsage])
+
   /**
-   * Fase de medios: descarga audios + ilustraciones de las palabras
-   * (viven en R2, no en Hostinger). Nunca lanza: un fallo solo deja
-   * esos medios para on-demand. Mapea su progreso al tramo 70-100.
+   * Fase de medios: audios + ilustraciones con prioridad y presupuesto
+   * (planMediaDownloads: TODOS los audios primero, luego ilustraciones hasta
+   * ~50MB). En conexión medida (saveData/2G) se salta: solo palabras.
+   * Mapea su progreso al tramo 70-100.
    */
   const downloadMediaPhase = useCallback(
     async (signal?: AbortSignal) => {
+      if (isMeteredConnection()) {
+        setDownloadProgress(100)
+        return { downloaded: 0, failed: 0, skippedBudget: 0, skippedMetered: true as const }
+      }
       const words = await getAllLocalWords()
-      const urls = extractMediaUrls(words)
+      const plan = planMediaDownloads(words)
+      const urls = [...plan.audios, ...plan.illustrations]
       if (urls.length === 0) {
         setDownloadProgress(100)
-        return { downloaded: 0, failed: 0 }
+        return { downloaded: 0, failed: 0, skippedBudget: 0, skippedMetered: false as const }
       }
       const res = await downloadMediaQueue(urls, {
         signal,
+        budgetBytes: MEDIA_BUDGET_BYTES,
         onProgress: (done, total) => {
           const pct =
             WORDS_PROGRESS_CAP +
@@ -77,7 +115,7 @@ export function useLocalDB(): UseLocalDBReturn {
         },
       })
       setDownloadProgress(100)
-      return res
+      return { ...res, skippedMetered: false as const }
     },
     []
   )
@@ -167,6 +205,8 @@ export function useLocalDB(): UseLocalDBReturn {
 
     setIsDownloading(true)
     setError(null)
+    // Gesto del usuario: pedir persistencia para que el SO no evictee.
+    void requestPersistence()
 
     try {
       // Check how many words are already stored (for resume)
@@ -204,6 +244,8 @@ export function useLocalDB(): UseLocalDBReturn {
       // Update final word count from DB
       const finalStats = await getLocalDBStats()
       setLocalWordCount(finalStats.wordCount)
+      // Medir el uso real de medios tras la descarga.
+      void refreshMediaUsage()
     } catch (err) {
       console.error("Download error:", err)
       setError(
@@ -214,7 +256,7 @@ export function useLocalDB(): UseLocalDBReturn {
       setIsDownloading(false)
       downloadInProgressRef.current = false
     }
-  }, [downloadAllPages])
+  }, [downloadAllPages, refreshMediaUsage])
 
   /**
    * Force a full re-sync: clear the local DB and re-download everything.
@@ -230,6 +272,8 @@ export function useLocalDB(): UseLocalDBReturn {
     setError(null)
     setDownloadProgress(0)
     setLastSyncState(null)
+    // Gesto del usuario: pedir persistencia para que el SO no evictee.
+    void requestPersistence()
     // NO borramos todavía: si la descarga falla, el IndexedDB previo queda
     // intacto y el usuario no se queda sin diccionario por un intento fallido.
 
@@ -285,6 +329,8 @@ export function useLocalDB(): UseLocalDBReturn {
       setDownloadProgress(100)
       const finalStats = await getLocalDBStats()
       setLocalWordCount(finalStats.wordCount)
+      // Medir el uso real de medios tras la descarga.
+      void refreshMediaUsage()
       return true
     } catch (err) {
       console.error("Force resync error:", err)
@@ -297,7 +343,7 @@ export function useLocalDB(): UseLocalDBReturn {
       setIsDownloading(false)
       downloadInProgressRef.current = false
     }
-  }, [downloadAllPages, downloadMediaPhase])
+  }, [downloadAllPages, downloadMediaPhase, refreshMediaUsage])
 
   /**
    * Refresh stats (word count + lastSync) from IndexedDB.
@@ -331,6 +377,7 @@ export function useLocalDB(): UseLocalDBReturn {
         const stats = await getLocalDBStats()
         setLocalWordCount(stats.wordCount)
         setLastSyncState(stats.lastSync)
+        void refreshMediaUsage()
         return
       }
 
@@ -342,7 +389,7 @@ export function useLocalDB(): UseLocalDBReturn {
     } catch (err) {
       console.error("checkAndResume error:", err)
     }
-  }, [startDownload])
+  }, [startDownload, refreshMediaUsage])
 
   // On mount, check and resume
   useEffect(() => {
@@ -377,5 +424,8 @@ export function useLocalDB(): UseLocalDBReturn {
     forceResync,
     refreshStats,
     checkAndResume,
+    mediaUsage,
+    refreshMediaUsage,
+    clearMedia,
   }
 }

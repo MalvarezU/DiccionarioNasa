@@ -4,6 +4,7 @@ import { useCallback, useMemo, useSyncExternalStore } from "react"
 import { Download, CheckCircle2, AlertCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { MEDIA_BUDGET_BYTES, formatMB } from "@/lib/media-sync"
 import { useLocalDB } from "@/hooks/use-local-db"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 
@@ -74,6 +75,7 @@ export function DownloadBanner() {
     downloadProgress,
     error,
     startDownload,
+    mediaUsage,
   } = useLocalDB()
   const isOnline = useOnlineStatus()
   const mounted = useMounted()
@@ -173,7 +175,7 @@ export function DownloadBanner() {
           {bannerState === "downloading" && (
             <div className="flex items-center gap-2">
               <p className="shrink-0 text-xs font-medium text-foreground">
-                Descargando diccionario... {downloadProgress}%
+                Descargando diccionario... {downloadProgress}% · tope {formatMB(MEDIA_BUDGET_BYTES)} en medios
               </p>
               <Progress value={downloadProgress} className="h-1 min-w-0 flex-1" />
             </div>
@@ -182,6 +184,9 @@ export function DownloadBanner() {
           {bannerState === "complete" && (
             <p className="truncate text-xs font-medium text-secondary">
               Diccionario listo para usar sin conexión
+              {mediaUsage
+                ? ` · ${mediaUsage.audios} audios, ${mediaUsage.illustrations} ilustraciones`
+                : ""}
             </p>
           )}
 

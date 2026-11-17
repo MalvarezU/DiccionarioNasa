@@ -12,6 +12,7 @@ vi.mock("@/hooks/use-local-db", () => ({
 
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import { useLocalDB } from "@/hooks/use-local-db"
+import type { MediaUsage } from "@/lib/media-sync"
 import { SettingsDialog } from "./settings-dialog"
 
 const onOpenChange = vi.fn()
@@ -27,6 +28,9 @@ const defaultDBState = {
   forceResync: vi.fn(),
   refreshStats: vi.fn(),
   checkAndResume: vi.fn(),
+  mediaUsage: null as MediaUsage | null,
+  refreshMediaUsage: vi.fn(),
+  clearMedia: vi.fn(),
 }
 
 describe("SettingsDialog", () => {
@@ -126,5 +130,52 @@ describe("SettingsDialog", () => {
     // The offline feedback message appears as a distinct element
     const feedbackElements = screen.getAllByText(/sin conexión a internet/i)
     expect(feedbackElements.length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe("SettingsDialog medios offline", () => {
+  beforeEach(() => {
+    vi.mocked(useOnlineStatus).mockReturnValue(true)
+    vi.mocked(useLocalDB).mockReturnValue({ ...defaultDBState })
+  })
+
+  it("muestra uso real de medios con presupuesto 50MB", () => {
+    vi.mocked(useLocalDB).mockReturnValue({
+      ...defaultDBState,
+      mediaUsage: { bytes: 8_400_000, quota: 100_000_000, audios: 343, illustrations: 120 },
+    })
+    render(<SettingsDialog open={true} onOpenChange={onOpenChange} />)
+    expect(screen.getByText(/medios offline: .* de 50 MB · 343 audios · 120 ilustraciones/i)).toBeDefined()
+  })
+
+  it("muestra 'sin medir' cuando no hay medición", () => {
+    render(<SettingsDialog open={true} onOpenChange={onOpenChange} />)
+    expect(screen.getByText(/sin medir todavía/i)).toBeDefined()
+  })
+
+  it("completar descarga llama a startDownload", async () => {
+    const startDownload = vi.fn()
+    vi.mocked(useLocalDB).mockReturnValue({
+      ...defaultDBState,
+      mediaUsage: { bytes: 1000, quota: 100_000_000, audios: 1, illustrations: 0 },
+      startDownload,
+    })
+    const user = userEvent.setup()
+    render(<SettingsDialog open={true} onOpenChange={onOpenChange} />)
+    await user.click(screen.getByRole("button", { name: /completar descarga/i }))
+    expect(startDownload).toHaveBeenCalled()
+  })
+
+  it("liberar medios llama a clearMedia", async () => {
+    const clearMedia = vi.fn()
+    vi.mocked(useLocalDB).mockReturnValue({
+      ...defaultDBState,
+      mediaUsage: { bytes: 1000, quota: 100_000_000, audios: 1, illustrations: 0 },
+      clearMedia,
+    })
+    const user = userEvent.setup()
+    render(<SettingsDialog open={true} onOpenChange={onOpenChange} />)
+    await user.click(screen.getByRole("button", { name: /liberar medios/i }))
+    expect(clearMedia).toHaveBeenCalled()
   })
 })

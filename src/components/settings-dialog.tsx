@@ -12,6 +12,8 @@ import {
   HardDrive,
   Wifi,
   WifiOff,
+  Trash2,
+  Download,
 } from "lucide-react"
 import {
   Dialog,
@@ -23,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
+import { MEDIA_BUDGET_BYTES, formatMB } from "@/lib/media-sync"
 import { useLocalDB } from "@/hooks/use-local-db"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 
@@ -75,6 +78,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     lastSync,
     forceResync,
     refreshStats,
+    mediaUsage,
+    refreshMediaUsage,
+    clearMedia,
+    startDownload,
   } = useLocalDB()
 
   // UI feedback state — only set from event handlers, never from effects
@@ -83,13 +90,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) {
-        // Dialog is opening — refresh stats and reset feedback
+        // Dialog is opening — refresh stats and media usage
         refreshStats()
+        refreshMediaUsage()
         setSyncFeedback("none")
       }
       onOpenChange(nextOpen)
     },
-    [onOpenChange, refreshStats]
+    [onOpenChange, refreshStats, refreshMediaUsage]
   )
 
   const handleSync = useCallback(async () => {
@@ -202,6 +210,47 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   {localWordCount > 0 ? localWordCount.toLocaleString("es-CO") : "—"}
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* ─── Media usage (presupuesto 50MB) ─────────────────── */}
+          <div className="p-3 rounded-lg bg-muted/40 border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <HardDrive className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">
+                Medios offline
+              </span>
+            </div>
+            <p className="text-xs font-medium text-foreground">
+              {mediaUsage
+                ? `Medios offline: ${formatMB(mediaUsage.bytes)} de ${formatMB(MEDIA_BUDGET_BYTES)} · ${mediaUsage.audios} audios · ${mediaUsage.illustrations} ilustraciones`
+                : "Medios offline: sin medir todavía"}
+            </p>
+            <div className="mt-2 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void startDownload()}
+                disabled={isDownloading || !isOnline}
+                className="gap-1"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                Completar descarga
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void clearMedia()}
+                disabled={
+                  isDownloading ||
+                  !mediaUsage ||
+                  (mediaUsage.audios === 0 && mediaUsage.illustrations === 0)
+                }
+                className="gap-1"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                Liberar medios
+              </Button>
             </div>
           </div>
 

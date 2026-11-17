@@ -16,8 +16,14 @@ vi.mock("@/lib/local-db", () => ({
 }))
 
 vi.mock("@/lib/media-sync", () => ({
-  downloadMediaQueue: vi.fn().mockResolvedValue({ total: 0, downloaded: 0, skippedCached: 0, failed: 0 }),
+  downloadMediaQueue: vi.fn().mockResolvedValue({ total: 0, downloaded: 0, skippedCached: 0, failed: 0, skippedBudget: 0 }),
   extractMediaUrls: vi.fn().mockReturnValue([]),
+  planMediaDownloads: vi.fn().mockReturnValue({ audios: [], illustrations: [], estimatedBytes: 0 }),
+  isMeteredConnection: vi.fn().mockReturnValue(false),
+  requestPersistence: vi.fn().mockResolvedValue(false),
+  getMediaUsage: vi.fn().mockResolvedValue(null),
+  clearMediaCaches: vi.fn().mockResolvedValue(undefined),
+  MEDIA_BUDGET_BYTES: 50 * 1024 * 1024,
 }))
 
 import {
@@ -27,7 +33,7 @@ import {
   getLocalDBStats,
   clearLocalDB,
 } from "@/lib/local-db"
-import { downloadMediaQueue, extractMediaUrls } from "@/lib/media-sync"
+import { downloadMediaQueue, planMediaDownloads, isMeteredConnection } from "@/lib/media-sync"
 import { useLocalDB } from "./use-local-db"
 
 const mockExportResponse = {
@@ -117,14 +123,18 @@ describe("useLocalDB", () => {
     expect(clearLocalDB).toHaveBeenCalled()
   })
 
-  it("fase de medios: corre downloadMediaQueue tras las palabras", async () => {
+  it("fase de medios: planifica con presupuesto antes de encolar", async () => {
     vi.mocked(global.fetch).mockResolvedValue(
       Response.json(mockExportResponse) as never
     )
     vi.mocked(getAllLocalWords).mockResolvedValue([
       { id: "w1", audioUrl: "https://cdn/a.ogg", illustrationUrl: "https://cdn/i.webp" },
     ] as never)
-    vi.mocked(extractMediaUrls).mockReturnValue(["https://cdn/a.ogg", "https://cdn/i.webp"])
+    vi.mocked(planMediaDownloads).mockReturnValue({
+      audios: ["https://cdn/a.ogg"],
+      illustrations: ["https://cdn/i.webp"],
+      estimatedBytes: 1000,
+    })
 
     const { result } = renderHook(() => useLocalDB())
 
@@ -132,12 +142,35 @@ describe("useLocalDB", () => {
       await new Promise((r) => setTimeout(r, 300))
     })
 
-    expect(extractMediaUrls).toHaveBeenCalled()
+    expect(planMediaDownloads).toHaveBeenCalled()
     expect(downloadMediaQueue).toHaveBeenCalledWith(
       ["https://cdn/a.ogg", "https://cdn/i.webp"],
       expect.objectContaining({ signal: expect.anything() })
     )
     expect(result.current.downloadProgress).toBe(100)
+  })
+
+  it("fase de medios: en conexión medida salta los medios (solo palabras)", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      Response.json(mockExportResponse) as never
+    )
+    vi.mocked(getAllLocalWords).mockResolvedValue([
+      { id: "w1", audioUrl: "https://cdn/a.ogg", illustrationUrl: "https://cdn/i.webp" },
+    ] as never)
+    vi.mocked(isMeteredConnection).mockReturnValue(true)
+
+    const { result } = renderHook(() => useLocalDB())
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 300))
+    })
+
+    expect(planMediaDownloads).not.toHaveBeenCalled()
+    expect(downloadMediaQueue).not.toHaveBeenCalled()
+    expect(result.current.downloadProgress).toBe(100)
+    expect(result.current.isReady).toBe(true)
+    // Restaurar: el mock del módulo persiste entre tests del archivo.
+    vi.mocked(isMeteredConnection).mockReturnValue(false)
   })
 
   it("forceResync devuelve true y limpia al final", async () => {
