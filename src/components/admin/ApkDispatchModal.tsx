@@ -23,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ConfirmDialog } from "./confirm-dialog"
+import { maxRunId, pickDispatchedRun } from "./dispatch-run"
 
 type UiState =
   | "idle"
@@ -49,6 +50,9 @@ interface ApkDispatchModalProps {
 
 const POLL_INTERVALS = [15000, 30000, 60000]
 const MAX_POLL_FAILURES = 3
+// El workflow muere solo en GitHub por su propio timeout; pasado este
+// margen el run ya no puede aparecer y el polling debe rendirse.
+const POLL_TIMEOUT_MS = 45 * 60 * 1000
 const DISPATCH_FAILED =
   "No se pudo iniciar la generación. Es posible reintentar o continuar con el flujo manual en GitHub."
 const POLL_EXHAUSTED =
@@ -64,8 +68,10 @@ function actionsUrlFrom(htmlUrl: string | undefined): string | null {
  * Botón admin "Publicar nueva APK" (Fase D W1).
  *
  * Dos pasos reutilizados de `ImportCorpusModal` (configurar → confirmar con
- * `ConfirmDialog`): despacha `seed-content.yml` y sigue el run por polling
+ * `ConfirmDialog`): despacha `apk-release.yml` y sigue el run por polling
  * cada 15 s con backoff 15/30/60 s ante 502/429 (parada tras 3 fallos).
+ * Correlación por id de run (línea base antes del POST) y corte global a
+ * los 45 min sin run nuevo.
  */
 export function ApkDispatchModal({ open, onOpenChange }: ApkDispatchModalProps) {
   const [dryRun, setDryRun] = useState(true)
@@ -78,7 +84,11 @@ export function ApkDispatchModal({ open, onOpenChange }: ApkDispatchModalProps) 
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dispatchingRef = useRef(false)
-  const dispatchedAtRef = useRef<string | null>(null)
+  // Línea base de correlación por id (ver dispatch-run.ts): el id máximo
+  // conocido antes del POST; el run nuevo es el primero con id mayor.
+  const baselineIdRef = useRef<number | null>(null)
+  // Inicio del polling para el corte global de POLL_TIMEOUT_MS.
+  const pollStartedAtRef = useRef<number | null>(null)
 
   const stopPolling = () => {
     if (pollTimer.current !== null) {
@@ -90,7 +100,8 @@ export function ApkDispatchModal({ open, onOpenChange }: ApkDispatchModalProps) 
   const resetFlow = () => {
     stopPolling()
     dispatchingRef.current = false
-    dispatchedAtRef.current = null
+    baselineIdRef.current = null
+    pollStartedAtRef.current = null
     setUiState("idle")
     setDispatchError(null)
     setFailureMessage(null)
@@ -126,15 +137,25 @@ export function ApkDispatchModal({ open, onOpenChange }: ApkDispatchModalProps) 
       setUiState("fallo")
       return
     }
-    const at = dispatchedAtRef.current
-    if (!at) return
+    const baselineId = baselineIdRef.current
+    if (baselineId === null) return
     stopPolling()
     pollTimer.current = setTimeout(() => {
-      void pollOnce(at, next)
+      void pollOnce(baselineId, next)
     }, POLL_INTERVALS[failures] ?? 60000)
   }
 
-  const pollOnce = async (at: string, failures: number) => {
+  const pollOnce = async (baselineId: number, failures: number) => {
+    // Corte global: sin run tras 45 min el workflow ya expiró en GitHub.
+    if (
+      pollStartedAtRef.current !== null &&
+      Date.now() - pollStartedAtRef.current > POLL_TIMEOUT_MS
+    ) {
+      stopPolling()
+      setFailureMessage(POLL_EXHAUSTED)
+      setUiState("fallo")
+      return
+    }
     let data: { runs?: ApkRunView[] }
     try {
       const res = await fetch("/api/admin/apk/runs?per_page=10")
@@ -154,16 +175,12 @@ export function ApkDispatchModal({ open, onOpenChange }: ApkDispatchModalProps) 
     }
 
     const runs = Array.isArray(data.runs) ? data.runs : []
-    const mine = runs
-      .filter((r) => r.createdAt > at)
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0] as
-      | ApkRunView
-      | undefined
+    const mine = pickDispatchedRun(runs, baselineId)
 
     if (!mine) {
       stopPolling()
       pollTimer.current = setTimeout(() => {
-        void pollOnce(at, 0)
+        void pollOnce(baselineId, 0)
       }, POLL_INTERVALS[0])
       return
     }
@@ -183,7 +200,7 @@ export function ApkDispatchModal({ open, onOpenChange }: ApkDispatchModalProps) 
 
     stopPolling()
     pollTimer.current = setTimeout(() => {
-      void pollOnce(at, 0)
+      void pollOnce(baselineId, 0)
     }, POLL_INTERVALS[0])
   }
 
@@ -192,6 +209,20 @@ export function ApkDispatchModal({ open, onOpenChange }: ApkDispatchModalProps) 
     dispatchingRef.current = true
     setUiState("despachando")
     setDispatchError(null)
+
+    // Línea base ANTES del POST: el id máximo conocido hasta ahora. Si la
+    // lectura falla, se usa el historial ya cargado para no bloquear.
+    let baselineId = maxRunId(history)
+    try {
+      const baseRes = await fetch("/api/admin/apk/runs?per_page=10")
+      if (baseRes.ok) {
+        const baseData = await baseRes.json()
+        const baseRuns = Array.isArray(baseData.runs) ? baseData.runs : []
+        baselineId = maxRunId(baseRuns)
+      }
+    } catch {
+      // Se conserva la base calculada del historial.
+    }
 
     try {
       const res = await fetch("/api/admin/apk/dispatch", {
@@ -216,13 +247,13 @@ export function ApkDispatchModal({ open, onOpenChange }: ApkDispatchModalProps) 
         return
       }
 
-      const at = new Date().toISOString()
-      dispatchedAtRef.current = at
+      baselineIdRef.current = baselineId
+      pollStartedAtRef.current = Date.now()
       setConfirmOpen(false)
       setUiState("observando")
       stopPolling()
       pollTimer.current = setTimeout(() => {
-        void pollOnce(at, 0)
+        void pollOnce(baselineId, 0)
       }, POLL_INTERVALS[0])
     } catch {
       setDispatchError(DISPATCH_FAILED)
@@ -297,6 +328,19 @@ export function ApkDispatchModal({ open, onOpenChange }: ApkDispatchModalProps) 
                           Ejecución #{lastRun.id} · {lastRun.status}
                           {lastRun.conclusion ? ` · ${lastRun.conclusion}` : ""}
                         </p>
+                      ) : null}
+                      {actionsUrl ? (
+                        <Button variant="outline" size="sm" asChild>
+                          <a
+                            href={actionsUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="gap-1.5"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Continuar con el flujo manual en GitHub
+                          </a>
+                        </Button>
                       ) : null}
                     </div>
                   </CardContent>
