@@ -59,12 +59,16 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - name: Build (con env de build)
+        # Secrets de build: si existen en el repo se usan; si no, dummies.
+        # `next build` evalúa authOptions a import-time y exige valores NO
+        # vacíos, pero NO los hornea (solo NEXT_PUBLIC_* llega al cliente):
+        # en runtime el servidor usa su .env real (panel de Hostinger).
         env:
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'solo-build-no-usar-en-runtime' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'mysql://build:build@localhost:3306/build' }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL || 'https://piiyaak.com' }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || 'build-dummy' }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || 'build-dummy' }}
         run: npm run build
       - name: Empaquetar standalone + estáticos
         run: |
