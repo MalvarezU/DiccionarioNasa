@@ -104,7 +104,9 @@ describe("ApkDispatchModal [fix correlación por id]", () => {
     await flush()
 
     expect(screen.getByText("Contenido generado correctamente.")).toBeDefined()
-    expect(screen.getByText("Cerrar")).toBeDefined()
+    // La X del diálogo también se anuncia "Cerrar": basta el botón del footer.
+    const cierres = screen.getAllByText("Cerrar")
+    expect(cierres.some((el) => el.tagName === "BUTTON")).toBe(true)
   })
 
   it("fallo: run con conclusion fallida muestra mensaje accionable y escape", async () => {
