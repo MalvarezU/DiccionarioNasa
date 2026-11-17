@@ -132,7 +132,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[93dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Database className="h-5 w-5 text-primary" />
@@ -226,13 +226,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 ? `Medios offline: ${formatMB(mediaUsage.bytes)} de ${formatMB(MEDIA_BUDGET_BYTES)} · ${mediaUsage.audios} audios · ${mediaUsage.illustrations} ilustraciones`
                 : "Medios offline: sin medir todavía"}
             </p>
-            <div className="mt-2 flex gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => void startDownload()}
                 disabled={isDownloading || !isOnline}
-                className="gap-1"
+                className="gap-1 flex-1 whitespace-nowrap"
               >
                 <Download className="h-3.5 w-3.5" aria-hidden="true" />
                 Completar descarga
@@ -246,7 +246,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   !mediaUsage ||
                   (mediaUsage.audios === 0 && mediaUsage.illustrations === 0)
                 }
-                className="gap-1"
+                className="gap-1 flex-1 whitespace-nowrap"
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                 Liberar medios
