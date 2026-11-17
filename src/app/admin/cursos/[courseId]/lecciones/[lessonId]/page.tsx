@@ -6,6 +6,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Eye, Pencil, Redo2, Undo2 } from 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LessonEditor } from "@/components/admin/lesson-editor/lesson-editor"
+import type { SaveResult } from "@/components/admin/lesson-editor/lesson-editor"
 import { LessonPreview } from "@/components/admin/lesson-editor/lesson-preview"
 import { ConfirmDialog } from "@/components/admin/confirm-dialog"
 import type { LessonBlock } from "@/lib/courses/blocks"
@@ -43,7 +44,7 @@ export default function LessonEditorPage() {
   const [dirty, setDirty] = useState(false)
   const [pendiente, setPendiente] = useState<string | null>(null)
   const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved" | "error">("idle")
-  const guardarRef = useRef<((motivo?: "manual" | "auto") => Promise<void>) | null>(null)
+  const guardarRef = useRef<((motivo?: "manual" | "auto") => Promise<SaveResult>) | null>(null)
   const dirtyRef = useRef(dirty)
   const editorUndoRef = useRef<(() => void) | null>(null)
   const editorRedoRef = useRef<(() => void) | null>(null)
@@ -127,9 +128,17 @@ export default function LessonEditorPage() {
       if (!fn) return
       setAutosaveState("saving")
       try {
-        await fn("auto")
-        setAutosaveState("saved")
-        setTimeout(() => setAutosaveState((s) => (s === "saved" ? "idle" : s)), 2000)
+        const result = await fn("auto")
+        if (result === "saved") {
+          setAutosaveState("saved")
+          setTimeout(() => setAutosaveState((s) => (s === "saved" ? "idle" : s)), 2000)
+        } else if (result === "skipped") {
+          // Doc inválido: no se intentó guardar, no hay nada que anunciar
+          // (el editor ya muestra "Cambios sin guardar" y los bloques con error).
+          setAutosaveState("idle")
+        } else {
+          setAutosaveState("error")
+        }
       } catch {
         setAutosaveState("error")
       }

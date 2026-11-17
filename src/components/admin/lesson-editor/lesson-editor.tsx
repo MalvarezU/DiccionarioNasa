@@ -94,6 +94,8 @@ const ETIQUETA_TIPO: Record<string, string> = {
   listening: "Escucha",
 }
 
+export type SaveResult = "saved" | "skipped" | "failed"
+
 export function LessonEditor({
   lessonId,
   initialTitle,
@@ -114,7 +116,7 @@ export function LessonEditor({
   onDirtyChange?: (dirty: boolean) => void
   /** En la página del editor la vista previa es un modo in-page, no un dialog. */
   ocultarVistaPrevia?: boolean
-  onGuardarRef?: (fn: (motivo?: "manual" | "auto") => Promise<void>) => void
+  onGuardarRef?: (fn: (motivo?: "manual" | "auto") => Promise<SaveResult>) => void
   onUndoRedoRef?: (undo: () => void, redo: () => void, puedeDeshacer: boolean, puedeRehacer: boolean) => void
 }) {
   const editor = useLessonEditor({ title: initialTitle, blocks: initialBlocks })
@@ -151,8 +153,8 @@ export function LessonEditor({
   const [previewAbierta, setPreviewAbierta] = useState(false)
   const { toast } = useToast()
 
-  async function guardar(motivo: "manual" | "auto" = "manual") {
-    if (!editor.valido || !editor.documento) return
+  async function guardar(motivo: "manual" | "auto" = "manual"): Promise<SaveResult> {
+    if (!editor.valido || !editor.documento) return "skipped"
     setGuardando(true)
     try {
       const res = await fetch(`/api/lessons/${lessonId}`, {
@@ -173,19 +175,21 @@ export function LessonEditor({
           description: body.message ?? "Revisa los errores en los bloques",
           variant: "destructive",
         })
-        return
+        return "failed"
       }
       editor.markSaved()
       // El auto-guardado ya se confirma con el badge del header;
       // solo el guardado manual (o un error) merece un toast.
       if (motivo === "manual") toast({ title: "Lección guardada" })
       onGuardado?.()
+      return "saved"
     } catch {
       toast({
         title: "No se pudo guardar",
         description: "Error de red. Intenta de nuevo.",
         variant: "destructive",
       })
+      return "failed"
     } finally {
       setGuardando(false)
     }

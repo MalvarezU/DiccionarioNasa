@@ -81,4 +81,65 @@ describe("GET /api/admin/audit-logs/export [B1.7]", () => {
     expect(res.status).toBe(401)
     expect(db.auditLog.findMany).not.toHaveBeenCalled()
   })
+
+  it("prefija con apóstrofe las celdas que empiezan con =, +, @ o - (CSV injection)", async () => {
+    allow()
+    vi.mocked(db.auditLog.findMany).mockResolvedValue([
+      {
+        id: "=SUM(A1:A2)",
+        createdAt: new Date("2026-09-10T10:00:00Z"),
+        action: "+cmd",
+        entity: "@ref",
+        entityId: "-1",
+        userId: "u1",
+        changes: "x",
+      },
+    ] as never)
+
+    const res = await GET(
+      new Request("http://localhost:3000/api/admin/audit-logs/export")
+    )
+    const text = await res.text()
+    expect(text).toContain("'=SUM(A1:A2)")
+    expect(text).toContain("'+cmd")
+    expect(text).toContain("'@ref")
+    expect(text).toContain("'-1")
+  })
+
+  it("formatea createdAt no-Date como string y maneja valores null", async () => {
+    allow()
+    vi.mocked(db.auditLog.findMany).mockResolvedValue([
+      {
+        id: null,
+        createdAt: "2026-09-10T10:00:00Z",
+        action: "UPDATE",
+        entity: "DictionaryWord",
+        entityId: null,
+        userId: null,
+        changes: null,
+      },
+    ] as never)
+
+    const res = await GET(
+      new Request("http://localhost:3000/api/admin/audit-logs/export")
+    )
+    const text = await res.text()
+    expect(res.status).toBe(200)
+    expect(text).toContain("2026-09-10T10:00:00Z")
+  })
+
+  it("responde 500 y loguea cuando findMany falla", async () => {
+    allow()
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {})
+    vi.mocked(db.auditLog.findMany).mockRejectedValue(new Error("boom"))
+
+    const res = await GET(
+      new Request("http://localhost:3000/api/admin/audit-logs/export")
+    )
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.message).toBe("Error interno del servidor")
+    expect(spy).toHaveBeenCalled()
+    spy.mockRestore()
+  })
 })

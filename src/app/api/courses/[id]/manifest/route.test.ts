@@ -161,4 +161,58 @@ describe("GET /api/courses/[id]/manifest [F3]", () => {
     expect(body.modules[0].lessons[0].lessonNumber).toBeNull()
     expect(JSON.stringify(body)).not.toMatch(/"lessonNumber":"/)
   })
+
+  it("contenido corrupto pero con `blocks`: cuenta quiz/listening por `type` crudo", async () => {
+    // Documento ilegible para parseLessonContent (versión vieja + bloques
+    // inválidos): el fallback cuenta por `type` sin validar estructura.
+    const corrupt = publishedCourse()
+    ;(corrupt.modules[0].lessons[0] as { content: unknown }).content = {
+      version: 1,
+      blocks: [QUIZ_BLOCK, "junk", null, { type: "listening" }, { type: "text", html: "x" }],
+    }
+    vi.mocked(db.course.findUnique).mockResolvedValue(corrupt as never)
+    const res = await GET({} as never, params("c1"))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    // quiz (válido) + {type:"listening"}; "junk", null y text no cuentan
+    expect(body.modules[0].lessons[0].interactiveCount).toBe(2)
+  })
+
+  it("contenido sin `blocks` (o no-objeto) cuenta 0 sin romper el manifest", async () => {
+    const weird = publishedCourse()
+    ;(weird.modules[0].lessons[0] as { content: unknown }).content = {
+      version: 2,
+      blocks: "nope",
+    }
+    ;(weird.modules[0].lessons[1] as { content: unknown }).content = "texto suelto"
+    ;(weird.modules[1].lessons[0] as { content: unknown }).content = null
+    vi.mocked(db.course.findUnique).mockResolvedValue(weird as never)
+    const res = await GET({} as never, params("c1"))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.modules[0].lessons[0].interactiveCount).toBe(0)
+    expect(body.modules[0].lessons[1].interactiveCount).toBe(0)
+    expect(body.modules[1].lessons[0].interactiveCount).toBe(0)
+  })
+
+  it("DRAFT visible también para admin (no solo editor)", async () => {
+    vi.mocked(db.course.findUnique).mockResolvedValue({
+      ...publishedCourse(),
+      status: "DRAFT",
+      modules: [],
+    } as never)
+    vi.mocked(getServerSession).mockResolvedValue({ user: { role: "admin" } } as never)
+    const res = await GET({} as never, params("c1"))
+    expect(res.status).toBe(200)
+  })
+
+  it("error inesperado: 500 genérico con log", async () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    vi.mocked(db.course.findUnique).mockRejectedValue(new Error("db down"))
+    const res = await GET({} as never, params("c1"))
+    expect(res.status).toBe(500)
+    expect((await res.json()).message).toBe("Error interno del servidor")
+    expect(errSpy).toHaveBeenCalledWith("Course manifest error:", expect.any(Error))
+    errSpy.mockRestore()
+  })
 })

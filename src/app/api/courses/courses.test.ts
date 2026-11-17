@@ -603,3 +603,96 @@ describe("PUT /api/lessons/[id] — guardar contenido [cursos-fase2]", () => {
     expect(res.status).toBe(400)
   })
 })
+
+describe("cursos API [B2.2] — gaps coverage", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("lista calcula progreso por usuario (flatMap/doneSet/hit)", async () => {
+    vi.mocked(getServerSession).mockResolvedValue({ user: { id: "u1", role: "user" } } as never)
+    vi.mocked(db.course.findMany).mockResolvedValue([
+      { id: "c1", title: "T", description: null, modules: [{ lessons: [{ id: "l1" }, { id: "l2" }] }] },
+    ] as never)
+    vi.mocked(db.userLessonProgress.findMany).mockResolvedValue([{ lessonId: "l1" }] as never)
+    const res = await listGET(urlRequest("http://x/api/courses") as never)
+    const body = await res.json()
+    expect(body.courses[0].progressPct).toBe(50)
+    expect(vi.mocked(db.userLessonProgress.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "u1", lessonId: { in: ["l1", "l2"] }, completed: true } })
+    )
+  })
+
+  it("lista sin lecciones deja progressPct 0 (allLessonIds vacío)", async () => {
+    vi.mocked(getServerSession).mockResolvedValue({ user: { id: "u1", role: "user" } } as never)
+    vi.mocked(db.course.findMany).mockResolvedValue([
+      { id: "c1", title: "T", description: null, modules: [{ lessons: [] }] },
+    ] as never)
+    const res = await listGET(urlRequest("http://x/api/courses") as never)
+    const body = await res.json()
+    expect(body.courses[0].progressPct).toBe(0)
+    expect(vi.mocked(db.userLessonProgress.findMany)).not.toHaveBeenCalled()
+  })
+
+  it("lista sin cursos no consulta progreso (courses.length 0)", async () => {
+    vi.mocked(getServerSession).mockResolvedValue({ user: { id: "u1", role: "user" } } as never)
+    vi.mocked(db.course.findMany).mockResolvedValue([] as never)
+    const res = await listGET(urlRequest("http://x/api/courses") as never)
+    const body = await res.json()
+    expect(body.courses).toEqual([])
+    expect(vi.mocked(db.userLessonProgress.findMany)).not.toHaveBeenCalled()
+  })
+
+  it("lista retorna 500 y loggea Courses list error", async () => {
+    vi.mocked(getServerSession).mockResolvedValue(null)
+    vi.mocked(db.course.findMany).mockRejectedValue(new Error("boom"))
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const res = await listGET(urlRequest("http://x/api/courses") as never)
+    expect(res.status).toBe(500)
+    expect(spy).toHaveBeenCalledWith("Courses list error:", expect.any(Error))
+    spy.mockRestore()
+  })
+})
+
+describe("cursos API [B2.2] — POST gaps", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("POST invalid status defaultea DRAFT", async () => {
+    allowEditor()
+    vi.mocked(db.course.create).mockResolvedValue({ id: "c1" } as never)
+    const res = await coursesPOST(jsonReq("http://x/api/courses", { title: "T", status: "NOPE" }) as never)
+    expect(res.status).toBe(201)
+    expect(db.course.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "DRAFT" }) })
+    )
+  })
+
+  it("POST description vacía queda null y sequential false se respeta", async () => {
+    allowEditor()
+    vi.mocked(db.course.create).mockResolvedValue({ id: "c1" } as never)
+    const res = await coursesPOST(
+      jsonReq("http://x/api/courses", { title: "T", description: "   ", sequential: false }) as never
+    )
+    expect(res.status).toBe(201)
+    expect(db.course.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ description: null, sequential: false }) })
+    )
+  })
+
+  it("POST description no vacía se trima", async () => {
+    allowEditor()
+    vi.mocked(db.course.create).mockResolvedValue({ id: "c1" } as never)
+    await coursesPOST(jsonReq("http://x/api/courses", { title: "T", description: "  desc  " }) as never)
+    expect(db.course.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ description: "desc" }) })
+    )
+  })
+
+  it("POST retorna 500 y loggea Course create error", async () => {
+    allowEditor()
+    vi.mocked(db.course.create).mockRejectedValue(new Error("boom"))
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const res = await coursesPOST(jsonReq("http://x/api/courses", { title: "T" }) as never)
+    expect(res.status).toBe(500)
+    expect(spy).toHaveBeenCalledWith("Course create error:", expect.any(Error))
+    spy.mockRestore()
+  })
+})

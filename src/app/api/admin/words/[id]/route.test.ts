@@ -527,3 +527,189 @@ describe("DELETE /api/admin/words/[id] — borrado lógico (Fase A T07)", () => 
     expect(res.status).toBe(401)
   })
 })
+
+describe("PUT /api/admin/words/[id] — gaps coverage", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("returns 400 when nasaYuwe is empty", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nasaYuwe: "   " }),
+      }),
+      params
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it("PUT status-only PUBLISHED records audit action PUBLISH", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...existingWord, status: "PUBLISHED" })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "PUBLISHED" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(200)
+    expect(vi.mocked(db.auditLog.create)).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "PUBLISH" }) })
+    )
+  })
+
+  it("PUT status-only ARCHIVED records audit action ARCHIVE", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...existingWord, status: "ARCHIVED" })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ARCHIVED" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(200)
+    expect(vi.mocked(db.auditLog.create)).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "ARCHIVE" }) })
+    )
+  })
+
+  it("PUT status-only to DRAFT records audit action UPDATE", async () => {
+    allow()
+    const published = { ...existingWord, status: "PUBLISHED" }
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(published)
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...published, status: "DRAFT" })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "DRAFT" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(200)
+    expect(vi.mocked(db.auditLog.create)).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "UPDATE" }) })
+    )
+  })
+
+  it("PUT status + other field records PUBLISH when new status PUBLISHED", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue(existingWord)
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({ ...existingWord, status: "PUBLISHED", spanish: "nuevo" })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "PUBLISHED", spanish: "nuevo" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(200)
+    expect(vi.mocked(db.auditLog.create)).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "PUBLISH" }) })
+    )
+  })
+
+  it("PUT logs cleanupError when illustration cleanup throws", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {})
+    allow()
+    mockDeleteObject.mockResolvedValue(undefined)
+    vi.mocked(db.dictionaryWord.findUnique).mockResolvedValue({
+      ...existingWord,
+      illustrationUrl: "/api/media/vieja",
+    })
+    vi.mocked(db.dictionaryWord.update).mockResolvedValue({
+      ...existingWord,
+      illustrationUrl: "/api/media/nueva",
+    })
+    vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
+    vi.mocked(db.mediaAsset.findUnique).mockResolvedValue({
+      id: "vieja",
+      objectKey: "images/vieja.png",
+    } as never)
+    vi.mocked(db.mediaAsset.delete).mockRejectedValue(new Error("db fail"))
+
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ illustrationUrl: "/api/media/nueva" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(200)
+    expect(spy).toHaveBeenCalledWith("Error limpiando ilustración anterior:", expect.any(Error))
+    spy.mockRestore()
+  })
+
+  it("PUT returns 500 on unexpected error", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockRejectedValue(new Error("boom"))
+    const res = await PUT(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spanish: "hogar" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(500)
+  })
+})
+
+describe("PATCH /api/admin/words/[id] — gaps coverage", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("returns 401 when not editor", async () => {
+    deny()
+    const res = await PATCH(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "PUBLISHED" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it("returns 500 on unexpected error", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockRejectedValue(new Error("boom"))
+    const res = await PATCH(
+      new Request("http://localhost:3000/api/admin/words/w1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "PUBLISHED" }),
+      }),
+      params
+    )
+    expect(res.status).toBe(500)
+  })
+})
+
+describe("DELETE /api/admin/words/[id] — gaps coverage", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("returns 500 on unexpected error", async () => {
+    allow()
+    vi.mocked(db.dictionaryWord.findUnique).mockRejectedValue(new Error("boom"))
+    const res = await DELETE(
+      new Request("http://localhost:3000/api/admin/words/w1", { method: "DELETE" }),
+      params
+    )
+    expect(res.status).toBe(500)
+  })
+})
