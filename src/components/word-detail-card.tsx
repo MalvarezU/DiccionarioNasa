@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { AuthModal } from "@/components/auth-modal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useOverlayHistory } from "@/hooks/use-overlay-history";
 import { WordContent } from "./word-content";
 import { useWordDetail } from "./use-word-detail";
 
@@ -31,6 +32,9 @@ export function WordDetailCard({
   onOpenChange,
 }: WordDetailCardProps) {
   const isMobile = useIsMobile();
+  // Dialog (desktop) y Sheet (móvil) comparten el mismo `open`: un solo hook,
+  // una sola entrada de historial. El atrás cierra la ficha sin cambiar ruta.
+  const handleOpenChange = useOverlayHistory(open, onOpenChange);
   const {
     word,
     isLoading,
@@ -71,7 +75,7 @@ export function WordDetailCard({
     <>
       {/* ─── Desktop: Centered Dialog (Modal) ──────────────────────────────── */}
       {!isMobile && (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogContent className="max-h-[88dvh] gap-0 overflow-hidden p-0 md:max-w-4xl lg:max-w-5xl">
             <DialogHeader className="contents">
               <DialogTitle className="sr-only">
@@ -88,7 +92,7 @@ export function WordDetailCard({
 
       {/* ─── Mobile: Sheet (Side Drawer) ───────────────────────────────────── */}
       {isMobile && (
-        <Sheet open={open} onOpenChange={onOpenChange}>
+        <Sheet open={open} onOpenChange={handleOpenChange}>
           <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
             <SheetHeader className="pb-0">
               <SheetTitle className="sr-only">

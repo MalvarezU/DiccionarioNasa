@@ -9,6 +9,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useSingleAudio } from "@/hooks/use-single-audio";
 import { useToast } from "@/hooks/use-toast";
+import { useOverlayHistory } from "@/hooks/use-overlay-history";
 import { SuggestWordModal } from "@/components/suggest-word-modal";
 import { WordDetailCard } from "@/components/word-detail-card";
 import { searchLocalWords, isLocalDBReady } from "@/lib/local-db";
@@ -235,6 +236,19 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  /**
+   * El dropdown de resultados participa del historial con el flag `isOpen`
+   * (NO con el derivado `showDropdown`, para no empujar una entrada por
+   * cada pulsación mientras se escribe: una sola por sesión de dropdown).
+   * - Cierres de UI (clic fuera, Escape) → `handleDropdownOpenChange(false)`
+   *   con limpieza de `back()`.
+   * - Transiciones a otro overlay (elegir resultado → ficha, "Sugerir" →
+   *   modal) → `setIsOpen(false)` directo, silencioso: la ficha/modal
+   *   recicla la entrada huérfana por adopción (`replaceState`) en vez de
+   *   empujar otra, sin carrera `back()`+`push()` en la misma tarea
+   *   (la cadena de skip queda como red de seguridad al salir).
+   */
+  const handleDropdownOpenChange = useOverlayHistory(isOpen, setIsOpen);
   const isOnline = useOnlineStatus();
   const { toast } = useToast();
   const debouncedQuery = useDebounce(query, 300);
@@ -362,7 +376,7 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
     return () => controller.abort();
   }, [effectiveTerm, performSearch]);
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click (cierre de UI: retira la entrada)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -370,12 +384,12 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
         !containerRef.current.contains(event.target as Node)
       ) {
         stopAll();
-        setIsOpen(false);
+        handleDropdownOpenChange(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [stopAll]);
+  }, [stopAll, handleDropdownOpenChange]);
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -442,12 +456,12 @@ export function SearchBar({ variant = "inline", onWordSelect }: SearchBarProps) 
           break;
         case "Escape":
           stopAll();
-          setIsOpen(false);
+          handleDropdownOpenChange(false);
           inputRef.current?.blur();
           break;
       }
     },
-    [isOpen, flatResults, highlightedIndex, handleSelect, stopAll, query, performSearch]
+    [isOpen, flatResults, highlightedIndex, handleSelect, stopAll, query, performSearch, handleDropdownOpenChange]
   );
 
   const handleHighlight = useCallback((index: number) => {

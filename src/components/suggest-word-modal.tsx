@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useOverlayHistory } from "@/hooks/use-overlay-history";
 
 interface SuggestWordModalProps {
   open: boolean;
@@ -33,13 +34,16 @@ export function SuggestWordModal({
   const { toast } = useToast();
 
   // Update term when initialTerm changes (dialog reopens with new term)
-  const handleOpenChange = (newOpen: boolean) => {
+  const handleOpenRequestChange = (newOpen: boolean) => {
     if (newOpen) {
       setTerm(initialTerm);
       setComment("");
     }
     onOpenChange(newOpen);
   };
+
+  // El atrás cierra el modal sin cambiar de ruta (compone el reset de arriba).
+  const handleOpenChange = useOverlayHistory(open, handleOpenRequestChange);
 
   const handleSubmit = async () => {
     if (!term.trim()) return;
@@ -120,7 +124,7 @@ export function SuggestWordModal({
         <DialogFooter className="gap-2 sm:gap-0">
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={isSubmitting}
           >
             Cancelar

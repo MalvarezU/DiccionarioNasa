@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, LogIn, Chrome, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useOverlayHistory } from "@/hooks/use-overlay-history";
 import { LegalTermsModal, type LegalTab } from "@/components/legal-terms-modal";
 
 export type AuthModalMode = "register" | "login";
@@ -73,6 +74,13 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
     setIsLoading(false);
     setLegalOpen(false);
   };
+
+  // El atrás cierra el modal sin cambiar de ruta. Se compone con el reset
+  // para que el popstate también limpie el formulario.
+  const handleOpenChange = useOverlayHistory(open, (next) => {
+    if (!next) resetForm();
+    onOpenChange(next);
+  });
 
   const requireTerms = () => {
     if (!acceptedTerms) {
@@ -142,7 +150,7 @@ export function AuthModal({ open, onOpenChange, initialMode = "login" }: AuthMod
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isRegister ? "Crea tu cuenta" : "Iniciar sesión"}</DialogTitle>

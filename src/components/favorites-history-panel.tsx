@@ -19,6 +19,7 @@ import {
   Heart,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useOverlayHistory } from "@/hooks/use-overlay-history";
 import { PanelContent } from "./panel-content";
 import { type PanelTab } from "./panel-data";
 
@@ -37,6 +38,8 @@ export function FavoritesHistoryPanel({
 }: FavoritesHistoryPanelProps) {
   const isMobile = useIsMobile();
   const [currentTab, setCurrentTab] = useState<PanelTab>(initialTab);
+  // Dialog (desktop) y Sheet (móvil) comparten el mismo `open`: un solo hook.
+  const handleOpenChange = useOverlayHistory(open, onOpenChange);
 
   // Sync tab when initialTab prop changes
   useEffect(() => {
@@ -51,7 +54,7 @@ export function FavoritesHistoryPanel({
     <>
       {/* ─── Desktop: Centered Dialog (Modal) ──────────────────────────────── */}
       {!isMobile && (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
             <div className="p-6">
               <DialogHeader className="pb-0 text-left space-y-0">
@@ -77,7 +80,7 @@ export function FavoritesHistoryPanel({
 
       {/* ─── Mobile: Sheet (Side Drawer) ───────────────────────────────────── */}
       {isMobile && (
-        <Sheet open={open} onOpenChange={onOpenChange}>
+        <Sheet open={open} onOpenChange={handleOpenChange}>
           <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
             <SheetHeader className="pb-0">
               <SheetTitle className="flex items-center gap-2 text-lg">

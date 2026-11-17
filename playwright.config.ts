@@ -76,6 +76,12 @@ export default defineConfig({
       testMatch: /admin-guard\.spec\.ts/,
     },
     {
+      // PWA-web: gesto atrás cierra overlays (viewport móvil, sin sesión).
+      name: "overlay-back",
+      testMatch: /overlay-back\.spec\.ts/,
+      use: { ...devices["Pixel 5"] },
+    },
+    {
       // Sin sesión global: cada test crea sus contextos (admin/user/visitante)
       name: "screenplay-multi",
       testMatch: /multiactor\.screenplay\.spec\.ts/,

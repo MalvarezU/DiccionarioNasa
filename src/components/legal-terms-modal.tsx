@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useOverlayHistory } from "@/hooks/use-overlay-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   PrivacyDocument,
@@ -35,14 +36,17 @@ export function LegalTermsModal({
 }: LegalTermsModalProps) {
   const [tab, setTab] = useState<LegalTab>(initialTab);
 
-  const handleOpenChange = (value: boolean) => {
+  const handleOpenRequestChange = (value: boolean) => {
     if (value) setTab(initialTab);
     onOpenChange(value);
   };
 
+  // Anidado dentro del AuthModal (público): el atrás lo cierra a él primero.
+  const handleOpenChange = useOverlayHistory(open, handleOpenRequestChange);
+
   const handleAccept = () => {
     onAccept();
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   return (
@@ -80,7 +84,7 @@ export function LegalTermsModal({
         </Tabs>
 
         <DialogFooter className="border-t px-6 py-4 sm:px-8">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
             Cerrar
           </Button>
           <Button type="button" onClick={handleAccept}>

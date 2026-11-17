@@ -2,6 +2,7 @@
 
 import { Check, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useOverlayHistory } from "@/hooks/use-overlay-history"
 import {
   Dialog,
   DialogContent,
@@ -67,9 +68,11 @@ export function InstallDialog({
   onInstalar,
 }: InstallDialogProps) {
   const contenido = MANUAL_CONTENT[variant]
+  // El atrás cierra el diálogo sin cambiar de ruta.
+  const handleOpenChange = useOverlayHistory(open, onOpenChange)
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{contenido.title}</DialogTitle>
@@ -94,7 +97,7 @@ export function InstallDialog({
           ) : (
             <Button
               className="gap-2 w-full"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
             >
               Entendido
             </Button>
