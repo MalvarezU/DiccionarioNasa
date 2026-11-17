@@ -18,6 +18,8 @@ import { SuggestedWordsCarousel } from "@/components/suggested-words-carousel";
 import { WordCard } from "@/components/word-card";
 import { FavoritesHistoryPanel } from "@/components/favorites-history-panel";
 import { recordLocalHistory } from "@/lib/demo-storage";
+import { offlineFetch } from "@/lib/offline-fetch";
+import { getCachedFeaturedWords, setCachedFeaturedWords, type FeaturedWordsSnapshot } from "@/lib/local-db";
 
 import { WordCardSkeleton } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -80,10 +82,17 @@ function DiccionarioContent() {
       setFeaturedLoading(true);
       setFeaturedError(false);
       try {
-        const res = await fetch("/api/dictionary/featured", { signal: controller.signal });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
+        // network → snapshot IndexedDB → vacío (offline-first, nunca lanza
+        // salvo abort). Error visible solo si no hay ni snapshot.
+        const { data, source } = await offlineFetch<FeaturedWordsSnapshot>(
+          "/api/dictionary/featured",
+          { signal: controller.signal },
+          { read: getCachedFeaturedWords, write: setCachedFeaturedWords },
+          { words: [] }
+        );
+        if (controller.signal.aborted) return;
         setFeaturedWords(data.words ?? []);
+        setFeaturedError(source === "empty");
       } catch (err) {
         if ((err as Error)?.name === "AbortError") return;
         setFeaturedError(true);

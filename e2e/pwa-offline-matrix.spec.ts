@@ -256,8 +256,51 @@ test.describe("PWA offline matrix (prod build)", () => {
     expect(res.body).toMatchObject({ error: "offline" });
   });
 
-  test("busqueda offline sugiere desde IndexedDB tras sync", async ({
+  test("banner offline persistente con CTA a lo disponible", async ({ page }) => {
+    await page.goto("/diccionario");
+    await ensureSW(page);
+    // Online: sin banda.
+    await expect(page.getByText(/mostrando contenido guardado/i)).toHaveCount(0);
+    await page.context().setOffline(true);
+    await page.reload();
+    // Offline: banda visible con CTA que navega a /offline (ruta precacheada).
+    const cta = page.getByRole("link", { name: /ver lo disponible/i });
+    await expect(cta).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(/mostrando contenido guardado/i)).toBeVisible();
+    await cta.click();
+    await expect(page).toHaveURL(/\/offline/, { timeout: 15000 });
+    await expect(page.getByText("Application error")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: /sin conexi/i })
+    ).toBeVisible({ timeout: 15000 });
+  });
+
+  test("destacados offline salen del snapshot (sin bloque de error)", async ({
     page,
+  }) => {
+    await page.goto("/diccionario");
+    await ensureSW(page);
+    // Online: el grid de destacadas carga y el snapshot queda guardado.
+    await expect(
+      page.getByRole("heading", { name: /palabras destacadas/i })
+    ).toBeVisible({ timeout: 30000 });
+    const panel = page.getByRole("tabpanel").first();
+    await expect(panel.getByRole("button").first()).toBeVisible({
+      timeout: 30000,
+    });
+    await page.context().setOffline(true);
+    await page.reload();
+    // Offline: ni error ni "no hay" (el snapshot alimenta el grid).
+    await expect(
+      page.getByRole("heading", { name: /palabras destacadas/i })
+    ).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(/no pudimos cargar/i)).toHaveCount(0);
+    await expect(panel.getByRole("button").first()).toBeVisible({
+      timeout: 30000,
+    });
+  });
+
+  test("busqueda offline sugiere desde IndexedDB tras sync", async ({    page,
     context,
   }) => {
     await emulateInstalled(context);

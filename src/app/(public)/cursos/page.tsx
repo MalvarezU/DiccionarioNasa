@@ -8,6 +8,8 @@ import { Breadcrumbs } from "@/components/breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { type CourseSummary } from "@/components/cursos/course-card"
+import { offlineFetch } from "@/lib/offline-fetch"
+import { getCachedCourseCatalog, setCachedCourseCatalog, type CourseCatalogSnapshot } from "@/lib/local-db"
 import { normalizeSearchText } from "@/lib/search-text"
 import { ResumeBand, type ResumeNextLesson } from "@/components/cursos/resume-band"
 import { FeaturedCourseCard } from "@/components/cursos/featured-course-card"
@@ -117,20 +119,24 @@ export default function CursosPage() {
 
   // Catálogo publicado (+ ?all=1 en editor+: el endpoint ya existe y
   // devuelve todos los estados; acá solo separamos DRAFT/ARCHIVED).
+  // Offline-first: network → snapshot IndexedDB → vacío (el banner global
+  // "Sin conexión" explica el estado en vez de un error silencioso).
   useEffect(() => {
     let alive = true
-    fetch("/api/courses")
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then((data) => {
+    offlineFetch<CourseCatalogSnapshot>(
+      "/api/courses",
+      undefined,
+      { read: getCachedCourseCatalog, write: setCachedCourseCatalog },
+      { courses: [] }
+    )
+      .then(({ data, source }) => {
         if (!alive) return
         if (data && Array.isArray(data.courses)) {
-          setCourses(data.courses as CourseSummary[])
-          setFetchError(false)
+          setCourses(data.courses)
+          setFetchError(source === "empty")
         } else {
           setCourses([])
+          setFetchError(true)
         }
       })
       .catch(() => {

@@ -17,13 +17,17 @@ describe("PWA [B3.2]", () => {
       fs.readFileSync(path.join(root, "public/manifest.webmanifest"), "utf-8")
     ) as {
       name: string
+      id?: string
       start_url: string
       display: string
+      display_override?: string[]
       icons: Array<{ src: string; sizes: string }>
     }
     expect(manifest.name).toContain("Piiyaak")
+    expect(manifest.id).toBe("/")
     expect(manifest.start_url).toBe("/")
     expect(manifest.display).toBe("standalone")
+    expect(manifest.display_override).toContain("standalone")
     const sizes = manifest.icons.map((i) => i.sizes)
     expect(sizes).toContain("192x192")
     expect(sizes).toContain("512x512")
@@ -76,6 +80,16 @@ describe("PWA [B3.2]", () => {
     expect(layout).toContain("updateViaCache")
     expect(layout).toContain("visibilitychange")
     expect(layout).toContain("SWNotices")
+  })
+
+  it("iOS standalone: appleWebApp + banner offline global (F10)", () => {
+    const layout = fs.readFileSync(path.join(root, "src/app/layout.tsx"), "utf-8")
+    expect(layout).toContain("appleWebApp")
+    const publicLayout = fs.readFileSync(
+      path.join(root, "src/app/(public)/layout.tsx"),
+      "utf-8"
+    )
+    expect(publicLayout).toContain("OfflineBanner")
   })
 })
 

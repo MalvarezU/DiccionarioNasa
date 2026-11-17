@@ -1,8 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { RefreshCw, HardDrive, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+
+/** Hidratación segura: falso en SSR, verdadero en cliente tras el mount. */
+const emptySubscribe = () => () => {}
+function useMounted(): boolean {
+  return useSyncExternalStore(emptySubscribe, () => true, () => false)
+}
 
 /**
  * Avisos del service worker (Fase 2 PWA):
@@ -15,7 +21,7 @@ import { Button } from "@/components/ui/button"
  * descuadrar la hidratación: navigator.serviceWorker no existe en el server).
  */
 export function SWNotices() {
-  const [mounted, setMounted] = useState(false)
+  const mounted = useMounted()
   const [updateReady, setUpdateReady] = useState(false)
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null)
   const [quotaCache, setQuotaCache] = useState<string | null>(null)
@@ -24,10 +30,6 @@ export function SWNotices() {
   // perderia estado y rompe navegaciones en curso.
   const hadController = useRef(false)
   const updateApplied = useRef(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return

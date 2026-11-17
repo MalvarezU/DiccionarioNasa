@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { NavBar } from "@/components/navbar"
+import { OfflineBanner } from "@/components/offline-banner"
 import { SiteFooter } from "@/components/site-footer"
 
 /**
@@ -12,6 +13,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
+      <OfflineBanner />
       <div className="flex-1 flex flex-col">{children}</div>
       <SiteFooter />
     </div>

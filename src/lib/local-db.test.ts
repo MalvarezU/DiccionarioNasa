@@ -11,10 +11,19 @@ import {
   clearLocalDB,
   getCachedWordOfDay,
   setCachedWordOfDay,
+  getCachedFeaturedWords,
+  setCachedFeaturedWords,
+  getCachedCourseCatalog,
+  setCachedCourseCatalog,
   isLocalDBReady,
   getNormalizedInitial,
 } from "./local-db"
-import type { DictionaryWord, CachedWordOfDay } from "./local-db"
+import type {
+  DictionaryWord,
+  CachedWordOfDay,
+  FeaturedWordsSnapshot,
+  CourseCatalogSnapshot,
+} from "./local-db"
 
 const DB_NAME = "NasaYuweDictionary"
 const wordA: DictionaryWord = {
@@ -335,5 +344,60 @@ describe("getNormalizedInitial", () => {
 
   it("returns # for null", () => {
     expect(getNormalizedInitial(null as unknown as string)).toBe("#")
+  })
+})
+
+describe("featured words snapshot (offline)", () => {
+  const snap: FeaturedWordsSnapshot = {
+    words: [
+      {
+        id: "1",
+        spanish: "casa",
+        nasaYuwe: "ya:t",
+        pronunciation: "yaat",
+        category: "sustantivo",
+        culturalContext: "Hogar",
+        audioUrl: null,
+      },
+    ],
+    totalWords: 343,
+  }
+
+  it("stores and retrieves featured snapshot", async () => {
+    await setCachedFeaturedWords(snap)
+    const result = await getCachedFeaturedWords()
+    expect(result?.words).toHaveLength(1)
+    expect(result?.words[0].spanish).toBe("casa")
+    expect(result?.totalWords).toBe(343)
+  })
+
+  it("returns null when not cached", async () => {
+    expect(await getCachedFeaturedWords()).toBeNull()
+  })
+})
+
+describe("course catalog snapshot (offline)", () => {
+  const snap: CourseCatalogSnapshot = {
+    courses: [
+      {
+        id: "c1",
+        title: "Curso demo",
+        description: null,
+        modules: 2,
+        lessons: 5,
+        progressPct: null,
+      },
+    ],
+  }
+
+  it("stores and retrieves catalog snapshot", async () => {
+    await setCachedCourseCatalog(snap)
+    const result = await getCachedCourseCatalog()
+    expect(result?.courses).toHaveLength(1)
+    expect(result?.courses[0].title).toBe("Curso demo")
+  })
+
+  it("returns null when not cached", async () => {
+    expect(await getCachedCourseCatalog()).toBeNull()
   })
 })

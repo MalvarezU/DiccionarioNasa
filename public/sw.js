@@ -342,10 +342,14 @@ self.addEventListener("fetch", (event) => {
     return
   }
 
-  // Estáticos: stale-while-revalidate
+  // Estáticos: stale-while-revalidate (SHELL primero, PRECACHE del build
+  // después). La revalidación corre en background vía waitUntil.
   event.respondWith(
-    caches.open(SHELL_CACHE).then(async (cache) => {
-      const hit = await cache.match(req)
+    (async () => {
+      const shell = await caches.open(SHELL_CACHE)
+      const hit = await shell.match(req)
+      const precache = await caches.open(PRECACHE_CACHE)
+      const cached = hit || (await precache.match(req))
       const network = fetch(req)
         .then(async (res) => {
           // No cachear respuestas que el servidor marca no-store (dev).
@@ -357,8 +361,19 @@ self.addEventListener("fetch", (event) => {
           }
           return res
         })
-        .catch(() => hit)
-      return hit || network
-    })
+        .catch(() => undefined)
+      if (cached) {
+        event.waitUntil(network)
+        return cached
+      }
+      const net = await network
+      return (
+        net ||
+        new Response("Sin conexión", {
+          status: 503,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        })
+      )
+    })()
   )
 })

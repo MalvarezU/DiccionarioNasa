@@ -38,6 +38,12 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon-180.png?v=5",
   },
   manifest: "/manifest.webmanifest",
+  // iOS: sin esto, "Agregar a pantalla de inicio" abre en Safari y no standalone.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Piiyaak",
+  },
   openGraph: {
     title: "Piiyaak — Proyecto de preservación de la lengua Nasa Yuwe",
     description:

@@ -445,3 +445,91 @@ export async function getLocalWord(wordId: string): Promise<DictionaryWord | nul
     return null
   }
 }
+
+// ─── Offline content snapshots (Fase 4: featured + catálogo de cursos) ──────
+// JSON plano y versionable: lo que devuelve la API hoy. Si la API agrega
+// campos, el snapshot viejo sigue siendo leíble (los componentes toleran
+// undefined en los opcionales).
+
+export interface FeaturedWordSnapshot {
+  id: string
+  spanish: string
+  nasaYuwe: string
+  pronunciation: string | null
+  category: string | null
+  culturalContext: string | null
+  audioUrl: string | null
+}
+
+export interface FeaturedWordsSnapshot {
+  words: FeaturedWordSnapshot[]
+  totalWords?: number
+}
+
+async function getMetadata<T>(key: string): Promise<T | null> {
+  try {
+    return await withDB(async (db) => {
+      const tx = db.transaction(METADATA_STORE, "readonly")
+      const store = tx.objectStore(METADATA_STORE)
+
+      return await new Promise<T | null>((resolve, reject) => {
+        const request = store.get(key)
+        request.onsuccess = () => resolve(request.result?.value ?? null)
+        request.onerror = () => reject(request.error)
+      })
+    })
+  } catch {
+    return null
+  }
+}
+
+async function setMetadata(key: string, value: unknown): Promise<void> {
+  await withDB(async (db) => {
+    const tx = db.transaction(METADATA_STORE, "readwrite")
+    const store = tx.objectStore(METADATA_STORE)
+
+    await new Promise<void>((resolve, reject) => {
+      const request = store.put({ key, value })
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+    })
+
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  })
+}
+
+/** Snapshot de palabras destacadas (ruta /diccionario). */
+export function getCachedFeaturedWords(): Promise<FeaturedWordsSnapshot | null> {
+  return getMetadata<FeaturedWordsSnapshot>("featuredWords")
+}
+
+export function setCachedFeaturedWords(data: FeaturedWordsSnapshot): Promise<void> {
+  return setMetadata("featuredWords", data)
+}
+
+export interface CourseCatalogEntry {
+  id: string
+  title: string
+  description: string | null
+  status?: string
+  coverImage?: string | null
+  modules: number
+  lessons: number
+  progressPct: number | null
+}
+
+export interface CourseCatalogSnapshot {
+  courses: CourseCatalogEntry[]
+}
+
+/** Snapshot del catálogo de cursos (ruta /cursos). */
+export function getCachedCourseCatalog(): Promise<CourseCatalogSnapshot | null> {
+  return getMetadata<CourseCatalogSnapshot>("courseCatalog")
+}
+
+export function setCachedCourseCatalog(data: CourseCatalogSnapshot): Promise<void> {
+  return setMetadata("courseCatalog", data)
+}
