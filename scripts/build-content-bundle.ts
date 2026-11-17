@@ -47,7 +47,7 @@ export interface CliDeps {
   now: () => Date
 }
 
-const DEFAULT_API_BASE = "https://diccionario-nasa-liart.vercel.app"
+const DEFAULT_API_BASE = "https://piiyaak.com"
 const VERSION_RE = /^\d+$/
 
 export function printHelp(): string {
@@ -59,7 +59,7 @@ export function printHelp(): string {
     "",
     "Entorno:",
     "  CI_SYNC_SECRET    requerido (solo por entorno; viaja en X-CI-Secret)",
-    "  SEED_API_BASE     default https://diccionario-nasa-liart.vercel.app",
+    "  SEED_API_BASE     default https://piiyaak.com",
     "  R2_*              credenciales del bucket (vía @/lib/r2)",
     "",
     "Códigos: 0 ok · 2 divergencia de versión · 3 incoherencia de medios · 4 infraestructura/uso.",

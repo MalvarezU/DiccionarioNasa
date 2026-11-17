@@ -118,7 +118,7 @@ describe("scripts/build-content-bundle [W1-04]", () => {
       expect(base.ciSecret).toBe("s")
       expect(resolveConfig({ outDir: "d" }, { CI_SYNC_SECRET: "s", SEED_API_BASE: "http://env" }).apiBase).toBe("http://env")
       expect(resolveConfig({ outDir: "d" }, { CI_SYNC_SECRET: "s" }).apiBase).toBe(
-        "https://diccionario-nasa-liart.vercel.app"
+        "https://piiyaak.com"
       )
       expect(() => resolveConfig({ outDir: "d" }, {})).toThrow(/CI_SYNC_SECRET/)
     })

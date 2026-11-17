@@ -93,7 +93,7 @@ jobs:
           R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
         run: |
           set -euo pipefail
-          api_base="${SEED_API_BASE:-https://diccionario-nasa-liart.vercel.app}"
+          api_base="${SEED_API_BASE:-https://piiyaak.com}"
           args=(--out dist/seed)
           if [ -n "${{ inputs.content_version }}" ]; then
             args+=(--expect-version "${{ inputs.content_version }}")
