@@ -7,7 +7,7 @@ const RUN_OK = {
   id: 101,
   status: "completed",
   conclusion: "success",
-  // Posterior al dispatchedAt capturado en el dispatch (el mock corre "ahora").
+  // Id 101 sobre la base 0: se correlaciona por id, sin depender de createdAt.
   createdAt: new Date(Date.now() + 60_000).toISOString(),
   updatedAt: new Date(Date.now() + 120_000).toISOString(),
   inputs: { dry_run: true },
@@ -90,6 +90,7 @@ describe("SeedDispatchModal [Fase D W1]", () => {
     fireEvent.click(screen.getByText("Revisar"))
     expect(screen.getByText(/Versión: actual · Modo: verificación/)).toBeDefined()
 
+    mockFetchOnce({ runs: [], totalCount: 0, page: 1, per_page: 10 })
     mockFetchOnce(
       { run: null, status: "dispatched", correlationId: "11111111-2222-4333-8444-555555555555", ref: "main", inputs: { dry_run: true } },
       202
@@ -121,6 +122,7 @@ describe("SeedDispatchModal [Fase D W1]", () => {
     await flush()
 
     fireEvent.click(screen.getByText("Revisar"))
+    mockFetchOnce({ runs: [], totalCount: 0, page: 1, per_page: 10 })
     mockFetchOnce(
       { run: null, status: "dispatched", correlationId: "11111111-2222-4333-8444-555555555555", ref: "main", inputs: { dry_run: true } },
       202
@@ -151,6 +153,7 @@ describe("SeedDispatchModal [Fase D W1]", () => {
     await flush()
 
     fireEvent.click(screen.getByText("Revisar"))
+    mockFetchOnce({ runs: [], totalCount: 0, page: 1, per_page: 10 })
     mockFetchOnce(
       { run: null, status: "dispatched", correlationId: "11111111-2222-4333-8444-555555555555", ref: "main", inputs: { dry_run: true } },
       202
@@ -188,6 +191,7 @@ describe("SeedDispatchModal [Fase D W1]", () => {
     await flush()
 
     fireEvent.click(screen.getByText("Revisar"))
+    mockFetchOnce({ runs: [], totalCount: 0, page: 1, per_page: 10 })
     mockFetchOnce({ message: "content_version: formato inválido" }, 400)
 
     fireEvent.click(screen.getByText("Generar"))
