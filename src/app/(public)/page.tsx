@@ -14,7 +14,7 @@ import { InstallBanner } from "@/components/pwa/install-banner";
 import { InstallSectionLazy } from "@/components/pwa/install-section-lazy";
 import { DownloadBanner } from "@/components/download-banner"
 import { Reveal } from "@/components/reveal";
-import { WordOfDayCard } from "@/components/word-of-day-card";
+import { SuggestedWordsCarousel } from "@/components/suggested-words-carousel";
 import { WordDetailCard } from "@/components/word-detail-card";
 
 /** Los 3 módulos de la plataforma: se eligen desde el hero. */
@@ -143,11 +143,11 @@ function HomeContent() {
           <DownloadBanner />
         </Reveal>
 
-        {/* Palabra del Día — zona territorio lavado */}
+        {/* Palabras sugeridas — zona territorio lavado */}
         <section className="bg-secondary-container/40">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
             <Reveal>
-              <WordOfDayCard onWordSelect={handleWordSelect} />
+              <SuggestedWordsCarousel onWordSelect={handleWordSelect} />
             </Reveal>
           </div>
         </section>

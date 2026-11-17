@@ -17,8 +17,8 @@ vi.mock("@/components/pwa/install-banner", () => ({
 vi.mock("@/components/search-bar", () => ({
   SearchBar: () => <div data-testid="search-bar" />,
 }));
-vi.mock("@/components/word-of-day-card", () => ({
-  WordOfDayCard: () => <div data-testid="word-of-day" />,
+vi.mock("@/components/suggested-words-carousel", () => ({
+  SuggestedWordsCarousel: () => <div data-testid="suggested-words" />,
 }));
 vi.mock("@/components/explore-section", () => ({
   ExploreSection: () => <div data-testid="explore-section" />,

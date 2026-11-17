@@ -14,7 +14,7 @@ import { InstallBanner } from "@/components/pwa/install-banner";
 import { SearchBar } from "@/components/search-bar";
 import { WordDetailCard } from "@/components/word-detail-card";
 import { ExploreSection } from "@/components/explore-section";
-import { WordOfDayCard } from "@/components/word-of-day-card";
+import { SuggestedWordsCarousel } from "@/components/suggested-words-carousel";
 import { WordCard } from "@/components/word-card";
 import { FavoritesHistoryPanel } from "@/components/favorites-history-panel";
 import { recordLocalHistory } from "@/lib/demo-storage";
@@ -275,9 +275,9 @@ function DiccionarioContent() {
 
         <InstallBanner destino="/#instalar" />
 
-        {/* Word of the Day */}
+        {/* Palabras sugeridas */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
-          <WordOfDayCard onWordSelect={handleWordSelect} />
+          <SuggestedWordsCarousel onWordSelect={handleWordSelect} />
         </section>
 
         {/* Tabbed Section: Featured | Explore */}

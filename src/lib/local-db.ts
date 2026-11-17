@@ -33,6 +33,22 @@ export interface CachedWordOfDay {
   cachedAt: string
 }
 
+export interface CachedSuggestedWords {
+  words: Array<{
+    id: string
+    spanish: string
+    nasaYuwe: string
+    pronunciation: string | null
+    audioUrl: string | null
+    illustrationUrl: string | null
+    culturalContext: string | null
+    category: string | null
+    examples: Array<{ spanish: string; nasaYuwe: string }> | null
+  }>
+  date: string
+  cachedAt: string
+}
+
 interface LocalDBStats {
   wordCount: number
   lastSync: string | null
@@ -296,6 +312,48 @@ export async function setCachedWordOfDay(data: CachedWordOfDay): Promise<void> {
 
     await new Promise<void>((resolve, reject) => {
       const request = store.put({ key: "wordOfDay", value: data })
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+    })
+
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  })
+}
+
+
+/**
+ * Get the cached suggested words from metadata.
+ */
+export async function getCachedSuggestedWords(): Promise<CachedSuggestedWords | null> {
+  try {
+    return await withDB(async (db) => {
+      const tx = db.transaction(METADATA_STORE, "readonly")
+      const store = tx.objectStore(METADATA_STORE)
+
+      return await new Promise<CachedSuggestedWords | null>((resolve, reject) => {
+        const request = store.get("suggestedWords")
+        request.onsuccess = () => resolve(request.result?.value ?? null)
+        request.onerror = () => reject(request.error)
+      })
+    })
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Set the cached suggested words in metadata.
+ */
+export async function setCachedSuggestedWords(data: CachedSuggestedWords): Promise<void> {
+  await withDB(async (db) => {
+    const tx = db.transaction(METADATA_STORE, "readwrite")
+    const store = tx.objectStore(METADATA_STORE)
+
+    await new Promise<void>((resolve, reject) => {
+      const request = store.put({ key: "suggestedWords", value: data })
       request.onsuccess = () => resolve()
       request.onerror = () => reject(request.error)
     })
