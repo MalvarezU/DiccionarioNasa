@@ -24,6 +24,13 @@ export default defineConfig({
       testMatch: /offline-media\.spec\.ts/,
     },
     {
+      // Matriz PWA offline (gate de aceptacion): SIEMPRE contra build de
+      // produccion (E2E_BASE_URL a un `next start`/standalone). El dev
+      // server sirve assets no-store y miente sobre el SW.
+      name: "pwa-offline-matrix",
+      testMatch: /pwa-offline-matrix\.spec\.ts/,
+    },
+    {
       // PWA offline sin R2: sync por UI + ficha + audio sin conexión, con
       // palabra "E2E *" propia (la limpia el teardown global). Sin sesión.
       name: "pwa-offline",
