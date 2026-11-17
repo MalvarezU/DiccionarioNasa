@@ -71,11 +71,11 @@ describe("GameTile [WU-L6]", () => {
     expect(container.querySelectorAll(".bg-secondary-container").length).toBe(2)
   })
 
-  it("motivo escucha muestra anillos de onda + barras de ecualizador", () => {
+  it("motivo escucha muestra un icono Headphones sobre fondo secondary-container", () => {
     const { container } = render(<GameMotifArt motivo="escucha" />)
-    // 2 anillos concéntricos + 5 barras de ecualizador
-    expect(container.querySelectorAll(".rounded-full.border").length).toBe(2)
-    expect(container.querySelectorAll(".bg-secondary").length).toBe(5)
+    // Contenedor redondeado con fondo secondary-container + icono SVG (Headphones)
+    expect(container.querySelectorAll(".bg-secondary-container").length).toBe(1)
+    expect(container.querySelectorAll("svg").length).toBe(1)
   })
 
   it("locked usa 'Sin contenido' y nota por defecto", () => {

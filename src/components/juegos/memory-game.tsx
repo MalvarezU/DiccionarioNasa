@@ -14,6 +14,7 @@ import {
   type GameWord,
 } from "@/lib/game-words"
 import { shuffle } from "@/lib/game-utils"
+import { dedupePool } from "@/lib/game-questions"
 import { useGameFeedback } from "./game-feedback"
 import { Confetti } from "./confetti"
 import {
@@ -178,7 +179,9 @@ export function MemoryGame({ words: providedWords, initialPairs = 6 }: MemoryGam
     if (providedWords && providedWords.length >= 4) return
     let alive = true
     gameWordsOrDemo(12).then((words) => {
-      if (alive) setPool(words)
+      // Dedup por (spanish, nasaYuwe): dos homónimos con el mismo par
+      // crean cartas idénticas que nunca forman pareja (wordId distinto).
+      if (alive) setPool(dedupePool(words))
     })
     return () => {
       alive = false

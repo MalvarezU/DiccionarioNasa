@@ -23,6 +23,7 @@ import {
   type GameWord,
 } from "@/lib/game-words"
 import { shuffle, stringSimilarity } from "@/lib/game-utils"
+import { buildRound } from "@/lib/game-questions"
 import { useOfflineAudio } from "@/hooks/use-offline-audio"
 import { useGameFeedback } from "./game-feedback"
 import { Confetti } from "./confetti"
@@ -98,94 +99,22 @@ function combinedSimilarity(a: GameWord, b: GameWord): number {
   return simWrite
 }
 
-/** Opciones según el modo: español (significado) o Nasa Yuwe escrito (escritura). */
-function toQuestions(ask: GameWord[], pool: GameWord[], mode: EscuchaMode): EscuchaQuestion[] {
-  // Deduplicar el pool por (spanish, nasaYuwe) para evitar palabras repetidas.
-  const seenPool = new Set<string>()
-  const uniquePool = pool.filter((w) => {
-    const key = `${w.spanish}||${w.nasaYuwe}`
-    if (seenPool.has(key)) return false
-    seenPool.add(key)
-    return true
-  })
-
-  return ask.map((word) => {
-    const answerOf = (w: GameWord) => (mode === "significado" ? w.spanish : w.nasaYuwe)
-    const correct = answerOf(word)
-    const ranked = uniquePool
-      .filter((w) => w.id !== word.id)
-      .map((w) => ({
-        w,
-        sim: combinedSimilarity(word, w),
-      }))
-      .sort((a, b) => b.sim - a.sim)
-
-    // Distractores: los más parecidos, sin repetir NINGUNA respuesta.
-    // Comparación directa por el string que aparece en las opciones.
-    const seenAnswers = new Set<string>([correct])
-    const distractorWords: GameWord[] = []
-    for (const r of ranked) {
-      const a = answerOf(r.w)
-      if (seenAnswers.has(a)) continue
-      seenAnswers.add(a)
-      distractorWords.push(r.w)
-      if (distractorWords.length >= 3) break
-    }
-    if (distractorWords.length < 3) {
-      const rest = shuffle(
-        uniquePool.filter((w) => w.id !== word.id && !distractorWords.includes(w) && !seenAnswers.has(answerOf(w)))
-      )
-      for (const w of rest) {
-        if (distractorWords.length >= 3) break
-        const a = answerOf(w)
-        if (seenAnswers.has(a)) continue
-        seenAnswers.add(a)
-        distractorWords.push(w)
-      }
-    }
-
-    const distractors = distractorWords.map(answerOf)
-    const options = shuffle([correct, ...distractors])
-
-    // Verificación final: si aún hay duplicados, eliminarlos.
-    const uniqueOptions = [...new Set(options)]
-    if (uniqueOptions.length < options.length) {
-      // Re-construir sin duplicados
-      const finalOptions = [correct]
-      const used = new Set<string>([correct])
-      for (const d of distractors) {
-        if (used.has(d)) continue
-        used.add(d)
-        finalOptions.push(d)
-      }
-      // Rellenar si faltan
-      const remaining = uniquePool
-        .filter((w) => w.id !== word.id && !used.has(answerOf(w)))
-        .map((w) => answerOf(w))
-      for (const r of remaining) {
-        if (finalOptions.length >= 4) break
-        if (used.has(r)) continue
-        used.add(r)
-        finalOptions.push(r)
-      }
-      const shuffled = shuffle(finalOptions)
-      return {
-        word,
-        options: shuffled,
-        correctIndex: shuffled.indexOf(correct),
-      }
-    }
-
-    return {
-      word,
-      options,
-      correctIndex: options.indexOf(correct),
-    }
-  })
+/** Respuesta según el modo: español (significado) o Nasa Yuwe escrito (escritura). */
+function answerFor(mode: EscuchaMode): (w: GameWord) => string {
+  return mode === "significado" ? (w) => w.spanish : (w) => w.nasaYuwe
 }
 
 function buildQuestions(pool: GameWord[], mode: EscuchaMode): EscuchaQuestion[] {
-  return toQuestions(shuffle(pool).slice(0, NUM_ROUNDS), pool, mode)
+  // La construcción de opciones vive en game-questions: distractores
+  // parecidos (similaridad combinada), sin opciones repetidas y sin
+  // filtrar la respuesta de una ronda futura.
+  return buildRound({
+    pool: shuffle(pool),
+    askCount: NUM_ROUNDS,
+    distractorCount: 3,
+    answerOf: answerFor(mode),
+    similarityOf: combinedSimilarity,
+  })
 }
 
 export function EscuchaGame({
@@ -211,10 +140,10 @@ export function EscuchaGame({
   useEffect(() => {
     if (providedWords && providedWords.length >= 1) return
     let alive = true
-    // 16 (MAX 24 de la API): muestrea más del pool con audio para que
+    // 24 (la API sobremuestrea hasta 48): más del pool con audio para que
     // junto con el exclude de recientes la variedad entre sesiones sea
-    // real (antes 12 de ~31 audios daban enorme solapamiento).
-    gameWordsWithAudio(16).then((words) => {
+    // real y las 8 preguntas tengan sobrantes suficientes como distractores.
+    gameWordsWithAudio(24).then((words) => {
       if (alive) setPool(words)
     })
     return () => {
@@ -241,6 +170,14 @@ export function EscuchaGame({
       } catch {}
     }
   }, [])
+
+  function clearStored(key: string) {
+    try {
+      sessionStorage.removeItem(key)
+    } catch {
+      // ignorar
+    }
+  }
 
   // Cuando el modo cambia: guardar en localStorage y resetear la partida.
   const prevModeRef = useRef(mode)
@@ -281,8 +218,21 @@ export function EscuchaGame({
           .map((id) => byId.get(id)!)
           .slice(0, NUM_ROUNDS)
         if (stored.index < words.length) {
+          // buildRound toma las preguntas del inicio del pool: las palabras
+          // guardadas van primero (respeta el orden de la sesión) y el
+          // resto del pool, mezclado, alimenta los distractores.
+          const askIds = new Set(words.map((w) => w.id))
           return {
-            questions: toQuestions(words, eligible, mode),
+            questions: buildRound({
+              pool: [
+                ...words,
+                ...shuffle(eligible.filter((w) => !askIds.has(w.id))),
+              ],
+              askCount: words.length,
+              distractorCount: 3,
+              answerOf: answerFor(mode),
+              similarityOf: combinedSimilarity,
+            }),
             index: stored.index,
             correct: Math.min(stored.correct, words.length),
             streak: stored.streak,
@@ -455,14 +405,6 @@ export function EscuchaGame({
       nextRef.current?.focus({ preventScroll: true })
     }
   }, [answered])
-
-  function clearStored(key: string) {
-    try {
-      sessionStorage.removeItem(key)
-    } catch {
-      // ignorar
-    }
-  }
 
   function handleModeChange(newMode: EscuchaMode) {
     if (newMode === mode) return

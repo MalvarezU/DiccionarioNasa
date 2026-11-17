@@ -6,9 +6,15 @@ import { db } from "@/lib/db"
  * Palabras PUBLISHED aleatorias para los juegos (nunca toda la tabla en
  * memoria: ORDER BY RAND() LIMIT en DB). Público, sin auth.
  * `withAudio=1` filtra a palabras con audio (para el juego Escucha).
+ * `count` y `exclude` tienen topes distintos a propósito: `count` es el
+ * tamaño de una tanda (MAX_COUNT); `exclude` es un historial de palabras
+ * ya servidas (ring buffer compartido entre juegos), no un tamaño de
+ * página, así que puede superar a `count` y tiene su propio tope mayor
+ * (EXCLUDE_MAX).
  */
 const DEFAULT_COUNT = 12
-const MAX_COUNT = 24
+const MAX_COUNT = 48
+const EXCLUDE_MAX = 64
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +28,7 @@ export async function GET(request: NextRequest) {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean)
-      .slice(0, MAX_COUNT)
+      .slice(0, EXCLUDE_MAX)
 
     const words = (await db.$queryRawUnsafe(
       `SELECT id, spanish, \`nasaYuwe\`, pronunciation, illustrationUrl, audioUrl

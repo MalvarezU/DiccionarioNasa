@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, Lock } from "lucide-react"
+import { ArrowRight, Lock, Volume2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -101,18 +101,14 @@ export function GameMotifArt({ motivo }: { motivo: GameMotif }) {
   }
 
   if (motivo === "escucha") {
-    // Onda de audio: anillos concéntricos + barras de ecualizador, CSS-only
+    // Icono de bocina (Volume2) a mayor tamaño para que no se vea
+    // "perdido" dentro de la tarjeta.
     return (
-      <div aria-hidden="true" className="relative flex items-center justify-center">
-        <span className="absolute h-16 w-16 rounded-full border border-primary/20" />
-        <span className="absolute h-12 w-12 rounded-full border border-primary/25" />
-        <span className="flex h-10 items-end justify-center gap-1 rounded-full bg-secondary-container px-3 py-2">
-          <span className="w-1 rounded-full bg-secondary" style={{ height: "40%" }} />
-          <span className="w-1 rounded-full bg-secondary" style={{ height: "90%" }} />
-          <span className="w-1 rounded-full bg-secondary" style={{ height: "60%" }} />
-          <span className="w-1 rounded-full bg-secondary" style={{ height: "100%" }} />
-          <span className="w-1 rounded-full bg-secondary" style={{ height: "50%" }} />
-        </span>
+      <div
+        aria-hidden="true"
+        className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary-container text-secondary"
+      >
+        <Volume2 className="h-10 w-10" />
       </div>
     )
   }
@@ -195,7 +191,7 @@ export function GameTile({
             </Badge>
           </div>
         )}
-        <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-surface-container-highest/50">
+        <div className="mb-3 flex h-24 items-center justify-center overflow-hidden rounded-lg bg-surface-container-highest/50">
           <GameMotifArt motivo={motivo} />
         </div>
         <CardTitle className="text-xl font-serif">{title}</CardTitle>

@@ -23,14 +23,22 @@ describe("game-words [B2.1]", () => {
         words: [
           { id: "w1", spanish: "Casa", nasaYuwe: "Yat" },
           { id: "w2", spanish: "", nasaYuwe: "X" },
+          { id: "w3", spanish: "Sol", nasaYuwe: "Sek" },
+          { id: "w4", spanish: "Luna", nasaYuwe: "Ate" },
+          { id: "w5", spanish: "Mar", nasaYuwe: "Mare" },
         ],
       }) as never
     )
     const words = await fetchGameWords(12)
     expect(words).toEqual([
       { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: null, illustrationUrl: null, audioUrl: null },
+      { id: "w3", spanish: "Sol", nasaYuwe: "Sek", pronunciation: null, illustrationUrl: null, audioUrl: null },
+      { id: "w4", spanish: "Luna", nasaYuwe: "Ate", pronunciation: null, illustrationUrl: null, audioUrl: null },
+      { id: "w5", spanish: "Mar", nasaYuwe: "Mare", pronunciation: null, illustrationUrl: null, audioUrl: null },
     ])
-    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=12")
+    // Sobremuestreo: la API recibe 2×count (24) para que los juegos tengan
+    // sobrantes como distractores; el caller recorta lo que necesita.
+    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=24")
   })
 
   it("propaga audioUrl cuando la palabra trae audio y null cuando no", async () => {
@@ -39,6 +47,8 @@ describe("game-words [B2.1]", () => {
         words: [
           { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: "yat", illustrationUrl: null, audioUrl: "https://audio.test/yat.mp3" },
           { id: "w2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null, illustrationUrl: null },
+          { id: "w3", spanish: "Sol", nasaYuwe: "Sek", pronunciation: null, illustrationUrl: null, audioUrl: null },
+          { id: "w4", spanish: "Luna", nasaYuwe: "Ate", pronunciation: null, illustrationUrl: null, audioUrl: null },
         ],
       }) as never
     )
@@ -46,6 +56,8 @@ describe("game-words [B2.1]", () => {
     expect(words).toEqual([
       { id: "w1", spanish: "Casa", nasaYuwe: "Yat", pronunciation: "yat", illustrationUrl: null, audioUrl: "https://audio.test/yat.mp3" },
       { id: "w2", spanish: "Agua", nasaYuwe: "Yu", pronunciation: null, illustrationUrl: null, audioUrl: null },
+      { id: "w3", spanish: "Sol", nasaYuwe: "Sek", pronunciation: null, illustrationUrl: null, audioUrl: null },
+      { id: "w4", spanish: "Luna", nasaYuwe: "Ate", pronunciation: null, illustrationUrl: null, audioUrl: null },
     ])
   })
 
@@ -111,7 +123,7 @@ describe("gameWordsWithAudio [Fase 4]", () => {
       Response.json({ words: WITH_AUDIO }) as never
     )
     const words = await gameWordsWithAudio(12)
-    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=12&withAudio=1")
+    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=24&withAudio=1")
     expect(words).toHaveLength(4)
     expect(words[0]).toMatchObject({ id: "a1", audioUrl: "https://audio.test/yat.mp3" })
   })
@@ -159,8 +171,9 @@ describe("variedad: exclusión de palabras recientes", () => {
       Response.json({ words: CUATRO }) as never
     )
     await fetchGameWords(12)
+    // Sobremuestreo (count=24) + exclusión de los 2 recientes
     expect(fetch).toHaveBeenCalledWith(
-      `/api/games/words?count=12&exclude=${encodeURIComponent("old1,old2")}`
+      `/api/games/words?count=24&exclude=${encodeURIComponent("old1,old2")}`
     )
     const stored = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as string[]
     expect(stored.slice(0, 4)).toEqual(["n1", "n2", "n3", "n4"])
@@ -179,7 +192,31 @@ describe("variedad: exclusión de palabras recientes", () => {
     expect(fetch).toHaveBeenCalledTimes(2)
     const urls = vi.mocked(fetch).mock.calls.map((c) => c[0])
     expect(urls[0]).toContain("exclude=")
-    expect(urls[1]).toBe("/api/games/words?count=12")
+    expect(urls[1]).toBe("/api/games/words?count=24")
+  })
+
+  it("escalera de exclusión: si 2×count no alcanza, prueba con count recientes", async () => {
+    localStorage.setItem(
+      RECENT_KEY,
+      JSON.stringify(Array.from({ length: 30 }, (_, i) => `old${i}`))
+    )
+    vi.mocked(fetch)
+      // Excluyendo 24 recientes: no queda nada
+      .mockResolvedValueOnce(Response.json({ words: [] }) as never)
+      // Excluyendo 12: ya hay pool suficiente
+      .mockResolvedValueOnce(Response.json({ words: CUATRO }) as never)
+    const words = await fetchGameWords(12)
+    expect(words).toHaveLength(4)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    const urls = vi.mocked(fetch).mock.calls.map((c) => c[0])
+    const first24 = Array.from({ length: 24 }, (_, i) => `old${i}`).join(",")
+    const first12 = Array.from({ length: 12 }, (_, i) => `old${i}`).join(",")
+    expect(urls[0]).toBe(
+      `/api/games/words?count=24&exclude=${encodeURIComponent(first24)}`
+    )
+    expect(urls[1]).toBe(
+      `/api/games/words?count=24&exclude=${encodeURIComponent(first12)}`
+    )
   })
 
   it("sin historial reciente no agrega exclude ni hace doble fetch", async () => {
@@ -188,6 +225,6 @@ describe("variedad: exclusión de palabras recientes", () => {
     )
     await fetchGameWords(12)
     expect(fetch).toHaveBeenCalledTimes(1)
-    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=12")
+    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=24")
   })
 })

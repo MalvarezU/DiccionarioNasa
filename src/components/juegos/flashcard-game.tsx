@@ -14,7 +14,8 @@ import {
   reportGameResult,
   type GameWord,
 } from "@/lib/game-words"
-import { shuffle } from "@/lib/game-utils"
+import { shuffle, stringSimilarity } from "@/lib/game-utils"
+import { buildRound } from "@/lib/game-questions"
 import { useGameFeedback } from "./game-feedback"
 import { Confetti } from "./confetti"
 import {
@@ -35,28 +36,29 @@ interface FlashcardQuestion {
 }
 
 const MIN_FLASH_WORDS = 4
+const NUM_QUESTIONS = 8
 
 function buildQuestions(pool: GameWord[], direction: Direction): FlashcardQuestion[] {
-  return shuffle(pool)
-    .slice(0, 8)
-    .map((word) => {
-      const ask = direction === "es-nasa" ? word.spanish : word.nasaYuwe
-      const answer = (w: GameWord) =>
-        direction === "es-nasa" ? w.nasaYuwe : w.spanish
-      const distractors = shuffle(pool.filter((w) => w.id !== word.id))
-        .slice(0, 3)
-        .map(answer)
-      const options = shuffle([answer(word), ...distractors])
-      return {
-        prompt:
-          direction === "es-nasa"
-            ? "¿Cómo se dice en Nasa Yuwe?"
-            : "¿Qué significa en español?",
-        title: ask,
-        options,
-        correctIndex: options.indexOf(answer(word)),
-      }
-    })
+  // La construcción vive en game-questions: distractores parecidos por
+  // escritura del Nasa Yuwe, sin opciones repetidas y sin que la respuesta
+  // de una pregunta futura se filtre en las opciones de otra.
+  const answerOf = (w: GameWord) =>
+    direction === "es-nasa" ? w.nasaYuwe : w.spanish
+  return buildRound({
+    pool: shuffle(pool),
+    askCount: NUM_QUESTIONS,
+    distractorCount: 3,
+    answerOf,
+    similarityOf: (a, b) => stringSimilarity(a.nasaYuwe, b.nasaYuwe),
+  }).map((q) => ({
+    prompt:
+      direction === "es-nasa"
+        ? "¿Cómo se dice en Nasa Yuwe?"
+        : "¿Qué significa en español?",
+    title: direction === "es-nasa" ? q.word.spanish : q.word.nasaYuwe,
+    options: q.options,
+    correctIndex: q.correctIndex,
+  }))
 }
 
 function mapProvided(
@@ -128,7 +130,10 @@ export function FlashcardGame({
   useEffect(() => {
     if (providedQuestions?.length) return
     let alive = true
-    gameWordsOrDemo(12).then((words) => {
+    // 24 (la API sobremuestrea hasta 48): pool grande para que las 8
+    // preguntas tengan sobrantes suficientes como distractores y ninguna
+    // respuesta futura se filtre entre las opciones.
+    gameWordsOrDemo(24).then((words) => {
       if (!alive) return
       if (words.length < MIN_FLASH_WORDS) setLoadFailed(true)
       else setRemoteWords(words)

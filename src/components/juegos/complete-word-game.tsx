@@ -14,6 +14,7 @@ import {
   type GameWord,
 } from "@/lib/game-words"
 import { shuffle } from "@/lib/game-utils"
+import { dedupePool } from "@/lib/game-questions"
 import { useGameFeedback } from "./game-feedback"
 import { Confetti } from "./confetti"
 import {
@@ -78,7 +79,9 @@ export function CompleteWordGame({
     if (providedWords && providedWords.length >= 1) return
     let alive = true
     gameWordsOrDemo(10).then((words) => {
-      if (alive) setPool(words)
+      // Dedup por (spanish, nasaYuwe): homónimos con el mismo par generan
+      // preguntas idénticas una detrás de otra.
+      if (alive) setPool(dedupePool(words))
     })
     return () => {
       alive = false

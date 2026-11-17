@@ -67,7 +67,7 @@ describe("juegos con palabras reales [B2.1]", () => {
     )
     render(<FlashcardGame />)
     expect(await screen.findByText(/Pregunta 1 de 8/, {}, { timeout: 3000 })).toBeDefined()
-    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=12")
+    expect(fetch).toHaveBeenCalledWith("/api/games/words?count=48")
   })
 
   it("memoria: tablero según dificultad", async () => {
