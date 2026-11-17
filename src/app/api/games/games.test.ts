@@ -49,7 +49,7 @@ describe("GET /api/games/words [B2.1]", () => {
     expect(sql).toContain("audioUrl")
   })
 
-  it("limita count a 1..24 y excluye ids", async () => {
+  it("limita count a 1..48 y excluye ids", async () => {
     vi.mocked(db.$queryRawUnsafe).mockResolvedValue([])
     await wordsGET(new Request("http://x/api/games/words?count=99&exclude=a,b") as never)
     const [, ...args] = vi.mocked(db.$queryRawUnsafe).mock.calls[0] as unknown as [
@@ -57,7 +57,7 @@ describe("GET /api/games/words [B2.1]", () => {
       ...Array<string | number>,
     ]
     // MySQL enlaza parámetros por posición: los `?` de NOT IN van antes que el `?` de LIMIT
-    expect(args).toEqual(["a", "b", 24])
+    expect(args).toEqual(["a", "b", 48])
   })
 
   it("withAudio=1 filtra audioUrl IS NOT NULL", async () => {
