@@ -3,6 +3,7 @@ import { Inter, Source_Serif_4 } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { SWNotices } from "@/components/pwa/sw-notices";
 import { SessionProvider } from "@/components/session-provider";
 
 const sourceSerif = Source_Serif_4({
@@ -65,11 +66,21 @@ export default function RootLayout({
           {children}
         </SessionProvider>
         <Toaster />
+        <SWNotices />
         {/* Register service worker for offline app shell */}
         <Script id="sw-register" strategy="afterInteractive">{`
           if ('serviceWorker' in navigator) {
+            var lastUpdate = 0;
             var reg = function() {
-              navigator.serviceWorker.register('/sw.js').catch(function(err) {
+              navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(reg) {
+                // Revalidar el SW al volver a la pestaña (acotado: 1 vez cada 5 min).
+                document.addEventListener('visibilitychange', function() {
+                  if (document.visibilityState === 'visible' && Date.now() - lastUpdate > 300000) {
+                    lastUpdate = Date.now();
+                    reg.update().catch(function() {});
+                  }
+                });
+              }).catch(function(err) {
                 console.warn('SW registration failed:', err);
               });
             };

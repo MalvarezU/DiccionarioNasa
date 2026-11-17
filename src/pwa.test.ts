@@ -1,10 +1,17 @@
 import { describe, it, expect } from "vitest"
 import * as fs from "fs"
 import * as path from "path"
+import { Script } from "node:vm"
 
 const root = process.cwd()
 
 describe("PWA [B3.2]", () => {
+  it("sw.js parsea sin errores (evaluation failed = PWA muerta)", () => {
+    const sw = fs.readFileSync(path.join(root, "public/sw.js"), "utf-8")
+    // Compila sin ejecutar: un SyntaxError aca es el fallo total del SW.
+    expect(() => new Script(sw, { filename: "sw.js" })).not.toThrow()
+  })
+
   it("manifiesto válido e instalable", () => {
     const manifest = JSON.parse(
       fs.readFileSync(path.join(root, "public/manifest.webmanifest"), "utf-8")
@@ -52,6 +59,23 @@ describe("PWA [B3.2]", () => {
     const sw = fs.readFileSync(path.join(root, "public/sw.js"), "utf-8")
     expect(sw).toContain('RSC_CACHE = "piiyaak-rsc-v1"')
     expect(sw).toMatch(/url\.pathname/)
+  })
+
+  it("presupuestos por bytes + aviso de quota en vez de tragar (F4)", () => {
+    const sw = fs.readFileSync(path.join(root, "public/sw.js"), "utf-8")
+    expect(sw).toContain("IMAGE_MAX_BYTES")
+    expect(sw).toContain("AUDIO_MAX_BYTES")
+    expect(sw).toContain("PIIYAAK_SW_QUOTA")
+    expect(sw).toContain("SKIP_WAITING")
+    expect(sw).toContain("putWithBudget")
+    expect(sw).toContain("notifyClients")
+  })
+
+  it("registro con updateViaCache none + revalidacion al volver (F5)", () => {
+    const layout = fs.readFileSync(path.join(root, "src/app/layout.tsx"), "utf-8")
+    expect(layout).toContain("updateViaCache")
+    expect(layout).toContain("visibilitychange")
+    expect(layout).toContain("SWNotices")
   })
 })
 

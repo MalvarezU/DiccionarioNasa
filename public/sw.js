@@ -25,6 +25,22 @@ const AUDIO_MAX_ENTRIES = 400
 const IMAGE_CACHE = "piiyaak-image-v1"
 const IMAGE_MAX_ENTRIES = 120
 
+// Presupuestos por bytes (Fase 3 fija 50MB de medios auto: ~10MB audios +
+// ~40MB ilustraciones; el SW los hace cumplir aunque el ledger se pierda).
+const AUDIO_MAX_BYTES = 10 * 1024 * 1024
+const IMAGE_MAX_BYTES = 40 * 1024 * 1024
+// R2 no envia CORS: los medios cross-origin son opacos (sin Content-Length).
+// Estimaciones medidas: audios ~25KB c/u (343 ≈ 8.4MB), PNGs ~333KB c/u.
+const AUDIO_OPAQUE_BYTES = 25 * 1024
+const IMAGE_OPAQUE_BYTES = 333 * 1024
+
+const BUDGETS = {
+  [SHELL_CACHE]: { maxEntries: SHELL_MAX_ENTRIES, maxBytes: 0, opaqueBytes: 0 },
+  [RSC_CACHE]: { maxEntries: RSC_MAX_ENTRIES, maxBytes: 0, opaqueBytes: 0 },
+  [AUDIO_CACHE]: { maxEntries: AUDIO_MAX_ENTRIES, maxBytes: AUDIO_MAX_BYTES, opaqueBytes: AUDIO_OPAQUE_BYTES },
+  [IMAGE_CACHE]: { maxEntries: IMAGE_MAX_ENTRIES, maxBytes: IMAGE_MAX_BYTES, opaqueBytes: IMAGE_OPAQUE_BYTES },
+}
+
 // Respaldo minimo si el build no genero sw-precache.js (p. ej. dev).
 // OJO: solo assets estaticos, nunca HTML de rutas.
 const FALLBACK_ASSETS = ["/offline.html", "/manifest.webmanifest", "/icon-192.png", "/apple-touch-icon-180.png"]
@@ -92,25 +108,100 @@ self.addEventListener("activate", (event) => {
   )
 })
 
-async function trimCache(cacheName, maxEntries) {
-  try {
-    const cache = await caches.open(cacheName)
-    // Borrar TODOS los excedentes (antes solo 1 por llamada: con descargas
-    // masivas el cache crecia sin cota entre trims).
-    let keys = await cache.keys()
-    while (keys.length > maxEntries) {
-      await cache.delete(keys[0])
-      keys = await cache.keys()
-    }
-  } catch {
-    // ignorar: el contenido sigue funcionando online
-  }
-}
-
 /** Guarda respuestas ok Y opacas (ver nota arriba). */
 function isCacheable(res) {
   return res.ok || res.type === "opaque"
 }
+
+// Libro contable de bytes por cache (vive lo que viva el worker; los topes
+// de entradas son el respaldo duro ante un ledger frio tras reinicio).
+const byteLedger = new Map()
+
+function ledgerFor(name) {
+  let m = byteLedger.get(name)
+  if (!m) {
+    m = new Map()
+    byteLedger.set(name, m)
+  }
+  return m
+}
+
+function sizeOf(res, estimate) {
+  if (res.type === "opaque") return estimate
+  const len = parseInt(res.headers.get("Content-Length") || "", 10)
+  return Number.isFinite(len) && len > 0 ? len : estimate
+}
+
+function isQuotaError(err) {
+  return !!err && (err.name === "QuotaExceededError" || err.code === 22)
+}
+
+async function notifyClients(message) {
+  try {
+    const clients = await self.clients.matchAll({ includeUncontrolled: true })
+    clients.forEach((c) => {
+      try {
+        c.postMessage(message)
+      } catch {
+        // Cliente ido: nada que avisar.
+      }
+    })
+  } catch {
+    // Sin clientes: nada que avisar.
+  }
+}
+
+/**
+ * put con presupuesto LRU (entradas + bytes). Ante QuotaExceededError recorta
+ * a la mitad, reintenta UNA vez y avisa al cliente (PIIYAAK_SW_QUOTA): nunca
+ * se traga el error en silencio.
+ */
+async function putWithBudget(cacheName, req, res, budget) {
+  const cache = await caches.open(cacheName)
+  const url = typeof req === "string" ? new URL(req, self.location.origin).href : req.url
+  const size = sizeOf(res, budget.opaqueBytes || 0)
+  const ledger = ledgerFor(cacheName)
+  const est = budget.opaqueBytes || 0
+  try {
+    const keys = await cache.keys()
+    let bytes = 0
+    for (const k of keys) bytes += ledger.get(k.url) ?? est
+    let idx = 0
+    while (
+      (keys.length - idx + 1 > budget.maxEntries ||
+        (budget.maxBytes > 0 && bytes + size > budget.maxBytes)) &&
+      idx < keys.length
+    ) {
+      const victim = keys[idx++]
+      bytes -= ledger.get(victim.url) ?? est
+      ledger.delete(victim.url)
+      await cache.delete(victim)
+    }
+    await cache.put(req, res)
+    ledger.set(url, size)
+  } catch (err) {
+    if (!isQuotaError(err)) return
+    try {
+      const keys = await cache.keys()
+      const drop = Math.ceil(keys.length / 2)
+      for (let i = 0; i < drop; i++) {
+        ledger.delete(keys[i].url)
+        await cache.delete(keys[i])
+      }
+      await cache.put(req, res)
+      ledger.set(url, size)
+    } catch {
+      // Sin espacio ni tras recortar: se avisa igual abajo.
+    }
+    void notifyClients({ type: "PIIYAAK_SW_QUOTA", cache: cacheName })
+  }
+}
+
+// Actualizacion bajo control del usuario: la pagina avisa "nueva version"
+// y manda SKIP_WAITING solo cuando el usuario acepta.
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") void self.skipWaiting()
+})
 
 self.addEventListener("fetch", (event) => {
   const req = event.request
@@ -135,8 +226,7 @@ self.addEventListener("fetch", (event) => {
         try {
           const res = await fetch(req)
           if (isCacheable(res)) {
-            await cache.put(req, res.clone())
-            void trimCache(AUDIO_CACHE, AUDIO_MAX_ENTRIES)
+            await putWithBudget(AUDIO_CACHE, req, res.clone(), BUDGETS[AUDIO_CACHE])
           }
           return res
         } catch {
@@ -163,8 +253,7 @@ self.addEventListener("fetch", (event) => {
         try {
           const res = await fetch(req)
           if (isCacheable(res)) {
-            await cache.put(req, res.clone())
-            void trimCache(IMAGE_CACHE, IMAGE_MAX_ENTRIES)
+            await putWithBudget(IMAGE_CACHE, req, res.clone(), BUDGETS[IMAGE_CACHE])
           }
           return res
         } catch {
@@ -202,8 +291,7 @@ self.addEventListener("fetch", (event) => {
         try {
           const res = await fetch(req)
           if (res.ok) {
-            await cache.put(url.pathname, res.clone())
-            void trimCache(RSC_CACHE, RSC_MAX_ENTRIES)
+            await putWithBudget(RSC_CACHE, url.pathname, res.clone(), BUDGETS[RSC_CACHE])
           }
           return res
         } catch {
@@ -231,12 +319,8 @@ self.addEventListener("fetch", (event) => {
           const res = await fetch(req)
           if (res.ok) {
             const copy = res.clone()
-            const cache = await caches.open(SHELL_CACHE)
-            // No bloquear la navegacion por el cacheo.
-            void cache
-              .put(req, copy)
-              .then(() => trimCache(SHELL_CACHE, SHELL_MAX_ENTRIES))
-              .catch(() => {})
+            // No bloquear la navegacion por el cacheo (con presupuesto y aviso).
+            void putWithBudget(SHELL_CACHE, req, copy, BUDGETS[SHELL_CACHE]).catch(() => {})
           }
           return res
         } catch {
@@ -263,13 +347,13 @@ self.addEventListener("fetch", (event) => {
     caches.open(SHELL_CACHE).then(async (cache) => {
       const hit = await cache.match(req)
       const network = fetch(req)
-        .then((res) => {
+        .then(async (res) => {
           // No cachear respuestas que el servidor marca no-store (dev).
           // Evita que un CSS/JS viejo quede en la caché del SW.
           const cc = (res.headers.get("Cache-Control") || "").toLowerCase()
           if (res.ok && !cc.includes("no-store")) {
-            cache.put(req, res.clone()).catch(() => {})
-            void trimCache(SHELL_CACHE, SHELL_MAX_ENTRIES)
+            // Presupuesto y aviso de quota en vez de trim silencioso.
+            await putWithBudget(SHELL_CACHE, req, res.clone(), BUDGETS[SHELL_CACHE])
           }
           return res
         })
